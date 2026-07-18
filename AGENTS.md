@@ -37,6 +37,9 @@ Signals automatically de-duplicate identical states using `==` equality. If you 
 ### 3. Stream Transformations
 Because `BlocSignal` does not use streams under the hood, standard stream-transformer properties (e.g. `debounce`, `throttle`, `switchMap`) are not available. Use custom timing triggers or signal effects to reproduce these behaviors.
 
+### 4. Lifecycle & Disposal (`isClosed`)
+Calling `close()` disposes of the underlying `SignalModel` effect tracking and marks the bloc as closed (`isClosed = true`). Subsequent calls to `add(event)` or `emit(state)` are dropped automatically to prevent memory leaks and unexpected side-effects. The state remains readable after closure to align with classic BLoC semantics.
+
 ---
 
 ## 🧪 Code Quality Standards

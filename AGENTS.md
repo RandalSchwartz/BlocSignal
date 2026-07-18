@@ -44,7 +44,13 @@ Calling `close()` disposes of the underlying `SignalModel` effect tracking and m
 We support `FutureOr<void>` handlers in `onEvent(event)`. If an event handler triggers asynchronous processes (Futures), operational exceptions are captured and reported via `onError` automatically, while programmer faults (`Error` objects) are rethrown to fail fast.
 
 ### 6. Transition Event Tracing
-Transitions triggered via `emit()` are associated with their causing `event` using dynamic Zone context values (`Zone.current[_zoneEventKey]`). This provides full event traceability to observers without modifying the signature of `emit()` or introducing an event-handler registry.
+Transitions triggered via `emit()` are associated with their causing `event` using dynamic Zone context values (`Zone.current[_zoneEventKey]`). This provides full event traceability to observers without modifying the signature of `emit()`.
+
+### 7. Event Handler Registry (`on<Event>`)
+To support BLoC-style syntax, events can be registered using `on<E>((event, emit) => ...)` inside constructor scopes:
+- **Single Registration**: Enforces that each event type `E` is registered at most once; duplicates throw a `StateError` in debug mode.
+- **Concurrent Future Coordination**: Multiple matching event handlers have their returned futures orchestrated concurrently using `Future.wait` rather than sequential chaining.
+- **Backwards Compatibility**: Subclasses can continue to override `onEvent(event)` manually if they do not wish to use the registry.
 
 ---
 

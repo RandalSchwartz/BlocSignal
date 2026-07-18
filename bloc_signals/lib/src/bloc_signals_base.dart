@@ -69,6 +69,13 @@ abstract class BlocSignal<Event, StateType> {
     _lifecycleModel = modelConstructor();
   }
 
+  bool _isClosed = false;
+
+  /// Whether the [BlocSignal] is closed.
+  ///
+  /// A closed [BlocSignal] will drop any subsequent events and state updates.
+  bool get isClosed => _isClosed;
+
   final Signal<StateType> _state;
   late final SignalModel<void> _lifecycleModel;
 
@@ -84,6 +91,7 @@ abstract class BlocSignal<Event, StateType> {
   /// Otherwise, it triggers reactive effects and notifies the
   /// global [BlocSignalObserver].
   void emit(StateType newState) {
+    if (_isClosed) return;
     final oldState = _state.value;
     if (oldState == newState) return;
     _state.value = newState;
@@ -99,6 +107,7 @@ abstract class BlocSignal<Event, StateType> {
   /// Notifies the global [BlocSignalObserver] of the incoming event and catches
   /// errors thrown in [onEvent], delegating them to [onError].
   void add(Event event) {
+    if (_isClosed) return;
     final currentObserver = BlocSignalObserver.observer;
     if (currentObserver != null) {
       currentObserver.onEvent(this, event);
@@ -130,6 +139,8 @@ abstract class BlocSignal<Event, StateType> {
   /// Shuts down all internal effects and disposes of the
   /// underlying [SignalModel].
   void close() {
+    if (_isClosed) return;
+    _isClosed = true;
     _lifecycleModel.dispose();
   }
 }

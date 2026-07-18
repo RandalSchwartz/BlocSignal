@@ -1,3 +1,7 @@
+## 0.1.4
+
+- Relax Dart SDK constraints to `^3.10.0`.
+
 ## 0.1.3
 
 - Fix relative Migration Guide link in README for pub.dev.

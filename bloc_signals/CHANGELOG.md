@@ -1,3 +1,7 @@
+## 0.1.8
+
+- Relax Dart SDK constraints to `^3.10.0` and relax `meta` package version constraints.
+
 ## 0.1.7
 
 - Add BLoC-compatible `on<Event>` API handler registration registry.

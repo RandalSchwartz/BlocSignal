@@ -2,7 +2,7 @@ name: bloc_signals_workspace
 publish_to: none
 
 environment:
-  sdk: ^3.12.2
+  sdk: ^3.10.0
 
 workspace:
   - bloc_signals

@@ -127,6 +127,13 @@ class AsyncRegistryBloc extends BlocSignal<String, int> {
   }
 }
 
+class DuplicateRegistryBloc extends BlocSignal<CounterEvent, int> {
+  DuplicateRegistryBloc() : super(initialState: 0) {
+    on<Increment>((event, emit) {});
+    on<Increment>((event, emit) {});
+  }
+}
+
 class DummyObserver extends BlocSignalObserver {}
 
 class TestObserver extends BlocSignalObserver {
@@ -365,6 +372,13 @@ void main() {
       );
 
       bloc.close();
+    });
+
+    test('throws StateError when on<E> is registered multiple times', () {
+      expect(
+        DuplicateRegistryBloc.new,
+        throwsA(isA<StateError>()),
+      );
     });
   });
 }

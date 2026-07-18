@@ -168,6 +168,15 @@ abstract class BlocSignal<Event, StateType> {
     )
     handler,
   ) {
+    assert(() {
+      if (_handlers.any((h) => h.type == E)) {
+        throw StateError(
+          'on<$E> was called multiple times. '
+          'There should only be a single event handler for each event.',
+        );
+      }
+      return true;
+    }(), 'Duplicate handler registered for event type $E');
     _handlers.add(
       _HandlerRegistry<Event, StateType>(
         type: E,
@@ -183,15 +192,17 @@ abstract class BlocSignal<Event, StateType> {
   ///
   /// Can be overridden to customize event routing or behavior.
   FutureOr<void> onEvent(Event event) {
-    final matched = _handlers.where((h) => h.isType(event)).toList();
-    Future<void>? asyncResult;
+    final matched = _handlers.where((h) => h.isType(event));
+    List<Future<dynamic>>? futures;
     for (final registry in matched) {
-      final result = registry.handler(event, emit);
+      final result = registry.handler(event, emit) as dynamic;
       if (result is Future) {
-        asyncResult = (asyncResult ?? Future.value()).then((_) => result);
+        (futures ??= []).add(result);
       }
     }
-    return asyncResult;
+    if (futures != null) {
+      return Future.wait(futures).then<void>((_) {});
+    }
   }
 
   /// Called when an exception is thrown in [onEvent].
@@ -226,7 +237,7 @@ class _HandlerRegistry<Event, StateType> {
 
   final Type type;
   final bool Function(dynamic) isType;
-  final FutureOr<void> Function(
+  final FutureOr<dynamic> Function(
     dynamic event,
     void Function(StateType state) emit,
   )

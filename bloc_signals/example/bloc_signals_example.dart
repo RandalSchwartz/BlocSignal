@@ -56,7 +56,7 @@ void main() {
 
   // Adding an event synchronously maps and processes it.
   // This notifies the observer and updates state in the current execution block.
-  bloc.add(Increment()); 
+  bloc.add(Increment());
 
   print('Synchronous Updated State Value: ${bloc.stateValue}'); // Prints: 1
 

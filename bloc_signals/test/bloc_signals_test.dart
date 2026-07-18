@@ -109,6 +109,8 @@ void main() {
       final bloc = CounterBloc();
       var effectCallCount = 0;
 
+      expect(bloc.isClosed, isFalse);
+
       // Create an effect that listens to the bloc's state
       bloc.state.subscribe((_) {
         effectCallCount++;
@@ -121,6 +123,11 @@ void main() {
       expect(effectCallCount, equals(2));
 
       bloc.close();
+      expect(bloc.isClosed, isTrue);
+
+      bloc.add(Increment());
+      // Should drop event, so effectCallCount remains 2
+      expect(effectCallCount, equals(2));
     });
 
     test('handles errors during event processing', () {

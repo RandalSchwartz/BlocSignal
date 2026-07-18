@@ -1,7 +1,7 @@
 name: bloc_signals
 resolution: workspace
 description: A synchronous state management container integrating BLoC patterns with Rody Davis's signals package.
-version: 0.1.3
+version: 0.1.4
 repository: https://github.com/RandalSchwartz/BlocSignal
 issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
 

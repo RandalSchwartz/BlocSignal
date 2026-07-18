@@ -102,6 +102,15 @@ class NonNullableFutureBloc extends BlocSignal<String, int> {
   }
 }
 
+class PublicEmitBloc extends BlocSignal<String, int> {
+  PublicEmitBloc() : super(initialState: 0);
+
+  @override
+  void onEvent(String event) {}
+
+  void publicEmit(int val) => emit(val);
+}
+
 class DummyObserver extends BlocSignalObserver {}
 
 class TestObserver extends BlocSignalObserver {
@@ -298,6 +307,12 @@ void main() {
       dummy.onTransition(bloc, null, null);
       dummy.onError(bloc, Exception(), StackTrace.empty);
       bloc.close();
+    });
+
+    test('throws AssertionError when emit is called after close', () {
+      final bloc = PublicEmitBloc();
+      bloc.close();
+      expect(() => bloc.publicEmit(42), throwsA(isA<AssertionError>()));
     });
   });
 }

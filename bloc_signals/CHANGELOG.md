@@ -1,3 +1,7 @@
+## 0.1.5
+
+- Add assertion to throw `AssertionError` in debug/development mode when `emit()` is called after `close()`.
+
 ## 0.1.4
 
 - Fix runtime TypeError when async `onEvent` returns a non-nullable Future type.

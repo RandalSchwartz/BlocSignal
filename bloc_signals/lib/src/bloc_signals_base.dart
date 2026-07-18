@@ -94,6 +94,10 @@ abstract class BlocSignal<Event, StateType> {
   /// Otherwise, it triggers reactive effects and notifies the
   /// global [BlocSignalObserver].
   void emit(StateType newState) {
+    assert(
+      !_isClosed,
+      'Cannot emit new states after calling close() on $runtimeType.',
+    );
     if (_isClosed) return;
     final oldState = _state.value;
     if (oldState == newState) return;

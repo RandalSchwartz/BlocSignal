@@ -92,6 +92,16 @@ class AsyncEmitBloc extends BlocSignal<String, int> {
   }
 }
 
+class NonNullableFutureBloc extends BlocSignal<String, int> {
+  NonNullableFutureBloc() : super(initialState: 0);
+
+  @override
+  Future<int> onEvent(String event) async {
+    await Future<void>.delayed(Duration.zero);
+    throw Exception('Non-nullable future async error');
+  }
+}
+
 class DummyObserver extends BlocSignalObserver {}
 
 class TestObserver extends BlocSignalObserver {
@@ -270,6 +280,16 @@ void main() {
         bloc.close();
       },
     );
+    test('handles async exceptions when Future is non-nullable', () async {
+      final bloc = NonNullableFutureBloc();
+      bloc.add('trigger');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(
+        observer.logs,
+        contains('error: Exception: Non-nullable future async error'),
+      );
+      bloc.close();
+    });
 
     test('covers default empty observer methods', () {
       final dummy = DummyObserver();

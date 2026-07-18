@@ -1,0 +1,7 @@
+.dart_tool/
+.idea/
+.vscode/
+*.log
+doc/api/
+coverage/
+lcov.info

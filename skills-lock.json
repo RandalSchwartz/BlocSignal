@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "skills": {
+    "increase-coverage": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/increase-coverage/SKILL.md",
+      "computedHash": "5a3383ff45738e7b4efe85820d82394e4ad4113ad3be46cb5315f9dbae2c4b5b"
+    },
+    "jaspr-convert-html": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/jaspr-convert-html/SKILL.md",
+      "computedHash": "c7539b5a8dca1e55a066af8ddbcb7eeb97ce09f8cb9417fcf032348cf966bcf0"
+    },
+    "jaspr-fundamentals": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/jaspr-fundamentals/SKILL.md",
+      "computedHash": "e1bf4c1520abdf6c3037b6b1dd53eb1c0ea89f6457e896a065dc418bf6d86406"
+    },
+    "jaspr-js-interop": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/jaspr-js-interop/SKILL.md",
+      "computedHash": "8ef48f0fce586f27a6bf0cc83a38ebb29344081ce6b3377cbd61c9582c460e1d"
+    },
+    "jaspr-pre-rendering-and-hydration": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/jaspr-pre-rendering-and-hydration/SKILL.md",
+      "computedHash": "e1c76a5879cb3003dec40f3f336cd913a243f23a362969a238e9a26259155e3b"
+    },
+    "jaspr-styling": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/jaspr-styling/SKILL.md",
+      "computedHash": "ac664bbc2e93535bb77a1634171df95c17a8f2f586fa2a7da63693ad10706450"
+    },
+    "kaisel": {
+      "source": "Mastersam07/kaisel",
+      "sourceType": "github",
+      "skillPath": "skills/kaisel/SKILL.md",
+      "computedHash": "49f11d9bc5d0ad23898e83a057ede29af36743f639067ca195b222c731fa57a4"
+    },
+    "signals-dart": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": "skills/signals-dart/SKILL.md",
+      "computedHash": "48a655c59acad45b30f520e66f5f0cb5056e1b16b39b3be9553b73d402491943"
+    },
+    "signals-flutter": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": "skills/signals-flutter/SKILL.md",
+      "computedHash": "dd242d260f773e5f9aed495bf713a65228328c439f69a318a3bb699db256ab73"
+    },
+    "signals-hooks": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": "skills/signals-hooks/SKILL.md",
+      "computedHash": "0142f2f6e5dd016b83138ed403af54576d70cce301581ad0e5fb0b3176a49282"
+    },
+    "signals-lint": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": "skills/signals-lint/SKILL.md",
+      "computedHash": "55b1fe9b695be019eb5a3e07eb488adb6448d0de5eb790a3861ba086fb5bc001"
+    },
+    "signals-migration-6-to-7": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": "skills/signals-migration-6-to-7/SKILL.md",
+      "computedHash": "193e9ca2f44f4d80d0c5708fb081379b12afdd09193bbe742ea456b9f98a0e56"
+    },
+    "signals-preact-dart": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": "skills/signals-preact-dart/SKILL.md",
+      "computedHash": "2c5ac56b16b9dcb4685db82f784077543c924769dbe8d7319318276684050fb7"
+    },
+    "signals_hooks": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/signals_hooks/SKILL.md",
+      "computedHash": "f110452cee1f2436d98042ed7bda9c53b8d71b372564f2321ec16d6db29298b9"
+    },
+    "update-docs-workflow": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/update-docs-workflow/SKILL.md",
+      "computedHash": "53875e9360dcf8ca0a3abe0a1a5f56aaf9a625cc662d2dfcabc1b2f4c2f0b15e"
+    },
+    "update-examples-dependencies": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/update-examples-dependencies/SKILL.md",
+      "computedHash": "a9c9422adab41131232913c1c2584aea09a77b429af8739c607b4d1d0857f234"
+    },
+    "update-preact": {
+      "source": "rodydavis/signals.dart",
+      "sourceType": "github",
+      "skillPath": ".agents/skills/update-preact/SKILL.md",
+      "computedHash": "7e5d384163c9a1994d527e4116f052975f6a7bcbcaa61535bb11097e06223f7c"
+    }
+  }
+}

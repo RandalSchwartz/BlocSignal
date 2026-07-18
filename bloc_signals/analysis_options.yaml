@@ -19,9 +19,9 @@ include: package:very_good_analysis/analysis_options.yaml
 #   rules:
 #     - camel_case_types
 
-# analyzer:
-#   exclude:
-#     - path/to/excluded/files/**
+analyzer:
+  exclude:
+    - example/**
 
 # For more information about the core and recommended set of lints, see
 # https://dart.dev/go/core-lints

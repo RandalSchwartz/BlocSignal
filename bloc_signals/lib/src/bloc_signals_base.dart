@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:meta/meta.dart';
 import 'package:signals/signals.dart';
 
 /// An observer interface to watch all [BlocSignal] instances' lifecycles,
@@ -81,6 +82,7 @@ abstract class BlocSignal<Event, StateType> {
   final Signal<StateType> _state;
   late final SignalModel<void> _lifecycleModel;
   final Object _zoneEventKey = Object();
+  final List<_HandlerRegistry<Event, StateType>> _handlers = [];
 
   /// Exposes read-only access to the state signal.
   ReadonlySignal<StateType> get state => _state;
@@ -149,8 +151,48 @@ abstract class BlocSignal<Event, StateType> {
     }
   }
 
-  /// Override this method to handle incoming events and [emit] new states.
-  FutureOr<void> onEvent(Event event);
+  /// Registers an event handler for events of type [E].
+  ///
+  /// ```dart
+  /// class CounterBloc extends BlocSignal<CounterEvent, int> {
+  ///   CounterBloc() : super(initialState: 0) {
+  ///     on<Increment>((event, emit) => emit(stateValue + 1));
+  ///   }
+  /// }
+  /// ```
+  @protected
+  void on<E extends Event>(
+    FutureOr<void> Function(
+      E event,
+      void Function(StateType state) emit,
+    )
+    handler,
+  ) {
+    _handlers.add(
+      _HandlerRegistry<Event, StateType>(
+        type: E,
+        isType: (dynamic e) => e is E,
+        handler: (dynamic event, void Function(StateType state) emit) {
+          return handler(event as E, emit);
+        },
+      ),
+    );
+  }
+
+  /// Handles incoming events and delegates them to registered handlers.
+  ///
+  /// Can be overridden to customize event routing or behavior.
+  FutureOr<void> onEvent(Event event) {
+    final matched = _handlers.where((h) => h.isType(event)).toList();
+    Future<void>? asyncResult;
+    for (final registry in matched) {
+      final result = registry.handler(event, emit);
+      if (result is Future) {
+        asyncResult = (asyncResult ?? Future.value()).then((_) => result);
+      }
+    }
+    return asyncResult;
+  }
 
   /// Called when an exception is thrown in [onEvent].
   ///
@@ -173,4 +215,20 @@ abstract class BlocSignal<Event, StateType> {
     _isClosed = true;
     _lifecycleModel.dispose();
   }
+}
+
+class _HandlerRegistry<Event, StateType> {
+  _HandlerRegistry({
+    required this.type,
+    required this.isType,
+    required this.handler,
+  });
+
+  final Type type;
+  final bool Function(dynamic) isType;
+  final FutureOr<void> Function(
+    dynamic event,
+    void Function(StateType state) emit,
+  )
+  handler;
 }

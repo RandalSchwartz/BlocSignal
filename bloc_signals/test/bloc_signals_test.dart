@@ -111,6 +111,22 @@ class PublicEmitBloc extends BlocSignal<String, int> {
   void publicEmit(int val) => emit(val);
 }
 
+class RegistryBloc extends BlocSignal<CounterEvent, int> {
+  RegistryBloc() : super(initialState: 0) {
+    on<Increment>((event, emit) => emit(stateValue + 1));
+    on<Decrement>((event, emit) => emit(stateValue - 1));
+  }
+}
+
+class AsyncRegistryBloc extends BlocSignal<String, int> {
+  AsyncRegistryBloc() : super(initialState: 0) {
+    on<String>((event, emit) async {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      emit(42);
+    });
+  }
+}
+
 class DummyObserver extends BlocSignalObserver {}
 
 class TestObserver extends BlocSignalObserver {
@@ -313,6 +329,42 @@ void main() {
       final bloc = PublicEmitBloc();
       bloc.close();
       expect(() => bloc.publicEmit(42), throwsA(isA<AssertionError>()));
+    });
+
+    test('supports on<E> registration and handles events synchronously', () {
+      final bloc = RegistryBloc();
+      expect(bloc.stateValue, equals(0));
+
+      bloc.add(Increment());
+      expect(bloc.stateValue, equals(1));
+
+      bloc.add(Decrement());
+      expect(bloc.stateValue, equals(0));
+
+      bloc.close();
+    });
+
+    test('supports on<E> with async handlers', () async {
+      final bloc = AsyncRegistryBloc();
+      expect(bloc.stateValue, equals(0));
+
+      bloc.add('trigger');
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(bloc.stateValue, equals(42));
+
+      bloc.close();
+    });
+
+    test('on<E> preserves zone transition event tracking', () {
+      final bloc = RegistryBloc();
+      bloc.add(Increment());
+
+      expect(
+        observer.logs,
+        contains("transition: 1 (event: Instance of 'Increment')"),
+      );
+
+      bloc.close();
     });
   });
 }

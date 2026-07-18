@@ -1,3 +1,8 @@
+## 0.1.3
+
+- Support asynchronous `onEvent` handlers (`FutureOr<void>`).
+- Implement zone-based transition event context tracing.
+
 ## 0.1.2
 
 - Implement `isClosed` and drop events/state updates after disposal.

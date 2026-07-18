@@ -40,6 +40,12 @@ Because `BlocSignal` does not use streams under the hood, standard stream-transf
 ### 4. Lifecycle & Disposal (`isClosed`)
 Calling `close()` disposes of the underlying `SignalModel` effect tracking and marks the bloc as closed (`isClosed = true`). Subsequent calls to `add(event)` or `emit(state)` are dropped automatically to prevent memory leaks and unexpected side-effects. The state remains readable after closure to align with classic BLoC semantics.
 
+### 5. Asynchronous Event Handling
+We support `FutureOr<void>` handlers in `onEvent(event)`. If an event handler triggers asynchronous processes (Futures), operational exceptions are captured and reported via `onError` automatically, while programmer faults (`Error` objects) are rethrown to fail fast.
+
+### 6. Transition Event Tracing
+Transitions triggered via `emit()` are associated with their causing `event` using dynamic Zone context values (`Zone.current[_zoneEventKey]`). This provides full event traceability to observers without modifying the signature of `emit()` or introducing an event-handler registry.
+
 ---
 
 ## 🧪 Code Quality Standards

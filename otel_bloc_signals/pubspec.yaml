@@ -6,7 +6,7 @@ repository: https://github.com/RandalSchwartz/BlocSignal
 issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
 
 environment:
-  sdk: ^3.10.0
+  sdk: ^3.10.0-0
 
 dependencies:
   bloc_signals: ^0.1.7

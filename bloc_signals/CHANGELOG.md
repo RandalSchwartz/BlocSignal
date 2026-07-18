@@ -1,3 +1,7 @@
+## 0.1.4
+
+- Fix runtime TypeError when async `onEvent` returns a non-nullable Future type.
+
 ## 0.1.3
 
 - Support asynchronous `onEvent` handlers (`FutureOr<void>`).

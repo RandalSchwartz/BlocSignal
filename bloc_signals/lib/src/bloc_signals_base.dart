@@ -123,10 +123,16 @@ abstract class BlocSignal<Event, StateType> {
         try {
           final result = onEvent(event);
           if (result is Future) {
-            unawaited(result.catchError((Object e, StackTrace stackTrace) {
-              onError(e, stackTrace);
-              if (e is Error) Error.throwWithStackTrace(e, stackTrace);
-            }));
+            unawaited(() async {
+              try {
+                await result;
+              } catch (e, stackTrace) {
+                onError(e, stackTrace);
+                if (e is Error) {
+                  Error.throwWithStackTrace(e, stackTrace);
+                }
+              }
+            }());
           }
         } catch (e, stackTrace) {
           onError(e, stackTrace);

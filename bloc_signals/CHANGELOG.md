@@ -1,3 +1,7 @@
+## 0.1.1
+
+- Add Cubit migration guide to documentation.
+
 ## 0.1.0
 
 - Initial release of core `bloc_signals` state management primitives.

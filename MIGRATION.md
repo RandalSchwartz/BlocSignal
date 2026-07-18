@@ -32,7 +32,9 @@ With `BlocSignal`, reactive signals automatically **de-duplicate equal values** 
 
 ## 1. Migrating the Core State Container
 
-### Before (Classic Cubit/Bloc)
+### BLoC Migration (Events-in, States-out)
+
+#### Before (Classic BLoC)
 ```dart
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -46,7 +48,7 @@ class CounterBloc extends Bloc<CounterEvent, int> {
 }
 ```
 
-### After (BlocSignal)
+#### After (BlocSignal)
 ```dart
 import 'package:bloc_signals/bloc_signals.dart';
 
@@ -63,6 +65,36 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
         emit(stateValue + 1); // Updates stateValue synchronously
     }
   }
+}
+```
+
+### Cubit Migration (Direct Method Calls)
+
+In classic BLoC, a `Cubit` removes the event-mapping boilerplate to let you invoke methods that call `emit` directly. 
+
+With `BlocSignal`, you can achieve the exact same behavior by setting the `Event` type parameter to `void` (or `dynamic`) and defining direct methods on your class:
+
+#### Before (Classic Cubit)
+```dart
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+class CounterCubit extends Cubit<int> {
+  CounterCubit() : super(0);
+
+  void increment() => emit(state + 1);
+  void decrement() => emit(state - 1);
+}
+```
+
+#### After (BlocSignal as a Cubit)
+```dart
+import 'package:bloc_signals/bloc_signals.dart';
+
+class CounterCubit extends BlocSignal<void, int> {
+  CounterCubit() : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
+  void decrement() => emit(stateValue - 1);
 }
 ```
 

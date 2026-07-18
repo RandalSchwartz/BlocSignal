@@ -84,8 +84,7 @@ abstract class BlocSignal<Event, StateType> {
   /// Otherwise, it triggers reactive effects and notifies the
   /// global [BlocSignalObserver].
   void emit(StateType newState) {
-    final oldState = _state.value;
-    if (oldState == newState) return;
+    if (_state.disposed) return;
     _state.value = newState;
 
     final currentObserver = BlocSignalObserver.observer;
@@ -131,5 +130,6 @@ abstract class BlocSignal<Event, StateType> {
   /// underlying [SignalModel].
   void close() {
     _lifecycleModel.dispose();
+    _state.dispose();
   }
 }

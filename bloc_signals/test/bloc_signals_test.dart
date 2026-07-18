@@ -107,20 +107,15 @@ void main() {
 
     test('disposal frees resources and cleans up effects', () {
       final bloc = CounterBloc();
-      var effectCallCount = 0;
 
-      // Create an effect that listens to the bloc's state
-      bloc.state.subscribe((_) {
-        effectCallCount++;
-      });
-
-      // Initially subscribed, call count increases
-      expect(effectCallCount, equals(1));
-
-      bloc.add(Increment());
-      expect(effectCallCount, equals(2));
+      expect(bloc.state.disposed, isFalse);
 
       bloc.close();
+
+      bloc.add(Increment());
+
+      expect(bloc.state.value, equals(0));
+      expect(bloc.state.disposed, isTrue);
     });
 
     test('handles errors during event processing', () {

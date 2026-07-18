@@ -1,3 +1,7 @@
+## 0.1.2
+
+- Implement `isClosed` and drop events/state updates after disposal.
+
 ## 0.1.1
 
 - Add Cubit migration guide to documentation.

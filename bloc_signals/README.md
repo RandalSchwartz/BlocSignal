@@ -50,16 +50,9 @@ Extend `BlocSignal` and override `onEvent` to handle incoming events and emit st
 import 'package:bloc_signals/bloc_signals.dart';
 
 class CounterBloc extends BlocSignal<CounterEvent, int> {
-  CounterBloc() : super(initialState: 0);
-
-  @override
-  void onEvent(CounterEvent event) {
-    switch (event) {
-      case Increment():
-        emit(stateValue + 1);
-      case Decrement():
-        emit(stateValue - 1);
-    }
+  CounterBloc() : super(initialState: 0) {
+    on<Increment>((event, emit) => emit(stateValue + 1));
+    on<Decrement>((event, emit) => emit(stateValue - 1));
   }
 }
 ```

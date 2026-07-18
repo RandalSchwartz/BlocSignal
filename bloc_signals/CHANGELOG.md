@@ -1,3 +1,7 @@
+## 0.1.7
+
+- Add BLoC-compatible `on<Event>` API handler registration registry.
+
 ## 0.1.6
 
 - Fix relative Migration Guide link in README for pub.dev.

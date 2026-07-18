@@ -56,14 +56,8 @@ sealed class CounterEvent {}
 class Increment extends CounterEvent {}
 
 class CounterBloc extends BlocSignal<CounterEvent, int> {
-  CounterBloc() : super(initialState: 0);
-
-  @override
-  void onEvent(CounterEvent event) {
-    switch (event) {
-      case Increment():
-        emit(stateValue + 1); // Updates stateValue synchronously
-    }
+  CounterBloc() : super(initialState: 0) {
+    on<Increment>((event, emit) => emit(stateValue + 1));
   }
 }
 ```

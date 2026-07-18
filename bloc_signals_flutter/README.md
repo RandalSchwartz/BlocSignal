@@ -106,7 +106,7 @@ MultiBlocSignalProvider(
 ## Additional Information
 
 - **Core Package**: [bloc_signals](https://pub.dev/packages/bloc_signals)
-- **Migration Guide**: Transitioning from classic BLoC? Check out the [Migration Guide](../MIGRATION.md).
+- **Migration Guide**: Transitioning from classic BLoC? Check out the [Migration Guide](https://github.com/RandalSchwartz/BlocSignal/blob/main/MIGRATION.md).
 
 ---
 

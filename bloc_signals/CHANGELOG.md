@@ -1,3 +1,7 @@
+## 0.1.6
+
+- Fix relative Migration Guide link in README for pub.dev.
+
 ## 0.1.5
 
 - Add assertion to throw `AssertionError` in debug/development mode when `emit()` is called after `close()`.

@@ -1,3 +1,7 @@
+## 0.1.3
+
+- Fix relative Migration Guide link in README for pub.dev.
+
 ## 0.1.2
 
 - Acknowledge Felix Angelov & Rody Davis in documentation.

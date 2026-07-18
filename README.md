@@ -4,10 +4,10 @@
 
 This repository is organized as a Dart workspace and contains the following packages:
 
-| Package | Description | Version | Link |
-| :--- | :--- | :--- | :--- |
-| **`bloc_signals`** | Core pure-Dart state container and observation | `0.1.0` | [README](./bloc_signals/README.md) |
-| **`bloc_signals_flutter`** | Flutter UI bindings, dependency providers, and builders | `0.1.0` | [README](./bloc_signals_flutter/README.md) |
+| Package | Description | Link |
+| :--- | :--- | :--- |
+| **`bloc_signals`** | Core pure-Dart state container and observation | [README](./bloc_signals/README.md) |
+| **`bloc_signals_flutter`** | Flutter UI bindings, dependency providers, and builders | [README](./bloc_signals_flutter/README.md) |
 
 ---
 

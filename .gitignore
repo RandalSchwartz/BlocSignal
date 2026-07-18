@@ -2,6 +2,6 @@
 .idea/
 .vscode/
 *.log
-doc/api/
+**/doc/api/
 coverage/
 lcov.info

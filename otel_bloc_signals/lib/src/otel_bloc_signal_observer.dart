@@ -24,6 +24,11 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
     super.onEvent(bloc, event);
     if (event == null) return;
 
+    if (_activeSpans.length >= 1000) {
+      final oldestKey = _activeSpans.keys.first;
+      _activeSpans.remove(oldestKey)?.end();
+    }
+
     final span = _tracer.startSpan(
       '${bloc.runtimeType}.add(${event.runtimeType})',
       attributes: [
@@ -65,15 +70,31 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
   ) {
     super.onError(bloc, error, stackTrace);
 
-    // Record error against a transient error span
-    _tracer.startSpan(
-        '${bloc.runtimeType}.error',
-        attributes: [
-          otel.Attribute.fromString('bloc.type', bloc.runtimeType.toString()),
-        ],
-      )
-      ..recordException(error, stackTrace: stackTrace)
-      ..setStatus(otel.StatusCode.error, error.toString())
-      ..end();
+    final blocId = identityHashCode(bloc).toString();
+    final keysToRemove = _activeSpans.keys
+        .where((key) => key.startsWith('${blocId}_'))
+        .toList();
+
+    if (keysToRemove.isNotEmpty) {
+      for (final key in keysToRemove) {
+        final span = _activeSpans.remove(key);
+        if (span != null) {
+          span
+            ..recordException(error, stackTrace: stackTrace)
+            ..setStatus(otel.StatusCode.error, error.toString())
+            ..end();
+        }
+      }
+    } else {
+      _tracer.startSpan(
+          '${bloc.runtimeType}.error',
+          attributes: [
+            otel.Attribute.fromString('bloc.type', bloc.runtimeType.toString()),
+          ],
+        )
+        ..recordException(error, stackTrace: stackTrace)
+        ..setStatus(otel.StatusCode.error, error.toString())
+        ..end();
+    }
   }
 }

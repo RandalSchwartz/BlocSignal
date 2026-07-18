@@ -95,15 +95,35 @@ void main() {
       );
       bloc.close();
 
-      // We expect 2 spans: one for the event (uncompleted/errored) and one transient error span
-      expect(exporter.exportedSpans.length, greaterThanOrEqualTo(1));
-      final errorSpan = exporter.exportedSpans.firstWhere(
-        (s) => s.name == 'TestBloc.error',
-      );
-      expect(
-        errorSpan.attributes.get('bloc.type'),
-        equals('TestBloc'),
-      );
+      // We expect 1 span: the event span itself, marked with error status.
+      expect(exporter.exportedSpans, hasLength(1));
+      final span = exporter.exportedSpans.first;
+      expect(span.name, equals('TestBloc.add(Increment)'));
+      expect(span.status.code, equals(otel.StatusCode.error));
+      expect(span.status.description, contains('Test error'));
+    });
+
+    test('instruments error to transient span when no active span exists', () {
+      final bloc = TestBloc();
+      observer.onError(bloc, ArgumentError('Fallback error'), StackTrace.empty);
+      bloc.close();
+
+      expect(exporter.exportedSpans, hasLength(1));
+      final span = exporter.exportedSpans.first;
+      expect(span.name, equals('TestBloc.error'));
+      expect(span.status.code, equals(otel.StatusCode.error));
+      expect(span.status.description, contains('Fallback error'));
+    });
+
+    test('caps active spans map and evicts oldest spans', () {
+      final bloc = TestBloc();
+      for (var i = 0; i < 1005; i++) {
+        observer.onEvent(bloc, 'event_$i');
+      }
+      // 5 oldest spans should have been evicted and ended
+      expect(exporter.exportedSpans, hasLength(5));
+      expect(exporter.exportedSpans.first.name, equals('TestBloc.add(String)'));
+      bloc.close();
     });
   });
 }

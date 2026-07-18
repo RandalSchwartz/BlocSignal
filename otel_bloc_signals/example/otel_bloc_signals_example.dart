@@ -1,0 +1,77 @@
+// Prints are used in this example file to demonstrate OpenTelemetry trace span logs.
+// ignore_for_file: avoid_print
+
+import 'package:bloc_signals/bloc_signals.dart';
+import 'package:opentelemetry/api.dart' as otel;
+import 'package:opentelemetry/sdk.dart' as otel_sdk;
+import 'package:otel_bloc_signals/otel_bloc_signals.dart';
+
+/// 1. Define the Events
+sealed class CounterEvent {}
+
+/// Increment event.
+class Increment extends CounterEvent {}
+
+/// 2. Implement the BlocSignal
+class CounterBloc extends BlocSignal<CounterEvent, int> {
+  /// Create a counter bloc with initial state 0.
+  CounterBloc() : super(initialState: 0);
+
+  @override
+  void onEvent(CounterEvent event) {
+    switch (event) {
+      case Increment():
+        emit(stateValue + 1);
+    }
+  }
+}
+
+/// A simple [otel_sdk.SpanExporter] that prints spans to the console.
+class SimpleConsoleExporter implements otel_sdk.SpanExporter {
+  @override
+  void export(List<otel_sdk.ReadOnlySpan> spans) {
+    for (final span in spans) {
+      print(
+        'Exported Span: "${span.name}" '
+        '[Attributes: ${span.attributes}, Status: ${span.status.code}]',
+      );
+    }
+  }
+
+  @override
+  void forceFlush() {}
+
+  @override
+  void shutdown() {}
+}
+
+void main() {
+  // 3. Initialize OpenTelemetry SDK with our Simple Console Exporter
+  final tracerProvider = otel_sdk.TracerProviderBase(
+    processors: [
+      otel_sdk.SimpleSpanProcessor(SimpleConsoleExporter()),
+    ],
+  );
+
+  final tracer = tracerProvider.getTracer('otel_bloc_signals_example');
+
+  // 4. Register the global OtelBlocSignalObserver
+  BlocSignalObserver.observer = OtelBlocSignalObserver(tracer: tracer);
+
+  print('--- Starting CounterBloc instrumentation example ---');
+
+  // 5. Instantiate and use the BLoC
+  final bloc = CounterBloc();
+
+  // Adding events will start spans, set tags/attributes, and end them on transition
+  bloc.add(Increment());
+  bloc.add(Increment());
+
+  // Close the BLoC to clean up
+  bloc.close();
+
+  // Shut down the tracer provider to flush the remaining spans to console
+  tracerProvider.shutdown();
+
+  print('--- Finished CounterBloc instrumentation example ---');
+}

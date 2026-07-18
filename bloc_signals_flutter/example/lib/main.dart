@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:kaisel/kaisel.dart';
@@ -23,6 +25,11 @@ final class HomeRoute extends AppRoute {
 
   @override
   List<Object?> get props => [username];
+}
+
+/// The timer screen route.
+final class TimerRoute extends AppRoute {
+  const TimerRoute();
 }
 
 // ==========================================
@@ -134,6 +141,105 @@ class LoginBloc extends BlocSignal<LoginEvent, LoginState> {
 }
 
 // ==========================================
+// 2b. Timer BLoC & Ticker
+// ==========================================
+class Ticker {
+  const Ticker();
+  Stream<int> tick({required int ticks}) {
+    return Stream.periodic(
+      const Duration(seconds: 1),
+      (x) => ticks - x - 1,
+    ).take(ticks);
+  }
+}
+
+sealed class TimerEvent {}
+
+class TimerStarted extends TimerEvent {
+  final int duration;
+  TimerStarted({required this.duration});
+}
+
+class TimerPaused extends TimerEvent {}
+
+class TimerResumed extends TimerEvent {}
+
+class TimerReset extends TimerEvent {}
+
+class _TimerTicked extends TimerEvent {
+  final int duration;
+  _TimerTicked({required this.duration});
+}
+
+sealed class TimerState {
+  final int duration;
+  const TimerState(this.duration);
+}
+
+class TimerInitial extends TimerState {
+  const TimerInitial(super.duration);
+}
+
+class TimerRunInProgress extends TimerState {
+  const TimerRunInProgress(super.duration);
+}
+
+class TimerRunPause extends TimerState {
+  const TimerRunPause(super.duration);
+}
+
+class TimerRunComplete extends TimerState {
+  const TimerRunComplete() : super(0);
+}
+
+class TimerBloc extends BlocSignal<TimerEvent, TimerState> {
+  final Ticker ticker;
+  static const int _duration = 60;
+
+  StreamSubscription<int>? _tickerSubscription;
+
+  TimerBloc({required this.ticker})
+    : super(initialState: const TimerInitial(_duration));
+
+  @override
+  void onEvent(TimerEvent event) {
+    switch (event) {
+      case TimerStarted(:final duration):
+        emit(TimerRunInProgress(duration));
+        _tickerSubscription?.cancel();
+        _tickerSubscription = ticker
+            .tick(ticks: duration)
+            .listen((duration) => add(_TimerTicked(duration: duration)));
+      case TimerPaused():
+        if (stateValue is TimerRunInProgress) {
+          _tickerSubscription?.pause();
+          emit(TimerRunPause(stateValue.duration));
+        }
+      case TimerResumed():
+        if (stateValue is TimerRunPause) {
+          _tickerSubscription?.resume();
+          emit(TimerRunInProgress(stateValue.duration));
+        }
+      case TimerReset():
+        _tickerSubscription?.cancel();
+        emit(const TimerInitial(_duration));
+      case _TimerTicked(:final duration):
+        emit(
+          duration > 0
+              ? TimerRunInProgress(duration)
+              : const TimerRunComplete(),
+        );
+    }
+  }
+
+  @override
+  void close() {
+    _tickerSubscription?.cancel();
+    super.close();
+  }
+}
+
+// ==========================================
 // 3. Main App Entry
 // ==========================================
 void main() {
@@ -143,6 +249,10 @@ void main() {
     builder: (context, route) => switch (route) {
       LoginRoute() => const LoginScreen(),
       HomeRoute(:final username) => HomeScreen(username: username),
+      TimerRoute() => BlocSignalProvider<TimerBloc>(
+        create: (_) => TimerBloc(ticker: const Ticker()),
+        child: const TimerScreen(),
+      ),
     },
   );
 
@@ -363,8 +473,101 @@ class HomeScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16),
               ),
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.timer_outlined),
+                label: const Text('Go to Timer Example'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
+                ),
+                onPressed: () => context.push(const TimerRoute()),
+              ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class TimerScreen extends StatelessWidget {
+  const TimerScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final bloc = context.read<TimerBloc>();
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('BlocSignal Timer')),
+      body: Center(
+        child: BlocSignalBuilder<TimerBloc, TimerState>(
+          builder: (context, state) {
+            final durationStr =
+                '${(state.duration / 60).floor().toString().padLeft(2, '0')}'
+                ':${(state.duration % 60).toString().padLeft(2, '0')}';
+
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  durationStr,
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 48),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (state is TimerInitial) ...[
+                      FloatingActionButton(
+                        heroTag: 'start',
+                        onPressed: () =>
+                            bloc.add(TimerStarted(duration: state.duration)),
+                        child: const Icon(Icons.play_arrow),
+                      ),
+                    ],
+                    if (state is TimerRunInProgress) ...[
+                      FloatingActionButton(
+                        heroTag: 'pause',
+                        onPressed: () => bloc.add(TimerPaused()),
+                        child: const Icon(Icons.pause),
+                      ),
+                      const SizedBox(width: 16),
+                      FloatingActionButton(
+                        heroTag: 'reset',
+                        onPressed: () => bloc.add(TimerReset()),
+                        child: const Icon(Icons.replay),
+                      ),
+                    ],
+                    if (state is TimerRunPause) ...[
+                      FloatingActionButton(
+                        heroTag: 'resume',
+                        onPressed: () => bloc.add(TimerResumed()),
+                        child: const Icon(Icons.play_arrow),
+                      ),
+                      const SizedBox(width: 16),
+                      FloatingActionButton(
+                        heroTag: 'reset',
+                        onPressed: () => bloc.add(TimerReset()),
+                        child: const Icon(Icons.replay),
+                      ),
+                    ],
+                    if (state is TimerRunComplete) ...[
+                      FloatingActionButton(
+                        heroTag: 'reset',
+                        onPressed: () => bloc.add(TimerReset()),
+                        child: const Icon(Icons.replay),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );

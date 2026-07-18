@@ -107,3 +107,10 @@ MultiBlocSignalProvider(
 
 - **Core Package**: [bloc_signals](https://pub.dev/packages/bloc_signals)
 - **Migration Guide**: Transitioning from classic BLoC? Check out the [Migration Guide](../MIGRATION.md).
+
+---
+
+## Credits & Acknowledgements
+
+This package is heavily inspired by and builds upon the original **[flutter_bloc](https://pub.dev/packages/flutter_bloc)** library by **[Felix Angelov](https://github.com/felangel)**, combined with the reactive Flutter bindings of the **[signals_flutter](https://pub.dev/packages/signals)** library by **[Rody Davis](https://github.com/roddydavis)**.
+

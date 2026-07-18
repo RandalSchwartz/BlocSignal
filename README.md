@@ -39,3 +39,14 @@ Run `dart pub get` from the root workspace directory to resolve all dependencies
 - Core Package: `cd bloc_signals && dart test`
 - Flutter Package: `cd bloc_signals_flutter && flutter test`
 - Example App: `cd bloc_signals_flutter/example && flutter test`
+
+---
+
+## Credits & Acknowledgements
+
+`BlocSignal` is heavily inspired by and builds upon the incredible work of the following:
+- **[Felix Angelov](https://github.com/felangel)** and the original **[bloc](https://pub.dev/packages/bloc)** / **[flutter_bloc](https://pub.dev/packages/flutter_bloc)** libraries, which established the event-driven state container architecture.
+- **[Rody Davis](https://github.com/roddydavis)** and the **[signals](https://pub.dev/packages/signals)** library, which provides the high-performance reactive state primitives that make synchronous propagation possible.
+
+Thank you for your immense contributions to the Flutter/Dart ecosystem!
+

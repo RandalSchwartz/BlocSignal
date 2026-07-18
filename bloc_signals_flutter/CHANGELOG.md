@@ -1,3 +1,8 @@
+## 0.1.2
+
+- Acknowledge Felix Angelov & Rody Davis in documentation.
+- Add comprehensive Timer showcase example.
+
 ## 0.1.1
 
 - Add Cubit migration guide to documentation.

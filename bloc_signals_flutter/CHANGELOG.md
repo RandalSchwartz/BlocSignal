@@ -1,3 +1,7 @@
+## 0.1.5
+
+- Widen Dart SDK constraint to include pre-release versions of Dart `3.10.0`.
+
 ## 0.1.4
 
 - Relax Dart SDK constraints to `^3.10.0`.

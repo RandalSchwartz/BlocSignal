@@ -52,6 +52,11 @@ To support BLoC-style syntax, events can be registered using `on<E>((event, emit
 - **Concurrent Future Coordination**: Multiple matching event handlers have their returned futures orchestrated concurrently using `Future.wait` rather than sequential chaining.
 - **Backwards Compatibility**: Subclasses can continue to override `onEvent(event)` manually if they do not wish to use the registry.
 
+### 8. Observability & OpenTelemetry (`otel_bloc_signals`)
+When designing telemetry observers:
+- **Leak Prevention**: Because `onTransition` is not guaranteed to fire for every event (e.g., on de-duplicated states or when errors bypass transition logic), ensure any active span maps are capped in size (e.g., 1000 items) and evict oldest keys to prevent memory leaks.
+- **Span Correlation on Errors**: Route exceptions directly to the active event span inside `onError` using identity hash-matching, rather than creating disconnected transient error spans.
+
 ---
 
 ## 🧪 Code Quality Standards

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:signals/signals.dart';
 
 /// An observer interface to watch all [BlocSignal] instances' lifecycles,
@@ -71,6 +73,7 @@ abstract class BlocSignal<Event, StateType> {
 
   final Signal<StateType> _state;
   late final SignalModel<void> _lifecycleModel;
+  final Object _zoneEventKey = Object();
 
   /// Exposes read-only access to the state signal.
   ReadonlySignal<StateType> get state => _state;
@@ -90,7 +93,9 @@ abstract class BlocSignal<Event, StateType> {
 
     final currentObserver = BlocSignalObserver.observer;
     if (currentObserver != null) {
-      currentObserver.onTransition(this, null, newState);
+      final raw = Zone.current[_zoneEventKey];
+      final event = raw is Event ? raw : null;
+      currentObserver.onTransition(this, event, newState);
     }
   }
 
@@ -103,15 +108,28 @@ abstract class BlocSignal<Event, StateType> {
     if (currentObserver != null) {
       currentObserver.onEvent(this, event);
     }
-    try {
-      onEvent(event);
-    } on Object catch (e, stackTrace) {
-      onError(e, stackTrace);
-    }
+
+    runZoned(
+      () {
+        try {
+          final result = onEvent(event);
+          if (result is Future) {
+            result.catchError((Object e, StackTrace stackTrace) {
+              onError(e, stackTrace);
+              if (e is Error) Error.throwWithStackTrace(e, stackTrace);
+            });
+          }
+        } catch (e, stackTrace) {
+          onError(e, stackTrace);
+          if (e is Error) rethrow;
+        }
+      },
+      zoneValues: {_zoneEventKey: event},
+    );
   }
 
   /// Override this method to handle incoming events and [emit] new states.
-  void onEvent(Event event);
+  FutureOr<void> onEvent(Event event);
 
   /// Called when an exception is thrown in [onEvent].
   ///
@@ -131,5 +149,6 @@ abstract class BlocSignal<Event, StateType> {
   /// underlying [SignalModel].
   void close() {
     _lifecycleModel.dispose();
+    _state.dispose();
   }
 }

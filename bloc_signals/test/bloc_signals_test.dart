@@ -1,6 +1,8 @@
 // Cascade invocations are ignored to keep test assertions clean and readable.
 // ignore_for_file: cascade_invocations
 
+import 'dart:async';
+
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:test/test.dart';
 
@@ -33,6 +35,64 @@ class ErrorBloc extends BlocSignal<String, int> {
   }
 }
 
+class ThrowErrorBloc extends BlocSignal<String, int> {
+  ThrowErrorBloc() : super(initialState: 0);
+
+  @override
+  void onEvent(String event) {
+    throw ArgumentError('Test argument error');
+  }
+}
+
+class AsyncExceptionBloc extends BlocSignal<String, int> {
+  AsyncExceptionBloc() : super(initialState: 0);
+
+  @override
+  Future<void> onEvent(String event) async {
+    await Future<void>.delayed(Duration.zero);
+    throw Exception('Async test error');
+  }
+}
+
+class AsyncErrorBloc extends BlocSignal<String, int> {
+  AsyncErrorBloc() : super(initialState: 0);
+
+  @override
+  Future<void> onEvent(String event) async {
+    await Future<void>.delayed(Duration.zero);
+    throw ArgumentError('Async test argument error');
+  }
+}
+
+class BlocB extends BlocSignal<String, int> {
+  BlocB() : super(initialState: 0);
+
+  @override
+  void onEvent(String event) {}
+}
+
+class BlocA extends BlocSignal<int, int> {
+  final BlocB otherBloc;
+  BlocA(this.otherBloc) : super(initialState: 0);
+
+  @override
+  void onEvent(int event) {
+    // Emitting on another bloc from within our zone!
+    otherBloc.emit(42);
+    emit(stateValue + 1);
+  }
+}
+
+class AsyncEmitBloc extends BlocSignal<String, int> {
+  AsyncEmitBloc() : super(initialState: 0);
+
+  @override
+  Future<void> onEvent(String event) async {
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    emit(100);
+  }
+}
+
 class DummyObserver extends BlocSignalObserver {}
 
 class TestObserver extends BlocSignalObserver {
@@ -49,7 +109,7 @@ class TestObserver extends BlocSignalObserver {
     Object? event,
     Object? state,
   ) {
-    logs.add('transition: $state');
+    logs.add('transition: $state (event: $event)');
   }
 
   @override
@@ -100,7 +160,10 @@ void main() {
       bloc.add(Increment());
 
       expect(observer.logs, contains("event: Instance of 'Increment'"));
-      expect(observer.logs, contains('transition: 1'));
+      expect(
+        observer.logs,
+        contains("transition: 1 (event: Instance of 'Increment')"),
+      );
 
       bloc.close();
     });
@@ -129,6 +192,77 @@ void main() {
       expect(observer.logs, contains('error: Exception: Test error'));
       bloc.close();
     });
+
+    test('rethrows Error objects (developer faults) synchronously', () {
+      final bloc = ThrowErrorBloc();
+      expect(() => bloc.add('trigger'), throwsA(isA<ArgumentError>()));
+      expect(
+        observer.logs,
+        contains('error: Invalid argument(s): Test argument error'),
+      );
+      bloc.close();
+    });
+
+    test('handles asynchronous Exception without crashing', () async {
+      final bloc = AsyncExceptionBloc();
+      bloc.add('trigger');
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(observer.logs, contains('error: Exception: Async test error'));
+      bloc.close();
+    });
+
+    test('throws asynchronous Error to the current zone', () async {
+      final bloc = AsyncErrorBloc();
+      Object? caughtError;
+      runZonedGuarded(
+        () => bloc.add('trigger'),
+        (e, s) => caughtError = e,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(caughtError, isA<ArgumentError>());
+      expect(
+        observer.logs,
+        contains('error: Invalid argument(s): Async test argument error'),
+      );
+      bloc.close();
+    });
+
+    test('allows cross-bloc emit without zone key casting crashes', () {
+      final blocB = BlocB();
+      final blocA = BlocA(blocB);
+
+      // This should not crash!
+      blocA.add(1);
+
+      expect(blocB.stateValue, equals(42));
+      expect(blocA.stateValue, equals(1));
+
+      // BlocB's transition should have null event (since it wasn't triggered by its own add)
+      expect(observer.logs, contains('transition: 42 (event: null)'));
+      // BlocA's transition should have 1 as event
+      expect(observer.logs, contains('transition: 1 (event: 1)'));
+
+      blocA.close();
+      blocB.close();
+    });
+
+    test(
+      'preserves the event in onTransition even after async await',
+      () async {
+        final bloc = AsyncEmitBloc();
+
+        bloc.add('delayed_event');
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+
+        expect(bloc.stateValue, equals(100));
+        expect(
+          observer.logs,
+          contains('transition: 100 (event: delayed_event)'),
+        );
+
+        bloc.close();
+      },
+    );
 
     test('covers default empty observer methods', () {
       final dummy = DummyObserver();

@@ -8,6 +8,7 @@ This repository is organized as a Dart workspace and contains the following pack
 | :--- | :--- | :--- |
 | **`bloc_signals`** | Core pure-Dart state container and observation | [README](./bloc_signals/README.md) |
 | **`bloc_signals_flutter`** | Flutter UI bindings, dependency providers, and builders | [README](./bloc_signals_flutter/README.md) |
+| **`otel_bloc_signals`** | OpenTelemetry tracing observer for mapping lifecycle steps to spans | [README](./otel_bloc_signals/README.md) |
 
 ---
 
@@ -18,6 +19,7 @@ This repository is organized as a Dart workspace and contains the following pack
 - 🧹 **Automatic Lifecycle Management**: Automatically manages and tears down effects and listeners via `SignalModel` integration on close.
 - 🔍 **Global Observation**: Hook in a `BlocSignalObserver` to easily log, trace, and monitor events and transitions globally.
 - 🔀 **Automatic De-duplication**: State transitions are automatically de-duplicated using standard `==` equality.
+- 📊 **OpenTelemetry Tracing**: Built-in support for distributed tracing with standard OpenTelemetry spans via `otel_bloc_signals`.
 
 ---
 

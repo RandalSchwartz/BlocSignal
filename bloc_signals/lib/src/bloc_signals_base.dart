@@ -123,16 +123,7 @@ abstract class BlocSignal<Event, StateType> {
         try {
           final result = onEvent(event);
           if (result is Future) {
-            unawaited(() async {
-              try {
-                await result;
-              } catch (e, stackTrace) {
-                onError(e, stackTrace);
-                if (e is Error) {
-                  Error.throwWithStackTrace(e, stackTrace);
-                }
-              }
-            }());
+            unawaited(_handleAsyncResult(result));
           }
         } catch (e, stackTrace) {
           onError(e, stackTrace);
@@ -141,6 +132,17 @@ abstract class BlocSignal<Event, StateType> {
       },
       zoneValues: {_zoneEventKey: event},
     );
+  }
+
+  Future<void> _handleAsyncResult(Future<dynamic> result) async {
+    try {
+      await result;
+    } catch (e, stackTrace) {
+      onError(e, stackTrace);
+      if (e is Error) {
+        Error.throwWithStackTrace(e, stackTrace);
+      }
+    }
   }
 
   /// Override this method to handle incoming events and [emit] new states.

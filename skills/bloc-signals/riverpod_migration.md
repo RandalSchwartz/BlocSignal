@@ -122,7 +122,55 @@ return switch (state) {
 
 ---
 
+### Gotcha 5: Migrating Riverpod 3 Mutations
+Riverpod 3.0 introduces experimental **Mutations** (`Mutation` objects) to decouple side-effect lifecycles (like form submissions or network updates) from primary provider state, letting the UI track states like `MutationIdle`, `MutationPending`, `MutationSuccess`, or `MutationError`.
+
+With `BlocSignal` and `signals`, you can easily replace these using one of two patterns:
+
+#### Option A: Business Logic Layer (Unified BLoC State)
+Keep the side-effect status inside the `BlocSignal` state itself. This is the idiomatic BLoC approach.
+
+```dart
+enum MutationStatus { idle, pending, success, error }
+
+class TodoState {
+  final List<Todo> todos;
+  final MutationStatus addStatus;
+  final Object? addError;
+
+  TodoState({
+    required this.todos,
+    this.addStatus = MutationStatus.idle,
+    this.addError,
+  });
+}
+```
+
+#### Option B: Clean Signals Layer (`AsyncSignal`)
+For a direct, lightweight replacement without event mapping, use a standalone `AsyncSignal` inside your controller:
+
+```dart
+class TodoController {
+  // A standalone signal tracking the mutation status
+  final addMutation = asyncSignal<void>(AsyncState.data(null));
+
+  Future<void> addTodo(Todo todo) async {
+    // Setting it to a Future automatically transitions it to Loading -> Data/Error
+    addMutation.value = AsyncState.loading();
+    try {
+      await api.addTodo(todo);
+      addMutation.value = AsyncState.data(null);
+    } catch (e, st) {
+      addMutation.value = AsyncState.error(e, st);
+    }
+  }
+}
+```
+
+---
+
 ## 3. Code Migration Comparison
+
 
 ### Riverpod AsyncNotifier
 ```dart

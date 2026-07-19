@@ -15,7 +15,7 @@ Search handwritten and generated code:
 
 ```bash
 rg -n \
-  "package:(riverpod|flutter_riverpod|hooks_riverpod|riverpod_annotation)/|@(riverpod|Riverpod)|ProviderScope|ProviderContainer|ProviderObserver|Consumer|WidgetRef|Ref\b|(Provider|StateProvider|StateNotifierProvider|ChangeNotifierProvider|NotifierProvider|FutureProvider|StreamProvider|AsyncNotifierProvider)\b|ref\.[A-Za-z_][A-Za-z0-9_]*|\.family\b|\.autoDispose\b|AsyncValue|overrideWith|select\(|retry\s*:" \
+  "package:(riverpod|flutter_riverpod|hooks_riverpod|riverpod_annotation)/|@(riverpod|Riverpod)|ProviderScope|ProviderContainer|ProviderObserver|Consumer|WidgetRef|Ref\b|(Provider|StateProvider|StateNotifierProvider|ChangeNotifierProvider|NotifierProvider|FutureProvider|StreamProvider|AsyncNotifierProvider|Mutation|MutationState|MutationIdle|MutationPending|MutationSuccess|MutationError)\b|ref\.[A-Za-z_][A-Za-z0-9_]*|\.family\b|\.autoDispose\b|AsyncValue|overrideWith|select\(|retry\s*:" \
   lib test
 ```
 
@@ -43,6 +43,7 @@ A mechanical migration is unsafe when any of those behaviors matter.
 | `AsyncNotifierProvider` | Event-based `BlocSignal` with sealed async states | BlocSignal has no automatic `AsyncValue`, retry, invalidation, or cancellation. |
 | `FutureProvider` | Owned `FutureSignal<T>` or an event-based bloc | Choose based on whether the feature needs commands, observation, or only read-only async data. |
 | `StreamProvider` | Owned `StreamSignal<T>` or a project-owned subscription | BlocSignal itself has no state stream. |
+| Riverpod 3 experimental `Mutation<Result>` | Operation state in BlocSignal, or an owned signal | Preserve the returned Future, error propagation, idle reset, result and stack trace, latest-started concurrency, keyed state, transaction lifetime, and observer hooks. |
 | `.family` or generated parameters | Parameterized `BlocSignalProvider` or an owned `SignalContainer` | Signals auto-disposal can approximate last-subscriber eviction when configured, but it is not Riverpod scope or cache behavior. |
 | `ConsumerWidget` or `Consumer` | A normal widget with `BlocSignalBuilder` or `SignalBuilder` | Put the builder at the old rebuild boundary. |
 | Widget `ref.watch(provider)` | `BlocSignalBuilder` for bloc state, or `.value` inside `SignalBuilder` | `context.watch<Bloc>()` watches provider instance replacement only. |
@@ -122,6 +123,69 @@ overrides, or the consumer project's exact listener-driven disposal and retry po
 a superseded Future's result while alive, but it does not cancel that Future. Test disposal during
 an in-flight request against the installed Signals version and use repository cancellation when
 the operation must stop.
+
+## Riverpod 3 experimental mutations
+
+Riverpod 3.2.1 mutations come from an experimental library. Inspect the installed implementation
+before migrating them. A `Mutation<Result>` includes more than a loading flag:
+
+- `run` returns `Future<Result>`, publishes pending, success, or error, and rethrows failures;
+- `MutationTransaction.get` keeps accessed providers alive for the run and reads their current
+  values;
+- state resets to idle when no longer listened to, and can be reset explicitly;
+- `mutation(key)` gives each equality-stable key separate state;
+- concurrent runs are allowed, but only the latest-started run may publish shared mutation state;
+- `ProviderObserver` has mutation start, reset, success, and error hooks.
+
+Put operation status in the main BlocSignal state when it belongs to that controller. Preserve the
+success result, error and stack trace, reset rule, keyed scope, and observer behavior. If callers
+awaited `Mutation.run`, prefer a public async bloc method that returns or rethrows;
+`BlocSignal.add` returns `void`.
+
+A separately owned signal can keep command status out of the primary state. `AsyncState` has no
+idle variant, so a void mutation needs distinct idle and success data values:
+
+```dart
+enum AddTodoData { idle, success }
+
+final class TodoMutationController {
+  TodoMutationController(this._repository);
+
+  final TodoRepository _repository;
+  final addTodoState = asyncSignal<AddTodoData>(
+    AsyncState.data(AddTodoData.idle),
+  );
+  var _latestRun = 0;
+
+  Future<void> addTodo(Todo todo) async {
+    final run = ++_latestRun;
+    addTodoState.setLoading();
+    try {
+      await _repository.addTodo(todo);
+      if (run == _latestRun) {
+        addTodoState.setValue(AddTodoData.success);
+      }
+    } catch (error, stackTrace) {
+      if (run == _latestRun) {
+        addTodoState.setError(error, stackTrace);
+      }
+      rethrow;
+    }
+  }
+
+  void resetAddTodo() => addTodoState.reset();
+
+  void dispose() {
+    _latestRun++;
+    addTodoState.dispose();
+  }
+}
+```
+
+The generation guard reproduces latest-started state updates; it does not cancel older work. Use
+repository cancellation only when the original contract requires it. For keyed mutations, own a
+keyed signal container or map, preserve key equality, and dispose every entry. Recreate automatic
+idle reset and mutation-specific instrumentation when the feature depends on them.
 
 ## Families and cache ownership
 

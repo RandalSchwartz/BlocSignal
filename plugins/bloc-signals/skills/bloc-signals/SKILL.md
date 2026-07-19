@@ -1,6 +1,6 @@
 ---
 name: bloc-signals
-description: Implement, review, test, or debug Dart and Flutter code that uses bloc_signals, bloc_signals_flutter, or otel_bloc_signals. Use for BlocSignal event handlers, synchronous state updates, providers, builders, lifecycle ownership, equality behavior, observers, and package-specific test failures. Also use when comparing BlocSignal with package:bloc; read the migration reference before changing an existing BLoC application.
+description: Implement, review, test, or debug Dart and Flutter code that uses bloc_signals, bloc_signals_flutter, or otel_bloc_signals. Use for BlocSignal event handlers, synchronous state updates, providers, builders, lifecycle ownership, equality behavior, observers, and package-specific test failures. Also use when comparing BlocSignal with package:bloc or Riverpod; read the matching migration reference before changing an existing application.
 ---
 
 # BlocSignal
@@ -12,8 +12,9 @@ BlocSignal is young and its API may change between releases. Inspect the consume
 repository only when the project follows its current branch or the task concerns the repository
 itself.
 
-Do not infer API parity from `package:bloc` or `package:flutter_bloc`. BlocSignal uses signals,
-has no state stream, and does not implement every BLoC widget or event-transformer API.
+Do not infer API parity from `package:bloc`, `package:flutter_bloc`, or Riverpod. BlocSignal uses
+signals, has no state stream or provider dependency graph, and does not implement every source
+package lifecycle or widget API.
 
 ## Route the task
 
@@ -24,6 +25,8 @@ has no state stream, and does not implement every BLoC widget or event-transform
 - Read [testing.md](testing.md) for synchronous assertions, deterministic async tests, zones, and
   widget tests.
 - Read [migration.md](migration.md) before replacing `bloc`, `flutter_bloc`, or their widgets.
+- Read [riverpod_migration.md](riverpod_migration.md) before replacing Riverpod providers,
+  consumers, families, scopes, or generated declarations.
 - Read [otel.md](otel.md) for `OtelBlocSignalObserver`, span completion gaps, and telemetry data
   choices.
 
@@ -36,7 +39,7 @@ Load only the references needed for the task.
 3. Check the installed public API for every type or member you plan to use.
 4. Make the smallest coherent change that preserves existing user behavior.
 5. Format changed Dart files and run scoped analysis plus the nearest tests.
-6. Report the versions inspected, checks run, and any unsupported BLoC behavior that remains.
+6. Report the versions inspected, checks run, and any unsupported source behavior that remains.
 
 ## Contracts to preserve
 

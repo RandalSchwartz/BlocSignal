@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "BlocSignal",
     "shortDescription": "Build and migrate BlocSignal applications.",
-    "longDescription": "Use package-specific workflows for BlocSignal event handling, Flutter bindings, lifecycle ownership, testing, classic BLoC migration, and OpenTelemetry tracing.",
+    "longDescription": "Use package-specific workflows for BlocSignal event handling, Flutter bindings, lifecycle ownership, testing, classic BLoC and Riverpod migrations, and OpenTelemetry tracing.",
     "developerName": "Randal L. Schwartz",
     "category": "Developer Tools",
     "capabilities": [

@@ -46,7 +46,7 @@ Run `dart pub get` from the root workspace directory to resolve all dependencies
 
 ## AI coding-assistant support
 
-The `bloc-signals` agent plugin covers core APIs, Flutter bindings, testing, classic BLoC migration, and OpenTelemetry tracing. Marketplace registration and plugin installation are separate steps.
+The `bloc-signals` agent plugin covers core APIs, Flutter bindings, testing, classic BLoC and Riverpod migrations, and OpenTelemetry tracing. Marketplace registration and plugin installation are separate steps.
 
 Google Antigravity imports the plugin directly from this repository:
 

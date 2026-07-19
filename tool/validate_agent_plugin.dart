@@ -212,6 +212,20 @@ void _validateSkill(Directory root) {
   }
 
   final pluginFiles = _relativeFiles(pluginSkill);
+  const requiredFiles = {
+    'SKILL.md',
+    'agents/openai.yaml',
+    'core.md',
+    'flutter.md',
+    'migration.md',
+    'riverpod_migration.md',
+    'otel.md',
+    'testing.md',
+  };
+  final missingFiles = requiredFiles.difference(pluginFiles.keys.toSet());
+  if (missingFiles.isNotEmpty) {
+    _errors.add('Plugin skill is missing: ${missingFiles.join(', ')}.');
+  }
 
   final skillFile = pluginFiles['SKILL.md'];
   if (skillFile == null) {

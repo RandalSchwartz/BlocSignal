@@ -7,6 +7,7 @@ const _pluginPath = 'plugins/bloc-signals';
 const _pluginSkillPath = '$_pluginPath/skills/bloc-signals';
 const _legacyRootSkillPath = 'skills/bloc-signals';
 const _legacyAgentSkillPath = '.agents/skills/bloc-signals';
+const _ignoredValidationDirectories = {'.git', '.dart_tool', 'build'};
 
 final List<String> _errors = [];
 
@@ -269,16 +270,47 @@ void _validateNoLegacySkillReferences(Directory root) {
     './skills/bloc-signals',
     'skills/bloc-signals/SKILL.md',
   ];
-  for (final entity in root.listSync(recursive: true, followLinks: false)) {
-    if (entity is! File || !entity.path.endsWith('.md')) continue;
+  for (final entity in listValidationFiles(root)) {
+    if (!entity.path.endsWith('.md')) continue;
     final relative = entity.path.substring(root.path.length + 1);
-    if (relative.startsWith('.git/')) continue;
-    final text = entity.readAsStringSync();
+    final text = readUtf8ValidationText(entity);
+    if (text == null) continue;
     for (final fragment in legacyFragments) {
       if (text.contains(fragment)) {
         _errors.add('Remove legacy skill reference $fragment from $relative.');
       }
     }
+  }
+}
+
+bool shouldSkipValidationPath(String relativePath, {String? separator}) {
+  final pathSeparator = separator ?? Platform.pathSeparator;
+  return relativePath
+      .split(pathSeparator)
+      .any(_ignoredValidationDirectories.contains);
+}
+
+Iterable<File> listValidationFiles(Directory root) sync* {
+  yield* _listValidationFiles(root, root);
+}
+
+Iterable<File> _listValidationFiles(Directory root, Directory current) sync* {
+  for (final entity in current.listSync(followLinks: false)) {
+    final relative = entity.path.substring(root.path.length + 1);
+    if (shouldSkipValidationPath(relative)) continue;
+    if (entity is Directory) {
+      yield* _listValidationFiles(root, entity);
+    } else if (entity is File) {
+      yield entity;
+    }
+  }
+}
+
+String? readUtf8ValidationText(File file) {
+  try {
+    return utf8.decode(file.readAsBytesSync());
+  } on FormatException {
+    return null;
   }
 }
 
@@ -455,7 +487,8 @@ void _validatePortablePaths(Directory root) {
       continue;
     }
     if (entity is! File) continue;
-    final text = entity.readAsStringSync();
+    final text = readUtf8ValidationText(entity);
+    if (text == null) continue;
     if (text.contains('/Users/') || text.contains(r'C:\Users\')) {
       _errors.add(
         'Plugin payload contains a machine-specific path: ${entity.path}',

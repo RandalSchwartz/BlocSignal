@@ -1,6 +1,13 @@
+## 0.1.6
+
+- Remove pre-release Dart SDK constraints in favor of stable `^3.10.0`.
+- Update documentation and link package READMEs to the primary consumable AI coding assistant skill.
+- Clarify stateful widget effect disposal guidelines and provide Flutter Hooks integration examples.
+
 ## 0.1.5
 
 - Widen Dart SDK constraint to include pre-release versions of Dart `3.10.0`.
+
 
 ## 0.1.4
 

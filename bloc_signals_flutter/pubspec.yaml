@@ -1,16 +1,16 @@
 name: bloc_signals_flutter
 resolution: workspace
 description: Flutter extensions and bindings for BlocSignal state management library.
-version: 0.1.5
+version: 0.1.6
 repository: https://github.com/RandalSchwartz/BlocSignal
 issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
 
 environment:
-  sdk: ^3.10.0-0
+  sdk: ^3.5.0
   flutter: ">=1.17.0"
 
 dependencies:
-  bloc_signals: ^0.1.0
+  bloc_signals: ^0.1.10
   flutter:
     sdk: flutter
   signals_flutter: ^7.0.0

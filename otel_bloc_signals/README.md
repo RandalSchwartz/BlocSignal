@@ -34,3 +34,14 @@ void main() {
   BlocSignalObserver.observer = OtelBlocSignalObserver(tracer: tracer);
 }
 ```
+
+---
+
+## AI Coding Assistant Skills
+
+This repository includes a pre-packaged [AI Coding Skill](https://context7.com/skills) representing all the best practices, lifecycle structures, and FAQs for using `BlocSignal`. If you develop with AI code assistants (like Gemini, Claude Code, or Cursor), you can install this skill globally or locally to guide your assistant's code generation:
+
+```bash
+npx ctx7@latest skills install RandalSchwartz/BlocSignal bloc-signals
+```
+

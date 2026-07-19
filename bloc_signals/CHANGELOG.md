@@ -1,6 +1,12 @@
+## 0.1.10
+
+- Remove pre-release Dart SDK constraints in favor of stable `^3.10.0`.
+- Update documentation and structure the primary BLoC-to-BlocSignal migration guide inside a consumable AI coding assistant skill.
+
 ## 0.1.9
 
 - Widen Dart SDK constraint to include pre-release versions of Dart `3.10.0`.
+
 
 ## 0.1.8
 

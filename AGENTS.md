@@ -7,11 +7,12 @@ Welcome, agent! This document details the development standards, architectural d
 ## 🏗️ Workspace Layout & Monorepo Structure
 
 We use a native Dart workspace (supported in Dart 3.5+) instead of Melos.
-- **Root Configuration**: [pubspec.yaml](file:///Users/merlyn/Projects/Flutter/BlocSignal/pubspec.yaml) defines the workspace.
+- **Root Configuration**: [pubspec.yaml](pubspec.yaml) defines the workspace.
 - **Members**:
   - `bloc_signals` (Core pure Dart package)
   - `bloc_signals_flutter` (Flutter bindings)
   - `bloc_signals_flutter/example` (Example Flutter application)
+
 
 ### Dependency Management
 To satisfy pub.dev publishing requirements while maintaining local developer workspaces, **always use version constraints rather than path dependencies for intra-workspace dependencies**. 
@@ -59,7 +60,19 @@ When designing telemetry observers:
 
 ---
 
+## 🛠️ Consumable Skills Maintenance
+
+This repository exposes consumable AI Coding Skills under the root **[skills/](skills/)** directory (e.g., `skills/bloc-signals/SKILL.md`). 
+
+**Crucial Agent Instruction**:
+* Whenever you modify the framework architecture, introduce new UI builders/providers, change testing conventions, or update telemetry spans, **you must update the corresponding skill file(s)** under the `skills/` directory.
+* Keep the main API examples, FAQs, and migration path snippets in sync with the codebase state.
+
+
+---
+
 ## 🧪 Code Quality Standards
+
 
 We maintain a production-grade codebase with strict enforcement rules:
 

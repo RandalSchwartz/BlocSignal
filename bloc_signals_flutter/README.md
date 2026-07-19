@@ -106,11 +106,22 @@ MultiBlocSignalProvider(
 ## Additional Information
 
 - **Core Package**: [bloc_signals](https://pub.dev/packages/bloc_signals)
-- **Migration Guide**: Transitioning from classic BLoC? Check out the [Migration Guide](https://github.com/RandalSchwartz/BlocSignal/blob/main/MIGRATION.md).
+- **Migration Guide**: Transitioning from classic BLoC? Check out the [Migration Guide](../skills/bloc-signals/migration.md).
+
+---
+
+## AI Coding Assistant Skills
+
+This repository includes a pre-packaged [AI Coding Skill](https://context7.com/skills) representing all the best practices, lifecycle structures, and FAQs for using `BlocSignal`. If you develop with AI code assistants (like Gemini, Claude Code, or Cursor), you can install this skill globally or locally to guide your assistant's code generation:
+
+```bash
+npx ctx7@latest skills install RandalSchwartz/BlocSignal bloc-signals
+```
 
 ---
 
 ## Credits & Acknowledgements
+
 
 This package is heavily inspired by and builds upon the original **[flutter_bloc](https://pub.dev/packages/flutter_bloc)** library by **[Felix Angelov](https://github.com/felangel)**, combined with the reactive Flutter bindings of the **[signals_flutter](https://pub.dev/packages/signals)** library by **[Rody Davis](https://github.com/roddydavis)**.
 

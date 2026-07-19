@@ -8,6 +8,7 @@ This guide explains how to migrate your Flutter and Dart applications from class
 
 ### Synchronous Propagation (No Microtask Delay)
 Classic BLoC is built on Dart `Stream`s, which are asynchronous and rely on the Dart microtask queue. When you emit a state in classic BLoC, the UI rebuild is scheduled for the next frame. This can lead to transient "UI glitches" or race conditions when multiple states depend on one another.
+
 In contrast, `BlocSignal` relies on reactive signals. State propagation is immediate and **synchronous**: calling `emit()` updates the state value instantly in the current execution block, recalculating the reactive dependency graph and triggering UI rebuilds in the exact same frame.
 
 ### Feature Parity & Stream Limitations
@@ -15,6 +16,7 @@ While `BlocSignal` mimics BLoC's lifecycle, dependency injection, and state enca
 
 ### Automatic State De-duplication
 In classic BLoC, emitting the exact same state value multiple times will propagate downstream through the stream unless you filter it manually using `.distinct()`.
+
 With `BlocSignal`, reactive signals automatically **de-duplicate equal values** (using `==` equality) at the primitive layer. If you call `emit()` with a state that is equal to the current state, downstream effects and UI builders will not be notified or rebuilt. This reduces redundant widget builds by default without requiring manual configuration.
 
 ---

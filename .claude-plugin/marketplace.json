@@ -1,0 +1,15 @@
+{
+  "name": "blocsignal",
+  "owner": {
+    "name": "Randal L. Schwartz",
+    "url": "https://github.com/RandalSchwartz"
+  },
+  "description": "Agent support for the BlocSignal Dart and Flutter packages.",
+  "plugins": [
+    {
+      "name": "bloc-signals",
+      "source": "./plugins/bloc-signals",
+      "description": "Package-specific guidance for implementing, testing, reviewing, and migrating Dart and Flutter applications that use BlocSignal."
+    }
+  ]
+}

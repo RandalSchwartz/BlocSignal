@@ -25,7 +25,7 @@ This repository is organized as a Dart workspace and contains the following pack
 
 ## Documentation
 
-- **[Migration Guide](./skills/bloc-signals/migration.md)**: A comprehensive guide to transitioning from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
+- **[Migration Guide](./skills/bloc-signals/migration.md)**: A guide for moving from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
 - **API Documentation**: Each package contains detailed HTML documentation. You can generate it by running `dart doc` inside each package directory.
 
 ---
@@ -44,9 +44,33 @@ Run `dart pub get` from the root workspace directory to resolve all dependencies
 
 ---
 
-## AI Coding Assistant Skills
+## AI coding-assistant support
 
-This repository includes a pre-packaged [AI Coding Skill](https://context7.com/skills) representing all the best practices, lifecycle structures, and FAQs for using `BlocSignal`. If you develop with AI code assistants (like Gemini, Claude Code, or Cursor), you can install this skill globally or locally to guide your assistant's code generation:
+The `bloc-signals` agent plugin covers core APIs, Flutter bindings, testing, classic BLoC migration, and OpenTelemetry tracing. Marketplace registration and plugin installation are separate steps.
+
+Google Antigravity imports the plugin directly from this repository:
+
+```bash
+agy plugin install https://github.com/RandalSchwartz/BlocSignal
+```
+
+Claude Code uses the repository's `blocsignal` marketplace:
+
+```bash
+claude plugin marketplace add --scope user RandalSchwartz/BlocSignal
+claude plugin install --scope user bloc-signals@blocsignal
+```
+
+OpenAI Codex uses the same marketplace and plugin name:
+
+```bash
+codex plugin marketplace add RandalSchwartz/BlocSignal
+codex plugin add bloc-signals@blocsignal
+```
+
+Start a new agent session after installation. Claude Code can instead run `/reload-plugins` in the current session. Rerun the Agy install command when you want to refresh its imported copy.
+
+The standalone Context7 skill remains available for agents that do not support plugins:
 
 ```bash
 npx ctx7@latest skills install RandalSchwartz/BlocSignal bloc-signals
@@ -62,4 +86,3 @@ npx ctx7@latest skills install RandalSchwartz/BlocSignal bloc-signals
 - **[Rody Davis](https://github.com/roddydavis)** and the **[signals](https://pub.dev/packages/signals)** library, which provides the high-performance reactive state primitives that make synchronous propagation possible.
 
 Thank you for your immense contributions to the Flutter/Dart ecosystem!
-

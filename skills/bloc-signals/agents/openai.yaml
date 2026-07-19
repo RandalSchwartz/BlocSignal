@@ -1,0 +1,4 @@
+interface:
+  display_name: "BlocSignal"
+  short_description: "Build and migrate BlocSignal applications"
+  default_prompt: "Use $bloc-signals to inspect this project and implement the change with BlocSignal package rules."

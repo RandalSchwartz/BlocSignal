@@ -1,0 +1,32 @@
+{
+  "name": "bloc-signals",
+  "version": "0.1.0",
+  "description": "Package-specific guidance for implementing, testing, reviewing, and migrating Dart and Flutter applications that use BlocSignal.",
+  "author": {
+    "name": "Randal L. Schwartz",
+    "url": "https://github.com/RandalSchwartz"
+  },
+  "homepage": "https://github.com/RandalSchwartz/BlocSignal",
+  "repository": "https://github.com/RandalSchwartz/BlocSignal",
+  "license": "MIT",
+  "keywords": [
+    "dart",
+    "flutter",
+    "bloc",
+    "signals",
+    "state-management"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "BlocSignal",
+    "shortDescription": "Build and migrate BlocSignal applications.",
+    "longDescription": "Use package-specific workflows for BlocSignal event handling, Flutter bindings, lifecycle ownership, testing, classic BLoC migration, and OpenTelemetry tracing.",
+    "developerName": "Randal L. Schwartz",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": "Inspect this project and help me implement the BlocSignal change with the package's actual API and lifecycle rules."
+  }
+}

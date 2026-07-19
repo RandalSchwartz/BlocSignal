@@ -1,0 +1,20 @@
+{
+  "name": "blocsignal",
+  "interface": {
+    "displayName": "BlocSignal"
+  },
+  "plugins": [
+    {
+      "name": "bloc-signals",
+      "source": {
+        "source": "local",
+        "path": "./plugins/bloc-signals"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

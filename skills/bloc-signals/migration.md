@@ -98,6 +98,10 @@ class CounterCubit extends BlocSignal<void, int> {
 
 ## 2. Migrating UI Providers
 
+Unlike classic `flutter_bloc` which internally depends on and re-exports `package:provider`, `bloc_signals_flutter` implements its own custom, hand-rolled `InheritedWidget` dependency injection nodes (`BlocSignalProvider` and `MultiBlocSignalProvider`). 
+
+This means **you do not need to import or depend on `package:provider`** for scoping your blocs.
+
 ### Before (Classic `BlocProvider`)
 ```dart
 BlocProvider(
@@ -124,6 +128,7 @@ MultiBlocSignalProvider(
   child: const AppShell(),
 )
 ```
+
 
 ---
 

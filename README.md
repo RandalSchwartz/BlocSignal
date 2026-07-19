@@ -25,7 +25,7 @@ This repository is organized as a Dart workspace and contains the following pack
 
 ## Documentation
 
-- **[Migration Guide](./skills/bloc-signals/migration.md)**: A guide for moving from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
+- **[Migration Guide](./plugins/bloc-signals/skills/bloc-signals/migration.md)**: A guide for moving from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
 - **API Documentation**: Each package contains detailed HTML documentation. You can generate it by running `dart doc` inside each package directory.
 
 ---
@@ -69,12 +69,6 @@ codex plugin add bloc-signals@blocsignal
 ```
 
 Start a new agent session after installation. Claude Code can instead run `/reload-plugins` in the current session. Rerun the Agy install command when you want to refresh its imported copy.
-
-The standalone Context7 skill remains available for agents that do not support plugins:
-
-```bash
-npx ctx7@latest skills install RandalSchwartz/BlocSignal bloc-signals
-```
 
 ---
 

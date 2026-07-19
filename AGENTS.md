@@ -60,14 +60,12 @@ When designing telemetry observers:
 
 ---
 
-## 🛠️ Consumable Skills Maintenance
+## 🛠️ Agent Plugin Maintenance
 
-This repository exposes consumable AI Coding Skills under the root **[skills/](skills/)** directory (e.g., `skills/bloc-signals/SKILL.md`). 
-
-The public agent plugin mirrors that bundle at `plugins/bloc-signals/skills/bloc-signals/`. Keep the two trees byte-identical, including `agents/openai.yaml`, and run `dart run tool/validate_agent_plugin.dart` after either copy changes.
+The public agent plugin owns its skill bundle at `plugins/bloc-signals/skills/bloc-signals/`. Run `dart run tool/validate_agent_plugin.dart` after changing the plugin or either marketplace catalog.
 
 **Crucial Agent Instruction**:
-* Whenever you modify the framework architecture, introduce new UI builders/providers, change testing conventions, or update telemetry spans, **you must update the corresponding skill file(s)** under the `skills/` directory.
+* Whenever you modify the framework architecture, introduce new UI builders/providers, change testing conventions, or update telemetry spans, **you must update the corresponding skill file(s)** under `plugins/bloc-signals/skills/bloc-signals/`.
 * Keep the main API examples, FAQs, and migration path snippets in sync with the codebase state.
 
 

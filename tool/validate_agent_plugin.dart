@@ -4,8 +4,9 @@ import 'dart:io';
 const _claudeCatalogPath = '.claude-plugin/marketplace.json';
 const _codexCatalogPath = '.agents/plugins/marketplace.json';
 const _pluginPath = 'plugins/bloc-signals';
-const _rootSkillPath = 'skills/bloc-signals';
 const _pluginSkillPath = '$_pluginPath/skills/bloc-signals';
+const _legacyRootSkillPath = 'skills/bloc-signals';
+const _legacyAgentSkillPath = '.agents/skills/bloc-signals';
 
 final List<String> _errors = [];
 
@@ -26,6 +27,8 @@ void main() {
   _validateCatalogs(claudeCatalog, codexCatalog);
   _validateManifests(claudeManifest, codexManifest);
   _validateSkill(root);
+  _validateNoLegacySkillCopies(root);
+  _validateNoLegacySkillReferences(root);
   _validatePortablePaths(root);
 
   if (_errors.isNotEmpty) {
@@ -38,7 +41,7 @@ void main() {
   }
 
   stdout.writeln('Validated bloc-signals in both marketplaces.');
-  stdout.writeln('The root and plugin skill bundles are byte-identical.');
+  stdout.writeln('The plugin contains the single BlocSignal skill bundle.');
 }
 
 Directory _findRepositoryRoot() {
@@ -202,39 +205,15 @@ void _validateManifests(
 }
 
 void _validateSkill(Directory root) {
-  final rootSkill = Directory('${root.path}/$_rootSkillPath');
   final pluginSkill = Directory('${root.path}/$_pluginSkillPath');
-  if (!rootSkill.existsSync()) {
-    _errors.add('Missing $_rootSkillPath.');
-    return;
-  }
   if (!pluginSkill.existsSync()) {
     _errors.add('Missing $_pluginSkillPath.');
     return;
   }
 
-  final rootFiles = _relativeFiles(rootSkill);
   final pluginFiles = _relativeFiles(pluginSkill);
-  final rootNames = rootFiles.keys.toSet();
-  final pluginNames = pluginFiles.keys.toSet();
-  if (rootNames.difference(pluginNames).isNotEmpty) {
-    _errors.add(
-      'Plugin skill is missing: ${rootNames.difference(pluginNames).join(', ')}',
-    );
-  }
-  if (pluginNames.difference(rootNames).isNotEmpty) {
-    _errors.add(
-      'Root skill is missing: ${pluginNames.difference(rootNames).join(', ')}',
-    );
-  }
 
-  for (final name in rootNames.intersection(pluginNames)) {
-    if (!_sameBytes(rootFiles[name]!, pluginFiles[name]!)) {
-      _errors.add('Skill mirror differs at $name.');
-    }
-  }
-
-  final skillFile = rootFiles['SKILL.md'];
+  final skillFile = pluginFiles['SKILL.md'];
   if (skillFile == null) {
     _errors.add('The skill bundle needs SKILL.md.');
     return;
@@ -252,11 +231,40 @@ void _validateSkill(Directory root) {
     }
   }
 
-  final openAi = rootFiles['agents/openai.yaml'];
+  final openAi = pluginFiles['agents/openai.yaml'];
   if (openAi == null) {
     _errors.add('The skill bundle needs agents/openai.yaml.');
   } else {
     _validateOpenAiYaml(openAi);
+  }
+}
+
+void _validateNoLegacySkillCopies(Directory root) {
+  for (final path in [_legacyRootSkillPath, _legacyAgentSkillPath]) {
+    if (Directory('${root.path}/$path').existsSync()) {
+      _errors.add('Remove legacy skill directory $path.');
+    }
+  }
+}
+
+void _validateNoLegacySkillReferences(Directory root) {
+  const legacyFragments = [
+    'context7.com/skills',
+    'ctx7@',
+    '../skills/bloc-signals',
+    './skills/bloc-signals',
+    'skills/bloc-signals/SKILL.md',
+  ];
+  for (final entity in root.listSync(recursive: true, followLinks: false)) {
+    if (entity is! File || !entity.path.endsWith('.md')) continue;
+    final relative = entity.path.substring(root.path.length + 1);
+    if (relative.startsWith('.git/')) continue;
+    final text = entity.readAsStringSync();
+    for (final fragment in legacyFragments) {
+      if (text.contains(fragment)) {
+        _errors.add('Remove legacy skill reference $fragment from $relative.');
+      }
+    }
   }
 }
 

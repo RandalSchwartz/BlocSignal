@@ -88,3 +88,30 @@ We maintain a production-grade codebase with strict enforcement rules:
      flutter test --coverage
      ```
 3. **Format**: Always run `dart format .` to maintain uniform formatting before committing.
+
+---
+
+## 🧠 Compounded Learnings & Best Practices
+
+### 1. Overriding `@mustCallSuper` Methods
+When overriding a method annotated with `@mustCallSuper` (e.g., `onEvent`), you MUST invoke `super.<method>`.
+* If the method returns `FutureOr<void>` (like `onEvent`), invoking it directly in a synchronous context will trigger `discarded_futures` lints.
+* To resolve this:
+  * If the override does not need to be async, wrap the call as: `unawaited(Future.value(super.onEvent(event)));` (requires importing `dart:async`).
+  * If the override is async, declare the signature as:
+    ```dart
+    @override
+    Future<void> onEvent(Event event) async {
+      await super.onEvent(event);
+      // Custom async handling
+    }
+    ```
+
+### 2. O(1) InheritedWidget Lookup
+When retrieving a parent `InheritedWidget` from `BuildContext` without registering a rebuild dependency (e.g., inside a `read()` or non-listening `of()` method), do **NOT** use `findAncestorWidgetOfExactType` (which runs in O(N) by traversing the tree). Instead, use `getElementForInheritedWidgetOfExactType` which resolves in O(1) time and extracts the widget from the element:
+```dart
+final provider = context
+    .getElementForInheritedWidgetOfExactType<MyInheritedWidget>()
+    ?.widget as MyInheritedWidget?;
+```
+

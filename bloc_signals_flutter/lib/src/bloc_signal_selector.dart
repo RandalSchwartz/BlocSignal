@@ -64,7 +64,8 @@ class _BlocSignalSelectorState<T extends BlocSignalBase<S>, S, V>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final effectiveBloc = widget.bloc ?? BlocSignalProvider.of<T>(context);
+    final effectiveBloc =
+        widget.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     if (_bloc != effectiveBloc) {
       _bloc = effectiveBloc;
       _initComputed();
@@ -75,7 +76,7 @@ class _BlocSignalSelectorState<T extends BlocSignalBase<S>, S, V>
   void didUpdateWidget(BlocSignalSelector<T, S, V> oldWidget) {
     super.didUpdateWidget(oldWidget);
     final effectiveBloc = widget.bloc ?? BlocSignalProvider.of<T>(context);
-    if (_bloc != effectiveBloc) {
+    if (_bloc != effectiveBloc || oldWidget.selector != widget.selector) {
       _bloc = effectiveBloc;
       _initComputed();
     }

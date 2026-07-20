@@ -42,7 +42,8 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBloc = bloc ?? BlocSignalProvider.of<T>(context);
+    final effectiveBloc =
+        bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     return BlocSignalListener<T, S>(
       bloc: effectiveBloc,
       listener: listener,

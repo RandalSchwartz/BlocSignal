@@ -38,7 +38,8 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S>
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBloc = bloc ?? BlocSignalProvider.of<T>(context);
+    final effectiveBloc =
+        bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     return SignalListener(
       effect: (context) {
         final state = effectiveBloc.state.value;

@@ -7,7 +7,19 @@ description: Core state management container integrating BLoC/Cubit patterns wit
 
 `BlocSignal` bridges the classic BLoC / Cubit patterns with Rody Davis's signals v7 primitives. It enables synchronous, de-duplicated state propagation, direct integration with signals utilities, and full observability.
 
+> [!TIP]
+> **Related Skills Recommendation**
+> If you are working with `BlocSignal` and need advanced reactive primitives, Flutter UI bindings, hooks, linting rules, or migration guides, make sure you have the related signals skills installed:
+> - `signals-dart` (advanced reactive state primitives and utilities of `signals_core`)
+> - `signals-flutter` (highly optimized Flutter UI bindings for signals)
+> - `signals-hooks` (reactive state hooks integrating signals with `flutter_hooks`)
+> - `signals-lint` (static analysis rules and automated IDE quick-fixes for signals)
+> - `signals-migration-6-to-7` (guidelines for migrating signals codebase from v6 to v7)
+>
+> If they are not already installed or configured, you can get/install them to enhance capabilities.
+
 ---
+
 
 ## 📚 Skill Structure & Details
 

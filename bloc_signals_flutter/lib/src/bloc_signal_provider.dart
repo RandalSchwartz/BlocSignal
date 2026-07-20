@@ -48,7 +48,9 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
         ? context.dependOnInheritedWidgetOfExactType<
             _BlocSignalProviderInherited<T>>()
         : context
-            .findAncestorWidgetOfExactType<_BlocSignalProviderInherited<T>>();
+            .getElementForInheritedWidgetOfExactType<
+                _BlocSignalProviderInherited<T>>()
+            ?.widget as _BlocSignalProviderInherited<T>?;
     if (provider == null) {
       throw FlutterError(
         'BlocSignalProvider.of() called with a context that does not contain '

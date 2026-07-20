@@ -97,8 +97,8 @@ class LoginBloc extends BlocSignal<LoginEvent, LoginState> {
   LoginBloc() : super(initialState: const LoginState());
 
   @override
-  void onEvent(LoginEvent event) async {
-    super.onEvent(event);
+  Future<void> onEvent(LoginEvent event) async {
+    await super.onEvent(event);
     if (event is UsernameChanged) {
       emit(stateValue.copyWith(username: event.username));
     } else if (event is PasswordChanged) {

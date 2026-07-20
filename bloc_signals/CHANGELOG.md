@@ -1,3 +1,7 @@
+## 0.1.12
+
+- Simplify duplicate handler registration check in `on<E>` to throw `StateError` directly and resolve a test coverage gap.
+
 ## 0.1.11
 
 - Refactor framework architecture to extract `BlocSignalBase` and introduce `CubitSignal` for clean, method-driven state management.

@@ -1,3 +1,7 @@
+## 0.1.8
+
+- Update `bloc_signals` dependency constraint to `^0.1.12`.
+
 ## 0.1.7
 
 - Widen providers, builders, and lookup extensions to accept `BlocSignalBase` to support both Blocs and Cubits.

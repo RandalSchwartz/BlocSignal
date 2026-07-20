@@ -1,3 +1,7 @@
+## 0.1.6
+
+- Update `bloc_signals` dependency constraint to `^0.1.12`.
+
 ## 0.1.5
 
 - Update observer to accept `BlocSignalBase` to track transitions and errors on both Blocs and Cubits.

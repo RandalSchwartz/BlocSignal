@@ -1,6 +1,6 @@
 # bloc_signals
 
-A synchronous state management library bridging the Business Logic Component (BLoC) pattern with a reactive signals foundation (using Rody Davis's `signals` package version 7).
+A synchronous state management library bridging the Business Logic Component (BLoC) pattern with a reactive signals foundation (using Rody Davis's `signals` package version 7). For Flutter applications, use the [bloc_signals_flutter](https://pub.dev/packages/bloc_signals_flutter) package for UI bindings, dependency injection providers, and rebuild builders.
 
 This library combines the architectural predictability of the BLoC pattern (events go in, states come out) with the synchronous, glitch-free, and highly precise reactivity of signals.
 

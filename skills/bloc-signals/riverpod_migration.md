@@ -68,12 +68,13 @@ BlocSignalProvider(
 
 ---
 
-### Gotcha 3: Side-Effects (`ref.listen` vs. `BlocSignalListener`)
+### Gotcha 3: Side-Effects (`ref.listen` vs. `SignalListener`)
 * **Riverpod**: Promotes `ref.listen` within the `build` method to trigger dialogs, navigation, or snackbars.
-* **BlocSignal**: Use `BlocSignalListener` in your widget tree to safely intercept state transitions and run one-off side-effects:
+* **BlocSignal**: Since the state of a bloc is a reactive signal, you can use the standard `SignalListener` (or `SignalEffect`) widget from `package:signals_flutter` in your widget tree to safely run one-off side-effects:
 ```dart
-BlocSignalListener<AuthBloc, AuthState>(
-  listener: (context, state) {
+SignalListener(
+  effect: (context) {
+    final state = context.read<AuthBloc>().state.value;
     if (state is Authenticated) {
       Navigator.pushNamed(context, '/home');
     }

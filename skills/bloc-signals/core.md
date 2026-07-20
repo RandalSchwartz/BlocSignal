@@ -69,19 +69,31 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
 #### ── In the Constructor (Internal) ──
 Declaring reactive primitives directly within the `BlocSignal` subclass constructor is ideal for encapsulation and automatic lifecycle management.
 
-* **`effect` in the Constructor**: Declaring an `effect` inside the constructor automatically registers and disposes of the effect correctly when the bloc is closed (via `close()`):
+* **`effect` in the Constructor**: Subclass constructor bodies run *after* the super constructor (where the base `createModel` executes). Because of this, effects declared inside the subclass constructor are **not** automatically disposed when the bloc is closed.
+  
+  > [!IMPORTANT]
+  > **Always capture and dispose subclass effects in `close()`**, especially if they listen to long-lived external signals (like repositories). Failure to do so creates memory leaks and causes post-close emission assertions to fail.
+
   ```dart
   class LoggingCounterCubit extends CubitSignal<int> {
+    late final void Function() _disposeEffect;
+
     LoggingCounterCubit() : super(initialState: 0) {
-      // Registered and scoped automatically to the Cubit's lifecycle
-      effect(() {
+      _disposeEffect = effect(() {
         print('Transitioned to state: $stateValue');
       });
     }
     
     void increment() => emit(stateValue + 1);
+
+    @override
+    void close() {
+      _disposeEffect(); // Clean up subclass effect
+      super.close();
+    }
   }
   ```
+
 
 * **`computed` in the Constructor**: Define a `late final ReadonlySignal<T>` to hold the derived signal, and initialize it inside the constructor by referencing `state`:
   ```dart

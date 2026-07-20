@@ -161,3 +161,72 @@ graph TD
   * **Reading**: Fully reactive. The UI watches a `ReadonlySignal<State>` exposed by `bloc.state`.
   * **Writing**: Fully decoupled via events (`bloc.add(Event)`). The UI does not know *how* the action is implemented. This event-driven boundary is what enables robust tracing (e.g., OpenTelemetry spans with event correlation), logging, and decoupled middleware.
 
+
+---
+
+### 4. Awaiting Event Completion (Solving the Async Coordination / Mutation Problem)
+
+#### Q: How do we await the asynchronous result of an event dispatched via `.add()` in the UI?
+**A:** Because `BlocSignal.add` returns `void` (following the classic BLoC pattern to decouple event trigger from handler execution), you cannot directly `await` the `add()` call. 
+
+This is the exact problem that **Riverpod 3.0's Mutations** were designed to solve (tracking and awaiting transient side-effects without polluting the main state). With `BlocSignal` and `signals`, we solve this coordination using two main patterns:
+
+##### Option A: The Completer Pattern (Recommended for Forms / Actions)
+Pass a `Completer` inside the event. The handler completes it when the async task completes, allowing the UI to await the result or catch the error locally.
+
+1. **Event Definition**:
+   ```dart
+   class LoginSubmitted extends AuthEvent {
+     final String email;
+     final String password;
+     final Completer<void>? completer;
+     LoginSubmitted({required this.email, required this.password, this.completer});
+   }
+   ```
+2. **Event Handler**:
+   ```dart
+   on<LoginSubmitted>((event, emit) async {
+     emit(AuthLoading());
+     try {
+       await api.login(event.email, event.password);
+       emit(AuthSuccess());
+       event.completer?.complete(); // Resolve
+     } catch (e, st) {
+       emit(AuthFailure(e));
+       event.completer?.completeError(e, st); // Propagate error
+     }
+   });
+   ```
+3. **UI / Widget Invocation**:
+   ```dart
+   final completer = Completer<void>();
+   context.read<AuthBloc>().add(LoginSubmitted(email: email, password: password, completer: completer));
+   
+   try {
+     await completer.future;
+     Navigator.pushReplacementNamed(context, '/home');
+   } catch (err) {
+     // Handle error locally in the button / form action
+   }
+   ```
+
+##### Option B: The Signal-to-Stream Pattern (State Transition Awaiting)
+Convert the state signal to a stream using the `.toStream()` extension, and await the target state transition.
+
+```dart
+// 1. Prepare future before adding event
+final successFuture = context
+    .read<AuthBloc>()
+    .state
+    .toStream()
+    .firstWhere((state) => state is AuthSuccess);
+
+// 2. Dispatch event
+context.read<AuthBloc>().add(LoginSubmitted(email: email, password: password));
+
+// 3. Await completion
+await successFuture;
+Navigator.pushReplacementNamed(context, '/home');
+```
+
+

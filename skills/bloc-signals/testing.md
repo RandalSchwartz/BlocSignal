@@ -75,7 +75,81 @@ test('handles async load event via add()', () async {
 
 ---
 
+## 🧪 Testing Mutator & Async Coordination Patterns
+
+Both the **Completer Pattern** and the **AsyncSignal Pattern** are highly testable without requiring flaky delays or manual timeouts.
+
+### 1. Testing the Completer Pattern
+Because the `Completer` is passed directly in the event, you can await the completion of the future directly in your unit test assertions:
+
+```dart
+test('LoginSubmitted completes when login succeeds', () async {
+  final bloc = AuthBloc(api: mockApi);
+  final completer = Completer<void>();
+
+  bloc.add(LoginSubmitted(
+    email: 'user@example.com',
+    password: 'password123',
+    completer: completer,
+  ));
+
+  // Await the completer's future directly!
+  await expectLater(completer.future, completes);
+  expect(bloc.stateValue, isA<AuthSuccess>());
+  bloc.close();
+});
+
+test('LoginSubmitted completes with error when login fails', () async {
+  final bloc = AuthBloc(api: mockApi);
+  final completer = Completer<void>();
+
+  bloc.add(LoginSubmitted(
+    email: 'user@example.com',
+    password: 'wrong_password',
+    completer: completer,
+  ));
+
+  // Verify the future throws the expected exception
+  await expectLater(completer.future, throwsA(isA<AuthException>()));
+  expect(bloc.stateValue, isA<AuthFailure>());
+  bloc.close();
+});
+```
+
+### 2. Testing the AsyncSignal (Mutation) Pattern
+For direct method controllers tracking side-effects via a standalone `AsyncSignal`, you can await the controller action itself, or await the signal's internal `.future` property:
+
+```dart
+test('addTodo updates mutation signal states', () async {
+  final controller = TodoController(api: mockApi);
+  
+  // 1. Initial State should be idle/data
+  expect(controller.addTodoMutation.value.isLoading, isFalse);
+  
+  // 2. Execute and await the async call
+  await controller.addTodo(Todo('New Task'));
+  
+  // 3. Verify it completed successfully
+  expect(controller.addTodoMutation.value.hasError, isFalse);
+  expect(controller.addTodoMutation.value.isLoading, isFalse);
+});
+
+test('awaiting addTodoMutation.future completes', () async {
+  final controller = TodoController(api: mockApi);
+  
+  // Start the operation (dont await yet)
+  final action = controller.addTodo(Todo('New Task'));
+  
+  // You can await the signal's internal future getter
+  await expectLater(controller.addTodoMutation.future, completes);
+  await action;
+});
+```
+
+---
+
 ## 🛡️ Testing Rules & Best Practices
 
 1. **Always Call `bloc.close()`**: To prevent memory leaks of underlying `SignalModel` tracking, always invoke `close()` on your blocs inside the test body or in a `tearDown()` block.
 2. **De-duplication Expectations**: Remember that `emit()` de-duplicates values. If you dispatch an event that emits a state equal (`==`) to the current state, observers and listeners will **not** trigger. Keep this in mind when writing test verification assertions.
+

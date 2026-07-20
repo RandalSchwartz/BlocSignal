@@ -69,28 +69,23 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
 #### ── In the Constructor (Internal) ──
 Declaring reactive primitives directly within the `BlocSignal` subclass constructor is ideal for encapsulation and automatic lifecycle management.
 
-* **`effect` in the Constructor**: Subclass constructor bodies run *after* the super constructor (where the base `createModel` executes). Because of this, effects declared inside the subclass constructor are **not** automatically disposed when the bloc is closed.
+* **`effect` in the Constructor**: Subclass constructor bodies run *after* the super constructor (where the base `createModel` executes). Because of this, standard `effect()` calls inside the subclass constructor are **not** automatically disposed when the bloc is closed.
   
-  > [!IMPORTANT]
-  > **Always capture and dispose subclass effects in `close()`**, especially if they listen to long-lived external signals (like repositories). Failure to do so creates memory leaks and causes post-close emission assertions to fail.
+  To make this easy and leak-free, `BlocSignalBase` exposes a built-in helper: **`createEffect()`**.
+
+  > [!TIP]
+  > **Always use `createEffect` instead of `effect` inside constructors.** Any effects registered via `createEffect` will be automatically cleaned up and disposed when the bloc is closed (via `close()`), preventing memory leaks and post-close emission errors.
 
   ```dart
   class LoggingCounterCubit extends CubitSignal<int> {
-    late final void Function() _disposeEffect;
-
     LoggingCounterCubit() : super(initialState: 0) {
-      _disposeEffect = effect(() {
+      // Automatically registered and cleaned up on close()
+      createEffect(() {
         print('Transitioned to state: $stateValue');
       });
     }
     
     void increment() => emit(stateValue + 1);
-
-    @override
-    void close() {
-      _disposeEffect(); // Clean up subclass effect
-      super.close();
-    }
   }
   ```
 
@@ -151,12 +146,44 @@ The concern that BLoC can feel like MVVM (where local state is mutated and trust
    * For pure UI-centric states (e.g., tab selection, dialog open/close), mutating state directly inside the BLoC is clean and appropriate.
    * For domain/business states (e.g., user profiles, products), the **Repository** is the single source of truth. The repository exposes its cache reactively via a `ReadonlySignal`.
 2. **Reactive Composition**:
-   * Instead of duplicate, localized caching in the BLoC, the BLoC can compose the repository's signal using `computed` or `effect`.
+   * Instead of duplicate, localized caching in the BLoC, the BLoC can compose the repository's signal using `createEffect`.
    * When an event is dispatched to the BLoC (e.g., `UpdateTodo`), the BLoC calls the repository (e.g., `repository.saveTodo(todo)`).
    * The repository performs the mutation and updates its internal signal.
    * The BLoC's state (which is bound to the repository's signal) updates **synchronously**, propagating the change back to the UI.
 
+##### Concrete Code Example:
+```dart
+// The bloc does NOT own a local cache of todos.
+// Instead, it composes the repository's [ReadonlySignal] via [createEffect] 
+// and forwards mutations through events. 
+class TodosBloc extends BlocSignal<TodosEvent, List<Todo>> {
+  final TodoRepository _repo;
+
+  TodosBloc(this._repo) : super(initialState: _repo.todos.value) {
+    // Reactive composition — the bloc's state mirrors the repository.
+    // Any change to `_repo.todos` immediately and synchronously propagates.
+    // The effect is automatically disposed when TodosBloc is closed.
+    createEffect(() => emit(_repo.todos.value));
+  }
+
+  @override
+  FutureOr<void> onEvent(TodosEvent event) {
+    // Exhaustive switch — compile-time safety over the sealed event hierarchy.
+    switch (event) {
+      case AddTodo(:final title):
+        _repo.add(title);
+      case ToggleTodo(:final id):
+        _repo.toggle(id);
+      case RemoveTodo(:final id):
+        _repo.remove(id);
+    }
+    return super.onEvent(event);
+  }
+}
+```
+
 ##### Architectural Diagram:
+
 ```mermaid
 graph TD
     UI["View / UI"] -- "1. Dispatch Event (add)" --> Bloc["BlocSignal"]

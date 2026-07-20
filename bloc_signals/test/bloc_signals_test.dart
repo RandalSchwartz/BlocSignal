@@ -4,6 +4,7 @@
 import 'dart:async';
 
 import 'package:bloc_signals/bloc_signals.dart';
+import 'package:signals/signals.dart';
 import 'package:test/test.dart';
 
 sealed class CounterEvent {}
@@ -34,6 +35,17 @@ class CounterCubit extends CubitSignal<int> {
   void decrement() => emit(stateValue - 1);
   void triggerError() => onError(Exception('Cubit error'), StackTrace.empty);
   void publicEmit(int val) => emit(val);
+}
+
+class AutoDisposeEffectCubit extends CubitSignal<int> {
+  AutoDisposeEffectCubit(this.externalSignal)
+      : super(initialState: externalSignal.value) {
+    createEffect(() {
+      emit(externalSignal.value);
+    });
+  }
+
+  final Signal<int> externalSignal;
 }
 
 class ErrorBloc extends BlocSignal<String, int> {
@@ -443,6 +455,24 @@ void main() {
         final cubit = CounterCubit();
         cubit.close();
         expect(() => cubit.publicEmit(42), throwsA(isA<AssertionError>()));
+      });
+
+      test('createEffect auto-disposes subclass constructor effects on close',
+          () {
+        final externalSignal = signal<int>(0);
+        final cubit = AutoDisposeEffectCubit(externalSignal);
+
+        expect(cubit.stateValue, equals(0));
+
+        externalSignal.value = 1;
+        expect(cubit.stateValue, equals(1));
+
+        cubit.close();
+
+        // Modifying the external signal after close should not throw assertions
+        // because the effect should have been automatically disposed.
+        externalSignal.value = 2;
+        expect(cubit.stateValue, equals(1)); // State remains 1
       });
     });
   });

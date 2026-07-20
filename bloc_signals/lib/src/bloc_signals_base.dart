@@ -59,6 +59,7 @@ abstract class BlocSignalBase<StateType> {
 
   final Signal<StateType> _state;
   late final SignalModel<void> _lifecycleModel;
+  final List<void Function()> _effectsToDispose = [];
 
   /// Exposes read-only access to the state signal.
   ReadonlySignal<StateType> get state => _state;
@@ -112,12 +113,31 @@ abstract class BlocSignalBase<StateType> {
     // Hooks for logging or syncing inside the SignalModel lifecycle
   }
 
+  /// Creates a reactive [effect] that is automatically cleaned up when the
+  /// state container is closed.
+  @protected
+  void Function() createEffect(
+    void Function() callback, {
+    void Function()? onDispose,
+  }) {
+    final dispose = effect(
+      callback,
+      options: EffectOptions(onDispose: onDispose),
+    );
+    _effectsToDispose.add(dispose);
+    return dispose;
+  }
+
   /// Shuts down all internal effects and disposes of the
   /// underlying [SignalModel].
   @mustCallSuper
   void close() {
     if (_isClosed) return;
     _isClosed = true;
+    for (final dispose in _effectsToDispose) {
+      dispose();
+    }
+    _effectsToDispose.clear();
     _lifecycleModel.dispose();
   }
 }

@@ -1,3 +1,8 @@
+## 0.1.11
+
+- Refactor framework architecture to extract `BlocSignalBase` and introduce `CubitSignal` for clean, method-driven state management.
+- Remove legacy `<void, State>` generic typing from Cubits.
+
 ## 0.1.10
 
 - Remove pre-release Dart SDK constraints in favor of stable `^3.10.0`.

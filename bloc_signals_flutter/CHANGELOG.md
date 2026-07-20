@@ -1,3 +1,8 @@
+## 0.1.7
+
+- Widen providers, builders, and lookup extensions to accept `BlocSignalBase` to support both Blocs and Cubits.
+- Optimize provider lookup performance in `BlocSignalProvider.of` to run in O(1) time.
+
 ## 0.1.6
 
 - Remove pre-release Dart SDK constraints in favor of stable `^3.10.0`.

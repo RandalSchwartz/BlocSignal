@@ -1,3 +1,8 @@
+## 0.1.5
+
+- Update observer to accept `BlocSignalBase` to track transitions and errors on both Blocs and Cubits.
+- Route Cubit errors to transient trace spans.
+
 ## 0.1.4
 
 - Remove pre-release Dart SDK constraints in favor of stable `^3.10.0`.

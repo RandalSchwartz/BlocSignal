@@ -81,7 +81,7 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
 2. Inherit from `BlocSignal<Event, State>` instead of `Bloc`.
 3. Provide `initialState` via the `super` constructor parameter: `super(initialState: ...)`.
 4. Replace `state` with `stateValue` inside handlers, or use `state` (which returns the underlying `ReadonlySignal<State>`).
-5. Replace UI `BlocBuilder` with `BlocSignalBuilder`, and `BlocProvider` with `BlocSignalProvider`.
+5. Replace UI `BlocBuilder` with `BlocSignalBuilder`, `BlocProvider` with `BlocSignalProvider`, `BlocListener` with `BlocSignalListener`, `BlocConsumer` with `BlocSignalConsumer`, and `BlocSelector` with `BlocSignalSelector`.
 
 ---
 
@@ -140,10 +140,35 @@ myCubit.increment();
     child: const MyWidget(),
   )
   ```
-* **`BlocSignalBuilder`**: Rebuild UI on state changes (lookup from provider context is automatic if `bloc` is omitted):
+* **`BlocSignalBuilder`**: Rebuild UI on state changes:
   ```dart
   BlocSignalBuilder<CounterCubit, int>(
     builder: (context, count) => Text('$count'),
+  )
+  ```
+* **`BlocSignalListener`**: Intercept state changes to run side-effects (navigation, dialogs):
+  ```dart
+  BlocSignalListener<AuthBloc, AuthState>(
+    listener: (context, state) {
+      if (state is Authenticated) Navigator.pushNamed(context, '/home');
+    },
+    child: const LoginForm(),
+  )
+  ```
+* **`BlocSignalConsumer`**: Combine builder and listener patterns in a single widget:
+  ```dart
+  BlocSignalConsumer<CounterBloc, int>(
+    listener: (context, count) {
+      if (count == 10) showSnackbar(context, 'Limit!');
+    },
+    builder: (context, count) => Text('$count'),
+  )
+  ```
+* **`BlocSignalSelector`**: Rebuild only when a selected portion of the state changes:
+  ```dart
+  BlocSignalSelector<UserBloc, UserState, String>(
+    selector: (state) => state.username,
+    builder: (context, username) => Text('Hello, $username'),
   )
   ```
 

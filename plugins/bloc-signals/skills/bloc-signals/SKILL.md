@@ -16,6 +16,20 @@ Do not infer API parity from `package:bloc`, `package:flutter_bloc`, or Riverpod
 signals, has no state stream or provider dependency graph, and does not implement every source
 package lifecycle or widget API.
 
+## Related Signals skills
+
+This plugin is self-contained for BlocSignal work. When the agent already has skills from
+`rodydavis/signals.dart`, use these optional companions for lower-level Signals tasks:
+
+- `signals-dart` for `signals_core` primitives and utilities.
+- `signals-flutter` for Flutter bindings and signal-aware widgets.
+- `signals-hooks` for `flutter_hooks` integration.
+- `signals-lint` for analyzer rules and quick fixes.
+- `signals-migration-6-to-7` for Signals 6 to 7 migrations.
+
+Do not assume these skills are installed. If they are unavailable, inspect the consumer project's
+installed Signals source before changing code.
+
 ## Route the task
 
 - Read [core.md](core.md) for event dispatch, equality, errors, closure, observers, and reactive

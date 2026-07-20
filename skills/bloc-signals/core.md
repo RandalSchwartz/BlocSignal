@@ -124,3 +124,40 @@ Consumers who hold an instance of a `BlocSignal` can read and react to state cha
     return myBloc.state() % 2 == 0;
   });
   ```
+
+
+---
+
+### 3. Unidirectional Data Flow & Repository Synchronization (MVI vs. MVVM)
+
+#### Q: Is BlocSignal unidirectional? How do we prevent localized duplicate state that gets out of sync with the repository/cache?
+**A:** Yes, `BlocSignal` enforces a strictly **Unidirectional Data Flow (UDF)**. 
+
+The concern that BLoC can feel like MVVM (where local state is mutated and trusted over the repository) typically occurs when local controllers duplicate repository data instead of subscribing to it. `BlocSignal` combined with the `signals` ecosystem resolves this by supporting **reactive repositories**:
+
+1. **Local vs. Global Source of Truth**:
+   * For pure UI-centric states (e.g., tab selection, dialog open/close), mutating state directly inside the BLoC is clean and appropriate.
+   * For domain/business states (e.g., user profiles, products), the **Repository** is the single source of truth. The repository exposes its cache reactively via a `ReadonlySignal`.
+2. **Reactive Composition**:
+   * Instead of duplicate, localized caching in the BLoC, the BLoC can compose the repository's signal using `computed` or `effect`.
+   * When an event is dispatched to the BLoC (e.g., `UpdateTodo`), the BLoC calls the repository (e.g., `repository.saveTodo(todo)`).
+   * The repository performs the mutation and updates its internal signal.
+   * The BLoC's state (which is bound to the repository's signal) updates **synchronously**, propagating the change back to the UI.
+
+##### Architectural Diagram:
+```mermaid
+graph TD
+    UI["View / UI"] -- "1. Dispatch Event (add)" --> Bloc["BlocSignal"]
+    Bloc -- "2. Mutate Source of Truth" --> Repo["Repository / Cache"]
+    Repo -- "3. Push Updates" --> RepoSignal["Repository Signal"]
+    RepoSignal -- "4. Synchronous Propagation" --> Bloc
+    Bloc -- "5. Rebuild (Watch)" --> UI
+```
+
+#### Q: How does BlocSignal's separation of concern compare to Riverpod's?
+**A:** Both frameworks separate reading and writing, but they do so through different interfaces:
+* **Riverpod**: Widgets use `ref.watch(provider)` to read and invoke notifier methods directly (e.g., `ref.read(p.notifier).doAction()`) to write.
+* **BlocSignal**: 
+  * **Reading**: Fully reactive. The UI watches a `ReadonlySignal<State>` exposed by `bloc.state`.
+  * **Writing**: Fully decoupled via events (`bloc.add(Event)`). The UI does not know *how* the action is implemented. This event-driven boundary is what enables robust tracing (e.g., OpenTelemetry spans with event correlation), logging, and decoupled middleware.
+

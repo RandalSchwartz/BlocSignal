@@ -97,7 +97,8 @@ class LoginBloc extends BlocSignal<LoginEvent, LoginState> {
   LoginBloc() : super(initialState: const LoginState());
 
   @override
-  void onEvent(LoginEvent event) async {
+  Future<void> onEvent(LoginEvent event) async {
+    await super.onEvent(event);
     if (event is UsernameChanged) {
       emit(stateValue.copyWith(username: event.username));
     } else if (event is PasswordChanged) {
@@ -199,10 +200,11 @@ class TimerBloc extends BlocSignal<TimerEvent, TimerState> {
   StreamSubscription<int>? _tickerSubscription;
 
   TimerBloc({required this.ticker})
-    : super(initialState: const TimerInitial(_duration));
+      : super(initialState: const TimerInitial(_duration));
 
   @override
   void onEvent(TimerEvent event) {
+    super.onEvent(event);
     switch (event) {
       case TimerStarted(:final duration):
         emit(TimerRunInProgress(duration));
@@ -250,9 +252,9 @@ void main() {
       LoginRoute() => const LoginScreen(),
       HomeRoute(:final username) => HomeScreen(username: username),
       TimerRoute() => BlocSignalProvider<TimerBloc>(
-        create: (_) => TimerBloc(ticker: const Ticker()),
-        child: const TimerScreen(),
-      ),
+          create: (_) => TimerBloc(ticker: const Ticker()),
+          child: const TimerScreen(),
+        ),
     },
   );
 
@@ -343,7 +345,9 @@ class LoginScreen extends StatelessWidget {
                           Text(
                             'Welcome Back',
                             textAlign: TextAlign.center,
-                            style: Theme.of(context).textTheme.headlineMedium
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
                                 ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 8),
@@ -463,8 +467,8 @@ class HomeScreen extends StatelessWidget {
               Text(
                 'Hello, $username!',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -515,8 +519,8 @@ class TimerScreen extends StatelessWidget {
                 Text(
                   durationStr,
                   style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 48),
                 Row(

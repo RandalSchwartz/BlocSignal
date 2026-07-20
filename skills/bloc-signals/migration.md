@@ -82,11 +82,11 @@ class CounterCubit extends Cubit<int> {
 }
 ```
 
-#### After (BlocSignal as a Cubit)
+#### After (CubitSignal)
 ```dart
 import 'package:bloc_signals/bloc_signals.dart';
 
-class CounterCubit extends BlocSignal<void, int> {
+class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
   void increment() => emit(stateValue + 1);

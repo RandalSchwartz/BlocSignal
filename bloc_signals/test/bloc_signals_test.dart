@@ -17,6 +17,7 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
 
   @override
   void onEvent(CounterEvent event) {
+    unawaited(Future.value(super.onEvent(event)));
     switch (event) {
       case Increment():
         emit(stateValue + 1);
@@ -26,11 +27,21 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
   }
 }
 
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
+  void decrement() => emit(stateValue - 1);
+  void triggerError() => onError(Exception('Cubit error'), StackTrace.empty);
+  void publicEmit(int val) => emit(val);
+}
+
 class ErrorBloc extends BlocSignal<String, int> {
   ErrorBloc() : super(initialState: 0);
 
   @override
   void onEvent(String event) {
+    unawaited(Future.value(super.onEvent(event)));
     throw Exception('Test error');
   }
 }
@@ -40,6 +51,7 @@ class ThrowErrorBloc extends BlocSignal<String, int> {
 
   @override
   void onEvent(String event) {
+    unawaited(Future.value(super.onEvent(event)));
     throw ArgumentError('Test argument error');
   }
 }
@@ -49,6 +61,7 @@ class AsyncExceptionBloc extends BlocSignal<String, int> {
 
   @override
   Future<void> onEvent(String event) async {
+    await super.onEvent(event);
     await Future<void>.delayed(Duration.zero);
     throw Exception('Async test error');
   }
@@ -59,6 +72,7 @@ class AsyncErrorBloc extends BlocSignal<String, int> {
 
   @override
   Future<void> onEvent(String event) async {
+    await super.onEvent(event);
     await Future<void>.delayed(Duration.zero);
     throw ArgumentError('Async test argument error');
   }
@@ -68,7 +82,9 @@ class BlocB extends BlocSignal<String, int> {
   BlocB() : super(initialState: 0);
 
   @override
-  void onEvent(String event) {}
+  void onEvent(String event) {
+    unawaited(Future.value(super.onEvent(event)));
+  }
 }
 
 class BlocA extends BlocSignal<int, int> {
@@ -77,6 +93,7 @@ class BlocA extends BlocSignal<int, int> {
 
   @override
   void onEvent(int event) {
+    unawaited(Future.value(super.onEvent(event)));
     otherBloc.emit(42);
     emit(stateValue + 1);
   }
@@ -87,6 +104,7 @@ class AsyncEmitBloc extends BlocSignal<String, int> {
 
   @override
   Future<void> onEvent(String event) async {
+    await super.onEvent(event);
     await Future<void>.delayed(const Duration(milliseconds: 10));
     emit(100);
   }
@@ -97,6 +115,7 @@ class NonNullableFutureBloc extends BlocSignal<String, int> {
 
   @override
   Future<int> onEvent(String event) async {
+    await super.onEvent(event);
     await Future<void>.delayed(Duration.zero);
     throw Exception('Non-nullable future async error');
   }
@@ -106,7 +125,9 @@ class PublicEmitBloc extends BlocSignal<String, int> {
   PublicEmitBloc() : super(initialState: 0);
 
   @override
-  void onEvent(String event) {}
+  void onEvent(String event) {
+    unawaited(Future.value(super.onEvent(event)));
+  }
 
   void publicEmit(int val) => emit(val);
 }
@@ -140,13 +161,13 @@ class TestObserver extends BlocSignalObserver {
   final List<String> logs = [];
 
   @override
-  void onEvent(BlocSignal<dynamic, dynamic> bloc, Object? event) {
+  void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {
     logs.add('event: $event');
   }
 
   @override
   void onTransition(
-    BlocSignal<dynamic, dynamic> bloc,
+    BlocSignalBase<dynamic> bloc,
     Object? event,
     Object? state,
   ) {
@@ -155,7 +176,7 @@ class TestObserver extends BlocSignalObserver {
 
   @override
   void onError(
-    BlocSignal<dynamic, dynamic> bloc,
+    BlocSignalBase<dynamic> bloc,
     Object error,
     StackTrace stackTrace,
   ) {
@@ -379,6 +400,50 @@ void main() {
         DuplicateRegistryBloc.new,
         throwsA(isA<StateError>()),
       );
+    });
+
+    group('CubitSignal Tests', () {
+      test('initial state is correct', () {
+        final cubit = CounterCubit();
+        expect(cubit.stateValue, equals(0));
+        expect(cubit.state.value, equals(0));
+        cubit.close();
+      });
+
+      test('updates state synchronously when methods are called', () {
+        final cubit = CounterCubit();
+        cubit.increment();
+        expect(cubit.stateValue, equals(1));
+        cubit.decrement();
+        expect(cubit.stateValue, equals(0));
+        cubit.close();
+      });
+
+      test('observer logs transitions with null event', () {
+        final cubit = CounterCubit();
+        cubit.increment();
+        expect(
+          observer.logs,
+          contains('transition: 1 (event: null)'),
+        );
+        cubit.close();
+      });
+
+      test('onError routes errors to the observer', () {
+        final cubit = CounterCubit();
+        cubit.triggerError();
+        expect(
+          observer.logs,
+          contains('error: Exception: Cubit error'),
+        );
+        cubit.close();
+      });
+
+      test('throws AssertionError when emit is called after close', () {
+        final cubit = CounterCubit();
+        cubit.close();
+        expect(() => cubit.publicEmit(42), throwsA(isA<AssertionError>()));
+      });
     });
   });
 }

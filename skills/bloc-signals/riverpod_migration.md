@@ -14,7 +14,7 @@ Riverpod is built around a global state paradigm where providers are declared as
 
 | Riverpod (v2/v3) | BlocSignal / Signals Equivalent | Details |
 | :--- | :--- | :--- |
-| `Notifier<State>` | `BlocSignal<void, State>` | Cubit-style direct methods modifying state. |
+| `Notifier<State>` | `CubitSignal<State>` | Cubit-style direct methods modifying state. |
 | `AsyncNotifier<State>` | `BlocSignal<Event, State>` | Business logic handling asynchronous state transitions via event mappings or async Cubit methods. |
 | `Provider<T>` | `ReadOnlySignal<T>` | Computed signals for derived states. |
 | `StateProvider<T>` | `Signal<T>` | Standard mutable signal primitives. |

@@ -71,7 +71,7 @@ Declaring reactive primitives directly within the `BlocSignal` subclass construc
 
 * **`effect` in the Constructor**: Declaring an `effect` inside the constructor automatically registers and disposes of the effect correctly when the bloc is closed (via `close()`):
   ```dart
-  class LoggingCounterCubit extends BlocSignal<void, int> {
+  class LoggingCounterCubit extends CubitSignal<int> {
     LoggingCounterCubit() : super(initialState: 0) {
       // Registered and scoped automatically to the Cubit's lifecycle
       effect(() {
@@ -85,7 +85,7 @@ Declaring reactive primitives directly within the `BlocSignal` subclass construc
 
 * **`computed` in the Constructor**: Define a `late final ReadonlySignal<T>` to hold the derived signal, and initialize it inside the constructor by referencing `state`:
   ```dart
-  class CounterCubit extends BlocSignal<void, int> {
+  class CounterCubit extends CubitSignal<int> {
     late final ReadOnlySignal<int> tripleValue;
   
     CounterCubit() : super(initialState: 1) {

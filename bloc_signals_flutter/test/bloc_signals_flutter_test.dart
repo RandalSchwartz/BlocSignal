@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,11 +13,18 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
 
   @override
   void onEvent(CounterEvent event) {
+    unawaited(Future.value(super.onEvent(event)));
     switch (event) {
       case Increment():
         emit(stateValue + 1);
     }
   }
+}
+
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
 }
 
 void main() {
@@ -183,5 +192,36 @@ void main() {
         expect(find.byType(SizedBox), findsOneWidget);
       },
     );
+
+    testWidgets(
+        'CubitSignal works with BlocSignalProvider and BlocSignalBuilder', (
+      tester,
+    ) async {
+      final cubit = CounterCubit();
+
+      final widget = MaterialApp(
+        home: BlocSignalProvider<CounterCubit>.value(
+          value: cubit,
+          child: Scaffold(
+            body: BlocSignalBuilder<CounterCubit, int>(
+              builder: (context, state) {
+                final readCubit = context.read<CounterCubit>();
+                expect(readCubit, equals(cubit));
+                return Text('Count: $state');
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+      expect(find.text('Count: 0'), findsOneWidget);
+
+      cubit.increment();
+      await tester.pump();
+
+      expect(find.text('Count: 1'), findsOneWidget);
+      cubit.close();
+    });
   });
 }

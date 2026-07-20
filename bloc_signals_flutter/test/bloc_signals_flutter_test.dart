@@ -318,5 +318,78 @@ void main() {
 
       cubit.close();
     });
+
+    testWidgets(
+      'BlocSignalListener reacts to provided bloc changes',
+      (tester) async {
+        final bloc1 = CounterBloc();
+        final bloc2 = CounterBloc()..emit(42);
+        final states = <int>[];
+
+        Widget buildWidget(CounterBloc bloc) {
+          return BlocSignalProvider<CounterBloc>.value(
+            value: bloc,
+            child: BlocSignalListener<CounterBloc, int>(
+              listener: (context, state) {
+                states.add(state);
+              },
+              child: const SizedBox(),
+            ),
+          );
+        }
+
+        await tester.pumpWidget(MaterialApp(home: buildWidget(bloc1)));
+        expect(states, equals([0]));
+
+        // Rebuild with bloc2
+        await tester.pumpWidget(MaterialApp(home: buildWidget(bloc2)));
+        expect(states, equals([0, 42]));
+
+        // Trigger change on bloc2
+        bloc2.add(Increment());
+        await tester.pump();
+        expect(states, equals([0, 42, 43]));
+
+        // Verify that changing bloc1 doesn't trigger anymore
+        bloc1.add(Increment());
+        await tester.pump();
+        expect(states, equals([0, 42, 43]));
+
+        bloc1.close();
+        bloc2.close();
+      },
+    );
+
+    testWidgets(
+      'BlocSignalSelector rebuilds when selector function changes',
+      (tester) async {
+        final cubit = CounterCubit()..emit(1);
+        var builds = 0;
+
+        Widget buildWidget(bool Function(int) selector) {
+          return BlocSignalSelector<CounterCubit, int, bool>(
+            bloc: cubit,
+            selector: selector,
+            builder: (context, val) {
+              builds++;
+              return Text('Val: $val');
+            },
+          );
+        }
+
+        await tester
+            .pumpWidget(MaterialApp(home: buildWidget((state) => state >= 2)));
+        expect(find.text('Val: false'), findsOneWidget);
+        expect(builds, equals(1));
+
+        // Rebuild with new selector: state >= 1
+        await tester
+            .pumpWidget(MaterialApp(home: buildWidget((state) => state >= 1)));
+        expect(find.text('Val: true'), findsOneWidget);
+        expect(builds, equals(2));
+
+        cubit.close();
+      },
+    );
   });
 }

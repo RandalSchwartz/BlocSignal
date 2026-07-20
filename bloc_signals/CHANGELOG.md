@@ -1,3 +1,7 @@
+## 0.1.13
+
+- Add `createEffect` helper to `BlocSignalBase` to support auto-disposed effects in subclass constructors.
+
 ## 0.1.12
 
 - Simplify duplicate handler registration check in `on<E>` to throw `StateError` directly and resolve a test coverage gap.

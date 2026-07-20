@@ -195,18 +195,12 @@ abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType> {
       void Function(StateType state) emit,
     ) handler,
   ) {
-    assert(
-      () {
-        if (_handlers.any((h) => h.type == E)) {
-          throw StateError(
-            'on<$E> was called multiple times. '
-            'There should only be a single event handler for each event.',
-          );
-        }
-        return true;
-      }(),
-      'Duplicate handler registered for event type $E',
-    );
+    if (_handlers.any((h) => h.type == E)) {
+      throw StateError(
+        'on<$E> was called multiple times. '
+        'There should only be a single event handler for each event.',
+      );
+    }
     _handlers.add(
       _HandlerRegistry<Event, StateType>(
         type: E,

@@ -17,6 +17,18 @@ class TestBloc extends BlocSignal<Increment, int> {
   }
 }
 
+class TestCubit extends CubitSignal<int> {
+  TestCubit() : super(initialState: 0);
+
+  void triggerError() {
+    try {
+      throw Exception('Cubit async error');
+    } on Exception catch (e, st) {
+      onError(e, st);
+    }
+  }
+}
+
 class InMemorySpanExporter implements otel_sdk.SpanExporter {
   final List<otel_sdk.ReadOnlySpan> exportedSpans = [];
 
@@ -120,10 +132,21 @@ void main() {
       for (var i = 0; i < 1005; i++) {
         observer.onEvent(bloc, 'event_$i');
       }
-      // 5 oldest spans should have been evicted and ended
       expect(exporter.exportedSpans, hasLength(5));
       expect(exporter.exportedSpans.first.name, equals('TestBloc.add(String)'));
       bloc.close();
+    });
+
+    test('instruments CubitSignal errors to transient span successfully', () {
+      TestCubit()
+        ..triggerError()
+        ..close();
+
+      expect(exporter.exportedSpans, hasLength(1));
+      final span = exporter.exportedSpans.first;
+      expect(span.name, equals('TestCubit.error'));
+      expect(span.status.code, equals(otel.StatusCode.error));
+      expect(span.status.description, contains('Cubit async error'));
     });
   });
 }

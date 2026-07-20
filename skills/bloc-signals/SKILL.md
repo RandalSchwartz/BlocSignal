@@ -113,7 +113,7 @@ myBloc.add(LoadEvent());
 ### 2. Cubit (Method-driven) Pattern
 Use when you want direct method calls on the state container instead of dispatching event objects:
 ```dart
-class CounterCubit extends BlocSignal<void, int> {
+class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
   void increment() => emit(stateValue + 1);

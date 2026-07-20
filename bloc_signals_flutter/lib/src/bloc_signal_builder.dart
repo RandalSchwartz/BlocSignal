@@ -13,7 +13,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 ///   },
 /// )
 /// ```
-class BlocSignalBuilder<T extends BlocSignal<dynamic, S>, S>
+class BlocSignalBuilder<T extends BlocSignalBase<S>, S>
     extends StatelessWidget {
   /// Creates a [BlocSignalBuilder] that listens to the specified [bloc].
   ///

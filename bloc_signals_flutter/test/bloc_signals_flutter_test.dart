@@ -223,5 +223,100 @@ void main() {
       expect(find.text('Count: 1'), findsOneWidget);
       cubit.close();
     });
+
+    testWidgets('BlocSignalListener triggers callback on state changes', (
+      tester,
+    ) async {
+      final bloc = CounterBloc();
+      final states = <int>[];
+
+      final widget = MaterialApp(
+        home: BlocSignalListener<CounterBloc, int>(
+          bloc: bloc,
+          listener: (context, state) {
+            states.add(state);
+          },
+          child: const SizedBox(),
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+      // Under the hood, SignalListener runs the effect immediately on mount.
+      expect(states, equals([0]));
+
+      bloc.add(Increment());
+      await tester.pump();
+      expect(states, equals([0, 1]));
+
+      bloc.close();
+    });
+
+    testWidgets('BlocSignalConsumer both builds and listens', (
+      tester,
+    ) async {
+      final bloc = CounterBloc();
+      final states = <int>[];
+
+      final widget = MaterialApp(
+        home: BlocSignalConsumer<CounterBloc, int>(
+          bloc: bloc,
+          listener: (context, state) {
+            states.add(state);
+          },
+          builder: (context, state) {
+            return Text('Consumer Count: $state');
+          },
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+      expect(find.text('Consumer Count: 0'), findsOneWidget);
+      expect(states, equals([0]));
+
+      bloc.add(Increment());
+      await tester.pump();
+
+      expect(find.text('Consumer Count: 1'), findsOneWidget);
+      expect(states, equals([0, 1]));
+
+      bloc.close();
+    });
+
+    testWidgets(
+        'BlocSignalSelector only rebuilds when selected sub-state changes', (
+      tester,
+    ) async {
+      final cubit = CounterCubit();
+      var builds = 0;
+
+      final widget = MaterialApp(
+        home: BlocSignalSelector<CounterCubit, int, bool>(
+          bloc: cubit,
+          selector: (state) => state >= 2,
+          builder: (context, isGreaterOrEqualTwo) {
+            builds++;
+            return Text('GEQ2: $isGreaterOrEqualTwo');
+          },
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+      expect(find.text('GEQ2: false'), findsOneWidget);
+      expect(builds, equals(1));
+
+      // Change state from 0 to 1 -> isGreaterOrEqualTwo is still false
+      cubit.increment();
+      await tester.pump();
+      expect(find.text('GEQ2: false'), findsOneWidget);
+      expect(builds, equals(1)); // No rebuild: selection didn't change
+
+      // Change state from 1 to 2 -> isGreaterOrEqualTwo becomes true
+      cubit.increment();
+      await tester.pump();
+      expect(find.text('GEQ2: true'), findsOneWidget);
+      expect(builds, equals(2)); // Rebuilt!
+
+      cubit.close();
+    });
   });
 }

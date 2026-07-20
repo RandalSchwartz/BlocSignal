@@ -152,6 +152,74 @@ BlocSignalBuilder<CounterBloc, int>(
 )
 ```
 
+### Before (Classic `BlocListener`)
+```dart
+BlocListener<AuthBloc, AuthState>(
+  listener: (context, state) {
+    if (state is Authenticated) {
+      Navigator.pushNamed(context, '/home');
+    }
+  },
+  child: const LoginForm(),
+)
+```
+
+### After (BlocSignalListener)
+```dart
+BlocSignalListener<AuthBloc, AuthState>(
+  listener: (context, state) {
+    if (state is Authenticated) {
+      Navigator.pushNamed(context, '/home');
+    }
+  },
+  child: const LoginForm(),
+)
+```
+
+### Before (Classic `BlocConsumer`)
+```dart
+BlocConsumer<CounterBloc, int>(
+  listener: (context, state) {
+    if (state == 10) showSnackbar(context, 'Limit!');
+  },
+  builder: (context, state) {
+    return Text('Count: $state');
+  },
+)
+```
+
+### After (BlocSignalConsumer)
+```dart
+BlocSignalConsumer<CounterBloc, int>(
+  listener: (context, state) {
+    if (state == 10) showSnackbar(context, 'Limit!');
+  },
+  builder: (context, state) {
+    return Text('Count: $state');
+  },
+)
+```
+
+### Before (Classic `BlocSelector`)
+```dart
+BlocSelector<CounterBloc, int, bool>(
+  selector: (state) => state >= 10,
+  builder: (context, isLimit) {
+    return Text('Limit reached: $isLimit');
+  },
+)
+```
+
+### After (BlocSignalSelector)
+```dart
+BlocSignalSelector<CounterBloc, int, bool>(
+  selector: (state) => state >= 10,
+  builder: (context, isLimit) {
+    return Text('Limit reached: $isLimit');
+  },
+)
+```
+
 ---
 
 ## 4. Reading and Watching Blocs

@@ -147,25 +147,84 @@ class TodoState {
 ```
 
 #### Option B: Clean Signals Layer (`AsyncSignal`)
-For a direct, lightweight replacement without event mapping, use a standalone `AsyncSignal` inside your controller:
+For a direct, lightweight replacement without event mapping, use a standalone `AsyncSignal` inside your controller. This is the closest conceptual equivalent to Riverpod 3's mutations:
 
 ```dart
 class TodoController {
   // A standalone signal tracking the mutation status
-  final addMutation = asyncSignal<void>(AsyncState.data(null));
+  final addTodoMutation = asyncSignal<void>(AsyncState.data(null));
 
   Future<void> addTodo(Todo todo) async {
     // Setting it to a Future automatically transitions it to Loading -> Data/Error
-    addMutation.value = AsyncState.loading();
+    addTodoMutation.value = AsyncState.loading();
     try {
       await api.addTodo(todo);
-      addMutation.value = AsyncState.data(null);
+      addTodoMutation.value = AsyncState.data(null);
     } catch (e, st) {
-      addMutation.value = AsyncState.error(e, st);
+      addTodoMutation.value = AsyncState.error(e, st);
     }
   }
 }
 ```
+
+##### UI Consumption:
+```dart
+final controller = context.read<TodoController>();
+final mutation = controller.addTodoMutation.watch(context);
+
+if (mutation.isLoading) const CircularProgressIndicator();
+if (mutation.hasError) Text('Error: ${mutation.error}');
+
+ElevatedButton(
+  onPressed: () async {
+    await controller.addTodo(newTodo);
+    if (!controller.addTodoMutation.value.hasError) {
+      Navigator.pushNamed(context, '/todos');
+    }
+  },
+  child: const Text('Add Todo'),
+)
+```
+
+#### Option C: Event-Driven Completer Pattern (Standard BLoC)
+If you are porting Riverpod mutations to a strictly event-driven `BlocSignal`, pass a `Completer` inside the event payload to allow the UI to await the asynchronous operation:
+
+1. **Event**:
+   ```dart
+   class AddTodo extends TodoEvent {
+     final Todo todo;
+     final Completer<void>? completer;
+     AddTodo(this.todo, {this.completer});
+   }
+   ```
+2. **Event Handler in BLoC**:
+   ```dart
+   on<AddTodo>((event, emit) async {
+     emit(TodoAddingState()); // Option to emit loading state
+     try {
+       await api.addTodo(event.todo);
+       final todos = await api.fetchTodos();
+       emit(TodoSuccess(todos));
+       event.completer?.complete();
+     } catch (e, st) {
+       emit(TodoFailure(e));
+       event.completer?.completeError(e, st);
+     }
+   });
+   ```
+3. **UI / Widget Invocation**:
+   ```dart
+   final completer = Completer<void>();
+   context.read<TodoBloc>().add(AddTodo(newTodo, completer: completer));
+   
+   try {
+     await completer.future;
+     Navigator.pushNamed(context, '/todos');
+   } catch (err) {
+     // Handle error locally in the form
+   }
+   ```
+
 
 ---
 

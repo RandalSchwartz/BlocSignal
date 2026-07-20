@@ -71,10 +71,11 @@ Declaring reactive primitives directly within the `BlocSignal` subclass construc
 
 * **`effect` in the Constructor**: Subclass constructor bodies run *after* the super constructor (where the base `createModel` executes). Because of this, standard `effect()` calls inside the subclass constructor are **not** automatically disposed when the bloc is closed.
   
-  To make this easy and leak-free, `BlocSignalBase` exposes a built-in helper: **`createEffect()`**.
+  To make this easy and leak-free, `BlocSignalBase` exposes a built-in helper: **`createEffect()`** (which works identically to the `createEffect` helper inside `SignalsMixin` from the `signals_flutter` package).
 
   > [!TIP]
-  > **Always use `createEffect` instead of `effect` inside constructors.** Any effects registered via `createEffect` will be automatically cleaned up and disposed when the bloc is closed (via `close()`), preventing memory leaks and post-close emission errors.
+  > **Always use `createEffect` instead of `effect` inside constructors.** Any effects registered via `createEffect` will be automatically cleaned up and disposed when the bloc is closed (via `close()`), preventing memory leaks and post-close emission errors. This matches the behavior and API symmetry of `SignalsMixin.createEffect` inside widget states.
+
 
   ```dart
   class LoggingCounterCubit extends CubitSignal<int> {

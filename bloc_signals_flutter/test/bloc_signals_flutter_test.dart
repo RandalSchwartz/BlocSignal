@@ -77,6 +77,37 @@ void main() {
       bloc.close();
     });
 
+    testWidgets(
+      'BlocSignalBuilder reacts to provided bloc changes',
+      (tester) async {
+        final bloc1 = CounterBloc();
+        final bloc2 = CounterBloc()..emit(42);
+
+        final builderWidget = BlocSignalBuilder<CounterBloc, int>(
+          builder: (context, state) {
+            return Text('Count: $state');
+          },
+        );
+
+        Widget buildWidget(CounterBloc bloc) {
+          return BlocSignalProvider<CounterBloc>.value(
+            value: bloc,
+            child: builderWidget,
+          );
+        }
+
+        await tester.pumpWidget(MaterialApp(home: buildWidget(bloc1)));
+        expect(find.text('Count: 0'), findsOneWidget);
+
+        // Rebuild with bloc2
+        await tester.pumpWidget(MaterialApp(home: buildWidget(bloc2)));
+        expect(find.text('Count: 42'), findsOneWidget);
+
+        bloc1.close();
+        bloc2.close();
+      },
+    );
+
     testWidgets('MultiBlocSignalProvider provides multiple blocs', (
       tester,
     ) async {

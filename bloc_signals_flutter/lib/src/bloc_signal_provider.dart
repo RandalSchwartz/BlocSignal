@@ -12,7 +12,7 @@ import 'package:flutter/widgets.dart';
 ///   child: CounterScreen(),
 /// )
 /// ```
-class BlocSignalProvider<T extends BlocSignal<dynamic, dynamic>>
+class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
     extends StatefulWidget {
   /// Creates a [BlocSignalProvider] that manages the lifecycle of a new
   /// [BlocSignal] returned by [create].
@@ -40,17 +40,15 @@ class BlocSignalProvider<T extends BlocSignal<dynamic, dynamic>>
   final Widget child;
 
   /// Looks up the closest [BlocSignal] of type [T] in the widget tree.
-  static T of<T extends BlocSignal<dynamic, dynamic>>(
+  static T of<T extends BlocSignalBase<dynamic>>(
     BuildContext context, {
     bool listen = false,
   }) {
     final provider = listen
-        ? context
-              .dependOnInheritedWidgetOfExactType<
-                _BlocSignalProviderInherited<T>
-              >()
+        ? context.dependOnInheritedWidgetOfExactType<
+            _BlocSignalProviderInherited<T>>()
         : context
-              .findAncestorWidgetOfExactType<_BlocSignalProviderInherited<T>>();
+            .findAncestorWidgetOfExactType<_BlocSignalProviderInherited<T>>();
     if (provider == null) {
       throw FlutterError(
         'BlocSignalProvider.of() called with a context that does not contain '
@@ -81,7 +79,7 @@ class BlocSignalProvider<T extends BlocSignal<dynamic, dynamic>>
   State<BlocSignalProvider<T>> createState() => _BlocSignalProviderState<T>();
 }
 
-class _BlocSignalProviderState<T extends BlocSignal<dynamic, dynamic>>
+class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
     extends State<BlocSignalProvider<T>> {
   T? _bloc;
 
@@ -110,7 +108,7 @@ class _BlocSignalProviderState<T extends BlocSignal<dynamic, dynamic>>
   }
 }
 
-class _BlocSignalProviderInherited<T extends BlocSignal<dynamic, dynamic>>
+class _BlocSignalProviderInherited<T extends BlocSignalBase<dynamic>>
     extends InheritedWidget {
   const _BlocSignalProviderInherited({
     required this.bloc,
@@ -129,11 +127,11 @@ class _BlocSignalProviderInherited<T extends BlocSignal<dynamic, dynamic>>
 extension BlocSignalProviderExtension on BuildContext {
   /// Reads a [BlocSignal] without listening for changes (ideal for calling
   /// methods or dispatching events).
-  T read<T extends BlocSignal<dynamic, dynamic>>() =>
-      BlocSignalProvider.of<T>(this);
+  T read<T extends BlocSignalBase<dynamic>>() => BlocSignalProvider.of<T>(this);
 
-  /// Watches a [BlocSignal] and registers a rebuild dependency on the provider.
-  T watch<T extends BlocSignal<dynamic, dynamic>>() =>
+  /// Watches a [BlocSignalBase] and registers a rebuild dependency on the
+  /// provider.
+  T watch<T extends BlocSignalBase<dynamic>>() =>
       BlocSignalProvider.of<T>(this, listen: true);
 }
 
@@ -159,7 +157,7 @@ class MultiBlocSignalProvider extends StatelessWidget {
   });
 
   /// The list of [BlocSignalProvider] instances to inject.
-  final List<BlocSignalProvider<BlocSignal<dynamic, dynamic>>> providers;
+  final List<BlocSignalProvider<BlocSignalBase<dynamic>>> providers;
 
   /// The child widget subtree that will have access to all provided blocs.
   final Widget child;

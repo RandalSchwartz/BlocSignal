@@ -1,6 +1,8 @@
 // Prints are used in this example file to demonstrate OpenTelemetry logs.
 // ignore_for_file: avoid_print
 
+import 'dart:async';
+
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:opentelemetry/sdk.dart' as otel_sdk;
 import 'package:otel_bloc_signals/otel_bloc_signals.dart';
@@ -18,6 +20,7 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
 
   @override
   void onEvent(CounterEvent event) {
+    unawaited(Future.value(super.onEvent(event)));
     switch (event) {
       case Increment():
         emit(stateValue + 1);

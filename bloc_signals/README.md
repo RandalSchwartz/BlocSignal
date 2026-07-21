@@ -88,7 +88,7 @@ void main() {
 
 If you are building a Flutter application, use [bloc_signals_flutter](https://pub.dev/packages/bloc_signals_flutter) for UI bindings, dependency injection providers, and rebuild builders.
 
-For migration help from classic BLoC, check out our [Migration Guide](../skills/bloc-signals/migration.md).
+For migration help from classic BLoC, check out [our migration guide](../skills/bloc-signals/migration.md).
 
 ---
 

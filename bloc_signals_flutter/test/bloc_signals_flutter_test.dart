@@ -74,7 +74,7 @@ void main() {
       await tester.pump(); // Pump frame to trigger watch rebuild
 
       expect(find.text('Count: 1'), findsOneWidget);
-      bloc.close();
+      await bloc.close();
     });
 
     testWidgets(
@@ -103,8 +103,8 @@ void main() {
         await tester.pumpWidget(MaterialApp(home: buildWidget(bloc2)));
         expect(find.text('Count: 42'), findsOneWidget);
 
-        bloc1.close();
-        bloc2.close();
+        await bloc1.close();
+        await bloc2.close();
       },
     );
 
@@ -136,7 +136,7 @@ void main() {
 
       await tester.pumpWidget(widget);
       expect(find.byType(SizedBox), findsOneWidget);
-      bloc.close();
+      await bloc.close();
     });
 
     testWidgets(
@@ -163,7 +163,7 @@ void main() {
 
         bloc.add(Increment());
         expect(bloc.stateValue, equals(1));
-        bloc.close();
+        await bloc.close();
       },
     );
 
@@ -199,8 +199,8 @@ void main() {
         await tester.pumpWidget(MaterialApp(home: widget2));
         expect(find.text('Value: 42'), findsOneWidget);
 
-        bloc1.close();
-        bloc2.close();
+        await bloc1.close();
+        await bloc2.close();
       },
     );
 
@@ -252,7 +252,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Count: 1'), findsOneWidget);
-      cubit.close();
+      await cubit.close();
     });
 
     testWidgets('BlocSignalListener triggers callback on state changes', (
@@ -272,14 +272,13 @@ void main() {
       );
 
       await tester.pumpWidget(widget);
-      // Under the hood, SignalListener runs the effect immediately on mount.
-      expect(states, equals([0]));
+      expect(states, isEmpty);
 
       bloc.add(Increment());
       await tester.pump();
-      expect(states, equals([0, 1]));
+      expect(states, equals([1]));
 
-      bloc.close();
+      await bloc.close();
     });
 
     testWidgets('BlocSignalConsumer both builds and listens', (
@@ -302,15 +301,15 @@ void main() {
 
       await tester.pumpWidget(widget);
       expect(find.text('Consumer Count: 0'), findsOneWidget);
-      expect(states, equals([0]));
+      expect(states, isEmpty);
 
       bloc.add(Increment());
       await tester.pump();
 
       expect(find.text('Consumer Count: 1'), findsOneWidget);
-      expect(states, equals([0, 1]));
+      expect(states, equals([1]));
 
-      bloc.close();
+      await bloc.close();
     });
 
     testWidgets(
@@ -347,7 +346,7 @@ void main() {
       expect(find.text('GEQ2: true'), findsOneWidget);
       expect(builds, equals(2)); // Rebuilt!
 
-      cubit.close();
+      await cubit.close();
     });
 
     testWidgets(
@@ -370,24 +369,24 @@ void main() {
         }
 
         await tester.pumpWidget(MaterialApp(home: buildWidget(bloc1)));
-        expect(states, equals([0]));
+        expect(states, isEmpty);
 
         // Rebuild with bloc2
         await tester.pumpWidget(MaterialApp(home: buildWidget(bloc2)));
-        expect(states, equals([0, 42]));
+        expect(states, isEmpty);
 
         // Trigger change on bloc2
         bloc2.add(Increment());
         await tester.pump();
-        expect(states, equals([0, 42, 43]));
+        expect(states, equals([43]));
 
         // Verify that changing bloc1 doesn't trigger anymore
         bloc1.add(Increment());
         await tester.pump();
-        expect(states, equals([0, 42, 43]));
+        expect(states, equals([43]));
 
-        bloc1.close();
-        bloc2.close();
+        await bloc1.close();
+        await bloc2.close();
       },
     );
 
@@ -419,8 +418,187 @@ void main() {
         expect(find.text('Val: true'), findsOneWidget);
         expect(builds, equals(2));
 
-        cubit.close();
+        await cubit.close();
       },
     );
+
+    testWidgets('BlocSignalProvider lazy creation works', (tester) async {
+      var createCalls = 0;
+      final widget = BlocSignalProvider<CounterBloc>(
+        create: (context) {
+          createCalls++;
+          return CounterBloc();
+        },
+        child: Builder(
+          builder: (context) {
+            expect(createCalls, equals(0)); // Eagerly not created
+            context.read<CounterBloc>();
+            expect(createCalls, equals(1)); // Created on demand
+            return const SizedBox();
+          },
+        ),
+      );
+      await tester.pumpWidget(MaterialApp(home: widget));
+    });
+
+    testWidgets('BlocSignalProvider non-lazy creation works', (tester) async {
+      var createCalls = 0;
+      final widget = BlocSignalProvider<CounterBloc>(
+        create: (context) {
+          createCalls++;
+          return CounterBloc();
+        },
+        lazy: false,
+        child: Builder(
+          builder: (context) {
+            expect(createCalls, equals(1)); // Eagerly created
+            return const SizedBox();
+          },
+        ),
+      );
+      await tester.pumpWidget(MaterialApp(home: widget));
+    });
+
+    testWidgets('BlocSignalListener with listenWhen triggers conditionally', (
+      tester,
+    ) async {
+      final bloc = CounterBloc();
+      final states = <int>[];
+
+      final widget = MaterialApp(
+        home: BlocSignalListener<CounterBloc, int>(
+          bloc: bloc,
+          listenWhen: (previous, current) => current.isEven,
+          listener: (context, state) {
+            states.add(state);
+          },
+          child: const SizedBox(),
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+      expect(states, isEmpty); // Initial state doesn't trigger listener
+
+      bloc.add(Increment()); // State is 1
+      await tester.pump();
+      expect(states, isEmpty); // 1 is odd
+
+      bloc.add(Increment()); // State is 2
+      await tester.pump();
+      expect(states, equals([2])); // 2 is even
+
+      await bloc.close();
+    });
+
+    testWidgets('MultiBlocSignalListener triggers multiple callbacks', (
+      tester,
+    ) async {
+      final bloc1 = CounterBloc();
+      final bloc2 = CounterCubit();
+      final states1 = <int>[];
+      final states2 = <int>[];
+
+      final widget = MaterialApp(
+        home: MultiBlocSignalListener(
+          listeners: [
+            BlocSignalListener<CounterBloc, int>(
+              bloc: bloc1,
+              listener: (context, state) => states1.add(state),
+              child: const SizedBox(),
+            ),
+            BlocSignalListener<CounterCubit, int>(
+              bloc: bloc2,
+              listener: (context, state) => states2.add(state),
+              child: const SizedBox(),
+            ),
+          ],
+          child: const SizedBox(),
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+
+      bloc1.add(Increment());
+      bloc2.increment();
+      await tester.pump();
+
+      expect(states1, equals([1]));
+      expect(states2, equals([1]));
+
+      await bloc1.close();
+      await bloc2.close();
+    });
+
+    testWidgets('context.select rebuilds only when selected sub-state changes',
+        (
+      tester,
+    ) async {
+      final bloc = CounterBloc();
+      var builds = 0;
+
+      final widget = MaterialApp(
+        home: BlocSignalProvider<CounterBloc>.value(
+          value: bloc,
+          child: Builder(
+            builder: (context) {
+              builds++;
+              final isEven =
+                  context.select<CounterBloc, bool>((b) => b.stateValue.isEven);
+              return Text('isEven: $isEven');
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+      expect(find.text('isEven: true'), findsOneWidget);
+      expect(builds, equals(1));
+
+      bloc.add(Increment()); // State is 1 (isEven = false)
+      await tester.pump();
+      expect(find.text('isEven: false'), findsOneWidget);
+      expect(builds, equals(2));
+
+      bloc.add(Increment()); // State is 2 (isEven = true)
+      await tester.pump();
+      expect(find.text('isEven: true'), findsOneWidget);
+      expect(builds, equals(3));
+
+      await bloc.close();
+    });
+
+    testWidgets('Multiple context.select calls on the same element work', (
+      tester,
+    ) async {
+      final bloc = CounterBloc();
+      var builds = 0;
+
+      final widget = MaterialApp(
+        home: BlocSignalProvider<CounterBloc>.value(
+          value: bloc,
+          child: Builder(
+            builder: (context) {
+              builds++;
+              final isEven =
+                  context.select<CounterBloc, bool>((b) => b.stateValue.isEven);
+              final isPositive =
+                  context.select<CounterBloc, bool>((b) => b.stateValue >= 0);
+              return Text('isEven: $isEven, isPositive: $isPositive');
+            },
+          ),
+        ),
+      );
+
+      await tester.pumpWidget(widget);
+      expect(find.text('isEven: true, isPositive: true'), findsOneWidget);
+      expect(builds, equals(1));
+
+      bloc.add(Increment()); // State is 1
+      await tester.pump();
+      expect(find.text('isEven: false, isPositive: true'), findsOneWidget);
+      expect(builds, equals(2));
+
+      await bloc.close();
+    });
   });
 }

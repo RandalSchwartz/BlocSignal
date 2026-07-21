@@ -2,7 +2,7 @@
 
 This workflow covers migrations from `package:bloc` and `package:flutter_bloc` to
 `bloc_signals` and `bloc_signals_flutter`. The comparison notes were checked against `bloc` 9.2.1,
-`bloc_signals` 0.1.13, and `bloc_signals_flutter` 0.1.9. Inspect the versions installed by the target
+`bloc_signals` 0.2.0, and `bloc_signals_flutter` 0.2.0. Inspect the versions installed by the target
 project before applying them.
 
 ## Decide whether to migrate
@@ -28,11 +28,13 @@ BLoC. Design replacements and tests before changing imports.
 | `BlocProvider.value` | `BlocSignalProvider.value` | External owner keeps disposal. |
 | `MultiBlocProvider` | `MultiBlocSignalProvider` | Provider entries need placeholder children. |
 | `BlocBuilder` | `BlocSignalBuilder` | No `buildWhen` parameter. |
-| `BlocListener` | `BlocSignalListener` | Runs immediately, exposes current state only, and has no `listenWhen`. |
-| `BlocConsumer` | `BlocSignalConsumer` | Inherits listener behavior and has no `buildWhen`. |
+| `BlocListener` | `BlocSignalListener` | Suppresses the initial callback and supports `listenWhen`; the listener receives current state only. |
+| `MultiBlocListener` | `MultiBlocSignalListener` | Each entry needs a placeholder child. |
+| `BlocConsumer` | `BlocSignalConsumer` | Supports `listenWhen` but has no `buildWhen`. |
 | `BlocSelector` | `BlocSignalSelector` | Rebuilds when the selected value changes by equality. |
 | `context.read<T>()` | `context.read<T>()` | Extension name is the same. |
 | `context.watch<T>().state` | `BlocSignalBuilder` or a signals widget | BlocSignal `watch` tracks provider replacement only. |
+| `context.select<T, R>()` | `context.select<T, R>()` | Keep select calls unconditional and stable in order; test provider replacement separately. |
 | `BlocObserver` | `BlocSignalObserver` | Hook signatures and transition data differ. |
 
 There is no direct package equivalent for `RepositoryProvider`, event transformers, `emit.forEach`,
@@ -93,12 +95,16 @@ value. Do not claim that ordinary repeated-state de-duplication is unique to Blo
 ### Closure
 
 Classic BLoC throws `StateError` when `emit` runs after close. BlocSignal asserts in debug mode and
-returns without changing state in release mode. Both keep the last state readable.
+returns without changing state in release mode. Both keep the last state readable, and both expose
+`Future<void> close()` in the inspected versions. Await custom close overrides and call
+`await super.close()`.
 
 ### Observation
 
-BlocSignal reports the new state and the zone-correlated event, not classic BLoC's `Transition`
-object. Rework log formatting and telemetry tests.
+Local BlocSignal overrides receive a typed `Transition<Event, State>` before the state write and a
+`Change<State>` after it. The global observer still receives separate bloc, event, and next-state
+arguments for transitions; it receives `Change` separately through `onChange`. Rework log
+formatting and test callback order rather than assuming semantic parity.
 
 ## Flutter conversion
 
@@ -124,16 +130,23 @@ BlocSignalProvider<CounterBloc>(
 )
 ```
 
-Replace listeners and selectors only after checking their timing and predicates.
-`BlocSignalListener` and the listener side of `BlocSignalConsumer` run once with the initial state.
-In 0.1.9, an unrelated parent rebuild can also restart the internal effect and invoke the callback
-again. Classic `BlocListener` does neither by default. Suppress the first or repeated callback when
-needed, and recreate `listenWhen` or `buildWhen` explicitly.
+`BlocSignalProvider(create:)` defaults to lazy construction, matching classic provider behavior.
+Set `lazy: false` only when eager construction is part of the feature contract.
+
+`BlocSignalListener` suppresses the initial callback and supports `listenWhen(previous, current)`.
+`BlocSignalConsumer` forwards `listenWhen`; neither the consumer nor builder has `buildWhen`.
+When a listener resolves its bloc from context, 0.2.0 does not register a provider dependency, so
+test or avoid provider-instance replacement for that listener. `MultiBlocSignalListener` composes
+listeners, but every entry must include a placeholder child.
 
 `BlocSignalSelector` is the closest `BlocSelector` mapping when the selected value has meaningful
 equality. Use manually owned signal primitives only for behavior the package widgets cannot
 express. Those primitives require direct `signals` and `signals_flutter` dependencies and imports.
 Never create a reaction in `build`, and dispose every manually owned reaction.
+
+`context.select<T, R>` can replace a narrow classic select when its calls stay unconditional and
+stable in order. It tracks selected signal reads but not inherited provider replacement. Prefer
+`BlocSignalSelector` when the provider instance can change.
 
 ## Ordered migration
 

@@ -1,6 +1,6 @@
 # OpenTelemetry observer
 
-This reference matches `otel_bloc_signals` 0.1.6.
+This reference matches `otel_bloc_signals` 0.2.0.
 
 ## Setup
 
@@ -41,6 +41,10 @@ Observer hooks accept `BlocSignalBase<dynamic>`, so the same observer receives `
 carry a null event, and a reported cubit error with no active span produces a standalone
 `<CubitType>.error` span.
 
+BlocSignal 0.2.0 also exposes observer hooks for create, change, and close. The 0.2.0
+`OtelBlocSignalObserver` does not override them, so they create no spans and `onClose` does not
+flush an event span left open without a transition.
+
 ## Completion gaps
 
 An event that emits no state, emits only an equal state, or waits indefinitely does not produce
@@ -74,3 +78,4 @@ Use an in-memory exporter and assert:
 - the no-transition case when an equal state is emitted.
 
 Reset `BlocSignalObserver.observer` and shut down the tracer provider after each test.
+Await each bloc's `close()` future during cleanup.

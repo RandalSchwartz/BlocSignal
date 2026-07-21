@@ -19,7 +19,7 @@ test('increments synchronously', () {
 ```
 
 Also test equality suppression when observers or effects matter. A repeated equal state must not
-produce `onTransition`.
+produce `onTransition` or `onChange`.
 
 Test a `CubitSignal` through its public methods. The state change is synchronous, and its observer
 transition has a null event because no `add` zone exists:
@@ -37,6 +37,12 @@ test('cubit command updates state', () {
 
 Constructing a bloc with duplicate `on<E>` registrations must throw `StateError` in every build
 mode. When a test bloc overrides `onEvent`, keep the required `super.onEvent(event)` call.
+
+For 0.2.0 lifecycle work, assert `Change.currentState` and `nextState`, plus the event and both
+states in a typed `Transition`. Verify that local transition hooks run before `stateValue` changes,
+local change hooks run after it, and both overrides call `super` so the global observer still sees
+them. Observer tests should cover create, event, transition, change, error, and close, then reset the
+global observer.
 
 ## Async handlers
 
@@ -96,6 +102,7 @@ Use an observer spy to verify error and event correlation. Reset
 Cover these lifecycle cases when ownership changes:
 
 - `close` sets `isClosed` and is safe to call again.
+- `close` returns a future that tests await directly or through `addTearDown(bloc.close)`.
 - `add` after close leaves state unchanged.
 - post-close state remains readable.
 - `emit` after close throws an assertion in debug tests.
@@ -117,11 +124,17 @@ For `BlocSignalProvider(create:)`, remove the provider from the tree and assert 
 bloc closes. For `.value`, assert that removal does not close the externally owned bloc. Test a
 missing provider as a `FlutterError` rather than adding a fallback.
 
-For `BlocSignalListener` and `BlocSignalConsumer`, assert the initial callback before changing
-state. Test provider or explicit bloc replacement, unmount cleanup, and the feature's response to
-an unrelated parent rebuild. In 0.1.9 that rebuild can restart the listener effect and invoke the
-callback again. For `BlocSignalSelector`, change the source while keeping the selection equal, then
-change it again so the selected value differs. Only the latter should rebuild the selector body.
+For `BlocSignalListener` and `BlocSignalConsumer`, assert that mount does not call the listener,
+then emit a change and check the callback. Test `listenWhen` with a rejected and accepted change,
+an unrelated parent rebuild, unmount cleanup, and explicit bloc replacement. A replacement alone
+does not emit its current state. If an omitted `bloc:` can be replaced through the provider, add a
+focused test because direct listener lookup in 0.2.0 does not register that dependency.
+
+Test lazy providers with zero factory calls before lookup, one call after lookup, eager construction
+with `lazy: false`, and correct ownership on removal. Test every `MultiBlocSignalListener` callback.
+For `BlocSignalSelector` and `context.select`, keep the selected value equal for one source change,
+then change the selection; only the latter should rebuild. Keep multiple `context.select` calls in
+a fixed order and test provider replacement if the feature permits it.
 
 ## Validation commands
 

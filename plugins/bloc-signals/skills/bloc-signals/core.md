@@ -1,6 +1,6 @@
 # Core API and event processing
 
-This reference matches `bloc_signals` 0.1.13. Re-read the installed source when the project uses a
+This reference matches `bloc_signals` 0.2.0. Re-read the installed source when the project uses a
 different version.
 
 ## Public state and lifecycle
@@ -17,7 +17,7 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 | `BlocSignal.add(event)` | Routes an event and returns `void`. |
 | `createEffect(callback, onDispose: ...)` | Creates an effect immediately and registers its disposer with the base. |
 | `isClosed` | Reports whether `close()` has run. |
-| `close()` | Disposes registered effects and the internal `SignalModel`; repeated calls do nothing. |
+| `close()` | Returns `Future<void>`, disposes registered effects and the internal `SignalModel`, and is idempotent. |
 
 The state remains readable after closure. `add` silently drops new events. `emit` has a debug
 assertion and then returns without changing state when assertions are disabled.
@@ -65,6 +65,8 @@ handler futures without making the synchronous switch asynchronous. Import `dart
 `onEvent`. An async handler continues in that zone, so a later `emit` can still be correlated with
 the event. Each state container has its own zone key, so an `emit` on another bloc does not borrow
 the first bloc's event. A `CubitSignal` transition and any emit outside `add` report a null event.
+For a nullable event type, `add(null)` is also treated as a null-event transition and skips the
+typed local `onTransition` hook in 0.2.0.
 
 ## Error behavior
 
@@ -83,6 +85,20 @@ BlocSignal compares the current and next state with `==` before updating the sig
 `onTransition`. Immutable state with meaningful equality is therefore part of the contract. A
 mutable state object reused after in-place changes can suppress the update and hide changes from
 consumers.
+
+## Change and transition hooks
+
+`Change<State>` records `currentState` and `nextState`. `Transition<Event, State>` adds the event.
+Both are public immutable value objects with equality, `hashCode`, and `toString`.
+
+For an event-backed `BlocSignal` emit, the typed local `onTransition(Transition<Event, State>)`
+runs before state mutation. Its required `super.onTransition` call forwards the event and next
+state to the global observer. The state signal then updates, followed by local
+`onChange(Change<State>)`; its required superclass call forwards the change globally.
+
+`CubitSignal` has no typed local transition hook. Its global transition carries a null event, then
+its local and global change hooks run after mutation. Equal emits run none of these hooks. A thrown
+transition callback prevents the write, while a thrown change callback happens after the write.
 
 ## Reactive ownership
 
@@ -106,7 +122,7 @@ final class MirrorCubit extends CubitSignal<int> {
 
 Raw `effect`, `computed`, subscriptions, timers, and async operations are not registered by
 `createEffect`. Keep their owner and cleanup explicit. Override `close` when the container owns
-such resources, and always call `super.close()`:
+such resources, and always await `super.close()`:
 
 ```dart
 late final void Function() _disposeLog;
@@ -116,10 +132,10 @@ CounterBloc() : super(initialState: 0) {
 }
 
 @override
-void close() {
+Future<void> close() async {
   if (isClosed) return;
   _disposeLog();
-  super.close();
+  await super.close();
 }
 ```
 
@@ -132,10 +148,19 @@ when possible, or check request freshness and `isClosed` after each async gap be
 
 `BlocSignalObserver.observer` is process-global. Its hooks receive:
 
+- `onCreate(BlocSignalBase<dynamic> bloc)` from the base constructor;
 - `onEvent(BlocSignalBase<dynamic> bloc, event)` before `BlocSignal` routing;
-- `onTransition(BlocSignalBase<dynamic> bloc, event, state)` after a non-equal state update;
+- `onTransition(BlocSignalBase<dynamic> bloc, event, nextState)` before an event-backed write, or
+  with a null event for cubit and direct emits;
+- `onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change)` after the state write;
 - `onError(BlocSignalBase<dynamic> bloc, error, stackTrace)` for reported failures.
+- `onClose(BlocSignalBase<dynamic> bloc)` after owned effects and the internal model are disposed.
 
 There is no built-in observer chain. Write a composite observer when logging and telemetry must run
-together. `onError` and `close` are also annotated `@mustCallSuper`; keep the superclass call in
-overrides.
+together. `onCreate` runs before the subclass constructor body and late fields are initialized, so
+observers should not read subtype-specific fields there. Local `onTransition`, `onChange`,
+`onError`, and `close` are annotated `@mustCallSuper`; keep the superclass call in overrides.
+
+Await `close()` when completion or observer errors matter. The current 0.2.0 cleanup body runs
+synchronously before the returned future completes, but callers should code to the `Future<void>`
+contract.

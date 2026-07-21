@@ -1,7 +1,12 @@
 import 'dart:async';
 
+import 'package:bloc_signals/src/change.dart';
+import 'package:bloc_signals/src/transition.dart';
 import 'package:meta/meta.dart';
 import 'package:signals/signals.dart';
+
+export 'change.dart';
+export 'transition.dart';
 
 /// An observer interface to watch all [BlocSignalBase] instances' lifecycles,
 /// transitions, and events.
@@ -12,6 +17,9 @@ abstract class BlocSignalObserver {
   /// The global observer instance used to monitor all [BlocSignalBase]
   /// activity.
   static BlocSignalObserver? observer;
+
+  /// Called when a [BlocSignalBase] is created.
+  void onCreate(BlocSignalBase<dynamic> bloc) {}
 
   /// Called when an event is dispatched to any [BlocSignal]
   /// via [BlocSignal.add].
@@ -25,6 +33,9 @@ abstract class BlocSignalObserver {
     Object? state,
   ) {}
 
+  /// Called when a [BlocSignalBase] has a state change.
+  void onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change) {}
+
   /// Called when an error is thrown during event processing or
   /// inside a state transition.
   void onError(
@@ -32,6 +43,9 @@ abstract class BlocSignalObserver {
     Object error,
     StackTrace stackTrace,
   ) {}
+
+  /// Called when a [BlocSignalBase] is closed.
+  void onClose(BlocSignalBase<dynamic> bloc) {}
 }
 
 /// A base class for all reactive state containers.
@@ -48,6 +62,7 @@ abstract class BlocSignalBase<StateType> {
       return null;
     });
     _lifecycleModel = modelConstructor();
+    BlocSignalObserver.observer?.onCreate(this);
   }
 
   bool _isClosed = false;
@@ -87,13 +102,32 @@ abstract class BlocSignalBase<StateType> {
     if (_isClosed) return;
     final oldState = _state.value;
     if (oldState == newState) return;
+
+    final event = Zone.current[zoneEventKey];
+    if (event != null) {
+      handleTransition(event as Object, oldState, newState);
+    } else {
+      BlocSignalObserver.observer?.onTransition(this, null, newState);
+    }
+
     _state.value = newState;
 
-    final currentObserver = BlocSignalObserver.observer;
-    if (currentObserver != null) {
-      final raw = Zone.current[zoneEventKey];
-      currentObserver.onTransition(this, raw, newState);
-    }
+    final change = Change<StateType>(
+      currentState: oldState,
+      nextState: newState,
+    );
+    onChange(change);
+  }
+
+  /// Internal helper to dispatch transitions to the type-safe [BlocSignal].
+  @protected
+  void handleTransition(Object event, StateType oldState, StateType newState) {}
+
+  /// Called when a state change occurs.
+  @protected
+  @mustCallSuper
+  void onChange(Change<StateType> change) {
+    BlocSignalObserver.observer?.onChange(this, change);
   }
 
   /// Called when an exception is thrown in event processing or state
@@ -131,7 +165,7 @@ abstract class BlocSignalBase<StateType> {
   /// Shuts down all internal effects and disposes of the
   /// underlying [SignalModel].
   @mustCallSuper
-  void close() {
+  Future<void> close() async {
     if (_isClosed) return;
     _isClosed = true;
     for (final dispose in _effectsToDispose) {
@@ -139,6 +173,7 @@ abstract class BlocSignalBase<StateType> {
     }
     _effectsToDispose.clear();
     _lifecycleModel.dispose();
+    BlocSignalObserver.observer?.onClose(this);
   }
 }
 
@@ -160,6 +195,26 @@ abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType> {
   BlocSignal({required super.initialState});
 
   final List<_HandlerRegistry<Event, StateType>> _handlers = [];
+
+  /// Called when a transition occurs.
+  @protected
+  @mustCallSuper
+  void onTransition(Transition<Event, StateType> transition) {
+    BlocSignalObserver.observer
+        ?.onTransition(this, transition.event, transition.nextState);
+  }
+
+  @override
+  @protected
+  void handleTransition(Object event, StateType oldState, StateType newState) {
+    onTransition(
+      Transition<Event, StateType>(
+        currentState: oldState,
+        event: event as Event,
+        nextState: newState,
+      ),
+    );
+  }
 
   /// Dispatches an event to the [onEvent] handler.
   ///

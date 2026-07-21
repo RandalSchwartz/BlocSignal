@@ -62,11 +62,10 @@ void main() {
 
   print('--- Starting CounterBloc instrumentation example ---');
 
-  // 5. Instantiate and use the BLoC with cascade calls
-  CounterBloc()
+  final bloc = CounterBloc()
     ..add(Increment())
-    ..add(Increment())
-    ..close();
+    ..add(Increment());
+  unawaited(bloc.close());
 
   // Shut down the tracer provider to flush the remaining spans to console
   tracerProvider.shutdown();

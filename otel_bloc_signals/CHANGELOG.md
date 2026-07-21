@@ -1,3 +1,7 @@
+## 0.2.1
+
+- Update `bloc_signals` dependency constraint to `^0.2.1` to align with the new pure Dart `signals_core` package classification.
+
 ## 0.2.0
 
 - Update OpenTelemetry instrumentation for version 0.2.0:

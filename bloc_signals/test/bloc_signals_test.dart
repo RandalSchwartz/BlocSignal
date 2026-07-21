@@ -4,7 +4,7 @@
 import 'dart:async';
 
 import 'package:bloc_signals/bloc_signals.dart';
-import 'package:signals/signals.dart';
+import 'package:signals_core/signals_core.dart';
 import 'package:test/test.dart';
 
 sealed class CounterEvent {}

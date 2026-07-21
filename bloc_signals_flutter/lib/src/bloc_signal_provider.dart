@@ -262,9 +262,10 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   _SelectSubscription({
     required T bloc,
     required R Function(T) selector,
-    required this.element,
+    required Element element,
   })  : _bloc = bloc,
-        _selector = selector {
+        _selector = selector,
+        _elementRef = WeakReference(element) {
     _computed = computed(() => _selector(_bloc));
     _selectedValue = _computed.value;
 
@@ -272,8 +273,9 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
       final newValue = _computed.value;
       if (newValue != _selectedValue) {
         _selectedValue = newValue;
-        if (element.mounted) {
-          element.markNeedsBuild();
+        final el = _elementRef.target;
+        if (el != null && el.mounted) {
+          el.markNeedsBuild();
         }
       }
     });
@@ -281,7 +283,7 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
 
   T _bloc;
   R Function(T) _selector;
-  final Element element;
+  final WeakReference<Element> _elementRef;
   late Computed<R> _computed;
   late R _selectedValue;
   late VoidCallback _dispose;
@@ -301,8 +303,9 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
         final newValue = _computed.value;
         if (newValue != _selectedValue) {
           _selectedValue = newValue;
-          if (element.mounted) {
-            element.markNeedsBuild();
+          final el = _elementRef.target;
+          if (el != null && el.mounted) {
+            el.markNeedsBuild();
           }
         }
       });

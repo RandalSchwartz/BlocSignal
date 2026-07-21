@@ -1,8 +1,9 @@
 # Migrating from classic BLoC
 
 This workflow covers migrations from `package:bloc` and `package:flutter_bloc` to
-`bloc_signals` and `bloc_signals_flutter`. The comparison notes were checked against `bloc` 9.2.1
-and BlocSignal 0.1.10. Inspect the versions installed by the target project before applying them.
+`bloc_signals` and `bloc_signals_flutter`. The comparison notes were checked against `bloc` 9.2.1,
+`bloc_signals` 0.1.13, and `bloc_signals_flutter` 0.1.9. Inspect the versions installed by the target
+project before applying them.
 
 ## Decide whether to migrate
 
@@ -13,28 +14,30 @@ rg -n "package:(bloc|flutter_bloc)/|BlocProvider|MultiBlocProvider|BlocBuilder|B
 ```
 
 A mechanical migration is unsafe when the feature depends on event transformers, state streams,
-`BlocListener`, selectors, repository providers, or generated extensions around classic BLoC.
-Design replacements and tests before changing imports.
+listener or builder predicates, repository providers, or generated extensions around classic
+BLoC. Design replacements and tests before changing imports.
 
 ## API map
 
 | Classic BLoC | BlocSignal | Migration note |
 | --- | --- | --- |
 | `Bloc<Event, State>` | `BlocSignal<Event, State>` | Pass `initialState:` to `super`. |
-| `Cubit<State>` | `BlocSignal<void, State>` | Keep public methods that call `emit`. |
+| `Cubit<State>` | `CubitSignal<State>` | Keep public methods that call `emit`. |
 | `state` value | `stateValue` | `state` is a `ReadonlySignal<State>`. |
 | `BlocProvider(create:)` | `BlocSignalProvider(create:)` | Provider owns and closes the bloc. |
 | `BlocProvider.value` | `BlocSignalProvider.value` | External owner keeps disposal. |
 | `MultiBlocProvider` | `MultiBlocSignalProvider` | Provider entries need placeholder children. |
 | `BlocBuilder` | `BlocSignalBuilder` | No `buildWhen` parameter. |
+| `BlocListener` | `BlocSignalListener` | Runs immediately, exposes current state only, and has no `listenWhen`. |
+| `BlocConsumer` | `BlocSignalConsumer` | Inherits listener behavior and has no `buildWhen`. |
+| `BlocSelector` | `BlocSignalSelector` | Rebuilds when the selected value changes by equality. |
 | `context.read<T>()` | `context.read<T>()` | Extension name is the same. |
 | `context.watch<T>().state` | `BlocSignalBuilder` or a signals widget | BlocSignal `watch` tracks provider replacement only. |
 | `BlocObserver` | `BlocSignalObserver` | Hook signatures and transition data differ. |
 
-There is no direct package equivalent for `BlocListener`, `BlocConsumer`, `BlocSelector`,
-`RepositoryProvider`, event transformers, `emit.forEach`, `emit.onEach`, or a bloc state stream.
-Use project-owned lifecycle code and signal primitives only after defining their ownership and
-disposal.
+There is no direct package equivalent for `RepositoryProvider`, event transformers, `emit.forEach`,
+`emit.onEach`, or a bloc state stream. The listener, consumer, and selector widgets are close
+mappings, but they do not reproduce classic predicates or listener timing.
 
 ## State container conversion
 
@@ -59,6 +62,16 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
 ```
 
 Keep an `onEvent` switch instead when sealed-event exhaustiveness is important.
+
+For a method-driven cubit:
+
+```dart
+final class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
+}
+```
 
 ## Semantic differences to test
 
@@ -111,13 +124,16 @@ BlocSignalProvider<CounterBloc>(
 )
 ```
 
-Replace listeners and selectors separately. A lifecycle-owned subscription or `effect` can model
-a listener, but signals reactions run once when created. Suppress that first callback when the
-classic `BlocListener` did not react to initial state, and preserve any `listenWhen` predicate.
-A `computed` signal plus `SignalBuilder` can model selection when the selected value has meaningful
-equality. These primitives require direct `signals` and `signals_flutter` dependencies and imports;
-`bloc_signals` and `bloc_signals_flutter` do not re-export them. Never create a reaction in `build`,
-and dispose every manually owned reaction.
+Replace listeners and selectors only after checking their timing and predicates.
+`BlocSignalListener` and the listener side of `BlocSignalConsumer` run once with the initial state.
+In 0.1.9, an unrelated parent rebuild can also restart the internal effect and invoke the callback
+again. Classic `BlocListener` does neither by default. Suppress the first or repeated callback when
+needed, and recreate `listenWhen` or `buildWhen` explicitly.
+
+`BlocSignalSelector` is the closest `BlocSelector` mapping when the selected value has meaningful
+equality. Use manually owned signal primitives only for behavior the package widgets cannot
+express. Those primitives require direct `signals` and `signals_flutter` dependencies and imports.
+Never create a reaction in `build`, and dispose every manually owned reaction.
 
 ## Ordered migration
 
@@ -125,7 +141,7 @@ and dispose every manually owned reaction.
 2. Record focused tests for current event ordering, equality, errors, listeners, and disposal.
 3. Convert one state container and its tests without changing behavior at the same time.
 4. Replace provider ownership and state-aware widgets for that feature.
-5. Redesign unsupported transformers, listeners, selectors, and stream consumers explicitly.
+5. Redesign unsupported transformers, widget predicates, and stream consumers explicitly.
 6. Remove classic BLoC dependencies only after searches show no imports or generated references.
 7. Format, analyze, run focused tests, then run the feature or repository suite.
 

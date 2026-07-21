@@ -3,66 +3,44 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:signals/signals.dart';
 
-/// An observer interface to watch all [BlocSignal] instances' lifecycles,
+/// An observer interface to watch all [BlocSignalBase] instances' lifecycles,
 /// transitions, and events.
 ///
 /// Implement this class and assign it to [BlocSignalObserver.observer] to
 /// intercept and log events, transitions, and errors globally.
 abstract class BlocSignalObserver {
-  /// The global observer instance used to monitor all [BlocSignal] activity.
+  /// The global observer instance used to monitor all [BlocSignalBase]
+  /// activity.
   static BlocSignalObserver? observer;
 
   /// Called when an event is dispatched to any [BlocSignal]
   /// via [BlocSignal.add].
-  void onEvent(BlocSignal<dynamic, dynamic> bloc, Object? event) {}
+  void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {}
 
-  /// Called when any [BlocSignal] transitions to a new state
-  /// via [BlocSignal.emit].
+  /// Called when any [BlocSignalBase] transitions to a new state
+  /// via [BlocSignalBase.emit].
   void onTransition(
-    BlocSignal<dynamic, dynamic> bloc,
+    BlocSignalBase<dynamic> bloc,
     Object? event,
     Object? state,
   ) {}
 
-  /// Called when an error is thrown during event processing in
-  /// [BlocSignal.onEvent] or inside a state transition.
+  /// Called when an error is thrown during event processing or
+  /// inside a state transition.
   void onError(
-    BlocSignal<dynamic, dynamic> bloc,
+    BlocSignalBase<dynamic> bloc,
     Object error,
     StackTrace stackTrace,
   ) {}
 }
 
-/// A synchronous state management container integrating BLoC design patterns
-/// with Rody Davis's signals v7.
+/// A base class for all reactive state containers.
 ///
-/// State updates are immediate and synchronous, ensuring glitch-free rendering
-/// and seamless integration with reactive contexts.
-///
-/// Example:
-/// ```dart
-/// sealed class CounterEvent {}
-/// class Increment extends CounterEvent {}
-///
-/// class CounterBloc extends BlocSignal<CounterEvent, int> {
-///   CounterBloc() : super(initialState: 0);
-///
-///   @override
-///   void onEvent(CounterEvent event) {
-///     switch (event) {
-///       case Increment():
-///         emit(stateValue + 1);
-///     }
-///   }
-/// }
-/// ```
-abstract class BlocSignal<Event, StateType> {
-  /// Creates a [BlocSignal] with the specified [initialState].
-  ///
-  /// Instantiates the underlying state signal and registers a lifecycle
-  /// [SignalModel] tracking internal state changes.
-  BlocSignal({required StateType initialState})
-    : _state = signal(initialState) {
+/// Manages the state signal, provides lifecycle hooks, and manages disposal.
+abstract class BlocSignalBase<StateType> {
+  /// Creates a [BlocSignalBase] with the specified [initialState].
+  BlocSignalBase({required StateType initialState})
+      : _state = signal(initialState) {
     final modelConstructor = createModel(() {
       effect(() {
         _onStateChangedInternal(_state.value);
@@ -74,15 +52,14 @@ abstract class BlocSignal<Event, StateType> {
 
   bool _isClosed = false;
 
-  /// Whether the [BlocSignal] is closed.
+  /// Whether the state container is closed.
   ///
-  /// A closed [BlocSignal] will drop any subsequent events and state updates.
+  /// A closed container will drop any subsequent events and state updates.
   bool get isClosed => _isClosed;
 
   final Signal<StateType> _state;
   late final SignalModel<void> _lifecycleModel;
-  final Object _zoneEventKey = Object();
-  final List<_HandlerRegistry<Event, StateType>> _handlers = [];
+  final List<void Function()> _effectsToDispose = [];
 
   /// Exposes read-only access to the state signal.
   ReadonlySignal<StateType> get state => _state;
@@ -90,11 +67,18 @@ abstract class BlocSignal<Event, StateType> {
   /// Retrieves the current raw state value.
   StateType get stateValue => _state.value;
 
+  /// Internal zone key used to track the causing event of a transition.
+  @protected
+  Object get zoneEventKey => _zoneEventKey;
+  final Object _zoneEventKey = Object();
+
   /// Updates the state synchronously.
   ///
   /// If the [newState] is equal to the current state, the update is ignored.
   /// Otherwise, it triggers reactive effects and notifies the
   /// global [BlocSignalObserver].
+  @protected
+  @visibleForTesting
   void emit(StateType newState) {
     assert(
       !_isClosed,
@@ -107,18 +91,82 @@ abstract class BlocSignal<Event, StateType> {
 
     final currentObserver = BlocSignalObserver.observer;
     if (currentObserver != null) {
-      final raw = Zone.current[_zoneEventKey];
-      final event = raw is Event ? raw : null;
-      currentObserver.onTransition(this, event, newState);
+      final raw = Zone.current[zoneEventKey];
+      currentObserver.onTransition(this, raw, newState);
     }
   }
+
+  /// Called when an exception is thrown in event processing or state
+  /// transition.
+  ///
+  /// Notifies the global [BlocSignalObserver] if one is registered.
+  @protected
+  @mustCallSuper
+  void onError(Object error, StackTrace stackTrace) {
+    final currentObserver = BlocSignalObserver.observer;
+    if (currentObserver != null) {
+      currentObserver.onError(this, error, stackTrace);
+    }
+  }
+
+  void _onStateChangedInternal(StateType latestState) {
+    // Hooks for logging or syncing inside the SignalModel lifecycle
+  }
+
+  /// Creates a reactive [effect] that is automatically cleaned up when the
+  /// state container is closed.
+  @protected
+  void Function() createEffect(
+    void Function() callback, {
+    void Function()? onDispose,
+  }) {
+    final dispose = effect(
+      callback,
+      options: EffectOptions(onDispose: onDispose),
+    );
+    _effectsToDispose.add(dispose);
+    return dispose;
+  }
+
+  /// Shuts down all internal effects and disposes of the
+  /// underlying [SignalModel].
+  @mustCallSuper
+  void close() {
+    if (_isClosed) return;
+    _isClosed = true;
+    for (final dispose in _effectsToDispose) {
+      dispose();
+    }
+    _effectsToDispose.clear();
+    _lifecycleModel.dispose();
+  }
+}
+
+/// A clean base class for method-driven state management.
+///
+/// Exposes state and [emit] directly for subclass methods.
+abstract class CubitSignal<StateType> extends BlocSignalBase<StateType> {
+  /// Creates a [CubitSignal] with the specified [initialState].
+  CubitSignal({required super.initialState});
+}
+
+/// A synchronous state management container integrating BLoC design patterns
+/// with Rody Davis's signals v7.
+///
+/// State updates are immediate and synchronous, ensuring glitch-free rendering
+/// and seamless integration with reactive contexts.
+abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType> {
+  /// Creates a [BlocSignal] with the specified [initialState].
+  BlocSignal({required super.initialState});
+
+  final List<_HandlerRegistry<Event, StateType>> _handlers = [];
 
   /// Dispatches an event to the [onEvent] handler.
   ///
   /// Notifies the global [BlocSignalObserver] of the incoming event and catches
   /// errors thrown in [onEvent], delegating them to [onError].
   void add(Event event) {
-    if (_isClosed) return;
+    if (isClosed) return;
     final currentObserver = BlocSignalObserver.observer;
     if (currentObserver != null) {
       currentObserver.onEvent(this, event);
@@ -136,7 +184,7 @@ abstract class BlocSignal<Event, StateType> {
           if (e is Error) rethrow;
         }
       },
-      zoneValues: {_zoneEventKey: event},
+      zoneValues: {zoneEventKey: event},
     );
   }
 
@@ -165,18 +213,14 @@ abstract class BlocSignal<Event, StateType> {
     FutureOr<void> Function(
       E event,
       void Function(StateType state) emit,
-    )
-    handler,
+    ) handler,
   ) {
-    assert(() {
-      if (_handlers.any((h) => h.type == E)) {
-        throw StateError(
-          'on<$E> was called multiple times. '
-          'There should only be a single event handler for each event.',
-        );
-      }
-      return true;
-    }(), 'Duplicate handler registered for event type $E');
+    if (_handlers.any((h) => h.type == E)) {
+      throw StateError(
+        'on<$E> was called multiple times. '
+        'There should only be a single event handler for each event.',
+      );
+    }
     _handlers.add(
       _HandlerRegistry<Event, StateType>(
         type: E,
@@ -191,6 +235,7 @@ abstract class BlocSignal<Event, StateType> {
   /// Handles incoming events and delegates them to registered handlers.
   ///
   /// Can be overridden to customize event routing or behavior.
+  @mustCallSuper
   FutureOr<void> onEvent(Event event) {
     final matched = _handlers.where((h) => h.isType(event));
     List<Future<dynamic>>? futures;
@@ -203,28 +248,6 @@ abstract class BlocSignal<Event, StateType> {
     if (futures != null) {
       return Future.wait(futures).then<void>((_) {});
     }
-  }
-
-  /// Called when an exception is thrown in [onEvent].
-  ///
-  /// Notifies the global [BlocSignalObserver] if one is registered.
-  void onError(Object error, StackTrace stackTrace) {
-    final currentObserver = BlocSignalObserver.observer;
-    if (currentObserver != null) {
-      currentObserver.onError(this, error, stackTrace);
-    }
-  }
-
-  void _onStateChangedInternal(StateType latestState) {
-    // Hooks for logging or syncing inside the SignalModel lifecycle
-  }
-
-  /// Shuts down all internal effects and disposes of the
-  /// underlying [SignalModel].
-  void close() {
-    if (_isClosed) return;
-    _isClosed = true;
-    _lifecycleModel.dispose();
   }
 }
 
@@ -240,6 +263,5 @@ class _HandlerRegistry<Event, StateType> {
   final FutureOr<dynamic> Function(
     dynamic event,
     void Function(StateType state) emit,
-  )
-  handler;
+  ) handler;
 }

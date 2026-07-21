@@ -1,3 +1,17 @@
+## 0.1.9
+
+- Add `BlocSignalListener`, `BlocSignalConsumer`, and `BlocSignalSelector` widgets to achieve 100% widget-level API parity with classic `flutter_bloc`.
+- Fix inherited dependency lookup bug in `BlocSignalBuilder`, `BlocSignalListener`, `BlocSignalConsumer`, and `BlocSignalSelector` to ensure proper rebuilds and reactiveness when ancestor provided bloc instances change.
+
+## 0.1.8
+
+- Update `bloc_signals` dependency constraint to `^0.1.12`.
+
+## 0.1.7
+
+- Widen providers, builders, and lookup extensions to accept `BlocSignalBase` to support both Blocs and Cubits.
+- Optimize provider lookup performance in `BlocSignalProvider.of` to run in O(1) time.
+
 ## 0.1.6
 
 - Remove pre-release Dart SDK constraints in favor of stable `^3.10.0`.

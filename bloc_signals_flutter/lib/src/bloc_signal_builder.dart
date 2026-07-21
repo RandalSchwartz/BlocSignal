@@ -13,7 +13,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 ///   },
 /// )
 /// ```
-class BlocSignalBuilder<T extends BlocSignal<dynamic, S>, S>
+class BlocSignalBuilder<T extends BlocSignalBase<S>, S>
     extends StatelessWidget {
   /// Creates a [BlocSignalBuilder] that listens to the specified [bloc].
   ///
@@ -33,7 +33,8 @@ class BlocSignalBuilder<T extends BlocSignal<dynamic, S>, S>
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBloc = bloc ?? BlocSignalProvider.of<T>(context);
+    final effectiveBloc =
+        bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     return SignalBuilder(
       builder: (context) {
         return builder(context, effectiveBloc.state.value);

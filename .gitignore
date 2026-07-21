@@ -5,3 +5,5 @@
 **/doc/api/
 coverage/
 lcov.info
+build/
+**/build/

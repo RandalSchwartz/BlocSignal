@@ -1,6 +1,6 @@
 ---
 name: bloc-signals
-description: Implement, review, test, or debug Dart and Flutter code that uses bloc_signals, bloc_signals_flutter, or otel_bloc_signals. Use for BlocSignal event handlers, synchronous state updates, providers, builders, lifecycle ownership, equality behavior, observers, and package-specific test failures. Also use when comparing BlocSignal with package:bloc or Riverpod; read the matching migration reference before changing an existing application.
+description: Implement, review, test, or debug Dart and Flutter code that uses bloc_signals, bloc_signals_flutter, or otel_bloc_signals. Use for BlocSignalBase, BlocSignal, CubitSignal, event handlers, createEffect ownership, synchronous state updates, providers, builders, listeners, consumers, selectors, equality behavior, observers, and package-specific test failures. Also use when comparing BlocSignal with package:bloc or Riverpod; read the matching migration reference before changing an existing application.
 ---
 
 # BlocSignal
@@ -14,7 +14,7 @@ itself.
 
 Do not infer API parity from `package:bloc`, `package:flutter_bloc`, or Riverpod. BlocSignal uses
 signals, has no state stream or provider dependency graph, and does not implement every source
-package lifecycle or widget API.
+package lifecycle, predicate, or widget API.
 
 ## Related Signals skills
 
@@ -34,8 +34,8 @@ installed Signals source before changing code.
 
 - Read [core.md](core.md) for event dispatch, equality, errors, closure, observers, and reactive
   ownership.
-- Read [flutter.md](flutter.md) for providers, builders, context extensions, widget ownership, and
-  derived UI state.
+- Read [flutter.md](flutter.md) for providers, builders, listeners, consumers, selectors, context
+  extensions, widget ownership, and derived UI state.
 - Read [testing.md](testing.md) for synchronous assertions, deterministic async tests, zones, and
   widget tests.
 - Read [migration.md](migration.md) before replacing `bloc`, `flutter_bloc`, or their widgets.
@@ -57,15 +57,21 @@ Load only the references needed for the task.
 
 ## Contracts to preserve
 
+- `BlocSignalBase<State>` owns state and lifecycle. Use `CubitSignal<State>` for public methods and
+  `BlocSignal<Event, State>` for event dispatch.
 - `emit` changes state synchronously and skips a value equal to the current state.
-- `add` returns `void`. Synchronous handlers finish before it returns. Async handler futures are
-  observed for errors but are not returned to the caller.
-- `on<E>` registration is runtime routing. It does not give sealed-class exhaustiveness.
-- `close` disposes BlocSignal's internal model. New events are dropped after closure. A post-close
-  `emit` asserts in debug mode and returns without updating state in release mode.
+- `BlocSignal.add` returns `void`. Synchronous handlers finish before it returns. Async handler
+  futures are observed for errors but are not returned or cancelled by `close`.
+- `on<E>` registration is runtime routing. Duplicate exact types throw `StateError`; registration
+  does not give sealed-class exhaustiveness. An `onEvent` override must call `super.onEvent`.
+- `close` disposes effects registered through `createEffect` and the internal model. New events are
+  dropped after closure. A post-close `emit` asserts in debug mode and returns without updating
+  state in release mode.
 - `BlocSignalProvider(create:)` owns and closes its bloc. `BlocSignalProvider.value` does not.
 - `context.watch<T>()` tracks provider replacement, not state changes. Use `BlocSignalBuilder` or a
   signals widget to rebuild for state.
+- `BlocSignalListener` runs for the initial state. Preserve or suppress that first callback
+  deliberately when migrating another listener API.
 - A global `BlocSignalObserver` is a single slot. Installing a telemetry observer can replace an
   existing logger unless the application composes them.
 

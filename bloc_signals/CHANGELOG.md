@@ -1,3 +1,16 @@
+## 0.1.13
+
+- Add `createEffect` helper to `BlocSignalBase` to support auto-disposed effects in subclass constructors.
+
+## 0.1.12
+
+- Simplify duplicate handler registration check in `on<E>` to throw `StateError` directly and resolve a test coverage gap.
+
+## 0.1.11
+
+- Refactor framework architecture to extract `BlocSignalBase` and introduce `CubitSignal` for clean, method-driven state management.
+- Remove legacy `<void, State>` generic typing from Cubits.
+
 ## 0.1.10
 
 - Remove pre-release Dart SDK constraints in favor of stable `^3.10.0`.

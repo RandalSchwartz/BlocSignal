@@ -1,8 +1,8 @@
 # Migrating from Riverpod
 
 This reference covers migrations from `riverpod`, `flutter_riverpod`, `hooks_riverpod`, and
-generated `@riverpod` or `@Riverpod` declarations. The BlocSignal notes match `bloc_signals` 0.1.10,
-`bloc_signals_flutter` 0.1.6, and Signals 7.1.0. Inspect the consumer project's resolved Riverpod
+generated `@riverpod` or `@Riverpod` declarations. The BlocSignal notes match `bloc_signals` 0.1.13,
+`bloc_signals_flutter` 0.1.9, and Signals 7.1.0. Inspect the consumer project's resolved Riverpod
 version, generated output, and installed source before changing it.
 
 Riverpod provider declarations are often top-level, but their state and lifetime belong to a
@@ -37,9 +37,9 @@ A mechanical migration is unsafe when any of those behaviors matter.
 | `Provider<T>` for a service | Constructor injection or the project's existing DI | A `computed` signal is for derived reactive data, not general service lookup. |
 | `Provider<T>` for derived data | Owned `computed<T>` | Dispose it with its owner and preserve equality behavior. |
 | `StateProvider<T>` | Owned `Signal<T>` for local reactive data, or a BlocSignal command | Preserve who may mutate the value and who owns its lifetime. |
-| `StateNotifierProvider` | `BlocSignal<void, State>` only after mapping its commands and listeners | Preserve every mutation entry point, listener contract, and initialization rule. |
+| `StateNotifierProvider` | `CubitSignal<State>` only after mapping its commands and listeners | Preserve every mutation entry point, listener contract, and initialization rule. |
 | `ChangeNotifierProvider` | Keep it behind DI or perform a tested rewrite | ChangeNotifier has no direct BlocSignal equivalent. Account for its mutable object identity and notification timing. |
-| `NotifierProvider` | `BlocSignal<void, State>` with public methods, or an event-based bloc | Initialization no longer comes from `build()`. |
+| `NotifierProvider` | `CubitSignal<State>` with public methods, or an event-based bloc | Initialization no longer comes from `build()`. |
 | `AsyncNotifierProvider` | Event-based `BlocSignal` with sealed async states | BlocSignal has no automatic `AsyncValue`, retry, invalidation, or cancellation. |
 | `FutureProvider` | Owned `FutureSignal<T>` or an event-based bloc | Choose based on whether the feature needs commands, observation, or only read-only async data. |
 | `StreamProvider` | Owned `StreamSignal<T>` or a project-owned subscription | BlocSignal itself has no state stream. |
@@ -50,8 +50,8 @@ A mechanical migration is unsafe when any of those behaviors matter.
 | Provider or Notifier `ref.watch(provider)` | Constructor dependency plus an explicit recomputation trigger, or an owned signal dependency | There is no `BuildContext` inside a bloc. |
 | Widget `ref.read(provider)` | `context.read<Bloc>()` for lookup and commands, or `signal.peek()` inside a reactive callback | Reading and rebuilding are separate choices. |
 | Provider or Notifier `ref.read(provider)` | Read the injected dependency directly | Constructor injection replaces service lookup, not dependency recomputation. |
-| `ref.listen` | Lifecycle-owned subscription or `effect` | Signals reactions run once when created; preserve Riverpod's initial-callback policy. |
-| `select` | Owned `computed` or a narrow builder | The selected value needs meaningful equality. |
+| `ref.listen` | `BlocSignalListener` for simple UI reactions, or a lifecycle-owned reaction | The package listener runs immediately and exposes no previous value. Preserve the old predicate and initial-callback policy. |
+| `select` | `BlocSignalSelector`, owned `computed`, or a narrow builder | The selected value needs meaningful equality. |
 | `ProviderScope` overrides | Constructor injection, `BlocSignalProvider.value`, or a test-owned instance | BlocSignal has no general provider override registry. |
 | `ProviderObserver` | `BlocSignalObserver` for BlocSignal activity, plus separate instrumentation where needed | Riverpod reports provider and container lifecycle plus value events. BlocSignal reports only its own events, transitions, and errors through one global observer slot. Raw Signal activity is separate. |
 
@@ -82,15 +82,21 @@ BlocSignalProvider<TodoBloc>(
 Use `context.read<TodoBloc>()` for a button or callback that sends a command. Keep the builder small
 when the Riverpod code used `Consumer`, `select`, or a row-level family to limit rebuilds.
 
-BlocSignal has no `BlocSignalListener`. A replacement for `ref.listen` needs an explicit owner,
-subscription disposal, mounted checks, and the same previous/next predicate. Signals subscriptions
-and effects run once when created, so suppress the first callback when the Riverpod listener did
-not fire immediately. Never create the reaction in `build`.
+`BlocSignalListener` owns its reaction, but it runs immediately and provides only the current state.
+Riverpod `ref.listen` does not fire immediately unless configured to do so. Add a first-run guard
+and preserve the previous/next predicate when those semantics matter. In
+`bloc_signals_flutter` 0.1.9, a parent rebuild can restart the internal effect and invoke the
+callback again with the current state, so one-shot navigation and dialogs need an idempotency
+guard. Never create a manual reaction in `build`.
 
-`signals_flutter` 7.1.0 also exports `SignalEffect` and its `SignalListener` alias. The widget owns
-and disposes its effect, but it runs immediately on mount, provides no previous/current pair, and
-recreates the effect when the callback identity changes. Use it only when those semantics are made
-equivalent to the old listener.
+For a simple selected rebuild, `BlocSignalSelector` is closer to widget `select` than a broad
+builder. It rebuilds when its selected value changes by equality. It does not reproduce Riverpod
+scope, provider recomputation, or family caching.
+
+`signals_flutter` 7.1.0 also exports the lower-level `SignalEffect` and its `SignalListener` alias.
+They own and dispose their effect, run immediately on mount, provide no previous/current pair, and
+restart when the callback identity changes. Use them only when a BlocSignal-specific listener is
+not the right owner.
 
 ## Async initialization and commands
 
@@ -238,10 +244,11 @@ types do have reactive dependencies; `FutureSignal` and `StreamSignal` expose re
 reload operations, while `StreamSignal` can pause and resume. Those are signal operations, not
 Riverpod provider lifecycle equivalents.
 
-`BlocSignal.close()` disposes only the internal model created by its base constructor. A subclass
-that owns a `computed`, `effect`, subscription, `FutureSignal`, `StreamSignal`, timer, cancellation
-token, or `SignalContainer` must override `close`, dispose those resources, then call
-`super.close()`. External subscribers to `bloc.state` remain the subscriber's responsibility.
+`BlocSignalBase.close()` disposes effects registered through `createEffect` and the internal model.
+A subclass that owns a raw `computed`, `effect`, subscription, `FutureSignal`, `StreamSignal`,
+timer, cancellation token, or `SignalContainer` must override `close`, dispose those resources,
+then call `super.close()`. External subscribers to `bloc.state` remain the subscriber's
+responsibility.
 
 Translate `ProviderScope` overrides into ordinary dependency injection. Pass repositories and
 services to the bloc constructor, provide a test-owned bloc with `.value`, and keep each resource's
@@ -269,8 +276,9 @@ computed override methods are deprecated and are not scoped like `ProviderScope`
 containers.
 
 Widget tests should prove that `BlocSignalBuilder` rebuilds for state, provider-created blocs close
-when removed, `.value` blocs remain externally owned, and side-effect subscriptions stop after
-disposal.
+when removed, `.value` blocs remain externally owned, listener initial and repeated callbacks are
+handled deliberately, selector equality preserves the rebuild boundary, and side-effect
+subscriptions stop after disposal.
 
 ## Ordered migration
 

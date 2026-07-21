@@ -88,3 +88,35 @@ We maintain a production-grade codebase with strict enforcement rules:
      flutter test --coverage
      ```
 3. **Format**: Always run `dart format .` to maintain uniform formatting before committing.
+
+---
+
+## 🧠 Compounded Learnings & Best Practices
+
+### 1. Overriding `@mustCallSuper` Methods
+When overriding a method annotated with `@mustCallSuper` (e.g., `onEvent`), you MUST invoke `super.<method>`.
+* If the method returns `FutureOr<void>` (like `onEvent`), invoking it directly in a synchronous context will trigger `discarded_futures` lints.
+* To resolve this:
+  * If the override does not need to be async, wrap the call as: `unawaited(Future.value(super.onEvent(event)));` (requires importing `dart:async`).
+  * If the override is async, declare the signature as:
+    ```dart
+    @override
+    Future<void> onEvent(Event event) async {
+      await super.onEvent(event);
+      // Custom async handling
+    }
+    ```
+
+### 2. O(1) InheritedWidget Lookup
+When retrieving a parent `InheritedWidget` from `BuildContext` without registering a rebuild dependency (e.g., inside a `read()` or non-listening `of()` method), do **NOT** use `findAncestorWidgetOfExactType` (which runs in O(N) by traversing the tree). Instead, use `getElementForInheritedWidgetOfExactType` which resolves in O(1) time and extracts the widget from the element:
+```dart
+final provider = context
+    .getElementForInheritedWidgetOfExactType<MyInheritedWidget>()
+    ?.widget as MyInheritedWidget?;
+```
+
+### 3. InheritedWidget Dependency Registration on Swapping
+When widgets resolve an ancestor provider from `BuildContext` (e.g., resolving `BlocSignalProvider` in a builder or listener), always use `listen: true` (which calls `dependOnInheritedWidgetOfExactType`) if the widget subtree might be cached (like `const` widgets or cached builders) and the provided instance could change. If `listen: false` is used, the widget will not register a dependency and will fail to rebuild/update if a parent widget swaps the provided instance.
+
+### 4. Optimized Rebuilds via Computed and State
+Using `SignalBuilder` directly with a `computed` signal inside a build method can trigger redundant builds. Even if the computed output value is unchanged, the dirty status of its dependencies will trigger the `SignalBuilder` to rebuild. For optimal performance, wrap selection logic in a `StatefulWidget` that manually subscribes to the computed signal inside an `effect()` callback, and calls `setState` **only** if the evaluated value actually changed. Ensure that you also re-initialize the computed signal in `didUpdateWidget` if the selector callback closure changes to prevent using stale references.

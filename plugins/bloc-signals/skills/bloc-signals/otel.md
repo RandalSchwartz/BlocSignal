@@ -1,6 +1,6 @@
 # OpenTelemetry observer
 
-This reference matches `otel_bloc_signals` 0.1.4.
+This reference matches `otel_bloc_signals` 0.1.6.
 
 ## Setup
 
@@ -36,6 +36,11 @@ attributes.
 `onError` ends every active span for the failing bloc with an error status and recorded exception.
 When that bloc has no active span, it creates and immediately ends `<BlocType>.error`.
 
+Observer hooks accept `BlocSignalBase<dynamic>`, so the same observer receives `BlocSignal` and
+`CubitSignal` transitions and errors. A cubit has no event dispatch span. Its ordinary transitions
+carry a null event, and a reported cubit error with no active span produces a standalone
+`<CubitType>.error` span.
+
 ## Completion gaps
 
 An event that emits no state, emits only an equal state, or waits indefinitely does not produce
@@ -63,6 +68,7 @@ Use an in-memory exporter and assert:
 - span name and type attributes;
 - the state attribute on a non-equal transition;
 - error status and recorded exception;
+- fallback `CubitSignal` error span behavior;
 - fallback error span behavior;
 - eviction behavior when active spans exceed the cap;
 - the no-transition case when an equal state is emitted.

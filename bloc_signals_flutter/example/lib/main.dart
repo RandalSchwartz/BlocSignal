@@ -235,9 +235,9 @@ class TimerBloc extends BlocSignal<TimerEvent, TimerState> {
   }
 
   @override
-  void close() {
+  Future<void> close() {
     _tickerSubscription?.cancel();
-    super.close();
+    return super.close();
   }
 }
 

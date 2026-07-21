@@ -269,4 +269,94 @@ await successFuture;
 Navigator.pushReplacementNamed(context, '/home');
 ```
 
+---
+
+### 5. Transition & Change Propagation Protocols
+
+`BlocSignal` and `CubitSignal` expose lifecycle and transition protocols equivalent to classic BLoC for observability, tracing, and logging.
+
+#### The `Change` Class
+Represents the mutation of state from `currentState` to `nextState`.
+```dart
+final change = Change(currentState: 0, nextState: 1);
+```
+
+#### The `Transition` Class
+Represents a state mutation triggered by a specific `event`.
+```dart
+final transition = Transition(
+  currentState: 0,
+  event: IncrementEvent(),
+  nextState: 1,
+);
+```
+
+#### Local Method Overrides
+* **`onChange(Change<State> change)`**: Invoked on `BlocSignalBase` subclasses (both Blocs and Cubits) whenever a new state is emitted (provided the new state is not de-duplicated). Overrides MUST invoke `super.onChange(change)`.
+* **`onTransition(Transition<Event, State> transition)`**: Invoked on `BlocSignal` subclasses whenever an event triggers a state change. Overrides MUST invoke `super.onTransition(transition)`.
+
+```dart
+class CounterBloc extends BlocSignal<CounterEvent, int> {
+  CounterBloc() : super(initialState: 0);
+
+  @override
+  void onChange(Change<int> change) {
+    super.onChange(change);
+    print('State changed: $change');
+  }
+
+  @override
+  void onTransition(Transition<CounterEvent, int> transition) {
+    super.onTransition(transition);
+    print('Transition triggered: $transition');
+  }
+}
+```
+
+#### Global Observation via `BlocSignalObserver`
+You can configure a global observer to intercept events, transitions, changes, errors, and lifecycle events across all instances:
+
+```dart
+class MyObserver extends BlocSignalObserver {
+  @override
+  void onCreate(BlocSignalBase<dynamic> bloc) {
+    print('Created: ${bloc.runtimeType}');
+  }
+
+  @override
+  void onEvent(BlocSignal<dynamic, dynamic> bloc, Object? event) {
+    print('Event added to ${bloc.runtimeType}: $event');
+  }
+
+  @override
+  void onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change) {
+    print('Change in ${bloc.runtimeType}: $change');
+  }
+
+  @override
+  void onTransition(
+    BlocSignalBase<dynamic> bloc,
+    Object? event,
+    Object? state,
+  ) {
+    // Deprecated legacy callback for backwards compatibility
+  }
+
+  @override
+  void onError(BlocSignalBase<dynamic> bloc, Object error, StackTrace stackTrace) {
+    print('Error in ${bloc.runtimeType}: $error');
+  }
+
+  @override
+  void onClose(BlocSignalBase<dynamic> bloc) {
+    print('Closed: ${bloc.runtimeType}');
+  }
+}
+
+void main() {
+  BlocSignalObserver.observer = MyObserver();
+}
+```
+
+
 

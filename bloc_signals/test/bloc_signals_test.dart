@@ -213,7 +213,7 @@ void main() {
       final bloc = CounterBloc();
       expect(bloc.stateValue, equals(0));
       expect(bloc.state.value, equals(0));
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('handles event and updates state synchronously', () {
@@ -225,7 +225,7 @@ void main() {
       bloc.add(Decrement());
       expect(bloc.stateValue, equals(0));
 
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('observer logs transitions and events', () {
@@ -239,7 +239,7 @@ void main() {
         contains("transition: 1 (event: Instance of 'Increment')"),
       );
 
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('disposal frees resources and cleans up effects', () {
@@ -259,7 +259,7 @@ void main() {
       bloc.add(Increment());
       expect(effectCallCount, equals(2));
 
-      bloc.close();
+      unawaited(bloc.close());
       expect(bloc.isClosed, isTrue);
 
       bloc.add(Increment());
@@ -271,7 +271,7 @@ void main() {
       final bloc = ErrorBloc();
       bloc.add('trigger');
       expect(observer.logs, contains('error: Exception: Test error'));
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('rethrows Error objects (developer faults) synchronously', () {
@@ -281,7 +281,7 @@ void main() {
         observer.logs,
         contains('error: Invalid argument(s): Test argument error'),
       );
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('handles asynchronous Exception without crashing', () async {
@@ -289,7 +289,7 @@ void main() {
       bloc.add('trigger');
       await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(observer.logs, contains('error: Exception: Async test error'));
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('throws asynchronous Error to the current zone', () async {
@@ -305,7 +305,7 @@ void main() {
         observer.logs,
         contains('error: Invalid argument(s): Async test argument error'),
       );
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('allows cross-bloc emit without zone key casting crashes', () {
@@ -324,8 +324,8 @@ void main() {
       // BlocA's transition should have 1 as event
       expect(observer.logs, contains('transition: 1 (event: 1)'));
 
-      blocA.close();
-      blocB.close();
+      unawaited(blocA.close());
+      unawaited(blocB.close());
     });
 
     test(
@@ -342,7 +342,7 @@ void main() {
           contains('transition: 100 (event: delayed_event)'),
         );
 
-        bloc.close();
+        unawaited(bloc.close());
       },
     );
     test('handles async exceptions when Future is non-nullable', () async {
@@ -353,7 +353,7 @@ void main() {
         observer.logs,
         contains('error: Exception: Non-nullable future async error'),
       );
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('covers default empty observer methods', () {
@@ -362,12 +362,12 @@ void main() {
       dummy.onEvent(bloc, null);
       dummy.onTransition(bloc, null, null);
       dummy.onError(bloc, Exception(), StackTrace.empty);
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('throws AssertionError when emit is called after close', () {
       final bloc = PublicEmitBloc();
-      bloc.close();
+      unawaited(bloc.close());
       expect(() => bloc.publicEmit(42), throwsA(isA<AssertionError>()));
     });
 
@@ -381,7 +381,7 @@ void main() {
       bloc.add(Decrement());
       expect(bloc.stateValue, equals(0));
 
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('supports on<E> with async handlers', () async {
@@ -392,7 +392,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 20));
       expect(bloc.stateValue, equals(42));
 
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('on<E> preserves zone transition event tracking', () {
@@ -404,7 +404,7 @@ void main() {
         contains("transition: 1 (event: Instance of 'Increment')"),
       );
 
-      bloc.close();
+      unawaited(bloc.close());
     });
 
     test('throws StateError when on<E> is registered multiple times', () {
@@ -419,7 +419,7 @@ void main() {
         final cubit = CounterCubit();
         expect(cubit.stateValue, equals(0));
         expect(cubit.state.value, equals(0));
-        cubit.close();
+        unawaited(cubit.close());
       });
 
       test('updates state synchronously when methods are called', () {
@@ -428,7 +428,7 @@ void main() {
         expect(cubit.stateValue, equals(1));
         cubit.decrement();
         expect(cubit.stateValue, equals(0));
-        cubit.close();
+        unawaited(cubit.close());
       });
 
       test('observer logs transitions with null event', () {
@@ -438,7 +438,7 @@ void main() {
           observer.logs,
           contains('transition: 1 (event: null)'),
         );
-        cubit.close();
+        unawaited(cubit.close());
       });
 
       test('onError routes errors to the observer', () {
@@ -448,12 +448,12 @@ void main() {
           observer.logs,
           contains('error: Exception: Cubit error'),
         );
-        cubit.close();
+        unawaited(cubit.close());
       });
 
       test('throws AssertionError when emit is called after close', () {
         final cubit = CounterCubit();
-        cubit.close();
+        unawaited(cubit.close());
         expect(() => cubit.publicEmit(42), throwsA(isA<AssertionError>()));
       });
 
@@ -467,7 +467,7 @@ void main() {
         externalSignal.value = 1;
         expect(cubit.stateValue, equals(1));
 
-        cubit.close();
+        unawaited(cubit.close());
 
         // Modifying the external signal after close should not throw assertions
         // because the effect should have been automatically disposed.
@@ -475,5 +475,172 @@ void main() {
         expect(cubit.stateValue, equals(1)); // State remains 1
       });
     });
+
+    group('API Parity Tests', () {
+      test('Change class constructor, equality, and toString', () {
+        const change1 = Change<int>(currentState: 0, nextState: 1);
+        const change2 = Change<int>(currentState: 0, nextState: 1);
+        const change3 = Change<int>(currentState: 1, nextState: 2);
+
+        expect(change1.currentState, equals(0));
+        expect(change1.nextState, equals(1));
+        expect(change1, equals(change2));
+        expect(change1, isNot(equals(change3)));
+        expect(change1.hashCode, equals(change2.hashCode));
+        expect(
+          change1.toString(),
+          equals('Change { currentState: 0, nextState: 1 }'),
+        );
+      });
+
+      test('Transition class constructor, equality, and toString', () {
+        final event1 = Increment();
+        final event2 = Decrement();
+        final transition1 = Transition<CounterEvent, int>(
+          currentState: 0,
+          event: event1,
+          nextState: 1,
+        );
+        final transition2 = Transition<CounterEvent, int>(
+          currentState: 0,
+          event: event1,
+          nextState: 1,
+        );
+        final transition3 = Transition<CounterEvent, int>(
+          currentState: 0,
+          event: event2,
+          nextState: -1,
+        );
+
+        expect(transition1.currentState, equals(0));
+        expect(transition1.event, equals(event1));
+        expect(transition1.nextState, equals(1));
+        expect(transition1, equals(transition2));
+        expect(transition1, isNot(equals(transition3)));
+        expect(transition1.hashCode, equals(transition2.hashCode));
+        expect(
+          transition1.toString(),
+          equals(
+            'Transition { currentState: 0, event: $event1, nextState: 1 }',
+          ),
+        );
+      });
+
+      test('BlocObserver tracks onCreate, onChange, and onClose', () async {
+        final observerLogs = <String>[];
+        final observer = _ParityObserver(observerLogs);
+        BlocSignalObserver.observer = observer;
+
+        final bloc = CounterBloc();
+        expect(observerLogs, contains('create'));
+
+        bloc.add(Increment());
+        expect(
+          observerLogs,
+          contains('change: Change { currentState: 0, nextState: 1 }'),
+        );
+        expect(observerLogs, contains('transition: transition_event'));
+
+        unawaited(bloc.close());
+        expect(observerLogs, contains('close'));
+      });
+
+      test('Cubit triggers onChange', () async {
+        final observerLogs = <String>[];
+        final observer = _ParityObserver(observerLogs);
+        BlocSignalObserver.observer = observer;
+
+        final cubit = CounterCubit();
+        cubit.increment();
+
+        expect(
+          observerLogs,
+          contains('change: Change { currentState: 0, nextState: 1 }'),
+        );
+        unawaited(cubit.close());
+      });
+
+      test('Local overrides onTransition and onChange are invoked', () async {
+        final transitions = <Transition<CounterEvent, int>>[];
+        final changes = <Change<int>>[];
+
+        final bloc = LocalOverrideBloc(
+          onLocalTransition: transitions.add,
+          onLocalChange: changes.add,
+        );
+
+        bloc.add(Increment());
+
+        expect(transitions.length, equals(1));
+        expect(transitions[0].currentState, equals(0));
+        expect(transitions[0].nextState, equals(1));
+        expect(transitions[0].event, isA<Increment>());
+
+        expect(changes.length, equals(1));
+        expect(changes[0].currentState, equals(0));
+        expect(changes[0].nextState, equals(1));
+
+        unawaited(bloc.close());
+      });
+    });
   });
+}
+
+class _ParityObserver extends BlocSignalObserver {
+  _ParityObserver(this.logs);
+  final List<String> logs;
+
+  @override
+  void onCreate(BlocSignalBase<dynamic> bloc) {
+    logs.add('create');
+  }
+
+  @override
+  void onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change) {
+    logs.add('change: $change');
+  }
+
+  @override
+  void onTransition(
+    BlocSignalBase<dynamic> bloc,
+    Object? event,
+    Object? state,
+  ) {
+    logs.add('transition: transition_event');
+  }
+
+  @override
+  void onClose(BlocSignalBase<dynamic> bloc) {
+    logs.add('close');
+  }
+}
+
+class LocalOverrideBloc extends BlocSignal<CounterEvent, int> {
+  LocalOverrideBloc({
+    required this.onLocalTransition,
+    required this.onLocalChange,
+  }) : super(initialState: 0);
+
+  final void Function(Transition<CounterEvent, int>) onLocalTransition;
+  final void Function(Change<int>) onLocalChange;
+
+  @override
+  void onEvent(CounterEvent event) {
+    unawaited(Future.value(super.onEvent(event)));
+    if (event is Increment) {
+      emit(stateValue + 1);
+    }
+  }
+
+  @override
+  void onTransition(Transition<CounterEvent, int> transition) {
+    super.onTransition(transition);
+    onLocalTransition(transition);
+  }
+
+  @override
+  void onChange(Change<int> change) {
+    super.onChange(change);
+    onLocalChange(change);
+  }
 }

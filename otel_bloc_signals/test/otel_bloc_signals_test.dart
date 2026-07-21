@@ -73,13 +73,13 @@ void main() {
       expect(defaultObserver, isNotNull);
     });
 
-    test('instruments events and transitions successfully', () {
+    test('instruments events and transitions successfully', () async {
       final bloc = TestBloc();
       expect(bloc.stateValue, equals(0));
 
       bloc.add(Increment());
       expect(bloc.stateValue, equals(1));
-      bloc.close();
+      await bloc.close();
 
       expect(exporter.exportedSpans, hasLength(1));
       final span = exporter.exportedSpans.first;
@@ -98,14 +98,14 @@ void main() {
       );
     });
 
-    test('instruments errors successfully', () {
+    test('instruments errors successfully', () async {
       final bloc = TestBloc(initialState: -1);
 
       expect(
         () => bloc.add(Increment()),
         throwsArgumentError,
       );
-      bloc.close();
+      await bloc.close();
 
       // We expect 1 span: the event span itself, marked with error status.
       expect(exporter.exportedSpans, hasLength(1));
@@ -115,10 +115,11 @@ void main() {
       expect(span.status.description, contains('Test error'));
     });
 
-    test('instruments error to transient span when no active span exists', () {
+    test('instruments error to transient span when no active span exists',
+        () async {
       final bloc = TestBloc();
       observer.onError(bloc, ArgumentError('Fallback error'), StackTrace.empty);
-      bloc.close();
+      await bloc.close();
 
       expect(exporter.exportedSpans, hasLength(1));
       final span = exporter.exportedSpans.first;
@@ -127,20 +128,20 @@ void main() {
       expect(span.status.description, contains('Fallback error'));
     });
 
-    test('caps active spans map and evicts oldest spans', () {
+    test('caps active spans map and evicts oldest spans', () async {
       final bloc = TestBloc();
       for (var i = 0; i < 1005; i++) {
         observer.onEvent(bloc, 'event_$i');
       }
       expect(exporter.exportedSpans, hasLength(5));
       expect(exporter.exportedSpans.first.name, equals('TestBloc.add(String)'));
-      bloc.close();
+      await bloc.close();
     });
 
-    test('instruments CubitSignal errors to transient span successfully', () {
-      TestCubit()
-        ..triggerError()
-        ..close();
+    test('instruments CubitSignal errors to transient span successfully',
+        () async {
+      final cubit = TestCubit()..triggerError();
+      await cubit.close();
 
       expect(exporter.exportedSpans, hasLength(1));
       final span = exporter.exportedSpans.first;

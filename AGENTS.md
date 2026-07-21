@@ -121,4 +121,8 @@ When widgets resolve an ancestor provider from `BuildContext` (e.g., resolving `
 ### 4. Optimized Rebuilds via Computed and State
 Using `SignalBuilder` directly with a `computed` signal inside a build method can trigger redundant builds. Even if the computed output value is unchanged, the dirty status of its dependencies will trigger the `SignalBuilder` to rebuild. For optimal performance, wrap selection logic in a `StatefulWidget` that manually subscribes to the computed signal inside an `effect()` callback, and calls `setState` **only** if the evaluated value actually changed. Ensure that you also re-initialize the computed signal in `didUpdateWidget` if the selector callback closure changes to prevent using stale references.
 
+### 5. Memory Leaks in Expando Values (WeakReference Solution)
+When using an `Expando` mapping a key (e.g. `Element`) to some state/subscription object, ensure the stored object does NOT hold a strong reference back to the key (either directly or transitively inside closures/effects). Doing so creates a strong reference cycle that prevents garbage collection of both the key and the value from the `Expando`. Always wrap references to the key inside the value object with a `WeakReference<Key>` to allow natural garbage collection.
+
+
 

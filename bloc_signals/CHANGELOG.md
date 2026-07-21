@@ -1,3 +1,12 @@
+## 0.2.0
+
+- Introduce complete BLoC API Parity:
+  - Add `Change` class for tracking state updates.
+  - Add `Transition` class for tracking event-triggered state changes.
+  - Add `onCreate`, `onChange`, and `onClose` observer methods to `BlocSignalObserver`.
+  - Add `onChange` and `onTransition` local overrides.
+  - Change `close()` to return `Future<void>`.
+
 ## 0.1.13
 
 - Add `createEffect` helper to `BlocSignalBase` to support auto-disposed effects in subclass constructors.

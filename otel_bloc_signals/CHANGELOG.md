@@ -1,3 +1,9 @@
+## 0.2.0
+
+- Update OpenTelemetry instrumentation for version 0.2.0:
+  - Support the new `close()` method returning `Future<void>`.
+  - Update `bloc_signals` dependency constraint to `^0.2.0`.
+
 ## 0.1.6
 
 - Update `bloc_signals` dependency constraint to `^0.1.12`.

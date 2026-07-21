@@ -1,3 +1,12 @@
+## 0.2.0
+
+- Complete Flutter Bloc API Parity alignments:
+  - Update `BlocSignalProvider` to default to `lazy: true`.
+  - Convert `BlocSignalListener` to `StatefulWidget` to align listener execution lifecycle.
+  - Add `listenWhen` filter parameter to `BlocSignalListener` and `BlocSignalConsumer`.
+  - Implement `MultiBlocSignalListener` to compose multiple listeners cleanly.
+  - Implement `BuildContext.select` extension to efficiently watch state slices via element-cached computed signals.
+
 ## 0.1.9
 
 - Add `BlocSignalListener`, `BlocSignalConsumer`, and `BlocSignalSelector` widgets to achieve 100% widget-level API parity with classic `flutter_bloc`.

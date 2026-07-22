@@ -2,7 +2,45 @@
 
 This guide explains how to migrate your Flutter and Dart applications from classic BLoC (`package:bloc` and `package:flutter_bloc`) to `BlocSignal` (`package:bloc_signals` and `package:bloc_signals_flutter`).
 
+## 🚀 Progressive Migration Strategy (Zero All-at-Once Rewrite)
+
+You don't need to rewrite your entire application at once! `bloc_signals` provides built-in stream interop extensions so you can adopt `BlocSignal` incrementally:
+
+### 1. Wrapping Legacy BLoCs into `BlocSignal` Containers
+Wrap any existing classic BLoC or Cubit stream into a `BlocSignal` container to use `BlocSignalBuilder` or reactive signals immediately without changing your existing BLoC code:
+
+```dart
+final legacyBloc = LegacyCounterBloc();
+
+// Convert legacy BLoC stream into a BlocSignal container
+final blocSignal = legacyBloc.stream.toBlocSignal(
+  initialState: legacyBloc.state,
+);
+
+// Consume in reactive BlocSignalBuilder or signals UI!
+BlocSignalBuilder<StreamBlocSignal<int>, int>(
+  bloc: blocSignal as StreamBlocSignal<int>,
+  builder: (context, count) => Text('Count: $count'),
+);
+```
+
+### 2. Consuming `BlocSignal` in Legacy Stream / `BlocBuilder` Widgets
+If you convert a state container to `BlocSignal` but want to keep existing UI widgets unchanged during early migration, use `.toStream()` or `.stream`:
+
+```dart
+final myBlocSignal = CounterBloc();
+
+// Consume in legacy StreamBuilder or Stream widgets
+StreamBuilder<int>(
+  stream: myBlocSignal.toStream(), // or myBlocSignal.stream
+  builder: (context, snapshot) => Text('${snapshot.data}'),
+);
+```
+
+---
+
 ## Core Paradigm Shift: Streams vs. Signals
+
 
 `BlocSignal` offers a synchronous, glitch-free alternative to classic BLoC while maintaining its core architectural predictability (events in, states out).
 

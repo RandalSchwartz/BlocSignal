@@ -132,6 +132,13 @@ When orchestrating test helpers like `blocSignalTest`:
 * Pass parent observer calls down to `previousObserver` to prevent breaking global telemetry or logging set up outside individual tests.
 * State seeding is performed directly in `build()` (e.g. `build: () => CounterBloc(initialState: 5)`).
 
+### 7. Analyzer Rule Testing ("When testing rules, test the rules")
+When authoring custom lint plugins or analyzer diagnostics:
+* Do not rely solely on unit tests that verify `PluginBase` registration or rule metadata.
+* Always write sample code AST integration tests (e.g. using `package:analyzer/dart/analysis/utilities.dart`'s `parseString` or custom lint test runners).
+* Test both **negative cases** (sample problem code that must trigger detection) and **positive cases** (sample valid code that must pass without flags).
+
+
 
 
 

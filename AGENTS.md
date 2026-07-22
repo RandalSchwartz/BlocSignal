@@ -155,3 +155,8 @@ When creating Riverpod interop bridges:
 When bridging Flutter `Listenable` / `ChangeNotifier` / `ValueListenable`:
 * **Static Extension Resolution**: Flutter's `Listenable` (`package:flutter/foundation.dart`) and Riverpod's `ProviderListenable` (`package:riverpod`) are separate interfaces in Dart. Extension methods resolve statically based on the target type with zero collisions.
 * **Listener Teardown**: `ListenableBlocSignal.close()` invokes `listenable.removeListener(_onListenableChanged)`. `_BlocSignalValueListenable.dispose()` unsubscribes from `bloc.state.subscribe(...)`.
+
+### 11. Workflow Protocol: Delivery Path Verification & Mandatory Bot Review
+When managing tickets:
+* **Verify Delivery Path Early**: Immediately after ticket selection (Gate 1), clarify whether the change will be delivered via a GitHub Pull Request (PR) or direct commit to `main`.
+* **Mandatory Bot Review (GCA Persona)**: Even when bypassing a GitHub PR for direct commits to `main`, NEVER skip the automated Bot Triage Simulation (GCA Persona). Objective GCA review must always be performed before committing and publishing to catch boundary edge cases (such as missing `onError` exception routing).

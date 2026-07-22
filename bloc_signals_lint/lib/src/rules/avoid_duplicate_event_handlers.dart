@@ -7,7 +7,9 @@ import 'package:analyzer/error/listener.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that flags duplicate `on<E>` event handler
-/// registrations for the same event type `E` within a `BlocSignal` class.
+/// registrations for the same event type `E` across a `BlocSignal` class
+/// declaration (enforcing at most one handler per event type `E`).
+
 class AvoidDuplicateEventHandlers extends DartLintRule {
   /// Creates an [AvoidDuplicateEventHandlers] lint rule.
   const AvoidDuplicateEventHandlers() : super(code: _code);

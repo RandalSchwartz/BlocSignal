@@ -8,11 +8,10 @@ This repository is organized as a Dart workspace and contains the following pack
 | :--- | :--- | :--- |
 | **`bloc_signals`** | Core pure-Dart state container and observation | [README](./bloc_signals/README.md) |
 | **`bloc_signals_flutter`** | Flutter UI bindings, dependency providers, and builders | [README](./bloc_signals_flutter/README.md) |
+| **`bloc_signals_riverpod`** | Bidirectional Riverpod interop adapters and extensions | [README](./bloc_signals_riverpod/README.md) |
 | **`bloc_signals_test`** | Declarative unit testing utilities for BlocSignal and CubitSignal | [README](./bloc_signals_test/README.md) |
 | **`bloc_signals_lint`** | Static analysis lints and IDE diagnostics for BlocSignal | [README](./bloc_signals_lint/README.md) |
 | **`otel_bloc_signals`** | OpenTelemetry tracing observer for mapping lifecycle steps to spans | [README](./otel_bloc_signals/README.md) |
-
-
 
 ---
 
@@ -24,12 +23,14 @@ This repository is organized as a Dart workspace and contains the following pack
 - 🔍 **Global Observation**: Hook in a `BlocSignalObserver` to easily log, trace, and monitor events and transitions globally.
 - 🔀 **Automatic De-duplication**: State transitions are automatically de-duplicated using standard `==` equality.
 - 📊 **OpenTelemetry Tracing**: Built-in support for distributed tracing with standard OpenTelemetry spans via `otel_bloc_signals`.
+- 🌁 **Riverpod Interoperability**: Seamlessly adapt Riverpod `ProviderListenable`s into `BlocSignal` containers and vice versa via `bloc_signals_riverpod`.
 
 ---
 
 ## Documentation
 
 - **[Migration Guide](./skills/bloc-signals/migration.md)**: A comprehensive guide to transitioning from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
+- **[Riverpod Interop & Migration](./skills/bloc-signals/riverpod_migration.md)**: Guide to converting between Riverpod providers and `BlocSignal`.
 - **API Documentation**: Each package contains detailed HTML documentation. You can generate it by running `dart doc` inside each package directory.
 
 ---
@@ -39,11 +40,12 @@ This repository is organized as a Dart workspace and contains the following pack
 We use native Dart workspaces (requires SDK 3.5+) for local development.
 
 ### Setup
-Run `dart pub get` from the root workspace directory to resolve all dependencies across all packages.
+Run `flutter pub get` from the root workspace directory to resolve all dependencies across all packages.
 
 ### Run Tests
 - Core Package: `cd bloc_signals && dart test`
 - Flutter Package: `cd bloc_signals_flutter && flutter test`
+- Riverpod Interop: `cd bloc_signals_riverpod && flutter test`
 - Example App: `cd bloc_signals_flutter/example && flutter test`
 
 ---
@@ -60,10 +62,9 @@ npx ctx7@latest skills install RandalSchwartz/BlocSignal bloc-signals
 
 ## Credits & Acknowledgements
 
-
 `BlocSignal` is heavily inspired by and builds upon the incredible work of the following:
 - **[Felix Angelov](https://github.com/felangel)** and the original **[bloc](https://pub.dev/packages/bloc)** / **[flutter_bloc](https://pub.dev/packages/flutter_bloc)** libraries, which established the event-driven state container architecture.
 - **[Rody Davis](https://github.com/roddydavis)** and the **[signals](https://pub.dev/packages/signals)** library, which provides the high-performance reactive state primitives that make synchronous propagation possible.
+- **[Remi Rousselet](https://github.com/rrousselGit)** and **[Riverpod](https://riverpod.dev)** for establishing `ProviderListenable` primitives and state provider architectures.
 
 Thank you for your immense contributions to the Flutter/Dart ecosystem!
-

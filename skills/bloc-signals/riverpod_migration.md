@@ -4,7 +4,44 @@ This guide explains how to migrate your Flutter and Dart applications from River
 
 ---
 
-## 1. Paradigm Shift: Global Scopes vs. Inherited Widget Tree
+## 1. Interoperability & Progressive Adoption (`bloc_signals_riverpod`)
+
+If you are working in an existing Riverpod codebase, you can adopt `BlocSignal` **incrementally** using `package:bloc_signals_riverpod` without re-writing your entire provider graph at once.
+
+### A. Convert Riverpod Providers to `BlocSignal` (`Riverpod -> BlocSignal`)
+Use `.toBlocSignal(ref)` to wrap any Riverpod `ProviderListenable` (`NotifierProvider`, `Provider`, `.select()`) into a `BlocSignalBase`. Passing `ref` automatically binds `ref.onDispose(bloc.close)` for zero-boilerplate teardown:
+
+```dart
+import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
+
+// Inside a Riverpod provider:
+final userBlocProvider = Provider.autoDispose<BlocSignalBase<User>>((ref) {
+  // Automatically attaches container and registers ref.onDispose(bloc.close)
+  return userRiverpodProvider.toBlocSignal(ref);
+});
+
+// Or using a pure ProviderContainer:
+final riverpodBloc = userRiverpodProvider.toBlocSignal(container);
+```
+
+### B. Convert `BlocSignal` to Riverpod Providers (`BlocSignal -> Riverpod`)
+Use `.toProvider()` to expose a `BlocSignalBase` as a standard Riverpod `Provider<T>`:
+
+```dart
+import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
+
+final myBloc = CounterCubit();
+
+// Exposes the bloc's state as a Riverpod Provider
+final counterProvider = myBloc.toProvider();
+
+// Consuming in Riverpod:
+final count = ref.watch(counterProvider);
+```
+
+---
+
+## 2. Paradigm Shift: Global Scopes vs. Inherited Widget Tree
 
 Riverpod is built around a global state paradigm where providers are declared as global/static variables and resolved using a `WidgetRef` (usually provided by a `ConsumerWidget` or `Consumer`). 
 
@@ -24,7 +61,7 @@ Riverpod is built around a global state paradigm where providers are declared as
 
 ---
 
-## 2. Key Gotchas & How to Solve Them
+## 3. Key Gotchas & How to Solve Them
 
 ### Gotcha 1: Replacing Riverpod `.family` with `SignalContainer`
 In Riverpod, you can pass arguments to providers using the `.family` modifier (e.g. `userProvider(userId)`). This caches and retrieves provider instances based on the argument.
@@ -226,11 +263,9 @@ If you are porting Riverpod mutations to a strictly event-driven `BlocSignal`, p
    }
    ```
 
-
 ---
 
-## 3. Code Migration Comparison
-
+## 4. Code Migration Comparison
 
 ### Riverpod AsyncNotifier
 ```dart

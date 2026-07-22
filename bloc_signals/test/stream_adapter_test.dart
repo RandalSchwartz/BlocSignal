@@ -102,6 +102,22 @@ void main() {
       }
     });
 
+    test('StreamBlocSignal auto-closes when underlying stream completes',
+        () async {
+      final controller = StreamController<int>();
+      final blocSignal = StreamBlocSignal(
+        controller.stream,
+        initialState: 0,
+      );
+
+      expect(blocSignal.isClosed, isFalse);
+
+      await controller.close();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(blocSignal.isClosed, isTrue);
+    });
+
     test('StreamBlocSignal cancels stream subscription on close()', () async {
       var isCancelled = false;
       final controller = StreamController<int>(

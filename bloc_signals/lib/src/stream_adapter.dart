@@ -28,6 +28,11 @@ class StreamBlocSignal<StateType> extends CubitSignal<StateType> {
       onError: (Object error, StackTrace stackTrace) {
         onError(error, stackTrace);
       },
+      onDone: () {
+        if (!isClosed) {
+          unawaited(close());
+        }
+      },
     );
   }
 

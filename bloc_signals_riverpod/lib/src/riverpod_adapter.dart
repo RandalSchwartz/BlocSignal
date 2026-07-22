@@ -1,5 +1,7 @@
 import 'package:bloc_signals/bloc_signals.dart';
-import 'package:riverpod/src/internals.dart';
+import 'package:riverpod/src/internals.dart'
+    hide AsyncData, AsyncError, AsyncLoading;
+import 'package:signals_core/signals_core.dart';
 
 /// A reactive state container wrapper that adapts an underlying Riverpod
 /// [ProviderListenable] into a [BlocSignalBase].
@@ -94,5 +96,33 @@ extension BlocSignalRiverpodX<T> on BlocSignalBase<T> {
     return NotifierProvider<Notifier<T>, T>(
       () => _BlocSignalNotifier<T>(this),
     );
+  }
+}
+
+/// Extension methods on Riverpod [AsyncValue] for Signals [AsyncState] conversion.
+extension AsyncValueToAsyncStateX<T> on AsyncValue<T> {
+  /// Converts this Riverpod [AsyncValue] into a Signals [AsyncState].
+  AsyncState<T> toAsyncState() {
+    if (hasValue) {
+      return AsyncState<T>.data(requireValue);
+    } else if (hasError) {
+      return AsyncState<T>.error(error!, stackTrace);
+    } else {
+      return AsyncState<T>.loading();
+    }
+  }
+}
+
+/// Extension methods on Signals [AsyncState] for Riverpod [AsyncValue] conversion.
+extension AsyncStateToAsyncValueX<T> on AsyncState<T> {
+  /// Converts this Signals [AsyncState] into a Riverpod [AsyncValue].
+  AsyncValue<T> toAsyncValue() {
+    if (hasValue) {
+      return AsyncValue<T>.data(value as T);
+    } else if (hasError) {
+      return AsyncValue<T>.error(error!, stackTrace ?? StackTrace.empty);
+    } else {
+      return AsyncValue<T>.loading();
+    }
   }
 }

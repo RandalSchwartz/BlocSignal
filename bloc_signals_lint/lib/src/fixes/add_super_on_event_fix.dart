@@ -23,15 +23,15 @@ class AddSuperOnEventFix extends DartFix {
 
       reporter
           .createChangeBuilder(
-            message: "Add 'super.onEvent(event);'",
-            priority: 100,
-          )
+        message: "Add 'super.onEvent(event);'",
+        priority: 100,
+      )
           .addDartFileEdit((builder) {
-            builder.addSimpleInsertion(
-              node.body.offset + 1,
-              '\n    super.onEvent(event);',
-            );
-          });
+        builder.addSimpleInsertion(
+          node.body.offset + 1,
+          '\n    super.onEvent(event);',
+        );
+      });
     });
   }
 }

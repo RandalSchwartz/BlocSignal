@@ -25,15 +25,15 @@ class PreferReadInCallbacksFix extends DartFix {
 
       reporter
           .createChangeBuilder(
-            message: "Replace 'watch' with 'read'",
-            priority: 100,
-          )
+        message: "Replace 'watch' with 'read'",
+        priority: 100,
+      )
           .addDartFileEdit((builder) {
-            builder.addSimpleReplacement(
-              node.methodName.sourceRange,
-              'read',
-            );
-          });
+        builder.addSimpleReplacement(
+          node.methodName.sourceRange,
+          'read',
+        );
+      });
     });
   }
 }

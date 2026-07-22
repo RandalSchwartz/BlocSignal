@@ -1,4 +1,5 @@
-/// Example showing how to configure `bloc_signals_lint` in `analysis_options.yaml`.
+/// Example showing how to configure `bloc_signals_lint` in
+/// `analysis_options.yaml`.
 ///
 /// In your project's `analysis_options.yaml`:
 /// ```yaml

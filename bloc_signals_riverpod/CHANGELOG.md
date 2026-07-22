@@ -1,8 +1,14 @@
-# CHANGELOG
+# Changelog
+
+## 0.1.1
+
+- Added bidirectional conversion extensions between Riverpod's `AsyncValue<T>` and Signals' `AsyncState<T>`:
+  - `asyncValue.toAsyncState()`: Converts a Riverpod `AsyncValue` into a Signals `AsyncState`.
+  - `asyncState.toAsyncValue()`: Converts a Signals `AsyncState` into a Riverpod `AsyncValue`.
 
 ## 0.1.0
 
 - Initial release of `bloc_signals_riverpod`.
-- Added `ProviderListenable.toBlocSignal(refOrContainer)` extension supporting `Ref`, `WidgetRef`, and `ProviderContainer`.
-- Added automatic `ref.onDispose` lifecycle binding to prevent subscription and `autoDispose` retain leaks.
-- Added `BlocSignalBase.toProvider()` extension exposing `BlocSignal` and `CubitSignal` instances as Riverpod `NotifierProvider`s.
+- Bidirectional interoperability adapters:
+  - `ProviderListenable.toBlocSignal(refOrContainer)`: Convert any Riverpod provider into a `BlocSignalBase` with automatic `ref.onDispose` cleanup.
+  - `blocSignal.toProvider()`: Convert any `BlocSignalBase` into a Riverpod `NotifierProvider`.

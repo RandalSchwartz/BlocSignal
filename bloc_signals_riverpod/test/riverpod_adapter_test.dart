@@ -1,6 +1,8 @@
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
-import 'package:riverpod/src/internals.dart';
+import 'package:riverpod/src/internals.dart'
+    hide AsyncData, AsyncError, AsyncLoading;
+import 'package:signals_core/signals_core.dart';
 import 'package:test/test.dart';
 
 class CounterNotifier extends Notifier<int> {
@@ -148,6 +150,46 @@ void main() {
 
       // Closing subscription allows autoDispose cleanup
       sub.close();
+    });
+
+    test('converts Riverpod AsyncValue to Signals AsyncState', () {
+      const AsyncValue<int> dataValue = AsyncValue.data(42);
+      final asyncStateData = dataValue.toAsyncState();
+      expect(asyncStateData, isA<AsyncData<int>>());
+      expect(asyncStateData.value, equals(42));
+
+      final exception = FormatException('err');
+      final stackTrace = StackTrace.current;
+      final AsyncValue<int> errorValue = AsyncValue.error(
+        exception,
+        stackTrace,
+      );
+      final asyncStateError = errorValue.toAsyncState();
+      expect(asyncStateError, isA<AsyncError<int>>());
+      expect(asyncStateError.error, equals(exception));
+
+      const AsyncValue<int> loadingValue = AsyncValue<int>.loading();
+      final asyncStateLoading = loadingValue.toAsyncState();
+      expect(asyncStateLoading, isA<AsyncLoading<int>>());
+    });
+
+    test('converts Signals AsyncState to Riverpod AsyncValue', () {
+      final AsyncState<int> dataState = AsyncData<int>(99);
+      final asyncValueData = dataState.toAsyncValue();
+      expect(asyncValueData, equals(const AsyncValue.data(99)));
+
+      final exception = FormatException('err');
+      final stackTrace = StackTrace.current;
+      final AsyncState<int> errorState = AsyncError<int>(
+        exception,
+        stackTrace,
+      );
+      final asyncValueError = errorState.toAsyncValue();
+      expect(asyncValueError.error, equals(exception));
+
+      final AsyncState<int> loadingState = AsyncLoading<int>();
+      final asyncValueLoading = loadingState.toAsyncValue();
+      expect(asyncValueLoading, equals(const AsyncValue<int>.loading()));
     });
 
     test('reading state after close does not throw', () async {

@@ -39,6 +39,21 @@ final counterProvider = myBloc.toProvider();
 final count = ref.watch(counterProvider);
 ```
 
+### C. Convert `AsyncValue` ↔ `AsyncState` (`toAsyncState()` & `toAsyncValue()`)
+If you consume Riverpod's `AsyncValue<T>` or Signals' `AsyncState<T>`, `package:bloc_signals_riverpod` provides zero-overhead conversion extensions:
+
+```dart
+import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
+
+// Riverpod AsyncValue -> Signals AsyncState
+final AsyncValue<int> riverpodAsync = AsyncValue.data(42);
+final AsyncState<int> signalsState = riverpodAsync.toAsyncState();
+
+// Signals AsyncState -> Riverpod AsyncValue
+final AsyncState<String> signalsAsync = AsyncState.data('hello');
+final AsyncValue<String> riverpodValue = signalsAsync.toAsyncValue();
+```
+
 ---
 
 ## 2. Paradigm Shift: Global Scopes vs. Inherited Widget Tree

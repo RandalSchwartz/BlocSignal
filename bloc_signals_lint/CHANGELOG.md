@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0
+
+- Added 3 Flutter UI lint rules:
+  - `avoid_emit_in_build`: Flags state emissions (`emit`/`add`) directly inside Flutter `Widget.build()` methods.
+  - `avoid_unmanaged_signal_effects`: Flags unassigned `effect()` calls created in Flutter `Widget` or `State` scopes.
+  - `prefer_bloc_signal_provider_read_in_callbacks`: Warns on `context.watch<T>()` inside callback closures (e.g. `onPressed`).
+- Added automated IDE quick-fixes (`Cmd+.` / `Alt+Enter`):
+  - `AddSuperOnEventFix`: Automatically inserts `super.onEvent(event);`.
+  - `PreferReadInCallbacksFix`: Automatically replaces `context.watch<T>()` with `context.read<T>()`.
+
 ## 0.1.0
 
 - Initial release of `bloc_signals_lint`.

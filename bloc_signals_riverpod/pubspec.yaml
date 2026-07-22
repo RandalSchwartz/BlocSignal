@@ -1,9 +1,15 @@
 name: bloc_signals_riverpod
 resolution: workspace
 description: Riverpod interoperability adapters for BlocSignal state containers.
-version: 0.1.1
+version: 0.1.2
 repository: https://github.com/RandalSchwartz/BlocSignal
 issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
+
+topics:
+  - riverpod
+  - bloc
+  - signals
+  - interop
 
 environment:
   sdk: ^3.5.0

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:bloc_signals/src/change.dart';
 import 'package:bloc_signals/src/transition.dart';
 import 'package:meta/meta.dart';
-import 'package:signals/signals.dart';
+import 'package:signals_core/signals_core.dart';
 
 export 'change.dart';
 export 'transition.dart';

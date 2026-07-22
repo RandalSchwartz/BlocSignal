@@ -1,3 +1,7 @@
+## 0.2.1
+
+- Fix package classification on pub.dev to include "Dart" SDK support by migrating from `signals` dependency to pure Dart `signals_core`.
+
 ## 0.2.0
 
 - Introduce complete BLoC API Parity:

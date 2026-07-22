@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Added example documentation and pubspec package topics to improve pub.dev score to 160/160.
+
 ## 0.2.0
 
 - Added 3 Flutter UI lint rules:

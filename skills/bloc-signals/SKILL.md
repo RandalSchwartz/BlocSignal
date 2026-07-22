@@ -29,7 +29,9 @@ description: Core state management container integrating BLoC/Cubit patterns wit
 | [Flutter Integration](flutter.md) | Reacting to state in Flutter widgets via `BlocSignalBuilder` and dependency injection using `BlocSignalProvider`. |
 | [OpenTelemetry Observability](otel.md) | Instrumenting event transitions, errors, and spans using `OtelBlocSignalObserver`. |
 | [Testing Guidelines](testing.md) | Synchronous testing patterns, asynchronous event handler test styles, and lifecycle disposal expectations. |
+| [Custom Lint Rules](lint.md) | IDE analysis diagnostics, core rules, and configuration guidelines for `bloc_signals_lint`. |
 | [BLoC Migration Guide](migration.md) | Comprehensive walkthrough for migrating classic standard BLoCs/Cubits and UI providers to BlocSignal. |
+
 | [Riverpod Migration Guide](riverpod_migration.md) | Complete guide for migrating Riverpod providers, ConsumerWidgets, and `.family` cache systems to BlocSignal / Signals. |
 
 

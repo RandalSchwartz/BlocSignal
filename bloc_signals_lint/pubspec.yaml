@@ -1,0 +1,20 @@
+name: bloc_signals_lint
+resolution: workspace
+description: Custom lint rules and analyzer diagnostics for BlocSignal and CubitSignal.
+version: 0.1.0
+repository: https://github.com/RandalSchwartz/BlocSignal
+issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  analyzer: ">=6.0.0 <13.0.0"
+  custom_lint_builder: ">=0.7.0 <0.9.0"
+  meta: ">=1.11.0 <2.0.0"
+
+dev_dependencies:
+  bloc_signals: ^0.2.1
+  coverage: ^1.11.0
+  test: ^1.25.6
+  very_good_analysis: ^10.1.0

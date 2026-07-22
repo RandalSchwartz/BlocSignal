@@ -8,3 +8,4 @@ library;
 import 'package:bloc_signals/src/bloc_signals_base.dart';
 
 export 'src/bloc_signals_base.dart';
+export 'src/stream_adapter.dart';

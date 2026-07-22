@@ -1,3 +1,11 @@
+## 0.2.2
+
+- Add bidirectional stream interop extensions and progressive migration bridge:
+  - Add `BlocSignalStreamExtension` on `BlocSignalBase` (`.toStream()`, `.stream`).
+  - Add `StreamBlocSignal` container adapting standard Dart `Stream<T>` / BLoCs to `BlocSignalBase<T>`.
+  - Add `StreamBlocSignalExtension` on `Stream<T>` (`.toBlocSignal()`).
+  - Auto-close `StreamBlocSignal` when underlying stream completes.
+
 ## 0.2.1
 
 - Fix package classification on pub.dev to include "Dart" SDK support by migrating from `signals` dependency to pure Dart `signals_core`.
@@ -32,7 +40,6 @@
 ## 0.1.9
 
 - Widen Dart SDK constraint to include pre-release versions of Dart `3.10.0`.
-
 
 ## 0.1.8
 

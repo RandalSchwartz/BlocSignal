@@ -31,8 +31,9 @@ description: Core state management container integrating BLoC/Cubit patterns wit
 | [Testing Guidelines](testing.md) | Synchronous testing patterns, asynchronous event handler test styles, and lifecycle disposal expectations. |
 | [Custom Lint Rules](lint.md) | IDE analysis diagnostics, core rules, and configuration guidelines for `bloc_signals_lint`. |
 | [BLoC Migration Guide](migration.md) | Comprehensive walkthrough for migrating classic standard BLoCs/Cubits and UI providers to BlocSignal. |
-
+| [Stream Migration Bridge](migration_bridge.md) | Bidirectional stream interop, `toStream()` extensions, and `toBlocSignal()` stream wrappers for progressive migration. |
 | [Riverpod Migration Guide](riverpod_migration.md) | Complete guide for migrating Riverpod providers, ConsumerWidgets, and `.family` cache systems to BlocSignal / Signals. |
+
 
 
 

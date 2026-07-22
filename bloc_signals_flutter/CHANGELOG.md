@@ -1,3 +1,8 @@
+## 0.2.1
+
+- Refactor example app BLoCs (`LoginBloc` and `TimerBloc`) to use constructor-scoped `on<E>` event handler syntax.
+- Add unit tests for example BLoCs and update example documentation.
+
 ## 0.2.0
 
 - Complete Flutter Bloc API Parity alignments:

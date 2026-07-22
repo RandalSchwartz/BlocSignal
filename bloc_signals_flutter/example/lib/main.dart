@@ -92,18 +92,21 @@ class LoginState {
 }
 
 /// [LoginBloc] coordinates the user authentication flow.
-/// It receives [LoginEvent] inputs and processes updates synchronously.
+/// It registers constructor-scoped [on] event handlers to process updates synchronously.
 class LoginBloc extends BlocSignal<LoginEvent, LoginState> {
-  LoginBloc() : super(initialState: const LoginState());
-
-  @override
-  Future<void> onEvent(LoginEvent event) async {
-    await super.onEvent(event);
-    if (event is UsernameChanged) {
+  LoginBloc() : super(initialState: const LoginState()) {
+    /// Update username credential on [UsernameChanged].
+    on<UsernameChanged>((event, emit) {
       emit(stateValue.copyWith(username: event.username));
-    } else if (event is PasswordChanged) {
+    });
+
+    /// Update password credential on [PasswordChanged].
+    on<PasswordChanged>((event, emit) {
       emit(stateValue.copyWith(password: event.password));
-    } else if (event is SubmitLogin) {
+    });
+
+    /// Process authentication validation and simulate network latency on [SubmitLogin].
+    on<SubmitLogin>((event, emit) async {
       // Validate inputs
       if (stateValue.username.trim().isEmpty) {
         emit(stateValue.copyWith(error: 'Username cannot be empty'));
@@ -120,7 +123,7 @@ class LoginBloc extends BlocSignal<LoginEvent, LoginState> {
       emit(stateValue.copyWith(isLoading: true, error: null));
 
       // Simulate a network latency/async process
-      await Future.delayed(const Duration(milliseconds: 800));
+      await Future<void>.delayed(const Duration(milliseconds: 800));
 
       if (stateValue.password == 'password') {
         // Authenticated successfully
@@ -134,10 +137,12 @@ class LoginBloc extends BlocSignal<LoginEvent, LoginState> {
           ),
         );
       }
-    } else if (event is Logout) {
-      // Reset state on logout
+    });
+
+    /// Reset authentication credentials on [Logout].
+    on<Logout>((event, emit) {
       emit(const LoginState());
-    }
+    });
   }
 }
 
@@ -193,6 +198,8 @@ class TimerRunComplete extends TimerState {
   const TimerRunComplete() : super(0);
 }
 
+/// [TimerBloc] manages countdown timer state using `on<E>` event handlers
+/// and ticker stream subscriptions.
 class TimerBloc extends BlocSignal<TimerEvent, TimerState> {
   final Ticker ticker;
   static const int _duration = 60;
@@ -200,38 +207,46 @@ class TimerBloc extends BlocSignal<TimerEvent, TimerState> {
   StreamSubscription<int>? _tickerSubscription;
 
   TimerBloc({required this.ticker})
-      : super(initialState: const TimerInitial(_duration));
+      : super(initialState: const TimerInitial(_duration)) {
+    /// Start countdown timer on [TimerStarted].
+    on<TimerStarted>((event, emit) {
+      emit(TimerRunInProgress(event.duration));
+      _tickerSubscription?.cancel();
+      _tickerSubscription = ticker
+          .tick(ticks: event.duration)
+          .listen((duration) => add(_TimerTicked(duration: duration)));
+    });
 
-  @override
-  void onEvent(TimerEvent event) {
-    super.onEvent(event);
-    switch (event) {
-      case TimerStarted(:final duration):
-        emit(TimerRunInProgress(duration));
-        _tickerSubscription?.cancel();
-        _tickerSubscription = ticker
-            .tick(ticks: duration)
-            .listen((duration) => add(_TimerTicked(duration: duration)));
-      case TimerPaused():
-        if (stateValue is TimerRunInProgress) {
-          _tickerSubscription?.pause();
-          emit(TimerRunPause(stateValue.duration));
-        }
-      case TimerResumed():
-        if (stateValue is TimerRunPause) {
-          _tickerSubscription?.resume();
-          emit(TimerRunInProgress(stateValue.duration));
-        }
-      case TimerReset():
-        _tickerSubscription?.cancel();
-        emit(const TimerInitial(_duration));
-      case _TimerTicked(:final duration):
-        emit(
-          duration > 0
-              ? TimerRunInProgress(duration)
-              : const TimerRunComplete(),
-        );
-    }
+    /// Pause active timer subscription on [TimerPaused].
+    on<TimerPaused>((event, emit) {
+      if (stateValue is TimerRunInProgress) {
+        _tickerSubscription?.pause();
+        emit(TimerRunPause(stateValue.duration));
+      }
+    });
+
+    /// Resume paused timer subscription on [TimerResumed].
+    on<TimerResumed>((event, emit) {
+      if (stateValue is TimerRunPause) {
+        _tickerSubscription?.resume();
+        emit(TimerRunInProgress(stateValue.duration));
+      }
+    });
+
+    /// Cancel timer subscription and reset state on [TimerReset].
+    on<TimerReset>((event, emit) {
+      _tickerSubscription?.cancel();
+      emit(const TimerInitial(_duration));
+    });
+
+    /// Process timer tick progression on [_TimerTicked].
+    on<_TimerTicked>((event, emit) {
+      emit(
+        event.duration > 0
+            ? TimerRunInProgress(event.duration)
+            : const TimerRunComplete(),
+      );
+    });
   }
 
   @override

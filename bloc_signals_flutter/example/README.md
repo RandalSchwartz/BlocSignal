@@ -1,17 +1,47 @@
-# example
+# BlocSignal Flutter Example App
 
-A new Flutter project.
+An example Flutter application demonstrating modern state management using **`bloc_signals`**, **`bloc_signals_flutter`**, and **`kaisel`** routing.
 
-## Getting Started
+## 🚀 Overview
 
-This project is a starting point for a Flutter application.
+This example demonstrates best practices for building reactive Flutter applications with `BlocSignal`:
 
-A few resources to get you started if this is your first Flutter project:
+1. **Constructor-Scoped `on<E>` Event Handlers**:
+   - Registering type-safe event handlers using `on<Event>((event, emit) => ...)` inside constructor scopes.
+   - Orchestrating synchronous and asynchronous handler executions cleanly without manual `onEvent` switch statements.
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+2. **Synchronous Reactive Propagation**:
+   - State emissions via `emit()` propagate synchronously to widget subtrees in the exact same frame.
+   - Built-in state de-duplication using `==` equality prevents unnecessary UI rebuilds.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+3. **Type-Safe Routing with Kaisel**:
+   - Sealed class route hierarchies (`AppRoute`) paired with `MaterialApp.router`.
+
+4. **Dependency Injection & UI Scoping**:
+   - `BlocSignalProvider` for managing BLoC lifecycles and automatic disposal.
+   - `BlocSignalBuilder` for reactive UI rebuilds.
+   - `context.read<T>()` for context-scoped BLoC lookups without rebuild dependencies.
+
+## 📱 Features
+
+- **Authentication Flow (`LoginBloc`)**:
+  - Validates credentials and handles async authentication latency.
+  - Implements `UsernameChanged`, `PasswordChanged`, `SubmitLogin`, and `Logout` event handlers.
+- **Countdown Timer (`TimerBloc`)**:
+  - Demonstrates stream subscription coordination inside BLoC event handlers.
+  - Implements `TimerStarted`, `TimerPaused`, `TimerResumed`, `TimerReset`, and `_TimerTicked` event handlers.
+
+## 🧪 Running Tests & App
+
+- **Run Tests**:
+  ```bash
+  flutter test
+  ```
+- **Analyze Code**:
+  ```bash
+  flutter analyze
+  ```
+- **Run App**:
+  ```bash
+  flutter run
+  ```

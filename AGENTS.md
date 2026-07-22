@@ -12,6 +12,8 @@ We use a native Dart workspace (supported in Dart 3.5+) instead of Melos.
   - `bloc_signals` (Core pure Dart package)
   - `bloc_signals_flutter` (Flutter bindings)
   - `bloc_signals_flutter/example` (Example Flutter application)
+  - `bloc_signals_test` (Declarative unit testing utilities)
+
 
 
 ### Dependency Management

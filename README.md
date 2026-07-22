@@ -8,7 +8,9 @@ This repository is organized as a Dart workspace and contains the following pack
 | :--- | :--- | :--- |
 | **`bloc_signals`** | Core pure-Dart state container and observation | [README](./bloc_signals/README.md) |
 | **`bloc_signals_flutter`** | Flutter UI bindings, dependency providers, and builders | [README](./bloc_signals_flutter/README.md) |
+| **`bloc_signals_test`** | Declarative unit testing utilities for BlocSignal and CubitSignal | [README](./bloc_signals_test/README.md) |
 | **`otel_bloc_signals`** | OpenTelemetry tracing observer for mapping lifecycle steps to spans | [README](./otel_bloc_signals/README.md) |
+
 
 ---
 

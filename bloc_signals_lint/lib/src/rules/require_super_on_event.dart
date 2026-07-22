@@ -4,6 +4,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/listener.dart';
+import 'package:bloc_signals_lint/src/fixes/add_super_on_event_fix.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that requires `onEvent` overrides to invoke
@@ -26,6 +27,9 @@ class RequireSuperOnEvent extends DartLintRule {
     'BlocSignalBase',
     packageName: 'bloc_signals',
   );
+
+  @override
+  List<Fix> getFixes() => [AddSuperOnEventFix()];
 
   @override
   void run(

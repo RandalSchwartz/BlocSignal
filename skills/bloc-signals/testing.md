@@ -4,6 +4,57 @@ Because state propagation in `BlocSignal` is **immediate and synchronous**, test
 
 ---
 
+## 📦 Declarative Testing with `bloc_signals_test`
+
+The `bloc_signals_test` package provides the declarative `blocSignalTest` helper (similar to `bloc_test` in `flutter_bloc`) designed specifically for `BlocSignal` and `CubitSignal`:
+
+```dart
+import 'package:bloc_signals_test/bloc_signals_test.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('CounterCubit', () {
+    blocSignalTest<CounterCubit, int>(
+      'emits [1] when increment is called',
+      build: CounterCubit.new,
+      act: (cubit) => cubit.increment(),
+      expect: () => [1],
+    );
+
+    blocSignalTest<CounterCubit, int>(
+      'supports skip parameter',
+      build: CounterCubit.new,
+      act: (cubit) {
+        cubit.increment();
+        cubit.increment();
+      },
+      skip: 1,
+      expect: () => [2],
+    );
+  });
+
+  group('CounterBloc', () {
+    blocSignalTest<CounterBloc, int>(
+      'emits [1] when IncrementEvent is added',
+      build: CounterBloc.new,
+      act: (bloc) => bloc.add(IncrementEvent()),
+      expect: () => [1],
+    );
+
+    blocSignalTest<CounterBloc, int>(
+      'supports async event handler with wait parameter',
+      build: CounterBloc.new,
+      act: (bloc) => bloc.add(DelayedIncrementEvent()),
+      wait: const Duration(milliseconds: 50),
+      expect: () => [1],
+    );
+  });
+}
+```
+
+---
+
+
 ## ⚡ Synchronous Testing
 
 For synchronous event handlers, you do not need to use `expectLater`, streams, or async/await blocks. Assertions can be written directly on the next line of code:

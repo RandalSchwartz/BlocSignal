@@ -42,37 +42,57 @@ class RiverpodBlocSignal<T> extends CubitSignal<T> {
 extension ProviderListenableBlocSignalX<T> on ProviderListenable<T> {
   /// Adapts this Riverpod [ProviderListenable] into a [BlocSignalBase] container.
   ///
-  /// The [refOrContainer] parameter must be either a [Ref] or a
-  /// [ProviderContainer]. If a [Ref] is provided, [ref.onDispose] is
-  /// automatically registered to close the container when the provider is
-  /// disposed.
+  /// The [refOrContainer] parameter must be either a [Ref], WidgetRef, or a
+  /// [ProviderContainer]. If a [Ref] or object exposing `onDispose` is provided,
+  /// `onDispose` is automatically registered to close the container when the
+  /// provider/widget is disposed.
   BlocSignalBase<T> toBlocSignal(Object refOrContainer) {
     if (refOrContainer is Ref) {
       return RiverpodBlocSignal<T>.fromRef(refOrContainer, this);
     } else if (refOrContainer is ProviderContainer) {
       return RiverpodBlocSignal<T>(refOrContainer, this);
     } else {
-      throw ArgumentError(
-        'refOrContainer must be a Ref or ProviderContainer, but was '
-        '${refOrContainer.runtimeType}.',
-      );
+      try {
+        final dynamic obj = refOrContainer;
+        final container = obj.container as ProviderContainer;
+        final bloc = RiverpodBlocSignal<T>(container, this);
+        try {
+          obj.onDispose(bloc.close);
+        } catch (_) {}
+        return bloc;
+      } catch (_) {
+        throw ArgumentError(
+          'refOrContainer must be a Ref, WidgetRef, or ProviderContainer, but was '
+          '${refOrContainer.runtimeType}.',
+        );
+      }
     }
+  }
+}
+
+class _BlocSignalNotifier<T> extends Notifier<T> {
+  _BlocSignalNotifier(this.bloc);
+  final BlocSignalBase<T> bloc;
+
+  @override
+  T build() {
+    final unsubscribe = bloc.state.subscribe((newValue) {
+      state = newValue;
+    });
+    ref.onDispose(unsubscribe);
+    return bloc.state.value;
   }
 }
 
 /// Extension methods on [BlocSignalBase] for Riverpod provider conversion.
 extension BlocSignalRiverpodX<T> on BlocSignalBase<T> {
-  /// Converts this [BlocSignalBase] into a Riverpod [Provider].
+  /// Converts this [BlocSignalBase] into a Riverpod [NotifierProvider].
   ///
   /// Subscribes to [state] updates and automatically unbinds the subscription
   /// when the Riverpod provider is disposed via [ref.onDispose].
-  Provider<T> toProvider() {
-    return Provider<T>((ref) {
-      final unsubscribe = state.subscribe((_) {
-        ref.invalidateSelf();
-      });
-      ref.onDispose(unsubscribe);
-      return state.value;
-    });
+  NotifierProvider<Notifier<T>, T> toProvider() {
+    return NotifierProvider<Notifier<T>, T>(
+      () => _BlocSignalNotifier<T>(this),
+    );
   }
 }

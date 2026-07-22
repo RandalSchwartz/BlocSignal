@@ -16,6 +16,17 @@ class TestCubit extends CubitSignal<int> {
   void increment() => emit(stateValue + 1);
 }
 
+class MockWidgetRef {
+  MockWidgetRef(this.container);
+
+  final ProviderContainer container;
+  void Function()? disposeCallback;
+
+  void onDispose(void Function() cb) {
+    disposeCallback = cb;
+  }
+}
+
 void main() {
   group('RiverpodBlocSignal & RiverpodAdapter', () {
     late ProviderContainer container;
@@ -80,9 +91,23 @@ void main() {
       expect(adapter.isClosed, isTrue);
     });
 
+    test('toBlocSignal supports duck-typed WidgetRef objects', () {
+      final mockRef = MockWidgetRef(container);
+      final adapter = counterProvider.toBlocSignal(mockRef);
+
+      expect(adapter.stateValue, equals(0));
+      expect(mockRef.disposeCallback, isNotNull);
+
+      container.read(counterProvider.notifier).increment();
+      expect(adapter.stateValue, equals(1));
+
+      mockRef.disposeCallback!();
+      expect(adapter.isClosed, isTrue);
+    });
+
     test('toBlocSignal throws ArgumentError on invalid argument', () {
       expect(
-        () => counterProvider.toBlocSignal('invalid_arg'),
+        () => counterProvider.toBlocSignal(12345),
         throwsA(isA<ArgumentError>()),
       );
     });
@@ -96,6 +121,9 @@ void main() {
       testCubit.increment();
 
       expect(container.read(cubitProvider), equals(11));
+
+      testCubit.increment();
+      expect(container.read(cubitProvider), equals(12));
 
       testCubit.close();
     });

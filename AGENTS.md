@@ -138,6 +138,12 @@ When authoring custom lint plugins or analyzer diagnostics:
 * Always write sample code AST integration tests (e.g. using `package:analyzer/dart/analysis/utilities.dart`'s `parseString` or custom lint test runners).
 * Test both **negative cases** (sample problem code that must trigger detection) and **positive cases** (sample valid code that must pass without flags).
 
+### 8. Extension-Based Interop Protocols & Stream Auto-Disposal
+When designing interop adapters, conversion helpers, or external protocol bridges (e.g., `toStream()`, `toBlocSignal()`):
+* Do **NOT** pollute or burden core base class interfaces (`BlocSignalBase`). Implement conversion helpers as **Dart Extensions** exported from the main library entrypoint (`package:bloc_signals/bloc_signals.dart`). This keeps base class contracts unburdened while giving developers out-of-the-box IDE autocomplete convenience.
+* When wrapping external event streams (e.g., `StreamBlocSignal`), always handle `onDone` in `stream.listen()` to automatically close the container instance when the source stream completes (`onDone: () => unawaited(close());`).
+
+
 
 
 

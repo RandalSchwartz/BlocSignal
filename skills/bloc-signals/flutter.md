@@ -30,6 +30,39 @@ class CounterScreen extends StatelessWidget {
 
 ---
 
+## 🔌 Flutter `Listenable` & `package:provider` Interop
+
+`bloc_signals_flutter` includes out-of-the-box interop extensions connecting `BlocSignal` with Flutter's native `Listenable`, `ValueListenable`, `ChangeNotifier`, and `package:provider`:
+
+### 1. `Listenable` / `ValueListenable` → `BlocSignal`
+Convert any Flutter `ChangeNotifier`, `Listenable`, or `ValueListenable` into a `BlocSignalBase`:
+
+```dart
+import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
+
+// ValueNotifier -> BlocSignal
+final ValueNotifier<int> valueNotifier = ValueNotifier(10);
+final BlocSignalBase<int> cubitFromNotifier = valueNotifier.toBlocSignal();
+
+// ChangeNotifier -> BlocSignal
+final MyChangeNotifier changeNotifier = MyChangeNotifier();
+final BlocSignalBase<MyState> cubitFromChangeNotifier = changeNotifier.toBlocSignal(
+  readState: () => changeNotifier.state,
+);
+```
+
+### 2. `BlocSignal` → `ValueListenable`
+Expose any `BlocSignalBase` as a Flutter `ValueListenable<T>` for classic `package:provider` (`ChangeNotifierProvider`), `ValueListenableBuilder`, or legacy widgets:
+
+```dart
+final myBloc = CounterBloc();
+
+// Exposes a ValueListenable<int> for ValueListenableBuilder or ListenableProvider
+final ValueListenable<int> listenable = myBloc.toValueListenable();
+```
+
+---
+
 ## 🏗️ Scoping Blocs with `BlocSignalProvider`
 
 `BlocSignalProvider` acts as a dependency injection widget, providing a `BlocSignal` instance to its children down the widget tree.
@@ -169,4 +202,3 @@ class CounterHookScreen extends HookWidget {
    * Calling `effect()` inside `build()` spawns a new listener on every build frame, creating a severe memory leak.
    * Calling `computed()` inside `build()` forces the dependency graph to re-evaluate and allocate nodes on every frame. 
    * **Rule**: Keep `build` methods pure. Define `computed` and `effect` properties inside Cubit/Bloc constructors, or in a `StatefulWidget`'s `initState` lifecycle.
-

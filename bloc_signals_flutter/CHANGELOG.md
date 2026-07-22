@@ -1,3 +1,9 @@
+## 0.2.2
+
+- Added bidirectional Flutter `Listenable` & `ValueListenable` interop adapters:
+  - `listenable.toBlocSignal(readState: ...)` & `valueListenable.toBlocSignal()`: Convert any Flutter `Listenable`, `ChangeNotifier`, or `ValueNotifier` into a `BlocSignalBase`.
+  - `blocSignal.toValueListenable()`: Expose any `BlocSignalBase` as a Flutter `ValueListenable<T>` for classic `package:provider` (`ChangeNotifierProvider`) or `ValueListenableBuilder`.
+
 ## 0.2.1
 
 - Refactor example app BLoCs (`LoginBloc` and `TimerBloc`) to use constructor-scoped `on<E>` event handler syntax.

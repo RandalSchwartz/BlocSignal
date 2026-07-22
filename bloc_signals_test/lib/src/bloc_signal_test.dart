@@ -9,7 +9,11 @@ import 'package:test/test.dart' as test_pkg;
 /// [blocSignalTest] creates a new test case with the given [description].
 ///
 /// [build] should construct and return the state container instance under
-/// test.
+/// test. State seeding can be performed directly inside [build]:
+/// ```dart
+/// build: () => CounterBloc(initialState: 5),
+/// ```
+
 ///
 /// [setUp] is an optional callback invoked prior to building the state
 /// container.

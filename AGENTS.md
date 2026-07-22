@@ -12,6 +12,7 @@ We use a native Dart workspace (supported in Dart 3.5+) instead of Melos.
   - `bloc_signals` (Core pure Dart package)
   - `bloc_signals_flutter` (Flutter bindings)
   - `bloc_signals_flutter/example` (Example Flutter application)
+  - `bloc_signals_riverpod` (Bidirectional Riverpod interop adapters)
   - `bloc_signals_test` (Declarative unit testing utilities)
   - `bloc_signals_lint` (Static analysis lints & IDE diagnostics)
 
@@ -143,8 +144,9 @@ When designing interop adapters, conversion helpers, or external protocol bridge
 * Do **NOT** pollute or burden core base class interfaces (`BlocSignalBase`). Implement conversion helpers as **Dart Extensions** exported from the main library entrypoint (`package:bloc_signals/bloc_signals.dart`). This keeps base class contracts unburdened while giving developers out-of-the-box IDE autocomplete convenience.
 * When wrapping external event streams (e.g., `StreamBlocSignal`), always handle `onDone` in `stream.listen()` to automatically close the container instance when the source stream completes (`onDone: () => unawaited(close());`).
 
-
-
-
-
-
+### 9. Riverpod Interoperability & Subscription Duplication Prevention (`bloc_signals_riverpod`)
+When creating Riverpod interop bridges:
+* **`ProviderListenable` as Pivot**: Use `ProviderListenable<T>` to adapt Riverpod state into `BlocSignalBase`. Use `ProviderContainer.listen` to sync state changes synchronously.
+* **Auto-Disposal Binding**: Automatically bind `ref.onDispose(bloc.close)` when passing a `Ref` or `WidgetRef` to `.toBlocSignal(ref)` to prevent `autoDispose` retain count leaks.
+* **Avoiding Subscription Duplication in Provider Callbacks**: Never call `state.subscribe(...)` inside standard `Provider((ref) => ...)` closures if `ref.invalidateSelf()` is called inside the callback, as Riverpod re-executes the closure on invalidation, duplicating listeners exponentially. Use `Notifier` / `NotifierProvider` where `build()` runs once.
+* **Riverpod 3 Export Compatibility**: In Riverpod 3.3+, `ProviderListenable` is exported via `package:riverpod/src/internals.dart`. Importing `src/internals.dart` ensures cross-version compatibility for Riverpod 2 and 3.

@@ -12,6 +12,7 @@ dependencies:
   bloc_signals: ^0.2.0
   meta: ">=1.11.0 <2.0.0"
   riverpod: ">=2.5.0 <4.0.0"
+  signals_core: ^7.0.0
 
 dev_dependencies:
   test: ^1.25.6

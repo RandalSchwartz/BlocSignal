@@ -1,21 +1,37 @@
-/// Example showing how to configure `bloc_signals_lint` in
-/// `analysis_options.yaml`.
-///
-/// In your project's `analysis_options.yaml`:
-/// ```yaml
-/// analyzer:
-///   plugins:
-///     - custom_lint
-/// ```
-///
-/// Then add `bloc_signals_lint` to your `dev_dependencies` in `pubspec.yaml`:
-/// ```yaml
-/// dev_dependencies:
-///   custom_lint: ^0.7.0
-///   bloc_signals_lint: ^0.2.1
-/// ```
-void main() {
-  // `bloc_signals_lint` automatically highlights issues inside your IDE
-  // such as duplicate event handlers, missing super.onEvent calls, or
-  // calling emit() inside build() methods.
+import 'dart:async';
+
+import 'package:bloc_signals/bloc_signals.dart';
+
+/// Sealed event hierarchy for sample counter BLoC.
+abstract class CounterEvent {}
+
+/// Increment event.
+class IncrementEvent extends CounterEvent {}
+
+/// Sample BLoC demonstrating correct `onEvent` override and event handlers.
+class SampleCounterBloc extends BlocSignal<CounterEvent, int> {
+  /// Creates a [SampleCounterBloc] with initial state 0.
+  SampleCounterBloc() : super(initialState: 0) {
+    // Single event handler registration (prevents
+    // avoid_duplicate_event_handlers)
+    on<IncrementEvent>((event, emit) {
+      emit(stateValue + 1);
+    });
+  }
+
+  @override
+  void onEvent(CounterEvent event) {
+    // Must invoke super.onEvent(event) (enforced by require_super_on_event)
+    unawaited(Future.value(super.onEvent(event)));
+  }
+}
+
+void main() async {
+  final bloc = SampleCounterBloc()..add(IncrementEvent());
+
+  // Print output for example demonstration.
+  // ignore: avoid_print
+  print('Current count: ${bloc.stateValue}');
+
+  await bloc.close();
 }

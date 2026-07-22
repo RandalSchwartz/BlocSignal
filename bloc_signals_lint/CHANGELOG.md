@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Added full runnable BLoC sample code in `example/example.dart` demonstrating custom lint rule invariants.
+
 ## 0.2.1
 
 - Added example documentation and pubspec package topics to improve pub.dev score to 160/160.

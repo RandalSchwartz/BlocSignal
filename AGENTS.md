@@ -10,7 +10,7 @@ We use a native Dart workspace (supported in Dart 3.5+) instead of Melos.
 - **Root Configuration**: [pubspec.yaml](pubspec.yaml) defines the workspace.
 - **Members**:
   - `bloc_signals` (Core pure Dart package)
-  - `bloc_signals_flutter` (Flutter bindings)
+  - `bloc_signals_flutter` (Flutter bindings & Listenable interop)
   - `bloc_signals_flutter/example` (Example Flutter application)
   - `bloc_signals_riverpod` (Bidirectional Riverpod interop adapters)
   - `bloc_signals_test` (Declarative unit testing utilities)
@@ -150,3 +150,8 @@ When creating Riverpod interop bridges:
 * **Auto-Disposal Binding**: Automatically bind `ref.onDispose(bloc.close)` when passing a `Ref` or `WidgetRef` to `.toBlocSignal(ref)` to prevent `autoDispose` retain count leaks.
 * **Avoiding Subscription Duplication in Provider Callbacks**: Never call `state.subscribe(...)` inside standard `Provider((ref) => ...)` closures if `ref.invalidateSelf()` is called inside the callback, as Riverpod re-executes the closure on invalidation, duplicating listeners exponentially. Use `Notifier` / `NotifierProvider` where `build()` runs once.
 * **Riverpod 3 Export Compatibility**: In Riverpod 3.3+, `ProviderListenable` is exported via `package:riverpod/src/internals.dart`. Importing `src/internals.dart` ensures cross-version compatibility for Riverpod 2 and 3.
+
+### 10. Flutter `Listenable` & `package:provider` Interoperability (`bloc_signals_flutter`)
+When bridging Flutter `Listenable` / `ChangeNotifier` / `ValueListenable`:
+* **Static Extension Resolution**: Flutter's `Listenable` (`package:flutter/foundation.dart`) and Riverpod's `ProviderListenable` (`package:riverpod`) are separate interfaces in Dart. Extension methods resolve statically based on the target type with zero collisions.
+* **Listener Teardown**: `ListenableBlocSignal.close()` invokes `listenable.removeListener(_onListenableChanged)`. `_BlocSignalValueListenable.dispose()` unsubscribes from `bloc.state.subscribe(...)`.

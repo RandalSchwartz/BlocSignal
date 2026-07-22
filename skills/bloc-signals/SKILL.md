@@ -27,6 +27,7 @@ description: Core state management container integrating BLoC/Cubit patterns wit
 |---|---|
 | [Core Guidelines & FAQ](core.md) | Synchronous lifecycle, automatic de-duplication, and FAQ (including sealed class exhaustiveness & effect/computed usage). |
 | [Flutter Integration](flutter.md) | Reacting to state in Flutter widgets via `BlocSignalBuilder` and dependency injection using `BlocSignalProvider`. |
+| [Interoperability Guide](interoperability.md) | Complete guide to the State Management Interoperability Trifecta (BLoC + Riverpod + Provider). |
 | [OpenTelemetry Observability](otel.md) | Instrumenting event transitions, errors, and spans using `OtelBlocSignalObserver`. |
 | [Testing Guidelines](testing.md) | Synchronous testing patterns, asynchronous event handler test styles, and lifecycle disposal expectations. |
 | [Custom Lint Rules](lint.md) | IDE analysis diagnostics, core rules, and configuration guidelines for `bloc_signals_lint`. |
@@ -174,4 +175,3 @@ myCubit.increment();
     builder: (context, username) => Text('Hello, $username'),
   )
   ```
-

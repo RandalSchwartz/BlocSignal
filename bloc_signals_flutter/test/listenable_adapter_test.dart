@@ -19,6 +19,22 @@ class TestCubit extends CubitSignal<int> {
   void increment() => emit(stateValue + 1);
 }
 
+class ErrorCapturingListenableBlocSignal<T> extends ListenableBlocSignal<T> {
+  ErrorCapturingListenableBlocSignal(
+    super.listenable, {
+    required super.readState,
+    required this.onErrorCallback,
+  });
+
+  final void Function(Object error, StackTrace stackTrace) onErrorCallback;
+
+  @override
+  void onError(Object error, StackTrace stackTrace) {
+    onErrorCallback(error, stackTrace);
+    super.onError(error, stackTrace);
+  }
+}
+
 void main() {
   group('ListenableBlocSignal & ListenableAdapter', () {
     test('adapts ChangeNotifier to BlocSignal using readState', () async {
@@ -60,6 +76,31 @@ void main() {
       await blocSignal.close();
 
       expect(changeNotifier.isListening, isFalse);
+    });
+
+    test('routes exception thrown by readState to onError', () async {
+      Object? capturedError;
+      final changeNotifier = TestChangeNotifier();
+      var shouldThrow = false;
+
+      final blocSignal = ErrorCapturingListenableBlocSignal<int>(
+        changeNotifier,
+        readState: () {
+          if (shouldThrow) {
+            throw const FormatException('readState exception');
+          }
+          return changeNotifier.count;
+        },
+        onErrorCallback: (error, stackTrace) {
+          capturedError = error;
+        },
+      );
+
+      shouldThrow = true;
+      changeNotifier.increment();
+
+      expect(capturedError, isA<FormatException>());
+      await blocSignal.close();
     });
 
     test('adapts BlocSignal to ValueListenable via toValueListenable()',

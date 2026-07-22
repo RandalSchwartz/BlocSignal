@@ -1,3 +1,7 @@
+## 0.2.3
+
+- Route exceptions thrown by `readState()` inside `ListenableBlocSignal._onListenableChanged()` directly to `onError(error, stackTrace)` and observers.
+
 ## 0.2.2
 
 - Added bidirectional Flutter `Listenable` & `ValueListenable` interop adapters:

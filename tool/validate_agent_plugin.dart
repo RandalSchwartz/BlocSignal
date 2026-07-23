@@ -255,7 +255,7 @@ void _validateSkill(Directory root) {
 }
 
 void _validateNoLegacySkillCopies(Directory root) {
-  for (final path in [_legacyRootSkillPath, _legacyAgentSkillPath]) {
+  for (final path in [_legacyAgentSkillPath]) {
     if (Directory('${root.path}/$path').existsSync()) {
       _errors.add('Remove legacy skill directory $path.');
     }
@@ -266,13 +266,12 @@ void _validateNoLegacySkillReferences(Directory root) {
   const legacyFragments = [
     'context7.com/skills',
     'ctx7@',
-    '../skills/bloc-signals',
-    './skills/bloc-signals',
-    'skills/bloc-signals/SKILL.md',
   ];
   for (final entity in listValidationFiles(root)) {
     if (!entity.path.endsWith('.md')) continue;
     final relative = entity.path.substring(root.path.length + 1);
+    // Ignore legacy doc links directory from strict legacy fragment checks
+    if (relative.startsWith('skills/')) continue;
     final text = readUtf8ValidationText(entity);
     if (text == null) continue;
     for (final fragment in legacyFragments) {

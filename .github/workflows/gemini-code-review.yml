@@ -111,24 +111,17 @@ jobs:
               }
             }
 
-            if (!response || !response.ok) {
+            if (!response || !response.ok || !reviewText) {
               const errText = response ? await response.text() : 'No response';
               console.log('⚠️ Gemini API Review Notice (' + (response ? response.status : 'error') + '):\n' + errText);
               console.log('Please verify GEMINI_API_KEY permissions in Google AI Studio / GCP Console.');
               return;
             }
 
-            const data = await response.json();
-            const reviewText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (reviewText) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber,
-                body: '🤖 **Gemini Code Assist (GCA) Automated Review**\n\n' + reviewText
-              });
-              console.log('✅ Successfully posted automated code review to PR #' + issueNumber);
-            } else {
-              console.log('Gemini API returned no candidates/text.');
-            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: '🤖 **Gemini Code Assist (GCA) Automated Review**\n\n' + reviewText
+            });
+            console.log('✅ Successfully posted automated code review to PR #' + issueNumber);

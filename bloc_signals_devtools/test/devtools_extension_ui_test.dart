@@ -26,11 +26,13 @@ void main() {
 
   final sampleHistory = [
     {
+      'hashCode': 1001,
       'type': 'transition',
       'timestamp': '2026-07-23T12:00:00.000',
       'data': {'event': 'increment', 'nextState': '42'},
     },
     {
+      'hashCode': 1002,
       'type': 'error',
       'timestamp': '2026-07-23T12:01:00.000',
       'data': {'error': 'NetworkException'},
@@ -113,6 +115,26 @@ void main() {
       );
 
       expect(find.text('Active: 2 | Closed: 1'), findsOneWidget);
+    });
+
+    testWidgets('BlocSignalsDevToolsExtension filters history by selected container',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocSignalsDevToolsExtension(
+            instances: sampleInstances,
+            history: sampleHistory,
+          ),
+        ),
+      );
+
+      // Select CounterCubit (hashCode 1001)
+      await tester.tap(find.text('CounterCubit'));
+      await tester.pump();
+
+      // Only transition for 1001 should be displayed
+      expect(find.text('Event: increment'), findsOneWidget);
+      expect(find.text('Error: NetworkException'), findsNothing);
     });
   });
 }

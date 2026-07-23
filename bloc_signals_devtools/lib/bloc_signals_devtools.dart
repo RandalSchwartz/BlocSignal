@@ -39,10 +39,18 @@ class _BlocSignalsDevToolsExtensionState
     final instances = widget.instances;
     final selectedHashCode = _selectedInstance?['hashCode'] as int?;
 
+    // Filter history entries for selected container instance
+    final filteredHistory = widget.history.where((entry) {
+      if (selectedHashCode == null) return true;
+      final instanceId = entry['hashCode'] ?? entry['instanceHashCode'];
+      return instanceId == null || instanceId == selectedHashCode;
+    }).toList();
+
     // Derive state diff values from selected history entry or selected instance
     final historyData =
         (_selectedHistoryEntry?['data'] as Map<String, dynamic>?) ?? {};
     final currentState = historyData['currentState']?.toString() ??
+        historyData['prevState']?.toString() ??
         historyData['event']?.toString() ??
         'Initial State';
     final nextState = historyData['nextState']?.toString() ??
@@ -90,7 +98,7 @@ class _BlocSignalsDevToolsExtensionState
                         ),
                       ),
                       Expanded(
-                        child: TimelineTracePanel(history: widget.history),
+                        child: TimelineTracePanel(history: filteredHistory),
                       ),
                     ],
                   ),

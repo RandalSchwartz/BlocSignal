@@ -33,11 +33,13 @@ class StateDiffInspector extends StatelessWidget {
             children: [
               const Icon(Icons.difference_outlined, size: 18),
               const SizedBox(width: 8),
-              const Text(
-                'State Transition Diff',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              const Expanded(
+                child: Text(
+                  'State Transition Diff',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              const Spacer(),
               Chip(
                 label: Text(
                   isEqual ? 'Unchanged' : 'Mutated',

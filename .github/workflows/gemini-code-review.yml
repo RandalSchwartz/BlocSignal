@@ -66,25 +66,23 @@ jobs:
             const prTitle = context.payload.pull_request?.title || 'PR Review';
             const prBody = context.payload.pull_request?.body || 'No description provided.';
 
-            const prompt = `You are Gemini Code Assist (GCA), an expert automated code reviewer for Dart and Flutter monorepos.
+            const prompt = "You are Gemini Code Assist (GCA), an expert automated code reviewer for Dart and Flutter monorepos.\n\n" +
+              "Review the following Pull Request diff for the BlocSignal project:\n" +
+              "- PR Title: " + prTitle + "\n" +
+              "- PR Description: " + prBody + "\n\n" +
+              "Diff:\n" +
+              "```diff\n" +
+              truncatedDiff + "\n" +
+              "```\n\n" +
+              "Provide a professional, concise code review covering:\n" +
+              "1. 🔍 Architectural & Code Analysis\n" +
+              "2. 🧪 Test Coverage & Static Analysis Compliance\n" +
+              "3. 🎯 GCA Recommendation (🟢 APPROVE or 🟡 REQUEST CHANGES)\n\n" +
+              "Format your response in clean GitHub Markdown with headings, bullet points, and an explicit GCA approval status tag.";
 
-Review the following Pull Request diff for the BlocSignal project:
-- PR Title: ${prTitle}
-- PR Description: ${prBody}
+            const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
 
-Diff:
-\`\`\`diff
-${truncatedDiff}
-\`\`\`
-
-Provide a professional, concise code review covering:
-1. 🔍 Architectural & Code Analysis
-2. 🧪 Test Coverage & Static Analysis Compliance
-3. 🎯 GCA Recommendation (🟢 APPROVE or 🟡 REQUEST CHANGES)
-
-Format your response in clean GitHub Markdown with headings, bullet points, and an explicit GCA approval status tag.`;
-
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+            const response = await fetch(url, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -94,7 +92,7 @@ Format your response in clean GitHub Markdown with headings, bullet points, and 
 
             if (!response.ok) {
               const errText = await response.text();
-              throw new Error(`Gemini API Error (${response.status}): ${errText}`);
+              throw new Error('Gemini API Error (' + response.status + '): ' + errText);
             }
 
             const data = await response.json();
@@ -105,7 +103,7 @@ Format your response in clean GitHub Markdown with headings, bullet points, and 
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                body: `🤖 **Gemini Code Assist (GCA) Automated Review**\n\n${reviewText}`
+                body: '🤖 **Gemini Code Assist (GCA) Automated Review**\n\n' + reviewText
               });
             } else {
               console.log('Gemini API returned no candidates/text.');

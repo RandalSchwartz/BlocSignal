@@ -1,0 +1,24 @@
+name: bloc_signals_hydrate
+resolution: workspace
+description: State persistence and hydration adapters for BlocSignal state containers.
+version: 0.1.0
+repository: https://github.com/RandalSchwartz/BlocSignal
+issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
+
+topics:
+  - bloc
+  - signals
+  - hydrated
+  - persistence
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  bloc_signals: ^0.2.4
+  meta: ">=1.11.0 <2.0.0"
+  signals_core: ^7.0.0
+
+dev_dependencies:
+  test: ^1.25.6
+  very_good_analysis: ^10.1.0

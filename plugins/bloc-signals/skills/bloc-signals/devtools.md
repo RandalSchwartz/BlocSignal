@@ -45,3 +45,15 @@ void main() {
 | `bloc_signal.onChange` | `blocType`, `hashCode`, `currentState`, `nextState`, `timestamp` |
 | `bloc_signal.onError` | `blocType`, `hashCode`, `error`, `stackTrace`, `timestamp` |
 | `bloc_signal.onClose` | `blocType`, `hashCode`, `timestamp` |
+
+---
+
+## 📡 VM Service RPC Extensions
+
+When `DevToolsBlocSignalObserver` is registered, the following VM Service RPC endpoints are registered via `developer.registerExtension`:
+
+| Method | Parameters | Description |
+| :--- | :--- | :--- |
+| `ext.bloc_signal.getInstances` | None | Returns a JSON list of all active container instances (`hashCode`, `type`, `stateValue`, `isClosed`). |
+| `ext.bloc_signal.getHistory` | `hashCode` | Returns recorded transition and error history entries for the specified container instance. |
+| `ext.bloc_signal.dispatch` | `hashCode`, `event` | Synthetically dispatches an event (`bloc.add(event)`) to the target container instance. |

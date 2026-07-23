@@ -1,3 +1,11 @@
+## 0.2.5
+
+- Add universal DevTools telemetry observer (`DevToolsBlocSignalObserver`) broadcasting `bloc_signal.*` VM Service events.
+- Add VM Service RPC extensions (`DevToolsService`):
+  - Register `ext.bloc_signal.getInstances` returning active container metadata and state values.
+  - Register `ext.bloc_signal.getHistory` returning transition and error history entries per container.
+  - Register `ext.bloc_signal.dispatch` enabling remote event dispatching over VM Service RPC.
+
 ## 0.2.4
 
 - Add overridable change-definition (equality/identity) mechanism to state containers:

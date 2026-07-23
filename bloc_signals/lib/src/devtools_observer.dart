@@ -1,9 +1,11 @@
 import 'dart:developer' as developer;
 
 import 'package:bloc_signals/src/bloc_signals_base.dart';
+import 'package:bloc_signals/src/devtools_service.dart';
 
 /// A [BlocSignalObserver] that broadcasts container lifecycle events to the
-/// Dart VM service via [developer.postEvent] under `bloc_signal.*` event kinds.
+/// Dart VM service via [developer.postEvent] under `bloc_signal.*` event kinds
+/// and registers VM Service RPC extensions via [DevToolsService].
 ///
 /// This provides foundational telemetry for Dart and Flutter DevTools
 /// extensions and VM service inspection tools across both pure Dart and
@@ -29,6 +31,7 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
   @override
   void onCreate(BlocSignalBase<dynamic> bloc) {
     super.onCreate(bloc);
+    DevToolsService.instance.trackCreate(bloc);
     previousObserver?.onCreate(bloc);
 
     _post('bloc_signal.onCreate', {
@@ -59,6 +62,7 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     Object? state,
   ) {
     super.onTransition(bloc, event, state);
+    DevToolsService.instance.trackTransition(bloc, event, state);
     previousObserver?.onTransition(bloc, event, state);
 
     _post('bloc_signal.onTransition', {
@@ -94,6 +98,7 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     StackTrace stackTrace,
   ) {
     super.onError(bloc, error, stackTrace);
+    DevToolsService.instance.trackError(bloc, error, stackTrace);
     previousObserver?.onError(bloc, error, stackTrace);
 
     _post('bloc_signal.onError', {
@@ -108,6 +113,7 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
   @override
   void onClose(BlocSignalBase<dynamic> bloc) {
     super.onClose(bloc);
+    DevToolsService.instance.trackClose(bloc);
     previousObserver?.onClose(bloc);
 
     _post('bloc_signal.onClose', {

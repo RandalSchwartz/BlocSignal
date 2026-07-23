@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- Add optional `equals:` parameter to `RiverpodBlocSignal` constructors and `ProviderListenable.toBlocSignal()` extension.
+
 ## 0.1.2
 
 - Added example documentation and pubspec package topics to achieve 160/160 pub points on pub.dev.

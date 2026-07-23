@@ -1,3 +1,11 @@
+## 0.2.4
+
+- Add overridable change-definition (equality/identity) mechanism to state containers:
+  - Add `@protected bool equals(StateType previous, StateType current)` method to `BlocSignalBase`.
+  - Add optional `equals:` constructor parameter to `BlocSignalBase`, `CubitSignal`, and `BlocSignal`.
+  - Add optional `equals:` parameter to `Stream.toBlocSignal()` extension.
+  - Automatically synchronize custom equality rules with the underlying `state` (`ReadonlySignal`) graph.
+
 ## 0.2.3
 
 - Add event concurrency strategy transformers and Mutex lock:

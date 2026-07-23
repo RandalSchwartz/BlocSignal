@@ -1,3 +1,7 @@
+## 0.2.4
+
+- Add optional `equals:` parameter to `ListenableBlocSignal` constructors and `.toBlocSignal()` extensions (`Listenable.toBlocSignal()` & `ValueListenable.toBlocSignal()`).
+
 ## 0.2.3
 
 - Route exceptions thrown by `readState()` inside `ListenableBlocSignal._onListenableChanged()` directly to `onError(error, stackTrace)` and observers.

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.1
+## 0.1.2
 
 - Added runnable unit testing example in `example/example.dart`.
 - Added pub.dev topics (`testing`, `unit-testing`, `bloc`, `signals`) to achieve maximum pub points score.

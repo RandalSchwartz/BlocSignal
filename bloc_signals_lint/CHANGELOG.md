@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.3
+## 0.2.4
 
 - Tightened `analyzer` (`>=6.8.0 <15.0.0`) and `custom_lint_builder` (`>=0.8.0 <0.9.0`) dependency constraints to ensure full compatibility with the analyzer Element2 API and pass pub.dev lower-bound downgrade analysis.
 

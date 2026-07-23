@@ -82,17 +82,25 @@ jobs:
 
             const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + apiKey;
 
-            const response = await fetch(url, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-              })
-            });
+            let response;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }]
+                })
+              });
 
-            if (!response.ok) {
-              const errText = await response.text();
-              throw new Error('Gemini API Error (' + response.status + '): ' + errText);
+              if (response.ok) break;
+
+              if (response.status === 429 && attempt < 3) {
+                console.log('Rate limit (429) encountered. Retrying in 15s (attempt ' + attempt + '/3)...');
+                await new Promise(res => setTimeout(res, 15000));
+              } else {
+                const errText = await response.text();
+                throw new Error('Gemini API Error (' + response.status + '): ' + errText);
+              }
             }
 
             const data = await response.json();

@@ -20,7 +20,11 @@ jobs:
       - name: Extract PR Diff
         id: diff
         run: |
-          git diff origin/${{ github.base_ref }}...HEAD > pr_diff.txt
+          if [ -n "${{ github.base_ref }}" ]; then
+            git diff origin/${{ github.base_ref }}...HEAD > pr_diff.txt
+          else
+            git diff HEAD~1..HEAD > pr_diff.txt
+          fi
 
       - name: Execute Gemini Code Review
         uses: actions/github-script@v7
@@ -32,6 +36,12 @@ jobs:
             const apiKey = process.env.GEMINI_API_KEY;
             if (!apiKey) {
               console.log('⚠️ No GEMINI_API_KEY secret configured in repository settings. Skipping automated code review.');
+              return;
+            }
+
+            const issueNumber = context.issue.number || context.payload.pull_request?.number;
+            if (!issueNumber) {
+              console.log('No pull request issue number found. Skipping review.');
               return;
             }
 
@@ -53,8 +63,8 @@ jobs:
               ? diff.substring(0, maxDiffLength) + '\n... (diff truncated)' 
               : diff;
 
-            const prTitle = context.payload.pull_request.title || 'No title';
-            const prBody = context.payload.pull_request.body || 'No description provided.';
+            const prTitle = context.payload.pull_request?.title || 'PR Review';
+            const prBody = context.payload.pull_request?.body || 'No description provided.';
 
             const prompt = `You are Gemini Code Assist (GCA), an expert automated code reviewer for Dart and Flutter monorepos.
 
@@ -94,7 +104,7 @@ Format your response in clean GitHub Markdown with headings, bullet points, and 
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: context.issue.number,
+                issue_number: issueNumber,
                 body: `🤖 **Gemini Code Assist (GCA) Automated Review**\n\n${reviewText}`
               });
             } else {

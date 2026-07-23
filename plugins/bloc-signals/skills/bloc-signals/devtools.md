@@ -55,5 +55,22 @@ When `DevToolsBlocSignalObserver` is registered, the following VM Service RPC en
 | Method | Parameters | Description |
 | :--- | :--- | :--- |
 | `ext.bloc_signal.getInstances` | None | Returns a JSON list of all active container instances (`hashCode`, `type`, `stateValue`, `isClosed`). |
-| `ext.bloc_signal.getHistory` | `hashCode` | Returns recorded transition and error history entries for the specified container instance. |
-| `ext.bloc_signal.dispatch` | `hashCode`, `event` | Synthetically dispatches an event (`bloc.add(event)`) to the target container instance. |
+| `ext.bloc_signal.getHistory` | `{"hashCode": 123}` | `{ "history": [...] }` | Fetches transition history ring buffer. |
+| `ext.bloc_signal.dispatch` | `{"hashCode": 123, "event": "inc"}` | `{ "success": true }` | Synthetically dispatches event over RPC. |
+
+---
+
+## 🎨 Dedicated DevTools Extension UI (`bloc_signals_devtools`)
+
+For visual inspection inside Flutter DevTools, import `package:bloc_signals_devtools/bloc_signals_devtools.dart`:
+
+```dart
+import 'package:bloc_signals_devtools/bloc_signals_devtools.dart';
+
+Widget buildInspector(List<Map<String, dynamic>> instances, List<Map<String, dynamic>> history) {
+  return BlocSignalsDevToolsExtension(
+    instances: instances,
+    history: history,
+  );
+}
+```

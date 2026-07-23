@@ -12,6 +12,7 @@ workspace:
   - bloc_signals_test
   - bloc_signals_lint
   - bloc_signals_riverpod
+  - bloc_signals_hydrate
   - benchmarks
 
 dev_dependencies:

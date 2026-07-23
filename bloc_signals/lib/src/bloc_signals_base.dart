@@ -4,6 +4,9 @@ import 'package:bloc_signals/src/change.dart';
 import 'package:bloc_signals/src/concurrency/event_transformers.dart';
 import 'package:bloc_signals/src/transition.dart';
 import 'package:meta/meta.dart';
+/// Re-exported preact_signals dependency for custom equality support.
+// ignore: depend_on_referenced_packages
+import 'package:preact_signals/preact_signals.dart' show SignalEquality;
 import 'package:signals_core/signals_core.dart';
 
 export 'change.dart';
@@ -54,8 +57,21 @@ abstract class BlocSignalObserver {
 /// Manages the state signal, provides lifecycle hooks, and manages disposal.
 abstract class BlocSignalBase<StateType> {
   /// Creates a [BlocSignalBase] with the specified [initialState].
-  BlocSignalBase({required StateType initialState})
-      : _state = signal(initialState) {
+  ///
+  /// Optionally accepts a custom [equals] comparator to override state
+  /// change de-duplication strategy.
+  BlocSignalBase({
+    required StateType initialState,
+    bool Function(StateType previous, StateType current)? equals,
+  })  : _customEquals = equals {
+    _state = signal<StateType>(
+      initialState,
+      options: SignalOptions<StateType>(
+        equality: SignalEquality<StateType>.custom(
+          (a, b) => this.equals(a, b),
+        ),
+      ),
+    );
     final modelConstructor = createModel(() {
       effect(() {
         _onStateChangedInternal(_state.value);
@@ -66,6 +82,8 @@ abstract class BlocSignalBase<StateType> {
     BlocSignalObserver.observer?.onCreate(this);
   }
 
+  final bool Function(StateType previous, StateType current)? _customEquals;
+
   bool _isClosed = false;
 
   /// Whether the state container is closed.
@@ -73,7 +91,7 @@ abstract class BlocSignalBase<StateType> {
   /// A closed container will drop any subsequent events and state updates.
   bool get isClosed => _isClosed;
 
-  final Signal<StateType> _state;
+  late final Signal<StateType> _state;
   late final SignalModel<void> _lifecycleModel;
   final List<void Function()> _effectsToDispose = [];
 
@@ -83,6 +101,20 @@ abstract class BlocSignalBase<StateType> {
   /// Retrieves the current raw state value.
   StateType get stateValue => _state.value;
 
+  /// Compares [previous] and [current] state to determine if state has changed.
+  ///
+  /// Defaults to standard value equality ([previous] == [current]) or the
+  /// constructor-injected `equals` callback if provided. Subclasses can
+  /// override this method to specify custom equality logic (e.g. `identical`).
+  @protected
+  bool equals(StateType previous, StateType current) {
+    final custom = _customEquals;
+    if (custom != null) {
+      return custom(previous, current);
+    }
+    return previous == current;
+  }
+
   /// Internal zone key used to track the causing event of a transition.
   @protected
   Object get zoneEventKey => _zoneEventKey;
@@ -90,8 +122,8 @@ abstract class BlocSignalBase<StateType> {
 
   /// Updates the state synchronously.
   ///
-  /// If the [newState] is equal to the current state, the update is ignored.
-  /// Otherwise, it triggers reactive effects and notifies the
+  /// If the [newState] is equal to the current state via [equals], the update
+  /// is ignored. Otherwise, it triggers reactive effects and notifies the
   /// global [BlocSignalObserver].
   @protected
   @visibleForTesting
@@ -102,7 +134,7 @@ abstract class BlocSignalBase<StateType> {
     );
     if (_isClosed) return;
     final oldState = _state.value;
-    if (oldState == newState) return;
+    if (equals(oldState, newState)) return;
 
     final event = Zone.current[zoneEventKey];
     if (event != null) {
@@ -183,7 +215,7 @@ abstract class BlocSignalBase<StateType> {
 /// Exposes state and [emit] directly for subclass methods.
 abstract class CubitSignal<StateType> extends BlocSignalBase<StateType> {
   /// Creates a [CubitSignal] with the specified [initialState].
-  CubitSignal({required super.initialState});
+  CubitSignal({required super.initialState, super.equals});
 }
 
 /// A synchronous state management container integrating BLoC design patterns
@@ -193,7 +225,7 @@ abstract class CubitSignal<StateType> extends BlocSignalBase<StateType> {
 /// and seamless integration with reactive contexts.
 abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType> {
   /// Creates a [BlocSignal] with the specified [initialState].
-  BlocSignal({required super.initialState});
+  BlocSignal({required super.initialState, super.equals});
 
   final List<_HandlerRegistry<Event, StateType>> _handlers = [];
 

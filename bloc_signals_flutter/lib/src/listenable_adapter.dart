@@ -9,6 +9,7 @@ class ListenableBlocSignal<T> extends CubitSignal<T> {
   ListenableBlocSignal(
     this.listenable, {
     required T Function() readState,
+    super.equals,
   })  : _readState = readState,
         super(initialState: readState()) {
     listenable.addListener(_onListenableChanged);
@@ -16,11 +17,13 @@ class ListenableBlocSignal<T> extends CubitSignal<T> {
 
   /// Creates a [ListenableBlocSignal] wrapping a [ValueListenable].
   factory ListenableBlocSignal.fromValueListenable(
-    ValueListenable<T> valueListenable,
-  ) {
+    ValueListenable<T> valueListenable, {
+    bool Function(T previous, T current)? equals,
+  }) {
     return ListenableBlocSignal<T>(
       valueListenable,
       readState: () => valueListenable.value,
+      equals: equals,
     );
   }
 
@@ -49,8 +52,15 @@ class ListenableBlocSignal<T> extends CubitSignal<T> {
 extension ListenableBlocSignalX on Listenable {
   /// Adapts this Flutter [Listenable] into a [BlocSignalBase] container with
   /// initial state evaluated by [readState].
-  BlocSignalBase<T> toBlocSignal<T>({required T Function() readState}) {
-    return ListenableBlocSignal<T>(this, readState: readState);
+  BlocSignalBase<T> toBlocSignal<T>({
+    required T Function() readState,
+    bool Function(T previous, T current)? equals,
+  }) {
+    return ListenableBlocSignal<T>(
+      this,
+      readState: readState,
+      equals: equals,
+    );
   }
 }
 
@@ -58,8 +68,13 @@ extension ListenableBlocSignalX on Listenable {
 /// conversion.
 extension ValueListenableBlocSignalX<T> on ValueListenable<T> {
   /// Adapts this Flutter [ValueListenable] into a [BlocSignalBase] container.
-  BlocSignalBase<T> toBlocSignal() {
-    return ListenableBlocSignal<T>.fromValueListenable(this);
+  BlocSignalBase<T> toBlocSignal({
+    bool Function(T previous, T current)? equals,
+  }) {
+    return ListenableBlocSignal<T>.fromValueListenable(
+      this,
+      equals: equals,
+    );
   }
 }
 

@@ -112,6 +112,22 @@ In classic BLoC, emitting the exact same state value multiple times will propaga
 
 With `BlocSignal`, reactive signals automatically **de-duplicate equal values** (using `==` equality) at the primitive layer. If you call `emit()` with a state that is equal to the current state, downstream effects and UI builders will not be notified or rebuilt. This reduces redundant widget builds by default without requiring manual configuration.
 
+### Custom Change-Definition Equality (`equals`)
+In classic BLoC, filtering identical states requires adding `.distinct()` to streams or overriding `==` operator on state classes.
+
+With `BlocSignal`, you can override `@protected bool equals(StateType previous, StateType current)` in your subclass (or pass an `equals:` callback to the constructor) to customize state de-duplication strategy (such as identity comparison `identical(previous, current)` or custom field matching) out-of-the-box:
+
+```dart
+class ReferenceCounterBloc extends BlocSignal<CounterEvent, CounterState> {
+  ReferenceCounterBloc(CounterState initial) : super(initialState: initial);
+
+  @override
+  bool equals(CounterState previous, CounterState current) {
+    return identical(previous, current); // Custom reference comparison
+  }
+}
+```
+
 ---
 
 ## Key Conceptual Differences

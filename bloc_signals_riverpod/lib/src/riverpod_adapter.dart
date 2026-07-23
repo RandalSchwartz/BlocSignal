@@ -10,8 +10,9 @@ class RiverpodBlocSignal<T> extends CubitSignal<T> {
   /// [container].
   RiverpodBlocSignal(
     ProviderContainer container,
-    ProviderListenable<T> listenable,
-  ) : super(initialState: container.read(listenable)) {
+    ProviderListenable<T> listenable, {
+    super.equals,
+  }) : super(initialState: container.read(listenable)) {
     _subscription = container.listen<T>(
       listenable,
       (previous, next) => emit(next),
@@ -24,9 +25,14 @@ class RiverpodBlocSignal<T> extends CubitSignal<T> {
   /// when the [ref]'s scope is disposed.
   factory RiverpodBlocSignal.fromRef(
     Ref ref,
-    ProviderListenable<T> listenable,
-  ) {
-    final bloc = RiverpodBlocSignal<T>(ref.container, listenable);
+    ProviderListenable<T> listenable, {
+    bool Function(T previous, T current)? equals,
+  }) {
+    final bloc = RiverpodBlocSignal<T>(
+      ref.container,
+      listenable,
+      equals: equals,
+    );
     ref.onDispose(bloc.close);
     return bloc;
   }
@@ -48,16 +54,31 @@ extension ProviderListenableBlocSignalX<T> on ProviderListenable<T> {
   /// [ProviderContainer]. If a [Ref] or object exposing `onDispose` is provided,
   /// `onDispose` is automatically registered to close the container when the
   /// provider/widget is disposed.
-  BlocSignalBase<T> toBlocSignal(Object refOrContainer) {
+  BlocSignalBase<T> toBlocSignal(
+    Object refOrContainer, {
+    bool Function(T previous, T current)? equals,
+  }) {
     if (refOrContainer is Ref) {
-      return RiverpodBlocSignal<T>.fromRef(refOrContainer, this);
+      return RiverpodBlocSignal<T>.fromRef(
+        refOrContainer,
+        this,
+        equals: equals,
+      );
     } else if (refOrContainer is ProviderContainer) {
-      return RiverpodBlocSignal<T>(refOrContainer, this);
+      return RiverpodBlocSignal<T>(
+        refOrContainer,
+        this,
+        equals: equals,
+      );
     } else {
       try {
         final dynamic obj = refOrContainer;
         final container = obj.container as ProviderContainer;
-        final bloc = RiverpodBlocSignal<T>(container, this);
+        final bloc = RiverpodBlocSignal<T>(
+          container,
+          this,
+          equals: equals,
+        );
         try {
           obj.onDispose(bloc.close);
         } catch (_) {}

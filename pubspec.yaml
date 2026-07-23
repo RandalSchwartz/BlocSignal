@@ -13,6 +13,7 @@ workspace:
   - bloc_signals_lint
   - bloc_signals_riverpod
   - bloc_signals_hydrate
+  - bloc_signals_devtools
   - benchmarks
 
 dev_dependencies:

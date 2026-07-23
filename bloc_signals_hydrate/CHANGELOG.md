@@ -1,3 +1,9 @@
+## 0.1.2
+
+- Add comprehensive ecosystem package cross-linking table and motto to README.
+- Add quick inlined hydration code examples.
+- Update `bloc_signals` dependency to `^0.2.6`.
+
 ## 0.1.1
 
 - Added explicit constructor documentation comments for `HydratedStorage` and `MemoryHydratedStorage`.

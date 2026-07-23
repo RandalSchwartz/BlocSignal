@@ -35,6 +35,12 @@
 
 - Add example demonstrating OpenTelemetry integration with `BlocSignal`.
 
+## 0.1.1
+
+- Add comprehensive ecosystem package cross-linking table and motto to README.
+- Add quick OpenTelemetry span correlation examples.
+- Update `bloc_signals` dependency to `^0.2.6`.
+
 ## 0.1.0
 
 - Initial release of `otel_bloc_signals` providing OpenTelemetry tracing instrumentation for `BlocSignal`.

@@ -22,6 +22,12 @@
   - `AddSuperOnEventFix`: Automatically inserts `super.onEvent(event);`.
   - `PreferReadInCallbacksFix`: Automatically replaces `context.watch<T>()` with `context.read<T>()`.
 
+## 0.1.1
+
+- Add comprehensive ecosystem package cross-linking table and motto to README.
+- Add quick lint rule descriptions and quick-fix guides.
+- Update `bloc_signals` dependency to `^0.2.6`.
+
 ## 0.1.0
 
 - Initial release of `bloc_signals_lint`.

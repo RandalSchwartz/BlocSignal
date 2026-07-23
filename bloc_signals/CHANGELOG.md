@@ -1,3 +1,8 @@
+## 0.2.6
+
+- Add comprehensive ecosystem package cross-linking table and motto to README.
+- Add quick inlined method code examples for `CubitSignal`, `BlocSignal`, `on<E>`, and concurrency transformers.
+
 ## 0.2.5
 
 - Add universal DevTools telemetry observer (`DevToolsBlocSignalObserver`) broadcasting `bloc_signal.*` VM Service events.

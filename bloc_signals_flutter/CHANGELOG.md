@@ -1,3 +1,9 @@
+## 0.2.6
+
+- Add comprehensive ecosystem package cross-linking table and motto to README.
+- Add quick inlined Flutter UI widget code examples (`BlocSignalBuilder`, `BlocSignalListener`, `BlocSignalConsumer`, `BlocSignalSelector`).
+- Update `bloc_signals` dependency to `^0.2.6`.
+
 ## 0.2.4
 
 - Add optional `equals:` parameter to `ListenableBlocSignal` constructors and `.toBlocSignal()` extensions (`Listenable.toBlocSignal()` & `ValueListenable.toBlocSignal()`).

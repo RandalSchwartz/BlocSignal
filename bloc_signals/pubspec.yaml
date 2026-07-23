@@ -10,6 +10,7 @@ environment:
 
 dependencies:
   meta: ">=1.11.0 <2.0.0"
+  preact_signals: ^7.0.0
   signals_core: ^7.0.0
 
 dev_dependencies:

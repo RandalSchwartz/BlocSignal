@@ -4,8 +4,6 @@ import 'package:bloc_signals/src/change.dart';
 import 'package:bloc_signals/src/concurrency/event_transformers.dart';
 import 'package:bloc_signals/src/transition.dart';
 import 'package:meta/meta.dart';
-/// Re-exported preact_signals dependency for custom equality support.
-// ignore: depend_on_referenced_packages
 import 'package:preact_signals/preact_signals.dart' show SignalEquality;
 import 'package:signals_core/signals_core.dart';
 

@@ -184,6 +184,11 @@ When adding state container configuration options (such as custom equality compa
 When publishing packages to pub.dev:
 * **Explicit Dependency Declaration**: Any package directly imported in `lib/` (even if imported only for a type annotation like `SignalEquality` or re-exported transitively) MUST be explicitly listed under `dependencies:` in `pubspec.yaml`. Otherwise, `flutter pub publish` validation fails with missing dependency errors.
 
+### 16. GitHub Actions Inline Script Syntax Safety
+When writing inline Node.js scripts in `.github/workflows/*.yml` via `actions/github-script`:
+* **Avoid `${...}` Interpolation**: Avoid JS template literal `${variable}` syntax inside YAML block scalars (`script: |`), as GitHub Actions attempts to parse `${...}` as GitHub Actions expressions. Use standard string concatenation (`'hello ' + name`) instead.
+
+
 
 
 

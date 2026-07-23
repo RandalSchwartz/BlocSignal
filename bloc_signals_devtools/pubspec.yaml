@@ -1,0 +1,20 @@
+name: bloc_signals_devtools
+resolution: workspace
+description: Dedicated Flutter DevTools extension UI for inspecting BlocSignal containers.
+version: 0.1.0
+repository: https://github.com/RandalSchwartz/BlocSignal
+issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.22.0"
+
+dependencies:
+  bloc_signals: ^0.2.5
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ^10.1.0

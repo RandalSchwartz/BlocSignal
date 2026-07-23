@@ -1,3 +1,10 @@
+## 0.2.3
+
+- Add event concurrency strategy transformers and Mutex lock:
+  - Add optional `transformer` parameter to `on<E>` event handler registry.
+  - Add `droppable()`, `sequential()`, and `restartable()` event transformers.
+  - Add zero-dependency `Mutex` class for FIFO queue async mutual exclusion.
+
 ## 0.2.2
 
 - Add bidirectional stream interop extensions and progressive migration bridge:

@@ -3,6 +3,9 @@ import 'dart:async';
 /// An abstract interface for state persistence backends used by
 /// `HydratedBlocSignal` and `HydratedCubitSignal`.
 abstract class HydratedStorage {
+  /// Abstract const constructor for [HydratedStorage] subclasses.
+  const HydratedStorage();
+
   /// The global default [HydratedStorage] instance used across hydrated blocs.
   static HydratedStorage? storage;
 
@@ -22,6 +25,8 @@ abstract class HydratedStorage {
 /// An in-memory implementation of [HydratedStorage] useful for testing,
 /// temporary sessions, and default zero-dependency storage.
 class MemoryHydratedStorage implements HydratedStorage {
+  /// Creates an in-memory [MemoryHydratedStorage] instance.
+  MemoryHydratedStorage();
   final Map<String, dynamic> _storage = {};
 
   @override

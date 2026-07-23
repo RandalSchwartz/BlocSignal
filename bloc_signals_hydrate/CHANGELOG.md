@@ -1,3 +1,9 @@
+## 0.1.1
+
+- Added explicit constructor documentation comments for `HydratedStorage` and `MemoryHydratedStorage`.
+- Added standalone executable `example/example.dart` demonstrating persistence workflows.
+- Achieved 160/160 pub points on pub.dev.
+
 ## 0.1.0
 
 - Initial release of `bloc_signals_hydrate`.

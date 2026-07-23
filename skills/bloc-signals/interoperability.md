@@ -11,21 +11,29 @@ Interoperability allows features built with different state management tools to 
 | Ecosystem | From Target ➔ `BlocSignal` | From `BlocSignal` ➔ Target | Package |
 | :--- | :--- | :--- | :--- |
 | **BLoC** (Stream) | `StreamBlocSignal(stream)` | `blocSignal.toStream()` | `bloc_signals` |
+| **Redux** | `StreamBlocSignal(store.onChange, initialState: store.state)` | `blocSignal.toStream()` | `bloc_signals` |
 | **Riverpod** | `provider.toBlocSignal(ref)` | `blocSignal.toProvider()` | `bloc_signals_riverpod` |
 | **Provider** (Listenable) | `listenable.toBlocSignal()` | `blocSignal.toValueListenable()` | `bloc_signals_flutter` |
 | **Riverpod Async** | `asyncValue.toAsyncState()` | `asyncState.toAsyncValue()` | `bloc_signals_riverpod` |
 
 ---
 
-## 1. BLoC & Stream Interoperability (`package:bloc_signals`)
+## 1. BLoC, Redux & Stream Interoperability (`package:bloc_signals`)
 
-Bridge classic stream-based BLoC components or `StreamBuilder` widgets:
+Bridge classic stream-based BLoC components, Redux stores, RxDart observables, or `StreamBuilder` widgets:
 
-### Stream ➔ `BlocSignal`
+### Stream / Redux ➔ `BlocSignal`
 ```dart
+// Standard Stream / RxDart -> BlocSignal
 final streamBlocSignal = StreamBlocSignal<int>(
   stream: legacyStream,
   initialState: 0,
+);
+
+// Redux Store -> BlocSignal
+final reduxBlocSignal = StreamBlocSignal<AppState>(
+  store.onChange,
+  initialState: store.state,
 );
 ```
 

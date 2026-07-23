@@ -1,9 +1,15 @@
 name: bloc_signals_test
 resolution: workspace
 description: Declarative unit testing utilities for BlocSignal and CubitSignal.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/RandalSchwartz/BlocSignal
 issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
+
+topics:
+  - testing
+  - unit-testing
+  - bloc
+  - signals
 
 environment:
   sdk: ^3.5.0

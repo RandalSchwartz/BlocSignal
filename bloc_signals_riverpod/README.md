@@ -1,26 +1,59 @@
-# `bloc_signals_riverpod`
+# ⚡ bloc_signals_riverpod
+
+> *"With the rigor of Bloc and the flex and speed of Signal"*
 
 Bidirectional interoperability adapters and extensions connecting `BlocSignal` / `CubitSignal` state containers with [Riverpod](https://riverpod.dev) providers.
 
----
-
-## ⚡ Features
-
-- **`ProviderListenable.toBlocSignal(refOrContainer)`**: Convert any Riverpod `ProviderListenable` (`Notifier`, `Provider`, `.select()`) into a `BlocSignalBase`.
-- **Automatic `ref.onDispose` Registration**: Passing `ref` into `toBlocSignal(ref)` automatically binds `ref.onDispose(bloc.close)` for zero-boilerplate lifecycle management.
-- **`BlocSignalBase.toProvider()`**: Expose any `BlocSignal` or `CubitSignal` as a standard Riverpod `Provider<T>`.
-- **Universal Riverpod Support**: Built for `riverpod: ">=2.5.0 <4.0.0"`, supporting Riverpod 2.x and Riverpod 3.x.
+Supports both **Riverpod 2.x** and **Riverpod 3.x** out of the box.
 
 ---
 
-## 🚀 Usage
+## 🌐 Ecosystem Packages
 
-### 1. Riverpod → `BlocSignal`
+| Package | Purpose | Pub.dev Link |
+| :--- | :--- | :--- |
+| **`bloc_signals`** | Core pure-Dart state containers, event registry, & VM Service telemetry | 📦 [pub.dev](https://pub.dev/packages/bloc_signals) |
+| **`bloc_signals_flutter`** | Flutter UI widgets (`BlocSignalProvider`, `BlocSignalBuilder`, `BlocSignalListener`, `BlocSignalConsumer`, `BlocSignalSelector`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_flutter) |
+| **`bloc_signals_riverpod`** | Bidirectional Riverpod interop adapters (`toBlocSignal(ref)`, `toProvider()`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_riverpod) |
+| **`bloc_signals_hydrate`** | Persistent state storage (`HydratedCubitSignal`, `HydratedBlocSignal`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_hydrate) |
+| **`bloc_signals_devtools`** | Dedicated Flutter DevTools extension inspector UI | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_devtools) |
+| **`bloc_signals_test`** | Declarative unit testing helpers (`blocSignalTest`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_test) |
+| **`bloc_signals_lint`** | Static analysis lints & IDE quick-fixes | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_lint) |
+| **`otel_bloc_signals`** | OpenTelemetry tracing observers | 📦 [pub.dev](https://pub.dev/packages/otel_bloc_signals) |
+
+---
+
+## ⚡ Key Features
+
+- 🔄 **`ProviderListenable.toBlocSignal(refOrContainer)`**: Convert any Riverpod `ProviderListenable` (`Notifier`, `Provider`, `.select()`) into a `BlocSignalBase`.
+- 🔒 **Automatic `ref.onDispose` Registration**: Passing `ref` into `toBlocSignal(ref)` automatically binds `ref.onDispose(bloc.close)` for zero-boilerplate lifecycle management.
+- 🔀 **`BlocSignalBase.toProvider()`**: Expose any `BlocSignal` or `CubitSignal` as a standard Riverpod `Provider<T>`.
+- ⚡ **Universal Riverpod Support**: Built for `riverpod: ">=2.5.0 <4.0.0"`, supporting Riverpod 2.x and Riverpod 3.x seamlessly.
+
+---
+
+## 🚀 Getting Started
+
+Add `bloc_signals_riverpod` to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  riverpod: ^2.5.0 # or ^3.0.0
+  bloc_signals: ^0.2.5
+  bloc_signals_riverpod: ^0.1.0
+```
+
+---
+
+## 💡 Quick Examples
+
+### 1. Riverpod → `BlocSignal` (Inside Provider)
 
 Adapt any Riverpod provider into a `BlocSignalBase` inside a Riverpod provider using `ref`:
 
 ```dart
 import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
+import 'package:riverpod/riverpod.dart';
 
 final userNotifierProvider = NotifierProvider<UserNotifier, User>(UserNotifier.new);
 
@@ -30,27 +63,28 @@ final userBlocProvider = Provider.autoDispose<BlocSignalBase<User>>((ref) {
 });
 ```
 
-Or using a pure `ProviderContainer`:
+### 2. Riverpod → `BlocSignal` (Container)
+
+Using a standalone `ProviderContainer`:
 
 ```dart
 final container = ProviderContainer();
 final riverpodBloc = userNotifierProvider.toBlocSignal(container);
 
-// State is in sync with Riverpod!
+// State is synchronously in sync with Riverpod!
 print(riverpodBloc.stateValue);
 
 // Clean up subscription when finished:
 riverpodBloc.close();
 ```
 
----
-
-### 2. `BlocSignal` → Riverpod
+### 3. `BlocSignal` → Riverpod
 
 Expose a `BlocSignalBase` state container as a standard Riverpod `Provider`:
 
 ```dart
 import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
+import 'package:riverpod/riverpod.dart';
 
 final counterCubit = CounterCubit();
 
@@ -64,8 +98,6 @@ final count = ref.watch(counterProvider);
 ---
 
 ## 🔄 Lifecycle & AutoDispose Semantics
-
-Understanding the disposal relationship between Riverpod and `BlocSignal` is essential for memory safety:
 
 | Direction | Mechanism | Lifecycle Coupling |
 | :--- | :--- | :--- |

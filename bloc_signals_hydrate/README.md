@@ -1,37 +1,51 @@
-# bloc_signals_hydrate
+# ⚡ bloc_signals_hydrate
+
+> *"With the rigor of Bloc and the flex and speed of Signal"*
 
 State persistence and hydration adapters for `BlocSignal` state containers.
 
-`HydratedCubitSignal` and `HydratedBlocSignal` automatically persist state changes to disk/storage and restore state synchronously during container instantiation across app restarts.
+`HydratedCubitSignal` and `HydratedBlocSignal` automatically persist state changes to storage and restore state synchronously during container instantiation across app restarts.
 
 ---
 
-## 🚀 Features
+## 🌐 Ecosystem Packages
 
-- **`dynamic` / `Object?` JSON Support**:
-  `fromJson(dynamic json)` and `toJson(StateType state)` accept any valid JSON primitive or collection (`Map`, `List`, `String`, `num`, `bool`, `null`). Primitive states (e.g. `int`, `String`, `List<String>`) do **not** require map wrappers like `{"value": 42}`!
-- **Synchronous Initial Hydration**:
-  State is restored synchronously during constructor execution—meaning initial widget builds render hydrated data immediately with **zero frame flicker**.
-- **Zero-Dependency Default**:
-  Ships with `MemoryHydratedStorage` for fast in-memory testing out-of-the-box.
+| Package | Purpose | Pub.dev Link |
+| :--- | :--- | :--- |
+| **`bloc_signals`** | Core pure-Dart state containers, event registry, & VM Service telemetry | 📦 [pub.dev](https://pub.dev/packages/bloc_signals) |
+| **`bloc_signals_flutter`** | Flutter UI widgets (`BlocSignalProvider`, `BlocSignalBuilder`, `BlocSignalListener`, `BlocSignalConsumer`, `BlocSignalSelector`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_flutter) |
+| **`bloc_signals_riverpod`** | Bidirectional Riverpod interop adapters (`toBlocSignal(ref)`, `toProvider()`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_riverpod) |
+| **`bloc_signals_hydrate`** | Persistent state storage (`HydratedCubitSignal`, `HydratedBlocSignal`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_hydrate) |
+| **`bloc_signals_devtools`** | Dedicated Flutter DevTools extension inspector UI | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_devtools) |
+| **`bloc_signals_test`** | Declarative unit testing helpers (`blocSignalTest`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_test) |
+| **`bloc_signals_lint`** | Static analysis lints & IDE quick-fixes | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_lint) |
+| **`otel_bloc_signals`** | OpenTelemetry tracing observers | 📦 [pub.dev](https://pub.dev/packages/otel_bloc_signals) |
+
+---
+
+## ⚡ Key Features
+
+- 📦 **`dynamic` / `Object?` JSON Support**: `fromJson(dynamic json)` and `toJson(StateType state)` accept primitives (`num`, `String`, `bool`, `List`, `Map`). Primitive states do **not** require map wrappers like `{"value": 42}`!
+- ⚡ **Synchronous Initial Hydration**: State is restored synchronously during constructor execution—meaning initial widget builds render hydrated data immediately with **zero frame flicker**.
+- 🛠️ **Zero-Dependency Default**: Ships with `MemoryHydratedStorage` for fast in-memory unit testing out-of-the-box.
 
 ---
 
 ## 🚀 Getting Started
 
-Add `bloc_signals_hydrate` and `bloc_signals` to your `pubspec.yaml`:
+Add `bloc_signals_hydrate` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^0.2.4
-  bloc_signals_hydrate: ^0.1.0
+  bloc_signals: ^0.2.5
+  bloc_signals_hydrate: ^0.1.1
 ```
 
 ---
 
-## 💡 Usage
+## 💡 Quick Examples
 
-### 1. Primitive State Hydration (e.g. `int`, `String`)
+### 1. Primitive State Hydration (`HydratedCubitSignal`)
 
 ```dart
 import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
@@ -45,17 +59,36 @@ class CounterCubit extends HydratedCubitSignal<int> {
   int? fromJson(dynamic json) => json as int?;
 
   @override
-  dynamic toJson(int state) => state; // Directly return primitive value!
+  dynamic toJson(int state) => state; // Return primitive directly!
 }
 ```
 
-### 2. Wiring Flutter `SharedPreferences`
+### 2. Complex Object Hydration (`HydratedBlocSignal`)
+
+```dart
+import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
+
+class UserCubit extends HydratedCubitSignal<UserModel> {
+  UserCubit() : super(initialState: UserModel.anonymous);
+
+  @override
+  UserModel? fromJson(dynamic json) {
+    if (json is Map<String, dynamic>) {
+      return UserModel.fromJson(json);
+    }
+    return null;
+  }
+
+  @override
+  dynamic toJson(UserModel state) => state.toJson();
+}
+```
+
+### 3. Wiring Custom Storage (`SharedPreferences`)
 
 ```dart
 import 'dart:convert';
-import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SharedPreferencesHydratedStorage implements HydratedStorage {
@@ -80,57 +113,9 @@ class SharedPreferencesHydratedStorage implements HydratedStorage {
 }
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   HydratedStorage.storage = SharedPreferencesHydratedStorage(prefs);
-
-  runApp(
-    MaterialApp(
-      home: BlocSignalProvider<CounterCubit>(
-        create: (context) => CounterCubit(),
-        child: const CounterScreen(),
-      ),
-    ),
-  );
 }
-
-class CounterScreen extends StatelessWidget {
-  const CounterScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final counterCubit = context.read<CounterCubit>();
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Hydrated Counter')),
-      body: Center(
-        child: BlocSignalBuilder<CounterCubit, int>(
-          builder: (context, count) {
-            return Text(
-              '$count',
-              style: Theme.of(context).textTheme.headlineLarge,
-            );
-          },
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: counterCubit.increment,
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-}
-```
-
-### 3. Instance Scoping & Clearing State
-
-```dart
-// Scope storage by instance ID for multi-user/multi-account features
-final user1Cubit = CounterCubit(id: 'user_123');
-final user2Cubit = CounterCubit(id: 'user_456');
-
-// Delete stored key and reset state to initialState
-await user1Cubit.clear();
 ```
 
 ---

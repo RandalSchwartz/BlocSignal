@@ -1,12 +1,29 @@
-# bloc_signals_lint
+# ⚡ bloc_signals_lint
 
-Custom static analysis lints and diagnostics for [`bloc_signals`](https://pub.dev/packages/bloc_signals).
+> *"With the rigor of Bloc and the flex and speed of Signal"*
+
+Custom static analysis lints, diagnostics, and automated IDE quick-fixes for [`bloc_signals`](https://pub.dev/packages/bloc_signals).
 
 Built on top of [`custom_lint`](https://pub.dev/packages/custom_lint), `bloc_signals_lint` catches common framework misuse, preserves Zone-context transition tracing, and enforces `BlocSignal` architectural invariants directly inside your IDE.
 
-## Rules & Quick-Fixes
+---
 
-All rules are **enabled by default** once the plugin is activated.
+## 🌐 Ecosystem Packages
+
+| Package | Purpose | Pub.dev Link |
+| :--- | :--- | :--- |
+| **`bloc_signals`** | Core pure-Dart state containers, event registry, & VM Service telemetry | 📦 [pub.dev](https://pub.dev/packages/bloc_signals) |
+| **`bloc_signals_flutter`** | Flutter UI widgets (`BlocSignalProvider`, `BlocSignalBuilder`, `BlocSignalListener`, `BlocSignalConsumer`, `BlocSignalSelector`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_flutter) |
+| **`bloc_signals_riverpod`** | Bidirectional Riverpod interop adapters (`toBlocSignal(ref)`, `toProvider()`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_riverpod) |
+| **`bloc_signals_hydrate`** | Persistent state storage (`HydratedCubitSignal`, `HydratedBlocSignal`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_hydrate) |
+| **`bloc_signals_devtools`** | Dedicated Flutter DevTools extension inspector UI | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_devtools) |
+| **`bloc_signals_test`** | Declarative unit testing helpers (`blocSignalTest`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_test) |
+| **`bloc_signals_lint`** | Static analysis lints & IDE quick-fixes | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_lint) |
+| **`otel_bloc_signals`** | OpenTelemetry tracing observers | 📦 [pub.dev](https://pub.dev/packages/otel_bloc_signals) |
+
+---
+
+## ⚡ Rules & Quick-Fixes
 
 ### Core Framework Rules
 
@@ -25,7 +42,9 @@ All rules are **enabled by default** once the plugin is activated.
 | **`avoid_unmanaged_signal_effects`** | Warning | Flags unmanaged `effect()` calls created inside Flutter `Widget` or `State` methods without lifecycle cleanup. | — |
 | **`prefer_bloc_signal_provider_read_in_callbacks`** | Warning | Warns when `context.watch<T>()` is used inside event callback closures (e.g. `onPressed`), suggesting `context.read<T>()`. | `Cmd+.` -> Replace `watch` with `read` |
 
-## Quick Setup
+---
+
+## 🚀 Quick Setup
 
 1. Add `custom_lint` and `bloc_signals_lint` to your `pubspec.yaml`:
 
@@ -43,31 +62,22 @@ analyzer:
     - custom_lint
 ```
 
-## Configuring Rules
+---
 
-### Disabling or Customizing Rules in `analysis_options.yaml`
+## ⚙️ Customization & Inline Ignores
 
-To disable specific rules or customize their severity (`true`, `false`, `warning`, `error`, `info`), add a `custom_lint` section to your `analysis_options.yaml`:
+Disable or customize severity in `analysis_options.yaml`:
 
 ```yaml
 custom_lint:
   rules:
-    # Disable a specific rule
     - avoid_duplicate_event_handlers: false
-
-    # Customize rule severity
     - require_super_on_event: error
 ```
 
-### Disabling Rules in Code (Inline Ignores)
-
-You can ignore rules for a specific line or file using standard Dart analyzer comments:
+Or ignore inline in code:
 
 ```dart
-// Ignore for a single line
 // ignore: avoid_duplicate_event_handlers
 on<Increment>((event, emit) => emit(stateValue + 1));
-
-// Ignore for an entire file
-// ignore_for_file: avoid_stream_transformers_on_bloc_signal
 ```

@@ -43,6 +43,8 @@ installed Signals source before changing code.
 - Read [riverpod_migration.md](riverpod_migration.md) before replacing Riverpod providers,
   consumers, families, scopes, or generated declarations.
 - Read [interoperability.md](interoperability.md) for the universal state bridge across BLoC, Riverpod, and Provider ecosystems.
+- Read [hydration.md](hydration.md) for persistent state storage (`bloc_signals_hydrate`).
+- Read [devtools.md](devtools.md) for VM Service RPC extensions & DevTools UI (`bloc_signals_devtools`).
 - Read [lint.md](lint.md) for analyzer rules and IDE diagnostics (`bloc_signals_lint`).
 - Read [otel.md](otel.md) for `OtelBlocSignalObserver`, span completion gaps, and telemetry data
   choices.

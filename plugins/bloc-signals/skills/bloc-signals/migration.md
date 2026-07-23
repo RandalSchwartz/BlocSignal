@@ -128,6 +128,17 @@ class ReferenceCounterBloc extends BlocSignal<CounterEvent, CounterState> {
 }
 ```
 
+To force classic BLoC stream behavior where **every single emit notifies observers** regardless of value equality, return `false`:
+
+```dart
+class AlwaysEmitBloc extends BlocSignal<CounterEvent, CounterState> {
+  AlwaysEmitBloc(CounterState initial) : super(initialState: initial);
+
+  @override
+  bool equals(CounterState previous, CounterState current) => false; // Every emit notifies!
+}
+```
+
 ---
 
 ## Key Conceptual Differences

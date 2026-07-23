@@ -48,6 +48,18 @@ final bloc = CounterBloc(
 );
 ```
 
+### Force Always-Emit Mode (`equals => false`)
+To reproduce classic stream behaviors where every `emit()` call notifies observers (even if the emitted state is identical to the current state), override `equals` to return `false`:
+
+```dart
+final class AlwaysEmitBloc extends BlocSignal<CounterEvent, CounterState> {
+  AlwaysEmitBloc(CounterState initial) : super(initialState: initial);
+
+  @override
+  bool equals(CounterState previous, CounterState current) => false; // Every emit notifies!
+}
+```
+
 The underlying `state` signal (`ReadonlySignal`) automatically inherits the custom equality rules, ensuring downstream `SignalBuilder` widgets, `computed` derivations, and `effect` callbacks stay in 100% unified sync.
 
 ## Event routing

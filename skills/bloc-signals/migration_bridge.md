@@ -23,8 +23,11 @@ import 'package:bloc_signals/bloc_signals.dart';
 final myBlocSignal = CounterBloc();
 
 // 1. Standard Dart StreamBuilder
+// (Store stream reference in initState or a State field to preserve stream identity across builds)
+late final stream = myBlocSignal.toStream();
+
 StreamBuilder<int>(
-  stream: myBlocSignal.toStream(), // or myBlocSignal.stream
+  stream: stream,
   builder: (context, snapshot) => Text('${snapshot.data}'),
 );
 
@@ -70,3 +73,10 @@ final signalContainer = legacyBloc.stream.toBlocSignal(initialState: legacyBloc.
 // When done:
 await signalContainer.close(); // Subscription cleanly cancelled!
 ```
+
+---
+
+## ⚠️ Common Interop Gotchas
+
+1. **Do not call `.toStream()` inline in `build()`**: Returns a new `Stream` instance on every build pass, forcing `StreamBuilder` to re-subscribe and reset state. Store the stream in a `State` field / `initState()`.
+2. **Do not call `.toBlocSignal(...)` inline in `build()`**: Subscribes to the underlying stream on creation. Creating instances inline in `build()` leaks subscriptions on every rebuild. Instantiate once in `initState()` and call `.close()` in `dispose()`.

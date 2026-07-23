@@ -31,8 +31,11 @@ If you convert a state container to `BlocSignal` but want to keep existing UI wi
 final myBlocSignal = CounterBloc();
 
 // Consume in legacy StreamBuilder or Stream widgets
+// Note: Store stream reference in initState or a State field so StreamBuilder identity remains stable across builds.
+late final stream = myBlocSignal.toStream();
+
 StreamBuilder<int>(
-  stream: myBlocSignal.toStream(), // or myBlocSignal.stream
+  stream: stream,
   builder: (context, snapshot) => Text('${snapshot.data}'),
 );
 ```
@@ -525,4 +528,60 @@ MultiBlocSignalListener(
 )
 ```
 
+---
+
+## ⚠️ Common Migration Gotchas & Pitfalls
+
+### 1. Avoid Inline `.toStream()` Inside `build()`
+Calling `myBlocSignal.toStream()` or `myBlocSignal.stream` directly inside Flutter's `build()` method creates a **new `Stream` object instance** on every rebuild. When `StreamBuilder.didUpdateWidget` checks `oldWidget.stream != widget.stream`, it sees a new instance, unsubscribes from the old stream, and re-subscribes, causing state resets.
+
+```dart
+// ❌ BAD: Creates a new stream instance on every build pass!
+StreamBuilder<int>(
+  stream: myBlocSignal.toStream(), 
+  builder: (context, snapshot) => Text('${snapshot.data}'),
+);
+
+// ✅ GOOD: Cache the stream reference in initState() or a State field:
+class _MyWidgetState extends State<MyWidget> {
+  late final Stream<int> _stream = myBlocSignal.toStream();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<int>(
+      stream: _stream,
+      builder: (context, snapshot) => Text('${snapshot.data}'),
+    );
+  }
+}
+```
+
+### 2. Avoid Inline `.toBlocSignal(...)` Inside `build()`
+Calling `legacyBloc.stream.toBlocSignal(initialState: legacyBloc.state)` creates an active `StreamSubscription` under the hood. Instantiating it inside `build()` will leak a new stream subscription on every widget rebuild.
+
+```dart
+// ❌ BAD: Leaks stream subscriptions on every build pass!
+Widget build(BuildContext context) {
+  final blocSignal = legacyBloc.stream.toBlocSignal(initialState: legacyBloc.state);
+  return BlocSignalBuilder(...);
+}
+
+// ✅ GOOD: Instantiate once in initState() and close on dispose():
+class _MyWidgetState extends State<MyWidget> {
+  late final BlocSignalBase<int> _blocSignal;
+
+  @override
+  void initState() {
+    super.initState();
+    _blocSignal = widget.legacyBloc.stream.toBlocSignal(
+      initialState: widget.legacyBloc.state,
+    );
+  }
+
+  @override
+  void dispose() {
+    _blocSignal.close(); // Cleanly cancels stream subscription
+    super.dispose();
+  }
+}
 ```

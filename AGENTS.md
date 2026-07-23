@@ -194,6 +194,11 @@ When designing state persistence adapters (such as `HydratedCubitSignal` and `Hy
 * **Synchronous Constructor Hydration**: Hydrate state synchronously during container constructor execution (`initHydratedState`) so initial widget builds render hydrated data on frame 1 without UI flickers.
 * **Super Emission on Clear**: Use `super.emit(initialState)` inside `clear()` to reset state value without re-persisting `initialState` back into storage.
 
+### 18. Universal DevTools Telemetry & Multi-Model Fallbacks (`DevToolsBlocSignalObserver`)
+When implementing developer tools and telemetry observers:
+* **Core Package Placement**: Place `developer.postEvent` observers in core Dart packages using `dart:developer` (standard Dart SDK) rather than restricting to Flutter UI packages. This unlocks DevTools telemetry for all Dart environments (CLI, server, Jaspr web apps, Flutter) with zero Flutter SDK overhead.
+* **Multi-Model API Resilience**: In automated GitHub Action API workflows querying LLMs, iterate across candidate models (`gemini-1.5-flash-002`, `gemini-2.5-flash`) for fallback resilience against model deprecations or endpoint migration changes.
+
 
 
 

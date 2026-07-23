@@ -175,4 +175,10 @@ When authoring performance benchmarks or execution throughput measurements (`pac
 * **Drained Stream Measurement**: Calling `bloc.add(event)` in classic BLoC only measures microtask queue insertion time. To measure true end-to-end event-to-state execution latency, always await microtask queue draining (`await bloc.stream.take(N).drain()`) to compare fairly against synchronous `BlocSignal` emissions.
 * **Flutter Engine Execution Environment**: Benchmark runners that import `package:flutter` UI bindings cannot run via bare `dart run`. Always provide a `flutter test` test wrapper (`test/benchmark_runner_test.dart`) to run benchmarks under the Flutter engine test environment.
 
+### 14. Custom Equality & `SignalOptions` Delegation
+When adding state container configuration options (such as custom equality comparators) to `BlocSignalBase`:
+* **`SignalOptions` Delegation**: Always delegate directly to `SignalOptions<StateType>(equality: SignalEquality<StateType>.custom((a, b) => this.equals(a, b)))` from `preact_signals`.
+* **Signal Graph Sync**: Passing custom equality directly to the underlying `signal` ensures that both container transition pipelines (`emit`) and downstream `ReadonlySignal` observers (`computed` derivations, `effect` callbacks, and `SignalBuilder` widgets) operate on 100% unified equality rules.
+
+
 

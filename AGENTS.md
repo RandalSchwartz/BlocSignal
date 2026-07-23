@@ -53,9 +53,10 @@ We support `FutureOr<void>` handlers in `onEvent(event)`. If an event handler tr
 Transitions triggered via `emit()` are associated with their causing `event` using dynamic Zone context values (`Zone.current[_zoneEventKey]`). This provides full event traceability to observers without modifying the signature of `emit()`.
 
 ### 7. Event Handler Registry (`on<Event>`)
-To support BLoC-style syntax, events can be registered using `on<E>((event, emit) => ...)` inside constructor scopes:
+To support BLoC-style syntax, events can be registered using `on<E>((event, emit) => ..., transformer: ...)` inside constructor scopes:
 - **Single Registration**: Enforces that each event type `E` is registered at most once; duplicates throw a `StateError` in debug mode.
-- **Concurrent Future Coordination**: Multiple matching event handlers have their returned futures orchestrated concurrently using `Future.wait` rather than sequential chaining.
+- **Concurrent Future Coordination**: By default, multiple matching event handlers have their returned futures orchestrated concurrently using `Future.wait`.
+- **Event Concurrency Transformers**: Handlers accept an optional `transformer` (such as `droppable()`, `sequential()`, `restartable()`, or a custom `Mutex` lock) to control execution strategy without Rx streams.
 - **Backwards Compatibility**: Subclasses can continue to override `onEvent(event)` manually if they do not wish to use the registry.
 
 ### 8. Observability & OpenTelemetry (`otel_bloc_signals`)

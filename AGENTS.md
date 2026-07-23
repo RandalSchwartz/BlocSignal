@@ -170,3 +170,9 @@ When designing event concurrency transformers for `BlocSignal`:
 * **Streamless Higher-Order Functions**: Do not depend on Rx Streams or `package:bloc_concurrency`. Use pure Dart higher-order functions (`(event, handler, emit) => ...`) and `Mutex` locks for zero-stream-allocation event coordination on `on<E>(..., transformer: ...)`.
 * **Inlined Closure Guards**: Avoid creating tear-off functions or intermediate closures inside transformer callbacks (such as `restartable`). Inline conditional checks `(state) { if (currentToken == executionToken) emit(state); }` directly to prevent per-event heap allocations during high-frequency event bursts.
 
+### 13. Benchmarking Rigor & Stream Microtask Draining
+When authoring performance benchmarks or execution throughput measurements (`package:benchmark_harness`):
+* **Drained Stream Measurement**: Calling `bloc.add(event)` in classic BLoC only measures microtask queue insertion time. To measure true end-to-end event-to-state execution latency, always await microtask queue draining (`await bloc.stream.take(N).drain()`) to compare fairly against synchronous `BlocSignal` emissions.
+* **Flutter Engine Execution Environment**: Benchmark runners that import `package:flutter` UI bindings cannot run via bare `dart run`. Always provide a `flutter test` test wrapper (`test/benchmark_runner_test.dart`) to run benchmarks under the Flutter engine test environment.
+
+

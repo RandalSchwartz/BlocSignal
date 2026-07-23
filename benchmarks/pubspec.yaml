@@ -1,0 +1,18 @@
+name: benchmarks
+resolution: workspace
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  benchmark_harness: ^2.2.2
+  bloc: ^8.1.4
+  bloc_signals: ^0.2.0
+  provider: ^6.1.2
+  riverpod: ">=2.5.0 <4.0.0"
+  signals_core: ^7.0.0
+
+dev_dependencies:
+  test: ^1.25.6
+  very_good_analysis: ^10.1.0

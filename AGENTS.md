@@ -180,5 +180,10 @@ When adding state container configuration options (such as custom equality compa
 * **`SignalOptions` Delegation**: Always delegate directly to `SignalOptions<StateType>(equality: SignalEquality<StateType>.custom((a, b) => this.equals(a, b)))` from `preact_signals`.
 * **Signal Graph Sync**: Passing custom equality directly to the underlying `signal` ensures that both container transition pipelines (`emit`) and downstream `ReadonlySignal` observers (`computed` derivations, `effect` callbacks, and `SignalBuilder` widgets) operate on 100% unified equality rules.
 
+### 15. Pub.dev Transitive Dependency Enforcement
+When publishing packages to pub.dev:
+* **Explicit Dependency Declaration**: Any package directly imported in `lib/` (even if imported only for a type annotation like `SignalEquality` or re-exported transitively) MUST be explicitly listed under `dependencies:` in `pubspec.yaml`. Otherwise, `flutter pub publish` validation fails with missing dependency errors.
+
+
 
 

@@ -52,91 +52,25 @@ Classic BLoC is built on Dart `Stream`s, which are asynchronous and rely on the 
 
 In contrast, `BlocSignal` relies on reactive signals. State propagation is immediate and **synchronous**: calling `emit()` updates the state value instantly in the current execution block, recalculating the reactive dependency graph and triggering UI rebuilds in the exact same frame.
 
-### Feature Parity & Stream Limitations
+### Event Concurrency & Transformers
 
-While `BlocSignal` mimics BLoC's lifecycle, dependency injection, and state encapsulation, it is not a 1:1 drop-in replacement. Because `BlocSignal` does not use streams under the hood, the following classic BLoC stream features are **not available**:
+`BlocSignal` natively supports event concurrency transformers on `on<E>` handlers (similar to `package:bloc_concurrency`):
 
-1. **Custom `EventTransformer`s**: You cannot specify a custom event transformer (e.g. `bloc_concurrency` concurrent, sequential, or restartable) via `on<Event>(..., transformer: ...)`.
-2. **RxDart Operators**: Stream operators such as `debounceTime`, `throttleTime`, `switchMap`, `flatMap`, `concatMap`, `buffer`, and `distinct` cannot be called directly on the state or event dispatchers.
-
-#### Mapping Stream Behaviors to Signals
-
-##### 1. Debouncing Events (e.g., Search Input)
-In classic BLoC, you might debounce text input changes to prevent redundant API queries:
 ```dart
-// Classic BLoC (with bloc_concurrency or RxDart)
-on<SearchTextChanged>(
-  (event, emit) async => ...,
-  transformer: debounce(const Duration(milliseconds: 300)),
-);
-```
-
-In `BlocSignal`, you can achieve the same behavior using a standard `Timer` within the event handler:
-```dart
-import 'dart:async';
-
-class SearchBloc extends BlocSignal<SearchEvent, SearchState> {
-  SearchBloc() : super(initialState: SearchInitial());
-  Timer? _debounceTimer;
-
-  @override
-  Future<void> onEvent(SearchEvent event) async {
-    await super.onEvent(event);
-    if (event is SearchTextChanged) {
-      _debounceTimer?.cancel();
-      _debounceTimer = Timer(const Duration(milliseconds: 300), () {
-        _performSearch(event.query);
-      });
-    }
-  }
-
-  void _performSearch(String query) {
-    // Perform search API call and emit results
-  }
-
-  @override
-  Future<void> close() {
-    _debounceTimer?.cancel();
-    return super.close();
-  }
-}
-```
-
-##### 2. Dropping Events (e.g., Throttle / Droppable Page Fetching)
-In classic BLoC, a `droppable` transformer ignores incoming events while an asynchronous operation is already running:
-```dart
-// Classic BLoC
 on<FetchPage>(
-  (event, emit) async => ...,
-  transformer: droppable(),
-);
-```
-
-In `BlocSignal`, check the current state synchronously to drop subsequent events:
-```dart
-on<FetchPage>((event, emit) async {
-  // Drop event if operation is already in progress
-  if (stateValue is PageLoadInProgress) return;
-
-  emit(PageLoadInProgress());
-  try {
+  (event, emit) async {
     final page = await api.fetchPage();
     emit(PageLoadSuccess(page));
-  } catch (e) {
-    emit(PageLoadFailure(e));
-  }
-});
-```
-
-##### 3. Restartable Operations (e.g., SwitchMap / Cancel Active Request)
-In classic BLoC, a `restartable` transformer cancels the current active request if a new event arrives:
-```dart
-// Classic BLoC
-on<FetchDetails>(
-  (event, emit) async => ...,
-  transformer: restartable(),
+  },
+  transformer: droppable(), // or sequential(), restartable()
 );
 ```
+
+Available built-in transformers & concurrency utilities:
+- **`droppable()`**: Drops incoming events while a handler for that event type is currently executing.
+- **`sequential()`**: Queues incoming events and executes them sequentially in FIFO order via `Mutex`.
+- **`restartable()`**: Allows new incoming events to supersede previous in-flight handler executions.
+- **`Mutex`**: A zero-dependency async lock (`protect(() => ...)`) for custom synchronization.
 
 In `BlocSignal`, track the active operation (e.g. using `CancelableOperation` from `package:async`) and cancel it synchronously when a new event is handled:
 ```dart

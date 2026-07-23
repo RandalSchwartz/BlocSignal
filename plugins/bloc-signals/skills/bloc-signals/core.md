@@ -43,6 +43,24 @@ Registration throws `StateError` for a duplicate exact type in every build mode.
 `is E`, so an event can match handlers registered for both a subtype and a supertype. Synchronous
 handlers run in registry order. Returned futures are joined with `Future.wait` inside `onEvent`.
 
+### Event Concurrency & Transformers
+
+You can pass an optional `transformer` to `on<E>` to control async event execution:
+
+```dart
+on<SearchQuery>(
+  (event, emit) async => emit(await api.search(event.query)),
+  transformer: droppable(),
+);
+```
+
+Available built-in transformers & concurrency utilities:
+- `droppable()`: Drops incoming events if a handler for that event type is currently executing.
+- `sequential()`: Queues incoming events in FIFO order using a [Mutex] lock.
+- `restartable()`: Allows new incoming events to supersede previous in-flight handler executions.
+- `Mutex`: A zero-dependency async lock (`protect(() => ...)`) for custom synchronization.
+
+
 Override `onEvent` with an exhaustive switch when a sealed event hierarchy needs compile-time
 coverage:
 

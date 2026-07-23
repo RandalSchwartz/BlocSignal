@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_signals/src/change.dart';
+import 'package:bloc_signals/src/concurrency/event_transformers.dart';
 import 'package:bloc_signals/src/transition.dart';
 import 'package:meta/meta.dart';
 import 'package:signals_core/signals_core.dart';
@@ -268,8 +269,9 @@ abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType> {
     FutureOr<void> Function(
       E event,
       void Function(StateType state) emit,
-    ) handler,
-  ) {
+    ) handler, {
+    EventTransformer<E, StateType>? transformer,
+  }) {
     if (_handlers.any((h) => h.type == E)) {
       throw StateError(
         'on<$E> was called multiple times. '
@@ -281,6 +283,13 @@ abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType> {
         type: E,
         isType: (dynamic e) => e is E,
         handler: (dynamic event, void Function(StateType state) emit) {
+          if (transformer != null) {
+            return transformer(
+              event as E,
+              (e, em) => handler(e, em),
+              emit,
+            );
+          }
           return handler(event as E, emit);
         },
       ),

@@ -32,11 +32,22 @@ class BlocSignalsDevToolsExtension extends StatefulWidget {
 class _BlocSignalsDevToolsExtensionState
     extends State<BlocSignalsDevToolsExtension> {
   Map<String, dynamic>? _selectedInstance;
+  Map<String, dynamic>? _selectedHistoryEntry;
 
   @override
   Widget build(BuildContext context) {
     final instances = widget.instances;
     final selectedHashCode = _selectedInstance?['hashCode'] as int?;
+
+    // Derive state diff values from selected history entry or selected instance
+    final historyData =
+        (_selectedHistoryEntry?['data'] as Map<String, dynamic>?) ?? {};
+    final currentState = historyData['currentState']?.toString() ??
+        historyData['event']?.toString() ??
+        'Initial State';
+    final nextState = historyData['nextState']?.toString() ??
+        _selectedInstance?['stateValue']?.toString() ??
+        '';
 
     return Scaffold(
       appBar: AppBar(
@@ -58,6 +69,7 @@ class _BlocSignalsDevToolsExtensionState
               onSelectInstance: (item) {
                 setState(() {
                   _selectedInstance = item;
+                  _selectedHistoryEntry = null;
                 });
               },
             ),
@@ -73,12 +85,8 @@ class _BlocSignalsDevToolsExtensionState
                       Padding(
                         padding: const EdgeInsets.all(12),
                         child: StateDiffInspector(
-                          currentState:
-                              _selectedInstance!['stateValue']?.toString() ??
-                                  '',
-                          nextState:
-                              _selectedInstance!['stateValue']?.toString() ??
-                                  '',
+                          currentState: currentState,
+                          nextState: nextState,
                         ),
                       ),
                       Expanded(

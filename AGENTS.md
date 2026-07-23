@@ -164,3 +164,9 @@ When bridging Flutter `Listenable` / `ChangeNotifier` / `ValueListenable`:
 When managing tickets:
 * **Verify Delivery Path Early**: Immediately after ticket selection (Gate 1), clarify whether the change will be delivered via a GitHub Pull Request (PR) or direct commit to `main`.
 * **Mandatory Bot Review (GCA Persona)**: Even when bypassing a GitHub PR for direct commits to `main`, NEVER skip the automated Bot Triage Simulation (GCA Persona). Objective GCA review must always be performed before committing and publishing to catch boundary edge cases (such as missing `onError` exception routing).
+
+### 12. Streamless Event Concurrency & Closure Allocation Optimization
+When designing event concurrency transformers for `BlocSignal`:
+* **Streamless Higher-Order Functions**: Do not depend on Rx Streams or `package:bloc_concurrency`. Use pure Dart higher-order functions (`(event, handler, emit) => ...`) and `Mutex` locks for zero-stream-allocation event coordination on `on<E>(..., transformer: ...)`.
+* **Inlined Closure Guards**: Avoid creating tear-off functions or intermediate closures inside transformer callbacks (such as `restartable`). Inline conditional checks `(state) { if (currentToken == executionToken) emit(state); }` directly to prevent per-event heap allocations during high-frequency event bursts.
+

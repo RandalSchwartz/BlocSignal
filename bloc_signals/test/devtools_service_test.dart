@@ -21,6 +21,14 @@ class CounterBloc extends BlocSignal<String, int> {
   }
 }
 
+class JsonBloc extends BlocSignal<Map<String, dynamic>, String> {
+  JsonBloc() : super(initialState: 'none') {
+    on<Map<String, dynamic>>((event, emit) {
+      emit(event['name'] as String);
+    });
+  }
+}
+
 void main() {
   BlocSignalObserver? originalObserver;
 
@@ -117,6 +125,45 @@ void main() {
 
       await bloc.close();
     });
+
+    test(
+      'handleDispatch parses JSON string events for structured blocs',
+      () async {
+        final bloc = JsonBloc();
+
+        final response = await DevToolsService.instance.handleDispatch(
+          'ext.bloc_signal.dispatch',
+          {
+            'hashCode': bloc.hashCode.toString(),
+            'event': '{"name":"alice"}',
+          },
+        );
+
+        final json = jsonDecode(response.result!) as Map<String, dynamic>;
+        expect(json['success'], isTrue);
+        expect(bloc.stateValue, equals('alice'));
+
+        await bloc.close();
+      },
+    );
+
+    test(
+      'handleDispatch returns error on type mismatch during dispatch',
+      () async {
+        final bloc = JsonBloc();
+
+        final errRes = await DevToolsService.instance.handleDispatch(
+          'ext.bloc_signal.dispatch',
+          {
+            'hashCode': bloc.hashCode.toString(),
+            'event': 'plain_non_json_string',
+          },
+        );
+
+        expect(errRes.errorCode, equals(-32602));
+        await bloc.close();
+      },
+    );
 
     test(
       'handleDispatch returns error on closed or missing container',

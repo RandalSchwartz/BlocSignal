@@ -196,7 +196,21 @@ class DevToolsService {
     }
 
     if (eventStr != null && bloc is BlocSignal<dynamic, dynamic>) {
-      bloc.add(eventStr);
+      dynamic eventPayload = eventStr;
+      if (eventStr.startsWith('{') || eventStr.startsWith('[')) {
+        try {
+          eventPayload = jsonDecode(eventStr);
+        } on Exception catch (_) {}
+      }
+
+      try {
+        bloc.add(eventPayload);
+      } on Object catch (e) {
+        return developer.ServiceExtensionResponse.error(
+          developer.ServiceExtensionResponse.invalidParams,
+          'Failed to dispatch event to ${bloc.runtimeType}: $e',
+        );
+      }
     }
 
     return developer.ServiceExtensionResponse.result(

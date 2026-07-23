@@ -22,7 +22,7 @@
   - `AddSuperOnEventFix`: Automatically inserts `super.onEvent(event);`.
   - `PreferReadInCallbacksFix`: Automatically replaces `context.watch<T>()` with `context.read<T>()`.
 
-## 0.1.1
+## 0.2.5
 
 - Add comprehensive ecosystem package cross-linking table and motto to README.
 - Add quick lint rule descriptions and quick-fix guides.

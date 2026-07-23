@@ -14,7 +14,7 @@
   - `asyncValue.toAsyncState()`: Converts a Riverpod `AsyncValue` into a Signals `AsyncState`.
   - `asyncState.toAsyncValue()`: Converts a Signals `AsyncState` into a Riverpod `AsyncValue`.
 
-## 0.1.1
+## 0.1.4
 
 - Add comprehensive ecosystem package cross-linking table and motto to README.
 - Add quick inlined Riverpod 2/3 interop code examples.

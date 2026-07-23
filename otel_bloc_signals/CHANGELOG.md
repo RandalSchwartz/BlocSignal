@@ -35,7 +35,7 @@
 
 - Add example demonstrating OpenTelemetry integration with `BlocSignal`.
 
-## 0.1.1
+## 0.2.2
 
 - Add comprehensive ecosystem package cross-linking table and motto to README.
 - Add quick OpenTelemetry span correlation examples.

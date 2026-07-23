@@ -104,7 +104,8 @@ jobs:
                     break;
                   }
                 } else {
-                  console.log('Model ' + model + ' returned HTTP ' + res.status + '. Trying fallback...');
+                  const errBody = await res.text();
+                  console.log('Model ' + model + ' returned HTTP ' + res.status + ': ' + errBody);
                 }
               } catch (e) {
                 console.log('Fetch error for model ' + model + ':', e.message);

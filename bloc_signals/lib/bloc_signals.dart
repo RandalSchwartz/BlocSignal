@@ -10,4 +10,5 @@ import 'package:bloc_signals/src/bloc_signals_base.dart';
 export 'src/bloc_signals_base.dart';
 export 'src/concurrency/event_transformers.dart';
 export 'src/concurrency/mutex.dart';
+export 'src/devtools_observer.dart';
 export 'src/stream_adapter.dart';

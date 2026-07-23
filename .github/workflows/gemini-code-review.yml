@@ -80,14 +80,15 @@ jobs:
               "3. 🎯 GCA Recommendation (🟢 APPROVE or 🟡 REQUEST CHANGES)\n\n" +
               "Format your response in clean GitHub Markdown with headings, bullet points, and an explicit GCA approval status tag.";
 
-            const model = 'gemini-2.0-flash';
-            const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
-
+            const candidateModels = ['gemini-1.5-flash-002', 'gemini-2.5-flash', 'gemini-2.0-flash-exp'];
             let response;
-            for (let attempt = 1; attempt <= 2; attempt++) {
+            let reviewText = null;
+
+            for (const model of candidateModels) {
+              const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+              console.log('Querying Gemini API (' + model + ')...');
               try {
-                console.log('Querying Gemini API (' + model + ')...');
-                response = await fetch(url, {
+                const res = await fetch(url, {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
@@ -95,35 +96,33 @@ jobs:
                   })
                 });
 
-                if (response.ok) break;
-
-                if (response.status === 429 && attempt < 2) {
-                  console.log('Rate limit (429) encountered. Retrying in 10s...');
-                  await new Promise(res => setTimeout(res, 10000));
+                if (res.ok) {
+                  const data = await res.json();
+                  reviewText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                  if (reviewText) {
+                    response = res;
+                    break;
+                  }
+                } else {
+                  const errBody = await res.text();
+                  console.log('Model ' + model + ' returned HTTP ' + res.status + ': ' + errBody);
                 }
               } catch (e) {
-                console.log('Fetch error:', e.message);
+                console.log('Fetch error for model ' + model + ':', e.message);
               }
             }
 
-            if (!response || !response.ok) {
+            if (!response || !response.ok || !reviewText) {
               const errText = response ? await response.text() : 'No response';
               console.log('⚠️ Gemini API Review Notice (' + (response ? response.status : 'error') + '):\n' + errText);
               console.log('Please verify GEMINI_API_KEY permissions in Google AI Studio / GCP Console.');
               return;
             }
 
-            const data = await response.json();
-            const reviewText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-            if (reviewText) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber,
-                body: '🤖 **Gemini Code Assist (GCA) Automated Review**\n\n' + reviewText
-              });
-              console.log('✅ Successfully posted automated code review to PR #' + issueNumber);
-            } else {
-              console.log('Gemini API returned no candidates/text.');
-            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: '🤖 **Gemini Code Assist (GCA) Automated Review**\n\n' + reviewText
+            });
+            console.log('✅ Successfully posted automated code review to PR #' + issueNumber);

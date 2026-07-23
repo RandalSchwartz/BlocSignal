@@ -70,7 +70,7 @@ class _InstanceTreeViewState extends State<InstanceTreeView> {
                       key: Key('instance_tile_$hashCode'),
                       selected: isSelected,
                       selectedTileColor:
-                          Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                          Theme.of(context).primaryColor.withAlpha(25),
                       leading: Icon(
                         isClosed
                             ? Icons.cancel_outlined

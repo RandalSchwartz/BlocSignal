@@ -56,13 +56,14 @@ EventTransformer<E, StateType> restartable<E, StateType>() {
   var executionToken = 0;
   return (event, handler, emit) async {
     final currentToken = ++executionToken;
-    void guardedEmit(StateType state) {
-      if (currentToken == executionToken) {
-        emit(state);
-      }
-    }
-
-    final result = handler(event, guardedEmit);
+    final result = handler(
+      event,
+      (state) {
+        if (currentToken == executionToken) {
+          emit(state);
+        }
+      },
+    );
     if (result is Future) {
       await result;
     }

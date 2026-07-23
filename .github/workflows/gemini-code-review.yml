@@ -80,7 +80,7 @@ jobs:
               "3. 🎯 GCA Recommendation (🟢 APPROVE or 🟡 REQUEST CHANGES)\n\n" +
               "Format your response in clean GitHub Markdown with headings, bullet points, and an explicit GCA approval status tag.";
 
-            const candidateModels = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-2.0-flash'];
+            const candidateModels = ['gemini-1.5-flash-002', 'gemini-2.5-flash', 'gemini-2.0-flash-exp'];
             let response;
             let reviewText = null;
 

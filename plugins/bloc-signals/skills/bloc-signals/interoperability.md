@@ -16,6 +16,10 @@ Interoperability allows features built with different state management tools to 
 | **Provider** (Listenable) | `listenable.toBlocSignal()` | `blocSignal.toValueListenable()` | `bloc_signals_flutter` |
 | **Riverpod Async** | `asyncValue.toAsyncState()` | `asyncState.toAsyncValue()` | `bloc_signals_riverpod` |
 
+> [!TIP]
+> **Custom Equality Support Across All Bridges**:
+> All `.toBlocSignal()` extensions and adapter constructors (`StreamBlocSignal`, `ListenableBlocSignal`, `RiverpodBlocSignal`) accept an optional `equals: (prev, next) => ...` comparator parameter so you can customize state de-duplication rules (e.g. identity comparison `identical(prev, next)`) when bridging external state containers into `BlocSignal`.
+
 ---
 
 ## 1. BLoC, Redux & Stream Interoperability (`package:bloc_signals`)

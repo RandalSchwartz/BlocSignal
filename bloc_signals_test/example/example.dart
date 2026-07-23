@@ -5,7 +5,7 @@ import 'package:test/test.dart';
 /// Counter Cubit implementation for testing demonstration.
 class CounterCubit extends CubitSignal<int> {
   /// Initializes [CounterCubit] with initial state 0.
-  CounterCubit() : super(0);
+  CounterCubit() : super(initialState: 0);
 
   /// Increments state value.
   void increment() => emit(stateValue + 1);

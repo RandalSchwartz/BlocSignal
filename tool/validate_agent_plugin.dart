@@ -5,7 +5,6 @@ const _claudeCatalogPath = '.claude-plugin/marketplace.json';
 const _codexCatalogPath = '.agents/plugins/marketplace.json';
 const _pluginPath = 'plugins/bloc-signals';
 const _pluginSkillPath = '$_pluginPath/skills/bloc-signals';
-const _legacyRootSkillPath = 'skills/bloc-signals';
 const _legacyAgentSkillPath = '.agents/skills/bloc-signals';
 const _ignoredValidationDirectories = {'.git', '.dart_tool', 'build'};
 

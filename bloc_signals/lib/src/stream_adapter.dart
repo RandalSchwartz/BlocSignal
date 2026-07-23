@@ -22,6 +22,7 @@ class StreamBlocSignal<StateType> extends CubitSignal<StateType> {
   StreamBlocSignal(
     Stream<StateType> stream, {
     required super.initialState,
+    super.equals,
   }) {
     _subscription = stream.listen(
       emit,
@@ -49,7 +50,14 @@ class StreamBlocSignal<StateType> extends CubitSignal<StateType> {
 extension StreamBlocSignalExtension<StateType> on Stream<StateType> {
   /// Adapts this Dart [Stream] into a [BlocSignalBase] state container
   /// with [initialState].
-  BlocSignalBase<StateType> toBlocSignal({required StateType initialState}) {
-    return StreamBlocSignal<StateType>(this, initialState: initialState);
+  BlocSignalBase<StateType> toBlocSignal({
+    required StateType initialState,
+    bool Function(StateType previous, StateType current)? equals,
+  }) {
+    return StreamBlocSignal<StateType>(
+      this,
+      initialState: initialState,
+      equals: equals,
+    );
   }
 }

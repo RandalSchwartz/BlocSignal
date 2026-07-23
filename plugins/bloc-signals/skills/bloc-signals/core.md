@@ -22,6 +22,34 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 The state remains readable after closure. `add` silently drops new events. `emit` has a debug
 assertion and then returns without changing state when assertions are disabled.
 
+## Custom Equality & Identity Comparison (`equals`)
+
+By default, `BlocSignalBase` uses standard value equality (`previous == current`) to de-duplicate state emissions and prevent redundant reactive updates.
+
+You can customize the change-definition strategy by overriding `equals` in your subclass or passing an `equals:` callback to the constructor:
+
+### Subclass Override Example (Identity / Reference Equality)
+```dart
+final class IdentityCounterBloc extends BlocSignal<CounterEvent, CounterState> {
+  IdentityCounterBloc(CounterState initial) : super(initialState: initial);
+
+  @override
+  bool equals(CounterState previous, CounterState current) {
+    return identical(previous, current);
+  }
+}
+```
+
+### Constructor Callback Injection Example
+```dart
+final bloc = CounterBloc(
+  initialState: CounterState(0),
+  equals: (prev, next) => prev.id == next.id,
+);
+```
+
+The underlying `state` signal (`ReadonlySignal`) automatically inherits the custom equality rules, ensuring downstream `SignalBuilder` widgets, `computed` derivations, and `effect` callbacks stay in 100% unified sync.
+
 ## Event routing
 
 Choose one routing style per bloc.

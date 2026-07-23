@@ -29,8 +29,9 @@ This repository is organized as a Dart workspace and contains the following pack
 
 ## Documentation
 
-- **[Migration Guide](./skills/bloc-signals/migration.md)**: A comprehensive guide to transitioning from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
-- **[Riverpod Interop & Migration](./skills/bloc-signals/riverpod_migration.md)**: Guide to converting between Riverpod providers and `BlocSignal`.
+- **[Migration Guide](./plugins/bloc-signals/skills/bloc-signals/migration.md)**: A guide for moving from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
+- **[Riverpod Interop & Migration](./plugins/bloc-signals/skills/bloc-signals/riverpod_migration.md)**: Guide to converting between Riverpod providers and `BlocSignal`.
+- **[Universal Interoperability Guide](./plugins/bloc-signals/skills/bloc-signals/interoperability.md)**: State bridge across BLoC, Riverpod, and Provider.
 - **API Documentation**: Each package contains detailed HTML documentation. You can generate it by running `dart doc` inside each package directory.
 
 ---
@@ -50,13 +51,31 @@ Run `flutter pub get` from the root workspace directory to resolve all dependenc
 
 ---
 
-## AI Coding Assistant Skills
+## AI coding-assistant support
 
-This repository includes a pre-packaged [AI Coding Skill](https://context7.com/skills) representing all the best practices, lifecycle structures, and FAQs for using `BlocSignal`. If you develop with AI code assistants (like Gemini, Claude Code, or Cursor), you can install this skill globally or locally to guide your assistant's code generation:
+The `bloc-signals` agent plugin covers core APIs, Flutter bindings, testing, classic BLoC and Riverpod migrations, and OpenTelemetry tracing. Marketplace registration and plugin installation are separate steps.
+
+Google Antigravity imports the plugin directly from this repository:
 
 ```bash
-npx ctx7@latest skills install RandalSchwartz/BlocSignal bloc-signals
+agy plugin install https://github.com/RandalSchwartz/BlocSignal
 ```
+
+Claude Code uses the repository's `blocsignal` marketplace:
+
+```bash
+claude plugin marketplace add --scope user RandalSchwartz/BlocSignal
+claude plugin install --scope user bloc-signals@blocsignal
+```
+
+OpenAI Codex uses the same marketplace and plugin name:
+
+```bash
+codex plugin marketplace add RandalSchwartz/BlocSignal
+codex plugin add bloc-signals@blocsignal
+```
+
+Start a new agent session after installation. Claude Code can instead run `/reload-plugins` in the current session. Rerun the Agy install command when you want to refresh its imported copy.
 
 ---
 

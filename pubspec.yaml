@@ -12,3 +12,6 @@ workspace:
   - bloc_signals_test
   - bloc_signals_lint
   - bloc_signals_riverpod
+
+dev_dependencies:
+  test: ^1.25.6

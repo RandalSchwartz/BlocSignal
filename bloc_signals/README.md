@@ -88,17 +88,7 @@ void main() {
 
 If you are building a Flutter application, use [bloc_signals_flutter](https://pub.dev/packages/bloc_signals_flutter) for UI bindings, dependency injection providers, and rebuild builders.
 
-For migration help from classic BLoC, check out [our migration guide](../skills/bloc-signals/migration.md).
-
----
-
-## AI Coding Assistant Skills
-
-This repository includes a pre-packaged [AI Coding Skill](https://context7.com/skills) representing all the best practices, lifecycle structures, and FAQs for using `BlocSignal`. If you develop with AI code assistants (like Gemini, Claude Code, or Cursor), you can install this skill globally or locally to guide your assistant's code generation:
-
-```bash
-npx ctx7@latest skills install RandalSchwartz/BlocSignal bloc-signals
-```
+For migration help from classic BLoC, check out [our migration guide](https://github.com/RandalSchwartz/BlocSignal/blob/main/plugins/bloc-signals/skills/bloc-signals/migration.md).
 
 ---
 
@@ -106,4 +96,3 @@ npx ctx7@latest skills install RandalSchwartz/BlocSignal bloc-signals
 
 
 This package is heavily inspired by and builds upon the original **[bloc](https://pub.dev/packages/bloc)** library by **[Felix Angelov](https://github.com/felangel)**, combined with the reactive primitives of the **[signals](https://pub.dev/packages/signals)** library by **[Rody Davis](https://github.com/roddydavis)**.
-

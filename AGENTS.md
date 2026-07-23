@@ -188,6 +188,12 @@ When publishing packages to pub.dev:
 When writing inline Node.js scripts in `.github/workflows/*.yml` via `actions/github-script`:
 * **Avoid `${...}` Interpolation**: Avoid JS template literal `${variable}` syntax inside YAML block scalars (`script: |`), as GitHub Actions attempts to parse `${...}` as GitHub Actions expressions. Use standard string concatenation (`'hello ' + name`) instead.
 
+### 17. State Persistence & `Object?` Serialization (`bloc_signals_hydrate`)
+When designing state persistence adapters (such as `HydratedCubitSignal` and `HydratedBlocSignal`):
+* **`dynamic` / `Object?` Serialization**: Accept `dynamic` / `Object?` in `fromJson` and `toJson` rather than restricting to `Map<String, dynamic>`. Standard Dart `jsonDecode` returns primitives (`num`, `String`, `bool`, `List`, `Map`). Allowing `dynamic` enables primitive and collection cubits (`int`, `String`, `List<String>`) to hydrate cleanly without forcing artificial map wrappers (`{"value": 42}`).
+* **Synchronous Constructor Hydration**: Hydrate state synchronously during container constructor execution (`initHydratedState`) so initial widget builds render hydrated data on frame 1 without UI flickers.
+* **Super Emission on Clear**: Use `super.emit(initialState)` inside `clear()` to reset state value without re-persisting `initialState` back into storage.
+
 
 
 

@@ -1,3 +1,7 @@
+## 0.1.4
+
+- Provide default `fromJson` and `toJson` implementations in `HydratedMixin` so primitive state containers (`int`, `double`, `String`, `bool`, `Map`) require zero method overrides.
+
 ## 0.1.3
 
 - Add `HydratedCubitSignal` vs `PersistentSignal` (`signals.dart`) architectural comparison guide and interop documentation to README.

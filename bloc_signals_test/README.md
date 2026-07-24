@@ -82,6 +82,14 @@ blocSignalTest<DataBloc, DataState>(
 
 ---
 
+## 🤖 AI Coding Assistant Skill
+
+This package is supported by an official pre-packaged [AI Coding Skill](https://github.com/RandalSchwartz/BlocSignal/tree/main/plugins/bloc-signals/skills/bloc-signals) representing unit testing patterns, observer isolation, and synchronous assertion guidelines for `BlocSignal`.
+
+If you develop with AI coding assistants (such as Claude Code, Antigravity, Gemini, Cursor, or Codex), you can load the [`bloc-signals`](https://github.com/RandalSchwartz/BlocSignal/tree/main/plugins/bloc-signals/skills/bloc-signals) skill bundle to guide your assistant's code generation and analysis.
+
+---
+
 ## 📜 License
 
 MIT License. See [LICENSE](LICENSE) for details.

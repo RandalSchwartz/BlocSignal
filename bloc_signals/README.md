@@ -38,7 +38,7 @@ Add `bloc_signals` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^0.2.5
+  bloc_signals: ^0.2.7
 ```
 
 ---
@@ -143,6 +143,16 @@ void main() {
   runApp(const MyApp());
 }
 ```
+
+---
+
+## 🤖 AI Coding Assistant Skill & Guides
+
+This package is supported by official pre-packaged AI Coding Skills and architectural documentation guides representing best practices, lifecycle contracts, and usage patterns for `BlocSignal`:
+
+- 🔄 **[Migration Guide](https://github.com/RandalSchwartz/BlocSignal/blob/main/plugins/bloc-signals/skills/bloc-signals/migration.md)**: Transitioning from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
+- 🌁 **[Universal Interoperability Guide](https://github.com/RandalSchwartz/BlocSignal/blob/main/plugins/bloc-signals/skills/bloc-signals/interoperability.md)**: Bridging state containers across BLoC, Riverpod, Provider, and Listenable primitives.
+- 📦 **[AI Skill Bundle](https://github.com/RandalSchwartz/BlocSignal/tree/main/plugins/bloc-signals/skills/bloc-signals)**: Load the pre-packaged `bloc-signals` skill bundle for AI coding assistants (such as Claude Code, Antigravity, Gemini, Cursor, or Codex) to guide code generation and analysis.
 
 ---
 

@@ -1,3 +1,7 @@
+## 0.2.7
+
+- Add direct links to the Migration Guide and Universal Interoperability Guide skills in README documentation.
+
 ## 0.2.6
 
 - Add comprehensive ecosystem package cross-linking table and motto to README.

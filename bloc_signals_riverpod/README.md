@@ -102,4 +102,11 @@ final count = ref.watch(counterProvider);
 | Direction | Mechanism | Lifecycle Coupling |
 | :--- | :--- | :--- |
 | **Riverpod → `BlocSignal`** <br> (`toBlocSignal`) | Creates an active `ProviderSubscription` via `container.listen()`. | **Coupled**: Holding `RiverpodBlocSignal` open retains an `autoDispose` Riverpod provider. Calling `toBlocSignal(ref)` automatically registers `ref.onDispose(bloc.close)` to release the Riverpod provider when the scope unmounts. |
-| **`BlocSignal` → Riverpod** <br> (`toProvider()`) | Subscribes to `blocSignal.state` via `state.subscribe()`. | **Uncoupled (One-way Observer)**: Disposing the Riverpod provider detaches its listener cleanly via `ref.onDispose`, leaving the underlying `BlocSignal` instance completely untouched. |
+---
+
+## 🤖 AI Coding Assistant Skill
+
+This package is supported by an official pre-packaged [AI Coding Skill](https://github.com/RandalSchwartz/BlocSignal/tree/main/plugins/bloc-signals/skills/bloc-signals) representing architectural best practices, Riverpod 2/3 migration patterns, and bidirectional state bridge rules for `BlocSignal`.
+
+If you develop with AI coding assistants (such as Claude Code, Antigravity, Gemini, Cursor, or Codex), you can load the [`bloc-signals`](https://github.com/RandalSchwartz/BlocSignal/tree/main/plugins/bloc-signals/skills/bloc-signals) skill bundle to guide your assistant's code generation and analysis.
+

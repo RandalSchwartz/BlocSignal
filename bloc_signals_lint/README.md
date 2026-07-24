@@ -81,3 +81,12 @@ Or ignore inline in code:
 // ignore: avoid_duplicate_event_handlers
 on<Increment>((event, emit) => emit(stateValue + 1));
 ```
+
+---
+
+## 🤖 AI Coding Assistant Skill
+
+This package is supported by an official pre-packaged [AI Coding Skill](https://github.com/RandalSchwartz/BlocSignal/tree/main/plugins/bloc-signals/skills/bloc-signals) representing analyzer rules, IDE diagnostics, and automated quick-fix rules for `BlocSignal`.
+
+If you develop with AI coding assistants (such as Claude Code, Antigravity, Gemini, Cursor, or Codex), you can load the [`bloc-signals`](https://github.com/RandalSchwartz/BlocSignal/tree/main/plugins/bloc-signals/skills/bloc-signals) skill bundle to guide your assistant's code generation and analysis.
+

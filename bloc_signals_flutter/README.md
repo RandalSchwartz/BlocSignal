@@ -42,7 +42,7 @@ Add `bloc_signals_flutter` to your `pubspec.yaml`:
 dependencies:
   flutter:
     sdk: flutter
-  bloc_signals_flutter: ^0.2.5
+  bloc_signals_flutter: ^0.2.7
 ```
 
 ---
@@ -152,6 +152,16 @@ final cubit = notifier.toBlocSignal(initialState: 0);
 // Convert any CubitSignal into a Flutter ValueListenable
 final ValueListenable<int> listenable = cubit.toValueListenable();
 ```
+
+---
+
+## 🤖 AI Coding Assistant Skill & Guides
+
+This package is supported by official pre-packaged AI Coding Skills and architectural documentation guides representing Flutter widget lifecycle patterns, UI binding rules, and migration paths for `BlocSignal`:
+
+- 🔄 **[Migration Guide](https://github.com/RandalSchwartz/BlocSignal/blob/main/plugins/bloc-signals/skills/bloc-signals/migration.md)**: Transitioning from classic `package:flutter_bloc` / `package:bloc` to `BlocSignal`.
+- 🌁 **[Universal Interoperability Guide](https://github.com/RandalSchwartz/BlocSignal/blob/main/plugins/bloc-signals/skills/bloc-signals/interoperability.md)**: Bridging state containers across BLoC, Riverpod, Provider, and Listenable primitives.
+- 📦 **[AI Skill Bundle](https://github.com/RandalSchwartz/BlocSignal/tree/main/plugins/bloc-signals/skills/bloc-signals)**: Load the pre-packaged `bloc-signals` skill bundle for AI coding assistants (such as Claude Code, Antigravity, Gemini, Cursor, or Codex) to guide code generation and analysis.
 
 ---
 

@@ -35,9 +35,23 @@ This repository is organized as a native Dart workspace and contains the followi
 
 ## 📚 Documentation
 
-- **[Migration Guide](./plugins/bloc-signals/skills/bloc-signals/migration.md)**: A guide for moving from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
-- **[Riverpod Interop & Migration](./plugins/bloc-signals/skills/bloc-signals/riverpod_migration.md)**: Guide to converting between Riverpod providers and `BlocSignal`.
+- **[Migration Guide](./plugins/bloc-signals/skills/bloc-signals/migration.md)**: Moving from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
+- **[Riverpod Interop & Migration](./plugins/bloc-signals/skills/bloc-signals/riverpod_migration.md)**: Converting between Riverpod providers and `BlocSignal`.
 - **[Universal Interoperability Guide](./plugins/bloc-signals/skills/bloc-signals/interoperability.md)**: State bridge across BLoC, Riverpod, and Provider.
+- **[State Hydration](./plugins/bloc-signals/skills/bloc-signals/hydration.md)**: Persistent state storage and initial hydration semantics.
+- **[DevTools Extension](./plugins/bloc-signals/skills/bloc-signals/devtools.md)**: DevTools inspector, timeline trace panel, and memory leak alerts.
+- **[Static Analysis & Lints](./plugins/bloc-signals/skills/bloc-signals/lint.md)**: Analyzer rules and IDE diagnostics.
+- **[OpenTelemetry Telemetry](./plugins/bloc-signals/skills/bloc-signals/otel.md)**: Distributed tracing spans and observer setup.
+
+---
+
+## 🤖 AI Coding Assistant Skill & Plugin
+
+This repository includes a pre-packaged AI Agent Plugin & Skill bundle (`bloc-signals`) containing architectural best practices, lifecycle contracts, and migration guides for AI coding assistants (such as Claude Code, Antigravity, Gemini, Cursor, or Codex):
+
+- **Skill Bundle**: [`plugins/bloc-signals/skills/bloc-signals/`](./plugins/bloc-signals/skills/bloc-signals/)
+- **Marketplace Manifests**: Available via `.claude-plugin` and `.agents/plugins` marketplace definitions.
+- **Validation**: Run `dart run tool/validate_agent_plugin.dart` to verify marketplace catalogs and skill bundle integrity.
 
 ---
 

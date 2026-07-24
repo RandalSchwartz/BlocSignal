@@ -1,6 +1,6 @@
 # OpenTelemetry observer
 
-This reference matches `otel_bloc_signals` 0.2.0.
+This reference matches `bloc_signals_otel` 0.2.3.
 
 ## Setup
 
@@ -8,7 +8,7 @@ Install one observer before creating or dispatching to blocs:
 
 ```dart
 import 'package:bloc_signals/bloc_signals.dart';
-import 'package:otel_bloc_signals/otel_bloc_signals.dart';
+import 'package:bloc_signals_otel/bloc_signals_otel.dart';
 
 void main() {
   BlocSignalObserver.observer = OtelBlocSignalObserver();

@@ -15,7 +15,7 @@ This repository is organized as a native Dart workspace and contains the followi
 | **`bloc_signals_devtools`** | Dedicated Flutter DevTools extension inspector UI | [README](./bloc_signals_devtools/README.md) |
 | **`bloc_signals_test`** | Declarative unit testing utilities for BlocSignal and CubitSignal | [README](./bloc_signals_test/README.md) |
 | **`bloc_signals_lint`** | Static analysis lints and IDE diagnostics for BlocSignal | [README](./bloc_signals_lint/README.md) |
-| **`otel_bloc_signals`** | OpenTelemetry tracing observer for mapping lifecycle steps to spans | [README](./otel_bloc_signals/README.md) |
+| **`bloc_signals_otel`** | OpenTelemetry tracing observer for mapping lifecycle steps to spans | [README](./bloc_signals_otel/README.md) |
 
 ---
 
@@ -28,7 +28,7 @@ This repository is organized as a native Dart workspace and contains the followi
 - 🔀 **Automatic De-duplication**: State transitions are automatically de-duplicated using standard `==` equality or custom `equals`.
 - 🛠️ **DevTools & VM Service RPC**: Remote action dispatching, trace panels, diff inspectors, and leak detection via `bloc_signals_devtools`.
 - 💾 **State Persistence**: Synchronous initial state hydration across app restarts via `bloc_signals_hydrate`.
-- 📊 **OpenTelemetry Tracing**: Built-in support for distributed tracing with standard OpenTelemetry spans via `otel_bloc_signals`.
+- 📊 **OpenTelemetry Tracing**: Built-in support for distributed tracing with standard OpenTelemetry spans via `bloc_signals_otel`.
 - 🌁 **Universal Interoperability**: Seamlessly adapt between BLoC, Riverpod, Provider, and Flutter Listenable primitives.
 
 ---

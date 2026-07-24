@@ -1,4 +1,4 @@
-# ⚡ otel_bloc_signals
+# ⚡ bloc_signals_otel
 
 > *"With the rigor of Bloc and the flex and speed of Signal"*
 
@@ -19,7 +19,7 @@ This package provides `OtelBlocSignalObserver`, a custom `BlocSignalObserver` th
 | **`bloc_signals_devtools`** | Dedicated Flutter DevTools extension inspector UI | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_devtools) |
 | **`bloc_signals_test`** | Declarative unit testing helpers (`blocSignalTest`) | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_test) |
 | **`bloc_signals_lint`** | Static analysis lints & IDE quick-fixes | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_lint) |
-| **`otel_bloc_signals`** | OpenTelemetry tracing observers | 📦 [pub.dev](https://pub.dev/packages/otel_bloc_signals) |
+| **`bloc_signals_otel`** | OpenTelemetry tracing observers | 📦 [pub.dev](https://pub.dev/packages/bloc_signals_otel) |
 
 ---
 
@@ -33,12 +33,12 @@ This package provides `OtelBlocSignalObserver`, a custom `BlocSignalObserver` th
 
 ## 🚀 Getting Started
 
-Add `otel_bloc_signals` to your `pubspec.yaml`:
+Add `bloc_signals_otel` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^0.2.5
-  otel_bloc_signals: ^0.1.0
+  bloc_signals: ^0.2.6
+  bloc_signals_otel: ^0.2.3
   opentelemetry: ^0.1.0
 ```
 
@@ -48,7 +48,7 @@ dependencies:
 
 ```dart
 import 'package:bloc_signals/bloc_signals.dart';
-import 'package:otel_bloc_signals/otel_bloc_signals.dart';
+import 'package:bloc_signals_otel/bloc_signals_otel.dart';
 import 'package:opentelemetry/api.dart' as otel;
 
 void main() {

@@ -1,4 +1,8 @@
-## 0.2.1
+## 0.2.3
+
+- Renamed package to `bloc_signals_otel` for uniform monorepo package naming consistency (`bloc_signals_*`).
+
+## 0.2.2
 
 - Update `bloc_signals` dependency constraint to `^0.2.1` to align with the new pure Dart `signals_core` package classification.
 

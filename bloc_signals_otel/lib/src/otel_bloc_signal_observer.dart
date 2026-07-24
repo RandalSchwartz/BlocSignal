@@ -8,7 +8,7 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
   /// provided [tracer].
   OtelBlocSignalObserver({otel.Tracer? tracer})
       : _tracer =
-            tracer ?? otel.globalTracerProvider.getTracer('otel_bloc_signals');
+            tracer ?? otel.globalTracerProvider.getTracer('bloc_signals_otel');
 
   final otel.Tracer _tracer;
 

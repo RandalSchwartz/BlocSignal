@@ -59,7 +59,7 @@ To support BLoC-style syntax, events can be registered using `on<E>((event, emit
 - **Event Concurrency Transformers**: Handlers accept an optional `transformer` (such as `droppable()`, `sequential()`, `restartable()`, or a custom `Mutex` lock) to control execution strategy without Rx streams.
 - **Backwards Compatibility**: Subclasses can continue to override `onEvent(event)` manually if they do not wish to use the registry.
 
-### 8. Observability & OpenTelemetry (`otel_bloc_signals`)
+### 8. Observability & OpenTelemetry (`bloc_signals_otel`)
 When designing telemetry observers:
 - **Leak Prevention**: Because `onTransition` is not guaranteed to fire for every event (e.g., on de-duplicated states or when errors bypass transition logic), ensure any active span maps are capped in size (e.g., 1000 items) and evict oldest keys to prevent memory leaks.
 - **Span Correlation on Errors**: Route exceptions directly to the active event span inside `onError` using identity hash-matching, rather than creating disconnected transient error spans.
@@ -201,7 +201,7 @@ When implementing developer tools and telemetry observers:
 
 ### 19. Pure Dart vs. Flutter Signal Factory Isolation (`signals_core` vs `signals_flutter`)
 When importing signal packages:
-* **Core Dart Import (`signals_core`)**: Core packages (`bloc_signals`, `bloc_signals_riverpod`, `bloc_signals_hydrate`, `otel_bloc_signals`) MUST import `package:signals_core/signals_core.dart` exclusively so signals remain pure Dart primitives without linking to the Flutter SDK.
+* **Core Dart Import (`signals_core`)**: Core packages (`bloc_signals`, `bloc_signals_riverpod`, `bloc_signals_hydrate`, `bloc_signals_otel`) MUST import `package:signals_core/signals_core.dart` exclusively so signals remain pure Dart primitives without linking to the Flutter SDK.
 * **Flutter Integration Hook (`signals_flutter`)**: Flutter UI packages (`bloc_signals_flutter`) import `package:signals_flutter/signals_flutter.dart`. When included in a Flutter application, `signals_flutter` hooks global signal creation factories (`signal()`, `computed()`) to produce Flutter-bound signals capable of automatically notifying Flutter elements and triggering widget rebuilds.
 
 

@@ -4,8 +4,8 @@
 import 'dart:async';
 
 import 'package:bloc_signals/bloc_signals.dart';
+import 'package:bloc_signals_otel/bloc_signals_otel.dart';
 import 'package:opentelemetry/sdk.dart' as otel_sdk;
-import 'package:otel_bloc_signals/otel_bloc_signals.dart';
 
 /// 1. Define the Events
 sealed class CounterEvent {}

@@ -1,6 +1,6 @@
 ---
 name: bloc-signals
-description: Implement, review, test, or debug Dart and Flutter code that uses bloc_signals, bloc_signals_flutter, or otel_bloc_signals. Use for BlocSignalBase, BlocSignal, CubitSignal, Change, Transition, event handlers, createEffect ownership, synchronous state updates, lazy providers, builders, listeners, consumers, selectors, context.select, lifecycle observers, and package-specific test failures. Also use when comparing BlocSignal with package:bloc or Riverpod; read the matching migration reference before changing an existing application.
+description: Implement, review, test, or debug Dart and Flutter code that uses bloc_signals, bloc_signals_flutter, or bloc_signals_otel. Use for BlocSignalBase, BlocSignal, CubitSignal, Change, Transition, event handlers, createEffect ownership, synchronous state updates, lazy providers, builders, listeners, consumers, selectors, context.select, lifecycle observers, and package-specific test failures. Also use when comparing BlocSignal with package:bloc or Riverpod; read the matching migration reference before changing an existing application.
 ---
 
 # BlocSignal

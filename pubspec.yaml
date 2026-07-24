@@ -8,7 +8,7 @@ workspace:
   - bloc_signals
   - bloc_signals_flutter
   - bloc_signals_flutter/example
-  - otel_bloc_signals
+  - bloc_signals_otel
   - bloc_signals_test
   - bloc_signals_lint
   - bloc_signals_riverpod

@@ -120,6 +120,36 @@ void main() async {
 
 ---
 
+## ⚖️ `HydratedCubitSignal` vs `PersistentSignal` (`signals.dart`)
+
+If you are evaluating state persistence approaches, both `bloc_signals_hydrate` and `signals.dart`'s native `PersistentSignal` provide state persistence, but cater to different architectural patterns:
+
+| Feature | `HydratedCubitSignal` / `HydratedBlocSignal` | `PersistentSignal` (`signals.dart`) |
+| :--- | :--- | :--- |
+| **Architecture Pattern** | BLoC container pattern (`fromJson` / `toJson`) | Raw key-value signal primitive |
+| **Hydration Timing** | Synchronous during constructor execution (zero frame flicker) | Asynchronous or synchronous depending on adapter |
+| **Observer Telemetry** | Integrated into BLoC `onError` / `onChange` observer pipeline | Handled per-signal or via storage callbacks |
+| **Primitive Support** | Direct primitive return (`toJson(int state) => state`) | Value adapter layers |
+
+### Interoperability: Bridging `PersistentSignal` into `BlocSignal`
+
+If you already use `PersistentSignal` from `package:signals`, you can easily bridge it into a `CubitSignal` using an `effect()`:
+
+```dart
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit(this.persistent) : super(initialState: persistent.value) {
+    // Sync updates from PersistentSignal into Cubit state
+    effect(() => emit(persistent.value));
+  }
+
+  final PersistentSignal<int> persistent;
+
+  void increment() => persistent.value++;
+}
+```
+
+---
+
 ## 🤖 AI Coding Assistant Skill
 
 This package is supported by an official pre-packaged [AI Coding Skill](https://github.com/RandalSchwartz/BlocSignal/tree/main/plugins/bloc-signals/skills/bloc-signals) representing state persistence guidelines, synchronous initial hydration semantics, and storage adapter rules for `BlocSignal`.

@@ -199,6 +199,12 @@ When implementing developer tools and telemetry observers:
 * **Core Package Placement**: Place `developer.postEvent` observers in core Dart packages using `dart:developer` (standard Dart SDK) rather than restricting to Flutter UI packages. This unlocks DevTools telemetry for all Dart environments (CLI, server, Jaspr web apps, Flutter) with zero Flutter SDK overhead.
 * **Multi-Model API Resilience**: In automated GitHub Action API workflows querying LLMs, iterate across candidate models (`gemini-1.5-flash-002`, `gemini-2.5-flash`) for fallback resilience against model deprecations or endpoint migration changes.
 
+### 19. Pure Dart vs. Flutter Signal Factory Isolation (`signals_core` vs `signals_flutter`)
+When importing signal packages:
+* **Core Dart Import (`signals_core`)**: Core packages (`bloc_signals`, `bloc_signals_riverpod`, `bloc_signals_hydrate`, `otel_bloc_signals`) MUST import `package:signals_core/signals_core.dart` exclusively so signals remain pure Dart primitives without linking to the Flutter SDK.
+* **Flutter Integration Hook (`signals_flutter`)**: Flutter UI packages (`bloc_signals_flutter`) import `package:signals_flutter/signals_flutter.dart`. When included in a Flutter application, `signals_flutter` hooks global signal creation factories (`signal()`, `computed()`) to produce Flutter-bound signals capable of automatically notifying Flutter elements and triggering widget rebuilds.
+
+
 
 
 

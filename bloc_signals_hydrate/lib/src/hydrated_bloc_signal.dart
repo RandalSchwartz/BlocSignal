@@ -33,14 +33,20 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
   /// Converts stored JSON representation ([Object?]) back into [StateType].
   ///
   /// Accepts Maps, Lists, Strings, Numbers, Booleans, or null. Return `null` to
-  /// fall back to initial state.
-  StateType? fromJson(dynamic json);
+  /// fall back to initial state. Defaults to returning [json] directly if it
+  /// is an instance of [StateType].
+  StateType? fromJson(dynamic json) {
+    if (json is StateType) {
+      return json;
+    }
+    return null;
+  }
 
   /// Converts current [state] into a JSON-encodable representation ([Object?]).
   ///
   /// Can return a Map, List, String, number, boolean, or null. Returning `null`
-  /// will delete the key from storage.
-  dynamic toJson(StateType state);
+  /// will delete the key from storage. Defaults to returning [state] directly.
+  dynamic toJson(StateType state) => state;
 
   /// Initializes hydration by loading stored state during constructor execution.
   @protected

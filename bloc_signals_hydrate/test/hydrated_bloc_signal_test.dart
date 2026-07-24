@@ -14,6 +14,12 @@ class PrimitiveCounterCubit extends HydratedCubitSignal<int> {
   dynamic toJson(int state) => state;
 }
 
+class ZeroOverrideCounterCubit extends HydratedCubitSignal<int> {
+  ZeroOverrideCounterCubit({super.id, super.storage}) : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
+}
+
 class ListTodoListCubit extends HydratedCubitSignal<List<String>> {
   ListTodoListCubit({super.id, super.storage})
       : super(initialState: const []);
@@ -88,6 +94,18 @@ void main() {
 
       final cubit = PrimitiveCounterCubit();
       expect(cubit.stateValue, equals(42));
+    });
+
+    test('uses default fromJson and toJson without overriding for primitives',
+        () {
+      storage.write('ZeroOverrideCounterCubit', 100);
+
+      final cubit = ZeroOverrideCounterCubit();
+      expect(cubit.stateValue, equals(100));
+
+      cubit.increment();
+      expect(cubit.stateValue, equals(101));
+      expect(storage.read('ZeroOverrideCounterCubit'), equals(101));
     });
 
     test('persists state change automatically on emit', () {

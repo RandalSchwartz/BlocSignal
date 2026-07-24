@@ -15,7 +15,9 @@ This guide details state persistence and hydration in `BlocSignal` using `packag
 
 ---
 
-## 1. Primitive State Hydration (e.g. `int`, `String`)
+## 1. Primitive State Hydration (e.g. `int`, `String`, `bool`)
+
+Primitive state types require **zero method overrides**! Default `fromJson` and `toJson` implementations automatically pass primitive values through safely:
 
 ```dart
 import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
@@ -25,11 +27,8 @@ class CounterCubit extends HydratedCubitSignal<int> {
 
   void increment() => emit(stateValue + 1);
 
-  @override
-  int? fromJson(dynamic json) => json as int?;
-
-  @override
-  dynamic toJson(int state) => state; // Directly return primitive value!
+  // fromJson and toJson default to identity casting for primitives!
+  // No overrides needed!
 }
 ```
 

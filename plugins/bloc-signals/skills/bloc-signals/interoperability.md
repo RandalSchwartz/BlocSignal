@@ -87,9 +87,29 @@ final blocSignal = myChangeNotifier.toBlocSignal(
 ```
 
 ### `BlocSignal` ➔ `ValueListenable`
+Exposes a `ValueListenable<T>` for Flutter's `ValueListenableBuilder` or `package:provider`:
+
 ```dart
-// Exposes ValueListenable for ValueListenableBuilder or ChangeNotifierProvider
 final ValueListenable<int> listenable = myBlocSignal.toValueListenable();
+
+// 1. Consume state T via package:provider's ValueListenableProvider
+ValueListenableProvider<int>.value(
+  value: listenable,
+  child: Builder(
+    builder: (context) {
+      final count = context.watch<int>();
+      return Text('$count');
+    },
+  ),
+);
+
+// 2. Consume state T via Flutter's built-in ValueListenableBuilder
+ValueListenableBuilder<int>(
+  valueListenable: listenable,
+  builder: (context, value, child) {
+    return Text('$value');
+  },
+);
 ```
 
 ---

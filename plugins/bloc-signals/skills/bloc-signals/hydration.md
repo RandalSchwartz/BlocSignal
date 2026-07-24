@@ -63,6 +63,7 @@ final user2Cubit = CounterCubit(id: 'user_456');
 
 // Delete stored key and reset state to initialState
 await user1Cubit.clear();
+```
 
 ---
 

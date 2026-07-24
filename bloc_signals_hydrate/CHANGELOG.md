@@ -1,3 +1,7 @@
+## 0.1.3
+
+- Add `HydratedCubitSignal` vs `PersistentSignal` (`signals.dart`) architectural comparison guide and interop documentation to README.
+
 ## 0.1.2
 
 - Add comprehensive ecosystem package cross-linking table and motto to README.

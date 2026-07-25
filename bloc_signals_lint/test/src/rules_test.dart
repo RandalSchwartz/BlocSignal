@@ -173,6 +173,31 @@ void externalFunction(dynamic bloc) {
         expect(emitsOutsideClass, hasLength(1));
       },
     );
+
+    test(
+      'AvoidTopLevelBlocSignalInstances detects global top-level bloc declarations',
+      () {
+        const badCode = '''
+final counterBloc = CounterBloc();
+class Service {
+  static final authBloc = AuthBloc();
+}
+''';
+        final parseResult = parseString(content: badCode);
+        final globalVars = <String>[];
+
+        parseResult.unit.visitChildren(
+          _VariableVisitor((node) {
+            final name = node.name.lexeme;
+            if (name == 'counterBloc' || name == 'authBloc') {
+              globalVars.add(name);
+            }
+          }),
+        );
+
+        expect(globalVars, containsAll(['counterBloc', 'authBloc']));
+      },
+    );
   });
 }
 
@@ -197,5 +222,16 @@ class _SuperCallVisitor extends RecursiveAstVisitor<void> {
       onSuperCall();
     }
     super.visitMethodInvocation(node);
+  }
+}
+
+class _VariableVisitor extends RecursiveAstVisitor<void> {
+  _VariableVisitor(this.onVariable);
+  final void Function(VariableDeclaration node) onVariable;
+
+  @override
+  void visitVariableDeclaration(VariableDeclaration node) {
+    onVariable(node);
+    super.visitVariableDeclaration(node);
   }
 }

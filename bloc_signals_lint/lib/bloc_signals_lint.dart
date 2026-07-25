@@ -1,7 +1,10 @@
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_emit_in_build.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_top_level_bloc_signal_instances.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_unmanaged_signal_effects.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_bloc_signal_provider_read_in_callbacks.dart';
 import 'package:bloc_signals_lint/src/rules/require_super_on_event.dart';
@@ -20,5 +23,8 @@ class _BlocSignalsLinter extends PluginBase {
         const AvoidEmitInBuild(),
         const AvoidUnmanagedSignalEffects(),
         const PreferBlocSignalProviderReadInCallbacks(),
+        const AvoidTopLevelBlocSignalInstances(),
+        const AvoidProvidingExistingInstanceWithCreate(),
+        const AvoidManualCloseOnProvidedBloc(),
       ];
 }

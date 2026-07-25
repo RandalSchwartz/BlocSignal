@@ -126,6 +126,62 @@ class MyWidget {
         expect(watchInCallbacks, hasLength(1));
       },
     );
+
+    test(
+      'AvoidProvidingExistingInstanceWithCreate detects existing ref in create',
+      () {
+        const badCode = '''
+class MyWidget {
+  Widget build(dynamic context) {
+    return BlocSignalProvider(
+      create: (context) => myGlobalBloc,
+      child: Container(),
+    );
+  }
+}
+''';
+        final parseResult = parseString(content: badCode);
+        final existingRefCreates = <AstNode>[];
+
+        parseResult.unit.visitChildren(
+          _MethodInvocationVisitor((node) {
+            if (node.methodName.name == 'BlocSignalProvider') {
+              for (final arg in node.argumentList.arguments) {
+                if (arg is NamedExpression && arg.name.label.name == 'create') {
+                  existingRefCreates.add(node);
+                }
+              }
+            }
+          }),
+        );
+
+        expect(existingRefCreates, hasLength(1));
+      },
+    );
+
+    test('AvoidManualCloseOnProvidedBloc detects context.read().close()', () {
+      const badCode = '''
+void dispose(dynamic context) {
+  context.read<CounterBloc>().close();
+}
+''';
+      final parseResult = parseString(content: badCode);
+      final manualCloses = <MethodInvocation>[];
+
+      parseResult.unit.visitChildren(
+        _MethodInvocationVisitor((node) {
+          if (node.methodName.name == 'close') {
+            final target = node.target;
+            if (target is MethodInvocation &&
+                target.methodName.name == 'read') {
+              manualCloses.add(node);
+            }
+          }
+        }),
+      );
+
+      expect(manualCloses, hasLength(1));
+    });
   });
 }
 

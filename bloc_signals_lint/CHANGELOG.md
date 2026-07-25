@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.6
+
+- Added 3 footgun prevention lint rules for stateful container lifecycles and disposal:
+  - `avoid_top_level_bloc_signal_instances`: Flags top-level variables and static fields declared directly as `BlocSignal` / `CubitSignal` instances.
+  - `avoid_providing_existing_instance_with_create`: Flags passing pre-existing variable references to `BlocSignalProvider(create: ...)` instead of `BlocSignalProvider.value(value: ...)`.
+  - `avoid_manual_close_on_provided_bloc`: Flags manual `.close()` calls on state containers retrieved via `context.read<T>()` or `BlocSignalProvider.of(context)`.
+
+## 0.2.5
+
+- Add comprehensive ecosystem package cross-linking table and motto to README.
+- Add quick lint rule descriptions and quick-fix guides.
+- Update `bloc_signals` dependency to `^0.2.6`.
+
 ## 0.2.4
 
 - Tightened `analyzer` (`>=6.8.0 <15.0.0`) and `custom_lint_builder` (`>=0.8.0 <0.9.0`) dependency constraints to ensure full compatibility with the analyzer Element2 API and pass pub.dev lower-bound downgrade analysis.
@@ -21,12 +34,6 @@
 - Added automated IDE quick-fixes (`Cmd+.` / `Alt+Enter`):
   - `AddSuperOnEventFix`: Automatically inserts `super.onEvent(event);`.
   - `PreferReadInCallbacksFix`: Automatically replaces `context.watch<T>()` with `context.read<T>()`.
-
-## 0.2.5
-
-- Add comprehensive ecosystem package cross-linking table and motto to README.
-- Add quick lint rule descriptions and quick-fix guides.
-- Update `bloc_signals` dependency to `^0.2.6`.
 
 ## 0.1.0
 

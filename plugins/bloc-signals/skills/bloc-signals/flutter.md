@@ -170,8 +170,49 @@ For UI reactions, use `BlocSignalListener` when suppressing the initial state an
 a state-owned or widget-owned reaction when the listener must receive both previous and current
 values.
 
+## Flutter Hooks Integration (Zero-Cost with `signals_hooks`)
+
+Because `bloc.state` is natively a `ReadonlySignal<S>`, developers migrating from or using `flutter_hooks` do **not** need a separate glue-code package (like the legacy `flutter_hooks_bloc`). Using `package:signals_hooks`, any `HookWidget` can consume, filter, or react to `BlocSignal` state out-of-the-box:
+
+```dart
+class CounterHookView extends HookWidget {
+  const CounterHookView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // 1. Create or read the bloc instance
+    final bloc = useMemoized(() => CounterBloc());
+
+    // 2. Direct reactive subscription without BlocBuilder / Consumer
+    final count = useSignalValue(bloc.state);
+
+    // 3. Inline reactive side-effects without BlocListener
+    useSignalEffect(() {
+      if (count > 10) debugPrint('Counter reached double digits: $count');
+    });
+
+    // 4. Fine-grained inline computed selections without BlocSelector
+    final isEven = useComputed(() => count.isEven);
+
+    return Scaffold(
+      body: Text('Count: $count (Even: ${isEven.value})'),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => bloc.add(Increment()),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+```
+
+Key advantages for hook workflows:
+- **No `flutter_hooks_bloc` Glue Code**: No need for `useBloc` or custom macro-widgets.
+- **Zero-Cost Lifecycle Teardown**: Hooks naturally manage subscription lifecycle and unmount disposal.
+- **Composable State**: Effortlessly combine BLoC signals with local widget signals using `useComputed` or `useSignalEffect`.
+
 ## Missing-provider failures
 
 `BlocSignalProvider.of<T>` throws `FlutterError` when no exact provider type is found. Check that the
 lookup context is below the provider and that the generic type matches the provided concrete bloc.
 Do not catch the error and construct a hidden fallback bloc.
+

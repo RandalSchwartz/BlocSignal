@@ -15,6 +15,8 @@ Interoperability allows features built with different state management tools to 
 | **Riverpod** | `provider.toBlocSignal(ref)` | `blocSignal.toProvider()` | `bloc_signals_riverpod` |
 | **Provider** (Listenable) | `listenable.toBlocSignal()` | `blocSignal.toValueListenable()` | `bloc_signals_flutter` |
 | **Riverpod Async** | `asyncValue.toAsyncState()` | `asyncState.toAsyncValue()` | `bloc_signals_riverpod` |
+| **Flutter Hooks** | `useSignal(initial)` / `useSignalValue(signal)` | Direct `blocSignal.state` consumption | `signals_hooks` |
+
 
 > [!TIP]
 > **Custom Equality Support Across All Bridges**:

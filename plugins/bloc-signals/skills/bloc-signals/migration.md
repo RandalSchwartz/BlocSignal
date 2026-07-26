@@ -546,3 +546,81 @@ class _MyWidgetState extends State<MyWidget> {
   }
 }
 ```
+
+---
+
+## 🪝 Migrating from `flutter_hooks_bloc` to `BlocSignal` + `signals_hooks`
+
+In classic BLoC, using `flutter_hooks` required third-party glue packages like `flutter_hooks_bloc` for custom hooks like `useBloc`, `useBlocListener`, and `useBlocBuilder`.
+
+With `BlocSignal`, because `bloc.state` is natively a `ReadonlySignal<S>`, you get zero-cost `flutter_hooks` integration using standard **`signals_hooks`**. No dedicated `flutter_hooks_bloc` adapter package is needed!
+
+### Side-by-Side Comparison
+
+#### ❌ Before: Legacy `flutter_hooks_bloc`
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_hooks_bloc/flutter_hooks_bloc.dart';
+
+class LegacyCounterView extends HookWidget {
+  const LegacyCounterView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Requires specialized useBloc hook
+    final bloc = useBloc<CounterBloc, int>(onInit: (bloc) => bloc.add(InitCounter()));
+
+    // Requires specialized hook for state updates
+    final count = useBlocBuilder(bloc);
+
+    // Requires specialized hook for side-effects
+    useBlocListener<CounterBloc, int>(bloc, (context, state) {
+      if (state > 10) showSnackbar(context, 'Count is high!');
+    });
+
+    return Text('Count: $count');
+  }
+}
+```
+
+#### ✅ After: Modern `BlocSignal` + `signals_hooks`
+```dart
+import 'package:flutter/material.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:signals_hooks/signals_hooks.dart';
+import 'package:bloc_signals/bloc_signals.dart';
+
+class ModernCounterView extends HookWidget {
+  const ModernCounterView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Standard Flutter hook for memoized instantiation
+    final bloc = useMemoized(() => CounterBloc());
+
+    // 1. Read & watch state directly via signals_hooks
+    final count = useSignalValue(bloc.state);
+
+    // 2. Inline side-effects via signals_hooks (no listener wrapper!)
+    useSignalEffect(() {
+      if (count > 10) showSnackbar(context, 'Count is high!');
+    });
+
+    // 3. Inline derived selectors via signals_hooks (no selector wrapper!)
+    final isEven = useComputed(() => count.isEven);
+
+    return Text('Count: $count (Even: ${isEven.value})');
+  }
+}
+```
+
+### Migration Summary Table
+
+| Legacy `flutter_hooks_bloc` | `BlocSignal` + `signals_hooks` | Advantage |
+| :--- | :--- | :--- |
+| `useBloc<B, S>()` | `useMemoized(() => MyBloc())` | Standard Flutter hook; no custom bloc lifecycle hook needed |
+| `useBlocBuilder(bloc)` | `useSignalValue(bloc.state)` | Reads any `ReadonlySignal<S>` directly |
+| `useBlocListener(bloc, fn)` | `useSignalEffect(() => ...)` | Inlined reactive effect; zero widget tree wrappers |
+| `useBlocSelector(bloc, fn)` | `useComputed(() => ...)` | Reactive signal derivation with fine-grained equality |
+

@@ -23,6 +23,7 @@ class StreamBlocSignal<StateType> extends CubitSignal<StateType> {
     Stream<StateType> stream, {
     required super.initialState,
     super.equals,
+    super.options,
   }) {
     _subscription = stream.listen(
       emit,
@@ -53,11 +54,13 @@ extension StreamBlocSignalExtension<StateType> on Stream<StateType> {
   BlocSignalBase<StateType> toBlocSignal({
     required StateType initialState,
     bool Function(StateType previous, StateType current)? equals,
+    SignalOptions<StateType>? options,
   }) {
     return StreamBlocSignal<StateType>(
       this,
       initialState: initialState,
       equals: equals,
+      options: options,
     );
   }
 }

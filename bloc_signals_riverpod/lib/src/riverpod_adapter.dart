@@ -12,6 +12,7 @@ class RiverpodBlocSignal<T> extends CubitSignal<T> {
     ProviderContainer container,
     ProviderListenable<T> listenable, {
     super.equals,
+    super.options,
   }) : super(initialState: container.read(listenable)) {
     _subscription = container.listen<T>(
       listenable,
@@ -27,11 +28,13 @@ class RiverpodBlocSignal<T> extends CubitSignal<T> {
     Ref ref,
     ProviderListenable<T> listenable, {
     bool Function(T previous, T current)? equals,
+    SignalOptions<T>? options,
   }) {
     final bloc = RiverpodBlocSignal<T>(
       ref.container,
       listenable,
       equals: equals,
+      options: options,
     );
     ref.onDispose(bloc.close);
     return bloc;
@@ -57,18 +60,21 @@ extension ProviderListenableBlocSignalX<T> on ProviderListenable<T> {
   BlocSignalBase<T> toBlocSignal(
     Object refOrContainer, {
     bool Function(T previous, T current)? equals,
+    SignalOptions<T>? options,
   }) {
     if (refOrContainer is Ref) {
       return RiverpodBlocSignal<T>.fromRef(
         refOrContainer,
         this,
         equals: equals,
+        options: options,
       );
     } else if (refOrContainer is ProviderContainer) {
       return RiverpodBlocSignal<T>(
         refOrContainer,
         this,
         equals: equals,
+        options: options,
       );
     } else {
       try {
@@ -78,6 +84,7 @@ extension ProviderListenableBlocSignalX<T> on ProviderListenable<T> {
           container,
           this,
           equals: equals,
+          options: options,
         );
         try {
           obj.onDispose(bloc.close);

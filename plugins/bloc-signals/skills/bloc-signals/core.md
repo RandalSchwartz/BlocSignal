@@ -15,7 +15,8 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 | `state` | Exposes `ReadonlySignal<StateType>` for signals consumers. |
 | `emit(next)` | Updates synchronously unless `next == stateValue`. |
 | `BlocSignal.add(event)` | Routes an event and returns `void`. |
-| `createEffect(callback, onDispose: ...)` | Creates an effect immediately and registers its disposer with the base. |
+| `BlocSignalBase(..., options: ...)` | Accepts optional `SignalOptions<StateType>` to configure signal settings (such as debug `name`). Defaults debug name to `'$runtimeType.state'`. |
+| `createEffect(callback, options: ..., onDispose: ...)` | Creates an effect immediately, assigning `options?.name` (defaulting to `'$runtimeType.effect#N'`) and registering its disposer with the base. |
 | `isClosed` | Reports whether `close()` has run. |
 | `close()` | Returns `Future<void>`, disposes registered effects and the internal `SignalModel`, and is idempotent. |
 
@@ -26,7 +27,10 @@ assertion and then returns without changing state when assertions are disabled.
 
 By default, `BlocSignalBase` uses standard value equality (`previous == current`) to de-duplicate state emissions and prevent redundant reactive updates.
 
-You can customize the change-definition strategy by overriding `equals` in your subclass or passing an `equals:` callback to the constructor:
+> [!NOTE]
+> Precedence Rule: If a custom `SignalOptions(equality: ...)` is provided in `options:`, it takes precedence over the constructor `equals:` callback or subclass `equals()` override.
+
+You can customize the change-definition strategy by overriding `equals` in your subclass, passing an `equals:` callback, or specifying `options: SignalOptions(equality: ...)`:
 
 ### Subclass Override Example (Identity / Reference Equality)
 ```dart

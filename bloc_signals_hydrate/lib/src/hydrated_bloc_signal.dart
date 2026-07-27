@@ -100,6 +100,7 @@ abstract class HydratedCubitSignal<StateType> extends CubitSignal<StateType>
   HydratedCubitSignal({
     required this.initialState,
     super.equals,
+    super.options,
     this.id,
     HydratedStorage? storage,
   })  : _storageOverride = storage,
@@ -140,6 +141,7 @@ abstract class HydratedBlocSignal<Event, StateType>
   HydratedBlocSignal({
     required this.initialState,
     super.equals,
+    super.options,
     this.id,
     HydratedStorage? storage,
   })  : _storageOverride = storage,

@@ -179,6 +179,8 @@ When authoring performance benchmarks or execution throughput measurements (`pac
 When adding state container configuration options (such as custom equality comparators) to `BlocSignalBase`:
 * **`SignalOptions` Delegation**: Always delegate directly to `SignalOptions<StateType>(equality: SignalEquality<StateType>.custom((a, b) => this.equals(a, b)))` from `preact_signals`.
 * **Signal Graph Sync**: Passing custom equality directly to the underlying `signal` ensures that both container transition pipelines (`emit`) and downstream `ReadonlySignal` observers (`computed` derivations, `effect` callbacks, and `SignalBuilder` widgets) operate on 100% unified equality rules.
+* **Constructor Parameter vs. Field Naming (`equality:` vs `.equalityCheck`)**: Note that `SignalOptions` uses `equality:` as its constructor parameter name, but exposes the getter field name on `SignalOptions` as `.equalityCheck`.
+* **Equality Evaluation Precedence**: `options?.equalityCheck` takes precedence over the constructor `equals:` parameter or subclass `@override bool equals(StateType previous, StateType current)`.
 
 ### 15. Pub.dev Transitive Dependency Enforcement
 When publishing packages to pub.dev:

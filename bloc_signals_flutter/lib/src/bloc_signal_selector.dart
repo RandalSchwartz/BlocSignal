@@ -22,11 +22,15 @@ class BlocSignalSelector<T extends BlocSignalBase<S>, S, V>
     required this.selector,
     required this.builder,
     this.bloc,
+    this.options,
     super.key,
   });
 
   /// The bloc to select from. If null, it is looked up from the widget tree.
   final T? bloc;
+
+  /// Optional configuration options for the underlying computed signal.
+  final ComputedOptions<V>? options;
 
   /// The function that selects the sub-value from the state.
   final V Function(S state) selector;
@@ -48,17 +52,32 @@ class _BlocSignalSelectorState<T extends BlocSignalBase<S>, S, V>
 
   void _initComputed() {
     _cleanup?.call();
-    _computed = computed(() => widget.selector(_bloc!.state.value));
+    final debugName =
+        widget.options?.name ?? 'BlocSignalSelector<$T, $S, $V>.computed';
+    _computed = computed(
+      () => widget.selector(_bloc!.state.value),
+      options: ComputedOptions<V>(
+        name: debugName,
+        autoDispose: widget.options?.autoDispose ?? false,
+        watched: widget.options?.watched,
+        unwatched: widget.options?.unwatched,
+      ),
+    );
     _selectedValue = _computed.value;
 
-    _cleanup = effect(() {
-      final newValue = _computed.value;
-      if (newValue != _selectedValue) {
-        setState(() {
-          _selectedValue = newValue;
-        });
-      }
-    });
+    _cleanup = effect(
+      () {
+        final newValue = _computed.value;
+        if (newValue != _selectedValue) {
+          setState(() {
+            _selectedValue = newValue;
+          });
+        }
+      },
+      options: EffectOptions(
+        name: 'BlocSignalSelector<$T, $S, $V>.effect',
+      ),
+    );
   }
 
   @override

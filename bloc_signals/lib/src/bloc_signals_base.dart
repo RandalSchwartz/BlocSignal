@@ -58,22 +58,40 @@ abstract class BlocSignalBase<StateType> {
   ///
   /// Optionally accepts a custom [equals] comparator to override state
   /// change de-duplication strategy.
+  /// Creates a [BlocSignalBase] with the specified [initialState].
+  ///
+  /// Optionally accepts a custom [equals] comparator to override state
+  /// change de-duplication strategy, and optional [options] to configure
+  /// signal options such as debug [SignalOptions.name] or custom equality.
+  /// Note that passing `options.equality` takes precedence over the [equals]
+  /// callback or method override.
   BlocSignalBase({
     required StateType initialState,
     bool Function(StateType previous, StateType current)? equals,
-  })  : _customEquals = equals {
+    SignalOptions<StateType>? options,
+  })  : _customEquals = equals,
+        _optionsEquality = options?.equalityCheck {
+    final debugName = options?.name ?? '$runtimeType.state';
     _state = signal<StateType>(
       initialState,
       options: SignalOptions<StateType>(
-        equality: SignalEquality<StateType>.custom(
-          (a, b) => this.equals(a, b),
-        ),
+        name: debugName,
+        autoDispose: options?.autoDispose ?? false,
+        watched: options?.watched,
+        unwatched: options?.unwatched,
+        equality: options?.equalityCheck ??
+            SignalEquality<StateType>.custom(
+              (a, b) => this.equals(a, b),
+            ),
       ),
     );
     final modelConstructor = createModel(() {
-      effect(() {
-        _onStateChangedInternal(_state.value);
-      });
+      effect(
+        () {
+          _onStateChangedInternal(_state.value);
+        },
+        options: EffectOptions(name: '$runtimeType.lifecycleEffect'),
+      );
       return null;
     });
     _lifecycleModel = modelConstructor();
@@ -81,6 +99,7 @@ abstract class BlocSignalBase<StateType> {
   }
 
   final bool Function(StateType previous, StateType current)? _customEquals;
+  final SignalEquality<StateType>? _optionsEquality;
 
   bool _isClosed = false;
 
@@ -106,6 +125,10 @@ abstract class BlocSignalBase<StateType> {
   /// override this method to specify custom equality logic (e.g. `identical`).
   @protected
   bool equals(StateType previous, StateType current) {
+    final optEquality = _optionsEquality;
+    if (optEquality != null) {
+      return optEquality.equals(previous, current);
+    }
     final custom = _customEquals;
     if (custom != null) {
       return custom(previous, current);
@@ -180,14 +203,23 @@ abstract class BlocSignalBase<StateType> {
 
   /// Creates a reactive [effect] that is automatically cleaned up when the
   /// state container is closed.
+  ///
+  /// Optionally accepts an [options] configuration object to customize effect
+  /// options such as debug name or disposal callback.
   @protected
   void Function() createEffect(
     void Function() callback, {
+    EffectOptions? options,
     void Function()? onDispose,
   }) {
+    final debugName =
+        options?.name ?? '$runtimeType.effect#${_effectsToDispose.length + 1}';
     final dispose = effect(
       callback,
-      options: EffectOptions(onDispose: onDispose),
+      options: EffectOptions(
+        name: debugName,
+        onDispose: onDispose ?? options?.onDispose,
+      ),
     );
     _effectsToDispose.add(dispose);
     return dispose;
@@ -213,7 +245,11 @@ abstract class BlocSignalBase<StateType> {
 /// Exposes state and [emit] directly for subclass methods.
 abstract class CubitSignal<StateType> extends BlocSignalBase<StateType> {
   /// Creates a [CubitSignal] with the specified [initialState].
-  CubitSignal({required super.initialState, super.equals});
+  CubitSignal({
+    required super.initialState,
+    super.equals,
+    super.options,
+  });
 }
 
 /// A synchronous state management container integrating BLoC design patterns
@@ -223,7 +259,11 @@ abstract class CubitSignal<StateType> extends BlocSignalBase<StateType> {
 /// and seamless integration with reactive contexts.
 abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType> {
   /// Creates a [BlocSignal] with the specified [initialState].
-  BlocSignal({required super.initialState, super.equals});
+  BlocSignal({
+    required super.initialState,
+    super.equals,
+    super.options,
+  });
 
   final List<_HandlerRegistry<Event, StateType>> _handlers = [];
 

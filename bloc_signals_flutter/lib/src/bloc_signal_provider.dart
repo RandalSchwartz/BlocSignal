@@ -266,19 +266,29 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   })  : _bloc = bloc,
         _selector = selector,
         _elementRef = WeakReference(element) {
-    _computed = computed(() => _selector(_bloc));
+    _computed = computed(
+      () => _selector(_bloc),
+      options: ComputedOptions<R>(
+        name: 'context.select<$T, $R>.computed',
+      ),
+    );
     _selectedValue = _computed.value;
 
-    _dispose = effect(() {
-      final newValue = _computed.value;
-      if (newValue != _selectedValue) {
-        _selectedValue = newValue;
-        final el = _elementRef.target;
-        if (el != null && el.mounted) {
-          el.markNeedsBuild();
+    _dispose = effect(
+      () {
+        final newValue = _computed.value;
+        if (newValue != _selectedValue) {
+          _selectedValue = newValue;
+          final el = _elementRef.target;
+          if (el != null && el.mounted) {
+            el.markNeedsBuild();
+          }
         }
-      }
-    });
+      },
+      options: EffectOptions(
+        name: 'context.select<$T, $R>.effect',
+      ),
+    );
   }
 
   T _bloc;
@@ -297,18 +307,28 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
         .._selector = newSelector;
 
       _dispose();
-      _computed = computed(() => _selector(_bloc));
+      _computed = computed(
+        () => _selector(_bloc),
+        options: ComputedOptions<R>(
+          name: 'context.select<$T, $R>.computed',
+        ),
+      );
       _selectedValue = _computed.value;
-      _dispose = effect(() {
-        final newValue = _computed.value;
-        if (newValue != _selectedValue) {
-          _selectedValue = newValue;
-          final el = _elementRef.target;
-          if (el != null && el.mounted) {
-            el.markNeedsBuild();
+      _dispose = effect(
+        () {
+          final newValue = _computed.value;
+          if (newValue != _selectedValue) {
+            _selectedValue = newValue;
+            final el = _elementRef.target;
+            if (el != null && el.mounted) {
+              el.markNeedsBuild();
+            }
           }
-        }
-      });
+        },
+        options: EffectOptions(
+          name: 'context.select<$T, $R>.effect',
+        ),
+      );
     }
   }
 

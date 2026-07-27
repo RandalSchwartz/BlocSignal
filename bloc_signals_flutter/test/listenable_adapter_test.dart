@@ -1,6 +1,7 @@
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 class TestChangeNotifier extends ChangeNotifier {
   int count = 0;
@@ -149,5 +150,18 @@ void main() {
       expect(blocSignal.isClosed, isTrue);
       expect(blocSignal.stateValue, equals(42));
     });
+
+    test(
+      'propagates custom SignalOptions to ListenableBlocSignal state',
+      () async {
+        final valueNotifier = ValueNotifier<int>(42);
+        final blocSignal = valueNotifier.toBlocSignal(
+          options: const SignalOptions<int>(name: 'custom_listenable_signal'),
+        );
+
+        expect(blocSignal.state.name, equals('custom_listenable_signal'));
+        await blocSignal.close();
+      },
+    );
   });
 }

@@ -1,3 +1,11 @@
+## 0.2.8
+
+- Add configurable options (`SignalOptions`, `EffectOptions`) and rich default debug names across state containers:
+  - Add optional `options` (`SignalOptions<StateType>`) parameter to `BlocSignalBase`, `CubitSignal`, `BlocSignal`, and `StreamBlocSignal`.
+  - Add optional `options` (`EffectOptions`) parameter to `createEffect(...)`.
+  - Default unnamed state signals to `'$runtimeType.state'`, lifecycle effects to `'$runtimeType.lifecycleEffect'`, and user effects to `'$runtimeType.effect#N'`.
+  - Prioritize `options.equality` over constructor `equals:` callbacks and method overrides.
+
 ## 0.2.7
 
 - Add direct links to the Migration Guide and Universal Interoperability Guide skills in README documentation.

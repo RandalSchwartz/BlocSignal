@@ -1,0 +1,3 @@
+# Workspace-level test runner configuration for package:test
+paths:
+  - test/

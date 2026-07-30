@@ -1,0 +1,4 @@
+# Instruct package:test to only search the test/ directory for test files,
+# preventing lib/bloc_signals_test.dart from being scanned as a test suite.
+paths:
+  - test/

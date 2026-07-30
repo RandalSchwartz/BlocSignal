@@ -56,15 +56,23 @@ abstract class BlocSignalObserver {
 abstract class BlocSignalBase<StateType> {
   /// Creates a [BlocSignalBase] with the specified [initialState].
   ///
-  /// Optionally accepts a custom [equals] comparator to override state
-  /// change de-duplication strategy.
-  /// Creates a [BlocSignalBase] with the specified [initialState].
+  /// Accepts an optional [equals] comparator callback (e.g. `equals: identical`
+  /// to force reference-identity equality updates), and optional [options]
+  /// to configure signal debug names ([SignalOptions.name]) or custom
+  /// [SignalEquality].
   ///
-  /// Optionally accepts a custom [equals] comparator to override state
-  /// change de-duplication strategy, and optional [options] to configure
-  /// signal options such as debug [SignalOptions.name] or custom equality.
-  /// Note that passing `options.equality` takes precedence over the [equals]
-  /// callback or method override.
+  /// ### Equality Evaluation Precedence Order:
+  /// 1. `options.equality` *(highest priority if provided in [options])*
+  /// 2. `equals` constructor parameter or `@override bool equals(...)` method
+  /// 3. Default value equality (`previous == current`)
+  ///
+  /// ```dart
+  /// // Forcing identity equality via built-in `identical` tear-off:
+  /// class IdentityCubit extends CubitSignal<MyState> {
+  ///   IdentityCubit(MyState initial)
+  ///       : super(initialState: initial, equals: identical);
+  /// }
+  /// ```
   BlocSignalBase({
     required StateType initialState,
     bool Function(StateType previous, StateType current)? equals,
@@ -120,9 +128,13 @@ abstract class BlocSignalBase<StateType> {
 
   /// Compares [previous] and [current] state to determine if state has changed.
   ///
-  /// Defaults to standard value equality ([previous] == [current]) or the
-  /// constructor-injected `equals` callback if provided. Subclasses can
-  /// override this method to specify custom equality logic (e.g. `identical`).
+  /// Equality Evaluation Precedence Order:
+  /// 1. `options.equality` *(highest priority if passed via [options])*
+  /// 2. [equals] constructor parameter or `@override bool equals(...)` method
+  /// 3. Default value equality (`previous == current`)
+  ///
+  /// Subclasses can override this method or pass `equals: identical` to force
+  /// reference identity comparison.
   @protected
   bool equals(StateType previous, StateType current) {
     final optEquality = _optionsEquality;

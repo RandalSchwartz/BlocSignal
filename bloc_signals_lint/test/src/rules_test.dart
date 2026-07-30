@@ -175,7 +175,8 @@ void externalFunction(dynamic bloc) {
     );
 
     test(
-      'AvoidTopLevelBlocSignalInstances detects global top-level bloc declarations',
+      'AvoidTopLevelBlocSignalInstances detects global top-level bloc '
+      'declarations',
       () {
         const badCode = '''
 final counterBloc = CounterBloc();

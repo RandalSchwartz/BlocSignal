@@ -20,7 +20,7 @@ class TestCounterBloc extends BlocSignal<String, int> {
 void main() {
   group('BlocSignalBase.toString() (#78)', () {
     test('CubitSignal.toString() formats as ClassName(stateValue)', () {
-      final cubit = TestCounterCubit(0);
+      final cubit = TestCounterCubit();
       expect(cubit.toString(), equals('TestCounterCubit(0)'));
 
       cubit.increment();

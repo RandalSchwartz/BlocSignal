@@ -14,9 +14,11 @@ class AvoidManualCloseOnProvidedBloc extends DartLintRule {
   static const _code = LintCode(
     name: 'avoid_manual_close_on_provided_bloc',
     problemMessage:
-        'Do not manually call close() on state containers managed by BlocSignalProvider.',
+        'Do not manually call close() on state containers managed by '
+        'BlocSignalProvider.',
     correctionMessage:
-        'Let BlocSignalProvider manage container disposal automatically when unmounted.',
+        'Let BlocSignalProvider manage container disposal automatically when '
+        'unmounted.',
   );
 
   @override

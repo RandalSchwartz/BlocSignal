@@ -129,8 +129,8 @@ abstract class BlocSignalBase<StateType> {
   /// Compares [previous] and [current] state to determine if state has changed.
   ///
   /// Equality Evaluation Precedence Order:
-  /// 1. `options.equality` *(highest priority if passed via [options])*
-  /// 2. [equals] constructor parameter or `@override bool equals(...)` method
+  /// 1. `options.equality` *(highest priority if passed via `options`)*
+  /// 2. `equals` constructor parameter or `@override bool equals(...)` method
   /// 3. Default value equality (`previous == current`)
   ///
   /// Subclasses can override this method or pass `equals: identical` to force

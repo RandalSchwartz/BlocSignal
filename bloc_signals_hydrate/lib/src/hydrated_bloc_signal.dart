@@ -34,10 +34,57 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
   ///
   /// Accepts Maps, Lists, Strings, Numbers, Booleans, or null. Return `null` to
   /// fall back to initial state. Defaults to returning [json] directly if it
-  /// is an instance of [StateType].
+  /// is an instance of [StateType], or automatically casting collection types
+  /// ([List], [Map]) when possible.
   StateType? fromJson(dynamic json) {
     if (json is StateType) {
       return json;
+    }
+    if (json is List) {
+      try {
+        final dynamic list = List<dynamic>.from(json);
+        if (list is StateType) return list;
+      } on Object catch (_) {}
+      try {
+        final dynamic list = json.map((dynamic e) => e?.toString()).toList();
+        if (list is StateType) return list;
+      } on Object catch (_) {}
+      try {
+        final dynamic list = json.map((dynamic e) => e as String).toList();
+        if (list is StateType) return list;
+      } on Object catch (_) {}
+      try {
+        final dynamic list =
+            json.map((dynamic e) => (e as num).toInt()).toList();
+        if (list is StateType) return list;
+      } on Object catch (_) {}
+      try {
+        final dynamic list =
+            json.map((dynamic e) => (e as num).toDouble()).toList();
+        if (list is StateType) return list;
+      } on Object catch (_) {}
+    }
+    if (json is Map) {
+      try {
+        final dynamic map = Map<String, dynamic>.from(json);
+        if (map is StateType) return map;
+      } on Object catch (_) {}
+      try {
+        final dynamic map = Map<String, String>.from(json);
+        if (map is StateType) return map;
+      } on Object catch (_) {}
+      try {
+        final dynamic map = Map<String, int>.from(
+          json.map((k, v) => MapEntry(k.toString(), (v as num).toInt())),
+        );
+        if (map is StateType) return map;
+      } on Object catch (_) {}
+      try {
+        final dynamic map = Map<String, double>.from(
+          json.map((k, v) => MapEntry(k.toString(), (v as num).toDouble())),
+        );
+        if (map is StateType) return map;
+      } on Object catch (_) {}
     }
     return null;
   }
@@ -94,6 +141,15 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
 
 /// A reactive [CubitSignal] container that automatically persists and restores
 /// state across app restarts or container instantiation.
+///
+/// Example:
+/// ```dart
+/// class CounterCubit extends HydratedCubitSignal<int> {
+///   CounterCubit() : super(initialState: 0);
+///
+///   void increment() => emit(stateValue + 1);
+/// }
+/// ```
 abstract class HydratedCubitSignal<StateType> extends CubitSignal<StateType>
     with HydratedMixin<StateType> {
   /// Creates a [HydratedCubitSignal] with the specified [initialState].
@@ -135,6 +191,15 @@ abstract class HydratedCubitSignal<StateType> extends CubitSignal<StateType>
 
 /// A reactive [BlocSignal] container that automatically persists and restores
 /// state across app restarts or container instantiation.
+///
+/// Example:
+/// ```dart
+/// class CounterBloc extends HydratedBlocSignal<CounterEvent, int> {
+///   CounterBloc() : super(initialState: 0) {
+///     on<Increment>((event, emit) => emit(stateValue + 1));
+///   }
+/// }
+/// ```
 abstract class HydratedBlocSignal<Event, StateType>
     extends BlocSignal<Event, StateType> with HydratedMixin<StateType> {
   /// Creates a [HydratedBlocSignal] with the specified [initialState].

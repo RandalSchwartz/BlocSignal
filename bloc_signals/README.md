@@ -114,7 +114,7 @@ class UserBloc extends CubitSignal<UserModel> {
   UserBloc(UserModel initial)
       : super(
           initialState: initial,
-          equals: (a, b) => a.id == b.id, // Custom identity equality
+          equals: (a, b) => a.id == b.id, // Custom property equality
         );
 }
 ```
@@ -128,6 +128,53 @@ final Stream<int> stream = counterBloc.toStream();
 // Convert any Dart Stream into a StreamBlocSignal
 final streamBloc = stream.toBlocSignal(initialState: 0);
 ```
+
+---
+
+## 🏷️ Debug Names, Signal Options & Custom Equality
+
+All `BlocSignalBase` containers (`CubitSignal`, `BlocSignal`), side-effect handlers (`createEffect`), and Flutter selectors (`BlocSignalSelector`) accept explicit options configuration (`SignalOptions`, `EffectOptions`, `ComputedOptions`) and generate descriptive automatic debug names for DevTools inspection.
+
+### 1. Automatic & Custom Debug Names
+By default, state signals and internal effects are assigned rich diagnostic names in VM Service / DevTools telemetry:
+- State Signal: `'$runtimeType.state'` (e.g. `'CounterCubit.state'`)
+- Lifecycle Effect: `'$runtimeType.lifecycleEffect'`
+- Custom Effects: `'$runtimeType.effect#1'`, `'$runtimeType.effect#2'`
+
+You can customize debug names using the `options:` parameter:
+```dart
+final cubit = CounterCubit(
+  options: SignalOptions<int>(name: 'CustomCounterCubit.state'),
+);
+```
+
+### 2. Custom Equality & Identity Comparison (`identical`)
+By default, state updates use standard value equality (`previous == current`). You can customize state de-duplication strategy using `equals:` or `options:`.
+
+#### 💡 FAQ: How do I force Reference Identity Equality (`identical`)?
+To ensure every `emit()` call triggers a state update regardless of `==` value equality, pass Dart's built-in `identical` top-level function tear-off:
+
+```dart
+// Option A: Passing `identical` tear-off to the constructor
+class ForceRebuildCubit extends CubitSignal<StateModel> {
+  ForceRebuildCubit(StateModel initial)
+      : super(initialState: initial, equals: identical);
+}
+
+// Option B: Using SignalOptions.identity()
+class IdentityBloc extends CubitSignal<StateModel> {
+  IdentityBloc(StateModel initial)
+      : super(
+          initialState: initial,
+          options: SignalOptions(equality: SignalEquality.identity()),
+        );
+}
+```
+
+#### ⚖️ Equality Evaluation Precedence Order
+1. `options.equality` *(highest priority if specified in `SignalOptions`)*
+2. `equals` constructor parameter or `@override bool equals(...)` method
+3. Default value equality (`previous == current`)
 
 ---
 

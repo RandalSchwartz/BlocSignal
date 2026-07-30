@@ -124,6 +124,7 @@ BlocSignalConsumer<CartBloc, CartState>(
 ```dart
 BlocSignalSelector<UserBloc, UserState, String>(
   selector: (state) => state.username, // Rebuilds ONLY if username changes
+  options: ComputedOptions(name: 'UsernameSelector'), // Optional debug name
   builder: (context, username) {
     return Text('Hello, $username!');
   },

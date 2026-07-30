@@ -206,6 +206,12 @@ When importing signal packages:
 * **Core Dart Import (`signals_core`)**: Core packages (`bloc_signals`, `bloc_signals_riverpod`, `bloc_signals_hydrate`, `bloc_signals_otel`) MUST import `package:signals_core/signals_core.dart` exclusively so signals remain pure Dart primitives without linking to the Flutter SDK.
 * **Flutter Integration Hook (`signals_flutter`)**: Flutter UI packages (`bloc_signals_flutter`) import `package:signals_flutter/signals_flutter.dart`. When included in a Flutter application, `signals_flutter` hooks global signal creation factories (`signal()`, `computed()`) to produce Flutter-bound signals capable of automatically notifying Flutter elements and triggering widget rebuilds.
 
+### 20. `dart_test.yaml` Test Discovery Path Restriction
+When configuring test runners in packages with `_test.dart` entrypoints:
+* **`_test.dart` Entrypoint Discovery Conflict**: Package entrypoint libraries ending in `_test.dart` (such as `package:bloc_signals_test`'s `lib/bloc_signals_test.dart`) match test runner globs when discovered recursively.
+* **Path Restriction Configuration**: To prevent test discovery failures, ensure `dart_test.yaml` is present specifying `paths: [test/]` to restrict test runner path matching strictly to `test/` directories.
+
+
 
 
 

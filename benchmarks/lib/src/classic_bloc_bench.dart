@@ -10,8 +10,7 @@ sealed class ClassicCounterEvent {}
 final class ClassicIncrement extends ClassicCounterEvent {}
 
 /// Classic Stream-based BLoC.
-final class ClassicCounterBloc
-    extends classic.Bloc<ClassicCounterEvent, int> {
+final class ClassicCounterBloc extends classic.Bloc<ClassicCounterEvent, int> {
   /// Creates a [ClassicCounterBloc].
   ClassicCounterBloc() : super(0) {
     on<ClassicIncrement>((event, emit) => emit(state + 1));

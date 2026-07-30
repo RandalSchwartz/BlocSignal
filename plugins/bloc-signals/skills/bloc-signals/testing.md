@@ -136,6 +136,10 @@ For `BlocSignalSelector` and `context.select`, keep the selected value equal for
 then change the selection; only the latter should rebuild. Keep multiple `context.select` calls in
 a fixed order and test provider replacement if the feature permits it.
 
+## Test discovery configuration
+
+Package entrypoint libraries ending in `_test.dart` (such as `package:bloc_signals_test`'s `lib/bloc_signals_test.dart`) match test runner globs when discovered recursively. To prevent test discovery failures, ensure `dart_test.yaml` is present specifying `paths: [test/]` to restrict test runner path matching strictly to `test/` directories.
+
 ## Validation commands
 
 Run the narrowest relevant commands first:
@@ -148,3 +152,4 @@ dart test <changed-test>
 
 Use `flutter analyze` and `flutter test` for Flutter code. Follow broader repository gates when the
 change affects shared APIs or release behavior.
+

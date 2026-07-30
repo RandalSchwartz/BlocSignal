@@ -32,12 +32,9 @@ class LeakDetectorBadge extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            hasHighRetain
-                ? Icons.warning_amber_rounded
-                : Icons.memory_outlined,
+            hasHighRetain ? Icons.warning_amber_rounded : Icons.memory_outlined,
             size: 16,
-            color:
-                hasHighRetain ? Colors.amber.shade900 : Colors.blue.shade900,
+            color: hasHighRetain ? Colors.amber.shade900 : Colors.blue.shade900,
           ),
           const SizedBox(width: 6),
           Text(

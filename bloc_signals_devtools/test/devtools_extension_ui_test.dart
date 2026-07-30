@@ -117,7 +117,8 @@ void main() {
       expect(find.text('Active: 2 | Closed: 1'), findsOneWidget);
     });
 
-    testWidgets('BlocSignalsDevToolsExtension filters history by selected container',
+    testWidgets(
+        'BlocSignalsDevToolsExtension filters history by selected container',
         (tester) async {
       await tester.pumpWidget(
         MaterialApp(

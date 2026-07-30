@@ -21,8 +21,7 @@ class ZeroOverrideCounterCubit extends HydratedCubitSignal<int> {
 }
 
 class ListTodoListCubit extends HydratedCubitSignal<List<String>> {
-  ListTodoListCubit({super.id, super.storage})
-      : super(initialState: const []);
+  ListTodoListCubit({super.id, super.storage}) : super(initialState: const []);
 
   void addTodo(String item) => emit([...stateValue, item]);
 

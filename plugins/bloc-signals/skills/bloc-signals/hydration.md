@@ -36,18 +36,16 @@ class CounterCubit extends HydratedCubitSignal<int> {
 
 ## 2. Collection & Map State Hydration
 
+Collection states (`List<T>`, `Map<K, V>`) also require **zero method overrides** for standard primitive elements! `HydratedMixin.fromJson` automatically casts raw `jsonDecode` outputs (`List<dynamic>`, `Map<dynamic, dynamic>`) to typed collections:
+
 ```dart
 class TodosCubit extends HydratedCubitSignal<List<String>> {
   TodosCubit() : super(initialState: const []);
 
   void addTodo(String text) => emit([...stateValue, text]);
 
-  @override
-  List<String>? fromJson(dynamic json) =>
-      (json as List?)?.map((e) => e.toString()).toList();
-
-  @override
-  dynamic toJson(List<String> state) => state;
+  // fromJson and toJson default to smart collection type casting!
+  // No overrides needed!
 }
 ```
 

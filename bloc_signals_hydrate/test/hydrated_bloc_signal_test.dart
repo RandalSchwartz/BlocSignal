@@ -20,6 +20,20 @@ class ZeroOverrideCounterCubit extends HydratedCubitSignal<int> {
   void increment() => emit(stateValue + 1);
 }
 
+class ZeroOverrideListCubit extends HydratedCubitSignal<List<String>> {
+  ZeroOverrideListCubit({super.id, super.storage})
+      : super(initialState: const []);
+
+  void add(String item) => emit([...stateValue, item]);
+}
+
+class ZeroOverrideMapCubit extends HydratedCubitSignal<Map<String, int>> {
+  ZeroOverrideMapCubit({super.id, super.storage})
+      : super(initialState: const {});
+
+  void setScore(String name, int score) => emit({...stateValue, name: score});
+}
+
 class ListTodoListCubit extends HydratedCubitSignal<List<String>> {
   ListTodoListCubit({super.id, super.storage}) : super(initialState: const []);
 
@@ -105,6 +119,38 @@ void main() {
       cubit.increment();
       expect(cubit.stateValue, equals(101));
       expect(storage.read('ZeroOverrideCounterCubit'), equals(101));
+    });
+
+    test(
+        'uses default fromJson and toJson without overriding for List collections',
+        () {
+      storage.write('ZeroOverrideListCubit', <dynamic>['apple', 'banana']);
+
+      final cubit = ZeroOverrideListCubit();
+      expect(cubit.stateValue, equals(['apple', 'banana']));
+
+      cubit.add('cherry');
+      expect(cubit.stateValue, equals(['apple', 'banana', 'cherry']));
+      expect(
+        storage.read('ZeroOverrideListCubit'),
+        equals(['apple', 'banana', 'cherry']),
+      );
+    });
+
+    test(
+        'uses default fromJson and toJson without overriding for Map collections',
+        () {
+      storage.write('ZeroOverrideMapCubit', <dynamic, dynamic>{'Alice': 95});
+
+      final cubit = ZeroOverrideMapCubit();
+      expect(cubit.stateValue, equals({'Alice': 95}));
+
+      cubit.setScore('Bob', 88);
+      expect(cubit.stateValue, equals({'Alice': 95, 'Bob': 88}));
+      expect(
+        storage.read('ZeroOverrideMapCubit'),
+        equals({'Alice': 95, 'Bob': 88}),
+      );
     });
 
     test('persists state change automatically on emit', () {

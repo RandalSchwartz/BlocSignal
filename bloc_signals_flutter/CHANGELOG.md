@@ -1,7 +1,8 @@
 ## 0.2.7
 
 - Add direct links to the Migration Guide and Universal Interoperability Guide skills in README documentation.
-- Update `bloc_signals` dependency to `^0.2.7`.
+- Add complete `@example` code blocks across all Flutter UI bindings and context extensions (`context.read`, `context.watch`, `context.select`, `BlocSignalSelector`, `ListenableBlocSignal`).
+- Update `bloc_signals` dependency to `^0.2.8`.
 
 ## 0.2.6
 

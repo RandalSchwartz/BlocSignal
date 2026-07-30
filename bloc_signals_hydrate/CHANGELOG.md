@@ -1,6 +1,9 @@
 ## 0.1.4
 
 - Provide default `fromJson` and `toJson` implementations in `HydratedMixin` so primitive state containers (`int`, `double`, `String`, `bool`, `Map`) require zero method overrides.
+- Add smart collection type-casting to `HydratedMixin.fromJson` to automatically cast raw `jsonDecode` outputs (`List<dynamic>`, `Map<dynamic, dynamic>`) to typed collections (`List<T>`, `Map<K, V>`) without requiring manual `fromJson` overrides.
+- Add runnable `@example` code blocks across `HydratedStorage`, `MemoryHydratedStorage`, `HydratedMixin`, `HydratedCubitSignal`, and `HydratedBlocSignal`.
+- Update `bloc_signals` dependency to `^0.2.8`.
 
 ## 0.1.3
 

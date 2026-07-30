@@ -1,10 +1,9 @@
 ## 0.2.8
 
-- Add configurable options (`SignalOptions`, `EffectOptions`) and rich default debug names across state containers:
-  - Add optional `options` (`SignalOptions<StateType>`) parameter to `BlocSignalBase`, `CubitSignal`, `BlocSignal`, and `StreamBlocSignal`.
-  - Add optional `options` (`EffectOptions`) parameter to `createEffect(...)`.
-  - Default unnamed state signals to `'$runtimeType.state'`, lifecycle effects to `'$runtimeType.lifecycleEffect'`, and user effects to `'$runtimeType.effect#N'`.
-  - Prioritize `options.equality` over constructor `equals:` callbacks and method overrides.
+- Add configurable options (`SignalOptions`, `EffectOptions`) and rich default debug names across state containers.
+- Add runnable `@example` code blocks for `droppable()`, `sequential()`, `restartable()`, and `Mutex.protect()`.
+- Add runnable `@example` code blocks for `toStream()`, `StreamBlocSignal`, and `toBlocSignal()`.
+- Add runnable `@example` code blocks for `DevToolsBlocSignalObserver` and `DevToolsService`.
 
 ## 0.2.7
 

@@ -2,10 +2,10 @@
 
 ## 0.2.6
 
-- Added 3 footgun prevention lint rules for stateful container lifecycles and disposal:
-  - `avoid_top_level_bloc_signal_instances`: Flags top-level variables and static fields declared directly as `BlocSignal` / `CubitSignal` instances.
-  - `avoid_providing_existing_instance_with_create`: Flags passing pre-existing variable references to `BlocSignalProvider(create: ...)` instead of `BlocSignalProvider.value(value: ...)`.
-  - `avoid_manual_close_on_provided_bloc`: Flags manual `.close()` calls on state containers retrieved via `context.read<T>()` or `BlocSignalProvider.of(context)`.
+- Added 3 footgun prevention lint rules for stateful container lifecycles and disposal (`avoid_top_level_bloc_signal_instances`, `avoid_providing_existing_instance_with_create`, `avoid_manual_close_on_provided_bloc`).
+- Add runnable `@example` code blocks to `AddSuperOnEventFix` and `PreferReadInCallbacksFix`.
+- Add `test/src/fixes_test.dart` unit test suite for IDE quick fix classes.
+- Update `bloc_signals` dependency to `^0.2.8`.
 
 ## 0.2.5
 

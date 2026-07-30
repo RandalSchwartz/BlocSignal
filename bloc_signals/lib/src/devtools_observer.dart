@@ -7,9 +7,15 @@ import 'package:bloc_signals/src/devtools_service.dart';
 /// Dart VM service via [developer.postEvent] under `bloc_signal.*` event kinds
 /// and registers VM Service RPC extensions via [DevToolsService].
 ///
-/// This provides foundational telemetry for Dart and Flutter DevTools
-/// extensions and VM service inspection tools across both pure Dart and
-/// Flutter applications.
+/// Example:
+/// ```dart
+/// void main() {
+///   BlocSignalObserver.observer = DevToolsBlocSignalObserver(
+///     previousObserver: MyLoggerObserver(),
+///   );
+///   runApp(const MyApp());
+/// }
+/// ```
 class DevToolsBlocSignalObserver extends BlocSignalObserver {
   /// Creates a [DevToolsBlocSignalObserver], optionally chaining calls to
   /// [previousObserver].

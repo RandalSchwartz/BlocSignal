@@ -6,7 +6,8 @@ import 'package:analyzer/error/listener.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that flags passing pre-existing variable references to
-/// `BlocSignalProvider(create: ...)` instead of `BlocSignalProvider.value(value: ...)`.
+/// `BlocSignalProvider(create: ...)` instead of
+/// `BlocSignalProvider.value(value: ...)`.
 class AvoidProvidingExistingInstanceWithCreate extends DartLintRule {
   /// Creates an [AvoidProvidingExistingInstanceWithCreate] lint rule.
   const AvoidProvidingExistingInstanceWithCreate() : super(code: _code);
@@ -17,7 +18,8 @@ class AvoidProvidingExistingInstanceWithCreate extends DartLintRule {
         'Passing an existing instance "{0}" to BlocSignalProvider(create: ...) '
         'will cause it to be automatically closed when unmounted.',
     correctionMessage:
-        'Use BlocSignalProvider.value(value: ...) to provide existing instances without transferring disposal ownership.',
+        'Use BlocSignalProvider.value(value: ...) to provide existing '
+        'instances without transferring disposal ownership.',
   );
 
   @override

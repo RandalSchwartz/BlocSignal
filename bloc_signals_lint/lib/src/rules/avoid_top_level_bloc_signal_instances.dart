@@ -6,7 +6,7 @@ import 'package:analyzer/error/listener.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that flags top-level variable and static field declarations
-/// initialized directly with [BlocSignalBase] instances.
+/// initialized directly with `BlocSignalBase` instances.
 class AvoidTopLevelBlocSignalInstances extends DartLintRule {
   /// Creates an [AvoidTopLevelBlocSignalInstances] lint rule.
   const AvoidTopLevelBlocSignalInstances() : super(code: _code);
@@ -14,9 +14,12 @@ class AvoidTopLevelBlocSignalInstances extends DartLintRule {
   static const _code = LintCode(
     name: 'avoid_top_level_bloc_signal_instances',
     problemMessage:
-        'Stateful container "{0}" should not be declared as a top-level or static variable.',
+        'Stateful container "{0}" should not be declared as a top-level or '
+        'static variable.',
     correctionMessage:
-        'Scope containers using BlocSignalProvider, dependency injection, or factory getters. Primitive signals (e.g. signal(0)) can remain global.',
+        'Scope containers using BlocSignalProvider, dependency injection, or '
+        'factory getters. Primitive signals (e.g. signal(0)) can remain '
+        'global.',
   );
 
   static const _blocSignalBaseChecker = TypeChecker.fromName(

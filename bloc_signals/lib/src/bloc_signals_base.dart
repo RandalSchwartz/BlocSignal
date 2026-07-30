@@ -238,6 +238,9 @@ abstract class BlocSignalBase<StateType> {
     _lifecycleModel.dispose();
     BlocSignalObserver.observer?.onClose(this);
   }
+
+  @override
+  String toString() => '$runtimeType($stateValue)';
 }
 
 /// A clean base class for method-driven state management.

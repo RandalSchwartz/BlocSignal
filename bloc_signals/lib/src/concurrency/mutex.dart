@@ -4,6 +4,14 @@ import 'dart:async';
 ///
 /// Ensures that only one async operation executes at a time within a protected
 /// block, queueing subsequent invocations in FIFO order.
+///
+/// Example:
+/// ```dart
+/// final mutex = Mutex();
+/// await mutex.protect(() async {
+///   // Exclusive asynchronous critical section
+/// });
+/// ```
 class Mutex {
   Completer<void>? _current;
 

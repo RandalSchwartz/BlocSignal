@@ -19,6 +19,14 @@ typedef EventTransformer<E, StateType> = FutureOr<void> Function(
 
 /// Returns an [EventTransformer] that drops incoming events if a handler for
 /// that event type is currently executing.
+///
+/// Example:
+/// ```dart
+/// on<SearchQuery>(
+///   (event, emit) async => emit(await api.search(event.query)),
+///   transformer: droppable(),
+/// );
+/// ```
 EventTransformer<E, StateType> droppable<E, StateType>() {
   var isProcessing = false;
   return (event, handler, emit) async {
@@ -37,6 +45,14 @@ EventTransformer<E, StateType> droppable<E, StateType>() {
 
 /// Returns an [EventTransformer] that queues incoming events and processes
 /// them sequentially in FIFO order using a [Mutex].
+///
+/// Example:
+/// ```dart
+/// on<CounterEvent>(
+///   (event, emit) async => emit(stateValue + 1),
+///   transformer: sequential(),
+/// );
+/// ```
 EventTransformer<E, StateType> sequential<E, StateType>() {
   final mutex = Mutex();
   return (event, handler, emit) {
@@ -52,6 +68,14 @@ EventTransformer<E, StateType> sequential<E, StateType>() {
 /// Returns an [EventTransformer] that allows new incoming events to supersede
 /// previous in-flight handler executions, dropping state emissions from older
 /// executions.
+///
+/// Example:
+/// ```dart
+/// on<TypeAheadQuery>(
+///   (event, emit) async => emit(await api.autocomplete(event.text)),
+///   transformer: restartable(),
+/// );
+/// ```
 EventTransformer<E, StateType> restartable<E, StateType>() {
   var executionToken = 0;
   return (event, handler, emit) async {

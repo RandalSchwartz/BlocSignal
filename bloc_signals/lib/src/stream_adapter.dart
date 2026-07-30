@@ -8,6 +8,11 @@ import 'package:signals_core/signals_core.dart';
 extension BlocSignalStreamExtension<StateType> on BlocSignalBase<StateType> {
   /// Converts the reactive state signal into a multi-subscription Dart
   /// [Stream].
+  ///
+  /// Example:
+  /// ```dart
+  /// final Stream<int> stream = counterBloc.toStream();
+  /// ```
   Stream<StateType> toStream() => state.toStream();
 
   /// Exposes the reactive state signal as a multi-subscription Dart [Stream].
@@ -16,6 +21,14 @@ extension BlocSignalStreamExtension<StateType> on BlocSignalBase<StateType> {
 
 /// A reactive state container wrapper that adapts an underlying Dart [Stream]
 /// (e.g. legacy BLoC, Cubit, or RxDart stream) into a [BlocSignalBase].
+///
+/// Example:
+/// ```dart
+/// final streamBloc = StreamBlocSignal(
+///   myStream,
+///   initialState: 0,
+/// );
+/// ```
 class StreamBlocSignal<StateType> extends CubitSignal<StateType> {
   /// Creates a [StreamBlocSignal] wrapping an underlying [stream] with
   /// [initialState].
@@ -51,6 +64,11 @@ class StreamBlocSignal<StateType> extends CubitSignal<StateType> {
 extension StreamBlocSignalExtension<StateType> on Stream<StateType> {
   /// Adapts this Dart [Stream] into a [BlocSignalBase] state container
   /// with [initialState].
+  ///
+  /// Example:
+  /// ```dart
+  /// final bloc = stream.toBlocSignal(initialState: 0);
+  /// ```
   BlocSignalBase<StateType> toBlocSignal({
     required StateType initialState,
     bool Function(StateType previous, StateType current)? equals,

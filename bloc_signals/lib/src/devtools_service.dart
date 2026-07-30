@@ -30,6 +30,17 @@ class DevToolsHistoryEntry {
 }
 
 /// Registry and service manager for Dart VM Service RPC extensions.
+///
+/// Automatically registers VM Service RPC extensions under `ext.bloc_signal.*`
+/// for DevTools extension panels and inspection tooling:
+/// - `ext.bloc_signal.getInstances`
+/// - `ext.bloc_signal.getHistory`
+/// - `ext.bloc_signal.dispatch`
+///
+/// Example:
+/// ```dart
+/// DevToolsService.instance.registerExtensions();
+/// ```
 class DevToolsService {
   DevToolsService._();
 

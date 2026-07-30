@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
 /// An alert badge indicating active container count and warning against unclosed memory leaks.
+///
+/// Example:
+/// ```dart
+/// LeakDetectorBadge(instances: instances)
+/// ```
 class LeakDetectorBadge extends StatelessWidget {
   /// Creates a [LeakDetectorBadge].
   const LeakDetectorBadge({

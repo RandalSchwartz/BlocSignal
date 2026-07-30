@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
 
 /// An interactive object diff inspector comparing previous and next state values.
+///
+/// Example:
+/// ```dart
+/// StateDiffInspector(
+///   currentState: 'CounterState(0)',
+///   nextState: 'CounterState(1)',
+/// )
+/// ```
 class StateDiffInspector extends StatelessWidget {
   /// Creates a [StateDiffInspector].
   const StateDiffInspector({

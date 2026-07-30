@@ -7,6 +7,15 @@ import 'package:custom_lint_builder/custom_lint_builder.dart';
 /// An automated IDE quick-fix for
 /// `PreferBlocSignalProviderReadInCallbacks` that rewrites
 /// `context.watch<T>()` to `context.read<T>()`.
+///
+/// Example:
+/// ```dart
+/// // Before:
+/// onPressed: () => context.watch<CounterBloc>().add(Increment())
+///
+/// // After:
+/// onPressed: () => context.read<CounterBloc>().add(Increment())
+/// ```
 class PreferReadInCallbacksFix extends DartFix {
   /// Creates a [PreferReadInCallbacksFix] instance.
   PreferReadInCallbacksFix();

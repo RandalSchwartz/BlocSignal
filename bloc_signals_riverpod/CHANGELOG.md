@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.4
+## 0.1.5
 
 - Fix Riverpod 3.3+ export compatibility by importing `package:riverpod/src/internals.dart`.
 - Add optional `equals:` parameter to `RiverpodBlocSignal` constructors and `ProviderListenable.toBlocSignal()` extension.

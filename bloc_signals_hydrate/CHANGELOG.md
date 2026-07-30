@@ -1,4 +1,4 @@
-## 0.1.4
+## 0.1.5
 
 - Provide default `fromJson` and `toJson` implementations in `HydratedMixin` so primitive state containers (`int`, `double`, `String`, `bool`, `Map`) require zero method overrides.
 - Add smart collection type-casting to `HydratedMixin.fromJson` to automatically cast raw `jsonDecode` outputs (`List<dynamic>`, `Map<dynamic, dynamic>`) to typed collections (`List<T>`, `Map<K, V>`) without requiring manual `fromJson` overrides.

@@ -1,4 +1,4 @@
-## 0.1.1
+## 0.1.2
 
 - Add comprehensive ecosystem package cross-linking table and motto to README.
 - Add runnable `@example` code blocks across all DevTools UI inspector widgets (`BlocSignalsDevToolsExtension`, `InstanceTreeView`, `LeakDetectorBadge`, `StateDiffInspector`, `TimelineTracePanel`).

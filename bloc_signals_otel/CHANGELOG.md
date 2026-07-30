@@ -1,4 +1,4 @@
-## 0.2.3
+## 0.2.4
 
 - Initial release as `bloc_signals_otel` (formerly `otel_bloc_signals`).
 - Aligned package name with `bloc_signals_*` monorepo package naming convention.

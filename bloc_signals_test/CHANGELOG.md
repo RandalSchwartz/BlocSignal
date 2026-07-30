@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.3
+## 0.1.4
 
 - Add comprehensive ecosystem package cross-linking table and motto to README.
 - Add quick inlined declarative testing code examples (`blocSignalTest`).

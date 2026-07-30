@@ -41,16 +41,13 @@ Observer hooks accept `BlocSignalBase<dynamic>`, so the same observer receives `
 carry a null event, and a reported cubit error with no active span produces a standalone
 `<CubitType>.error` span.
 
-BlocSignal 0.2.0 also exposes observer hooks for create, change, and close. The 0.2.0
-`OtelBlocSignalObserver` does not override them, so they create no spans and `onClose` does not
-flush an event span left open without a transition.
+`OtelBlocSignalObserver` overrides `onClose` to purge and end lingering active spans associated with the closed container, preventing memory accumulation upon disposal.
 
 ## Completion gaps
 
 An event that emits no state, emits only an equal state, or waits indefinitely does not produce
-`onTransition`. Its span remains in the observer's active map until an error for that bloc occurs
-or the map reaches 1,000 entries and evicts the oldest span. Closing the bloc does not flush active
-spans in the current API.
+`onTransition`. Its span remains in the observer's active map until an error for that bloc occurs,
+the bloc is closed via `onClose`, or the map reaches its capacity limit (default 100 entries) and evicts the oldest span.
 
 Account for this behavior before using the observer for latency or completion metrics. Do not add a
 timer in application code merely to make traces look complete; fix the observer contract or model

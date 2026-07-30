@@ -20,7 +20,8 @@ void main(List<String> args) {
   var failed = false;
 
   for (final pkg in packages) {
-    final isFlutter = pkg == 'bloc_signals_flutter';
+    final isFlutter =
+        pkg == 'bloc_signals_flutter' || pkg == 'bloc_signals_devtools';
     final executable = isFlutter ? 'flutter' : 'dart';
     final commandArgs = ['test', ...args];
 

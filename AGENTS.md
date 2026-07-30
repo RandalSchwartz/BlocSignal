@@ -64,6 +64,9 @@ When designing telemetry observers:
 - **Leak Prevention**: Because `onTransition` is not guaranteed to fire for every event (e.g., on de-duplicated states or when errors bypass transition logic), ensure any active span maps are capped in size (e.g., 1000 items) and evict oldest keys to prevent memory leaks.
 - **Span Correlation on Errors**: Route exceptions directly to the active event span inside `onError` using identity hash-matching, rather than creating disconnected transient error spans.
 
+### 9. String Representation (`toString()`)
+`BlocSignalBase` overrides `toString()` to output `$runtimeType($stateValue)`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses.
+
 ---
 
 ## 🛠️ Agent Plugin Maintenance
@@ -210,6 +213,10 @@ When importing signal packages:
 When configuring test runners in packages with `_test.dart` entrypoints:
 * **`_test.dart` Entrypoint Discovery Conflict**: Package entrypoint libraries ending in `_test.dart` (such as `package:bloc_signals_test`'s `lib/bloc_signals_test.dart`) match test runner globs when discovered recursively.
 * **Path Restriction Configuration**: To prevent test discovery failures, ensure `dart_test.yaml` is present specifying `paths: [test/]` to restrict test runner path matching strictly to `test/` directories.
+
+### 21. Diagnostic String Representation (`toString()`)
+When working with or debugging state containers:
+* **Baseline Output**: `BlocSignalBase` overrides `toString()` to output `$runtimeType($stateValue)`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses.
 
 
 

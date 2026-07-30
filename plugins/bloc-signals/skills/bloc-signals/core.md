@@ -19,6 +19,7 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 | `createEffect(callback, options: ..., onDispose: ...)` | Creates an effect immediately, assigning `options?.name` (defaulting to `'$runtimeType.effect#N'`) and registering its disposer with the base. |
 | `isClosed` | Reports whether `close()` has run. |
 | `close()` | Returns `Future<void>`, disposes registered effects and the internal `SignalModel`, and is idempotent. |
+| `toString()` | Overridden by `BlocSignalBase` to output `'$runtimeType($stateValue)'`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses. |
 
 The state remains readable after closure. `add` silently drops new events. `emit` has a debug
 assertion and then returns without changing state when assertions are disabled.

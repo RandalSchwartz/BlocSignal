@@ -82,6 +82,7 @@ Load only the references needed for the task.
   current)`. It passes only the current state to the listener callback.
 - A global `BlocSignalObserver` is a single slot. Installing a telemetry observer can replace an
   existing logger unless the application composes them.
+- `BlocSignalBase` overrides `toString()` to output `$runtimeType($stateValue)`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses.
 
 Never create an `effect` or `computed` during a Flutter `build` method. Keep its owner and disposal
 path explicit.

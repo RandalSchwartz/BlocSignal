@@ -10,6 +10,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 /// ```dart
 /// BlocSignalSelector<UserBloc, UserState, String>(
 ///   selector: (state) => state.username,
+///   options: ComputedOptions(name: 'UsernameSelector'),
 ///   builder: (context, username) {
 ///     return Text('Username: $username');
 ///   },

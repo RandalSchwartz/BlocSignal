@@ -6,11 +6,21 @@ import 'package:opentelemetry/api.dart' as otel;
 class OtelBlocSignalObserver extends BlocSignalObserver {
   /// Creates an observer that routes BlocSignal lifecycle steps to the
   /// provided [tracer].
-  OtelBlocSignalObserver({otel.Tracer? tracer})
-      : _tracer =
+  ///
+  /// The [maxActiveSpans] parameter caps the active span cache size
+  /// (default 100) to prevent transient memory growth under high-frequency
+  /// event streams.
+  OtelBlocSignalObserver({
+    otel.Tracer? tracer,
+    this.maxActiveSpans = 100,
+  })  : assert(maxActiveSpans > 0, 'maxActiveSpans must be greater than zero.'),
+        _tracer =
             tracer ?? otel.globalTracerProvider.getTracer('bloc_signals_otel');
 
   final otel.Tracer _tracer;
+
+  /// The maximum number of active unclosed spans retained before LRU eviction.
+  final int maxActiveSpans;
 
   // Track active spans for events mapped by a unique key per bloc/event.
   final Map<String, otel.Span> _activeSpans = {};
@@ -24,7 +34,7 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
     super.onEvent(bloc, event);
     if (event == null) return;
 
-    if (_activeSpans.length >= 1000) {
+    if (_activeSpans.length >= maxActiveSpans) {
       final oldestKey = _activeSpans.keys.first;
       _activeSpans.remove(oldestKey)?.end();
     }
@@ -94,6 +104,19 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
         ..recordException(error, stackTrace: stackTrace)
         ..setStatus(otel.StatusCode.error, error.toString())
         ..end();
+    }
+  }
+
+  @override
+  void onClose(BlocSignalBase<dynamic> bloc) {
+    super.onClose(bloc);
+
+    final blocId = identityHashCode(bloc).toString();
+    final keysToRemove =
+        _activeSpans.keys.where((key) => key.startsWith('${blocId}_')).toList();
+
+    for (final key in keysToRemove) {
+      _activeSpans.remove(key)?.end();
     }
   }
 }

@@ -129,13 +129,33 @@ void main() {
     });
 
     test('caps active spans map and evicts oldest spans', () async {
+      final customObserver = OtelBlocSignalObserver(
+        tracer: tracer,
+        maxActiveSpans: 10,
+      );
+      BlocSignalObserver.observer = customObserver;
+
       final bloc = TestBloc();
-      for (var i = 0; i < 1005; i++) {
-        observer.onEvent(bloc, 'event_$i');
+      for (var i = 0; i < 15; i++) {
+        customObserver.onEvent(bloc, 'event_$i');
       }
       expect(exporter.exportedSpans, hasLength(5));
       expect(exporter.exportedSpans.first.name, equals('TestBloc.add(String)'));
       await bloc.close();
+    });
+
+    test('onClose flushes active spans associated with closed container',
+        () async {
+      final bloc = TestBloc();
+      observer.onEvent(bloc, 'dangling_event');
+      expect(exporter.exportedSpans, isEmpty);
+
+      await bloc.close();
+      expect(exporter.exportedSpans, hasLength(1));
+      expect(
+        exporter.exportedSpans.first.name,
+        equals('TestBloc.add(String)'),
+      );
     });
 
     test('instruments CubitSignal errors to transient span successfully',

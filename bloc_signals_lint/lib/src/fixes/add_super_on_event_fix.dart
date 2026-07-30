@@ -6,6 +6,22 @@ import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// An automated IDE quick-fix for `RequireSuperOnEvent` that inserts
 /// `super.onEvent(event);` into `onEvent` overrides.
+///
+/// Example:
+/// ```dart
+/// // Before:
+/// @override
+/// void onEvent(MyEvent event) {
+///   doSomething();
+/// }
+///
+/// // After:
+/// @override
+/// void onEvent(MyEvent event) {
+///   super.onEvent(event);
+///   doSomething();
+/// }
+/// ```
 class AddSuperOnEventFix extends DartFix {
   /// Creates an [AddSuperOnEventFix] instance.
   AddSuperOnEventFix();

@@ -10,6 +10,18 @@ export 'src/state_diff_inspector.dart';
 export 'src/timeline_trace_panel.dart';
 
 /// The root DevTools extension UI for inspecting `BlocSignal` containers.
+///
+/// Example:
+/// ```dart
+/// BlocSignalsDevToolsExtension(
+///   instances: [
+///     {'hashCode': 12345, 'type': 'CounterCubit', 'stateValue': '0', 'isClosed': false},
+///   ],
+///   history: [
+///     {'type': 'transition', 'timestamp': '2026-07-30T15:00:00Z', 'data': {'event': 'Increment()', 'nextState': '1'}},
+///   ],
+/// )
+/// ```
 class BlocSignalsDevToolsExtension extends StatefulWidget {
   /// Creates a [BlocSignalsDevToolsExtension].
   const BlocSignalsDevToolsExtension({

@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 
 /// A widget rendering a chronological timeline mapping events to state
 /// transitions.
+///
+/// Example:
+/// ```dart
+/// TimelineTracePanel(
+///   history: [
+///     {'type': 'transition', 'timestamp': '15:00:00', 'data': {'event': 'Increment()', 'nextState': '1'}},
+///   ],
+/// )
+/// ```
 class TimelineTracePanel extends StatelessWidget {
   /// Creates a [TimelineTracePanel].
   const TimelineTracePanel({

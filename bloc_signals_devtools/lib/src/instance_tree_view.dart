@@ -1,6 +1,15 @@
 import 'package:flutter/material.dart';
 
 /// A widget that renders a searchable list of active container instances.
+///
+/// Example:
+/// ```dart
+/// InstanceTreeView(
+///   instances: instances,
+///   selectedHashCode: selectedId,
+///   onSelectInstance: (item) => setState(() => selectedId = item['hashCode']),
+/// )
+/// ```
 class InstanceTreeView extends StatefulWidget {
   /// Creates an [InstanceTreeView].
   const InstanceTreeView({

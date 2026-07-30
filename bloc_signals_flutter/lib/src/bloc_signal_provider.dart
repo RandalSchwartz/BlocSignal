@@ -156,14 +156,31 @@ class _BlocSignalProviderInherited<T extends BlocSignalBase<dynamic>>
 extension BlocSignalProviderExtension on BuildContext {
   /// Reads a [BlocSignal] without listening for changes (ideal for calling
   /// methods or dispatching events).
+  ///
+  /// Example:
+  /// ```dart
+  /// context.read<CounterBloc>().add(Increment());
+  /// ```
   T read<T extends BlocSignalBase<dynamic>>() => BlocSignalProvider.of<T>(this);
 
   /// Watches a [BlocSignalBase] and registers a rebuild dependency on the
   /// provider.
+  ///
+  /// Example:
+  /// ```dart
+  /// final bloc = context.watch<CounterBloc>();
+  /// ```
   T watch<T extends BlocSignalBase<dynamic>>() =>
       BlocSignalProvider.of<T>(this, listen: true);
 
   /// Listens to changes on a selected value of the [BlocSignal] state.
+  ///
+  /// Example:
+  /// ```dart
+  /// final username = context.select<UserBloc, String>(
+  ///   (bloc) => bloc.stateValue.username,
+  /// );
+  /// ```
   R select<T extends BlocSignalBase<dynamic>, R>(
     R Function(T bloc) selector,
   ) {

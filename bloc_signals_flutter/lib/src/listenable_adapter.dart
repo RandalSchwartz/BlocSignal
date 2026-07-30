@@ -4,6 +4,14 @@ import 'package:signals_flutter/signals_flutter.dart';
 
 /// A reactive state container wrapper that adapts an underlying Flutter
 /// [Listenable] into a [BlocSignalBase].
+///
+/// Example:
+/// ```dart
+/// final cubit = ListenableBlocSignal(
+///   myChangeNotifier,
+///   readState: () => myChangeNotifier.count,
+/// );
+/// ```
 class ListenableBlocSignal<T> extends CubitSignal<T> {
   /// Creates a [ListenableBlocSignal] wrapping a Flutter [listenable] with
   /// [readState] evaluation function.
@@ -56,6 +64,11 @@ class ListenableBlocSignal<T> extends CubitSignal<T> {
 extension ListenableBlocSignalX on Listenable {
   /// Adapts this Flutter [Listenable] into a [BlocSignalBase] container with
   /// initial state evaluated by [readState].
+  ///
+  /// Example:
+  /// ```dart
+  /// final cubit = notifier.toBlocSignal(readState: () => notifier.state);
+  /// ```
   BlocSignalBase<T> toBlocSignal<T>({
     required T Function() readState,
     bool Function(T previous, T current)? equals,
@@ -74,6 +87,11 @@ extension ListenableBlocSignalX on Listenable {
 /// conversion.
 extension ValueListenableBlocSignalX<T> on ValueListenable<T> {
   /// Adapts this Flutter [ValueListenable] into a [BlocSignalBase] container.
+  ///
+  /// Example:
+  /// ```dart
+  /// final cubit = valueListenable.toBlocSignal();
+  /// ```
   BlocSignalBase<T> toBlocSignal({
     bool Function(T previous, T current)? equals,
     SignalOptions<T>? options,
@@ -91,6 +109,11 @@ extension ValueListenableBlocSignalX<T> on ValueListenable<T> {
 extension BlocSignalValueListenableX<T> on BlocSignalBase<T> {
   /// Exposes this [BlocSignalBase] state container as a Flutter
   /// [ValueListenable].
+  ///
+  /// Example:
+  /// ```dart
+  /// final ValueListenable<int> listenable = cubit.toValueListenable();
+  /// ```
   ValueListenable<T> toValueListenable() {
     return _BlocSignalValueListenable<T>(this);
   }

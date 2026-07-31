@@ -1,8 +1,18 @@
-# ⚡ bloc_signals_lint
-
-> *"With the rigor of Bloc and the flex and speed of Signal"*
-
-Custom static analysis lints, diagnostics, and automated IDE quick-fixes for [`bloc_signals`](https://pub.dev/packages/bloc_signals).
+<table border="0">
+  <tr>
+    <td width="230" align="center" valign="middle">
+      <img src="https://raw.githubusercontent.com/RandalSchwartz/BlocSignal/main/assets/logo.png" width="210" alt="bloc_signals_lint" />
+    </td>
+    <td valign="middle">
+      <h1>⚡ bloc_signals_lint</h1>
+      <p><strong><em>"With the rigor of BLoC and the flex and speed of Signals"</em></strong></p>
+      <p>
+        Custom static analysis lints, diagnostics, and automated IDE quick-fixes 
+        for <a href="https://pub.dev/packages/bloc_signals">bloc_signals</a>.
+      </p>
+    </td>
+  </tr>
+</table>
 
 Built on top of [`custom_lint`](https://pub.dev/packages/custom_lint), `bloc_signals_lint` catches common framework misuse, preserves Zone-context transition tracing, and enforces `BlocSignal` architectural invariants directly inside your IDE.
 

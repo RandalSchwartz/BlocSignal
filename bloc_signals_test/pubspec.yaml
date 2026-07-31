@@ -15,7 +15,7 @@ environment:
   sdk: ^3.5.0
 
 dependencies:
-  bloc_signals: ^0.2.8
+  bloc_signals: ^0.2.9
   meta: ">=1.11.0 <2.0.0"
   test: ^1.25.6
 

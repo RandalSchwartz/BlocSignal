@@ -1,8 +1,17 @@
-# ⚡ bloc_signals_otel
-
-> *"With the rigor of Bloc and the flex and speed of Signal"*
-
-OpenTelemetry tracing instrumentation for `BlocSignal` state containers.
+<table border="0">
+  <tr>
+    <td width="230" align="center" valign="middle">
+      <img src="https://raw.githubusercontent.com/RandalSchwartz/BlocSignal/main/assets/logo.png" width="210" alt="bloc_signals_otel" />
+    </td>
+    <td valign="middle">
+      <h1>⚡ bloc_signals_otel</h1>
+      <p><strong><em>"With the rigor of BLoC and the flex and speed of Signals"</em></strong></p>
+      <p>
+        OpenTelemetry tracing instrumentation for <code>BlocSignal</code> state containers.
+      </p>
+    </td>
+  </tr>
+</table>
 
 This package provides `OtelBlocSignalObserver`, a custom `BlocSignalObserver` that maps BLoC events, state transitions, and exception tracebacks into OpenTelemetry spans for end-to-end distributed tracing.
 

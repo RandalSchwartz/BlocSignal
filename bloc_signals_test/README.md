@@ -1,8 +1,18 @@
-# ⚡ bloc_signals_test
-
-> *"With the rigor of Bloc and the flex and speed of Signal"*
-
-Declarative unit testing utilities for [`bloc_signals`](https://pub.dev/packages/bloc_signals) and `CubitSignal` instances.
+<table border="0">
+  <tr>
+    <td width="230" align="center" valign="middle">
+      <img src="https://raw.githubusercontent.com/RandalSchwartz/BlocSignal/main/assets/logo.png" width="210" alt="bloc_signals_test" />
+    </td>
+    <td valign="middle">
+      <h1>⚡ bloc_signals_test</h1>
+      <p><strong><em>"With the rigor of BLoC and the flex and speed of Signals"</em></strong></p>
+      <p>
+        Declarative unit testing utilities for <a href="https://pub.dev/packages/bloc_signals">bloc_signals</a> 
+        and <code>CubitSignal</code> instances.
+      </p>
+    </td>
+  </tr>
+</table>
 
 `bloc_signals_test` provides `blocSignalTest`, a declarative helper tailored specifically for synchronous reactive signal state propagation, state de-duplication, and observer isolation.
 

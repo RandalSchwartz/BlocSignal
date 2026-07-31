@@ -1,8 +1,18 @@
-# ⚡ bloc_signals_flutter
-
-> *"With the rigor of Bloc and the flex and speed of Signal"*
-
-Flutter extensions, UI widgets, dependency injection providers, and reactive bindings for the [bloc_signals](https://pub.dev/packages/bloc_signals) state management library.
+<table border="0">
+  <tr>
+    <td width="230" align="center" valign="middle">
+      <img src="https://raw.githubusercontent.com/RandalSchwartz/BlocSignal/main/assets/logo.png" width="210" alt="bloc_signals_flutter" />
+    </td>
+    <td valign="middle">
+      <h1>⚡ bloc_signals_flutter</h1>
+      <p><strong><em>"With the rigor of BLoC and the flex and speed of Signals"</em></strong></p>
+      <p>
+        Flutter extensions, UI widgets, dependency injection providers, and reactive bindings 
+        for the <a href="https://pub.dev/packages/bloc_signals">bloc_signals</a> state management library.
+      </p>
+    </td>
+  </tr>
+</table>
 
 This companion package provides `BlocSignalProvider`, `MultiBlocSignalProvider`, `BlocSignalBuilder`, `BlocSignalListener`, `BlocSignalConsumer`, `BlocSignalSelector`, `BuildContext` extensions (`read()`, `watch()`), and Flutter `Listenable` interop helpers.
 

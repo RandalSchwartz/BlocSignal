@@ -1,3 +1,7 @@
+## 0.2.9
+
+- Add flush-left side-by-side header logo table to README.
+
 ## 0.2.8
 
 - Add configurable options (`SignalOptions`, `EffectOptions`) and rich default debug names across state containers.

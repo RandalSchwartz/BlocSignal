@@ -1,8 +1,18 @@
-# ⚡ bloc_signals_devtools
-
-> *"With the rigor of Bloc and the flex and speed of Signal"*
-
-Dedicated Flutter DevTools extension UI for inspecting `BlocSignal` and `CubitSignal` containers, tracing event-to-transition timelines, inspecting state diffs, and warning against memory leaks.
+<table border="0">
+  <tr>
+    <td width="230" align="center" valign="middle">
+      <img src="https://raw.githubusercontent.com/RandalSchwartz/BlocSignal/main/assets/logo.png" width="210" alt="bloc_signals_devtools" />
+    </td>
+    <td valign="middle">
+      <h1>⚡ bloc_signals_devtools</h1>
+      <p><strong><em>"With the rigor of BLoC and the flex and speed of Signals"</em></strong></p>
+      <p>
+        Dedicated Flutter DevTools extension UI for inspecting <code>BlocSignal</code> and <code>CubitSignal</code> 
+        containers, tracing event-to-transition timelines, inspecting state diffs, and warning against memory leaks.
+      </p>
+    </td>
+  </tr>
+</table>
 
 ---
 

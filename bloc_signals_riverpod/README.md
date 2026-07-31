@@ -1,8 +1,18 @@
-# ⚡ bloc_signals_riverpod
-
-> *"With the rigor of Bloc and the flex and speed of Signal"*
-
-Bidirectional interoperability adapters and extensions connecting `BlocSignal` / `CubitSignal` state containers with [Riverpod](https://riverpod.dev) providers.
+<table border="0">
+  <tr>
+    <td width="230" align="center" valign="middle">
+      <img src="https://raw.githubusercontent.com/RandalSchwartz/BlocSignal/main/assets/logo.png" width="210" alt="bloc_signals_riverpod" />
+    </td>
+    <td valign="middle">
+      <h1>⚡ bloc_signals_riverpod</h1>
+      <p><strong><em>"With the rigor of BLoC and the flex and speed of Signals"</em></strong></p>
+      <p>
+        Bidirectional interoperability adapters and extensions connecting <code>BlocSignal</code> / <code>CubitSignal</code> 
+        state containers with <a href="https://riverpod.dev">Riverpod</a> providers.
+      </p>
+    </td>
+  </tr>
+</table>
 
 Supports both **Riverpod 2.x** and **Riverpod 3.x** out of the box.
 

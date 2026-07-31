@@ -1,8 +1,17 @@
-# ⚡ bloc_signals_hydrate
-
-> *"With the rigor of Bloc and the flex and speed of Signal"*
-
-State persistence and hydration adapters for `BlocSignal` state containers.
+<table border="0">
+  <tr>
+    <td width="230" align="center" valign="middle">
+      <img src="https://raw.githubusercontent.com/RandalSchwartz/BlocSignal/main/assets/logo.png" width="210" alt="bloc_signals_hydrate" />
+    </td>
+    <td valign="middle">
+      <h1>⚡ bloc_signals_hydrate</h1>
+      <p><strong><em>"With the rigor of BLoC and the flex and speed of Signals"</em></strong></p>
+      <p>
+        State persistence and hydration adapters for <code>BlocSignal</code> state containers.
+      </p>
+    </td>
+  </tr>
+</table>
 
 `HydratedCubitSignal` and `HydratedBlocSignal` automatically persist state changes to storage and restore state synchronously during container instantiation across app restarts.
 

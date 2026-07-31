@@ -1,3 +1,8 @@
+## 0.2.9
+
+- Add flush-left side-by-side header logo table to README.
+- Update `bloc_signals` dependency to `^0.2.9`.
+
 ## 0.2.8
 
 - Add direct links to the Migration Guide and Universal Interoperability Guide skills in README documentation.

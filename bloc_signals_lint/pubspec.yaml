@@ -16,7 +16,7 @@ environment:
 
 dependencies:
   analyzer: ">=6.8.0 <15.0.0"
-  bloc_signals: ^0.2.8
+  bloc_signals: ^0.2.9
   custom_lint_builder: ">=0.8.0 <0.9.0"
   meta: ">=1.11.0 <2.0.0"
 

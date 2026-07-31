@@ -1,8 +1,18 @@
-# ⚡ BlocSignal Monorepo
-
-> *"With the rigor of Bloc and the flex and speed of Signal"*
-
-`BlocSignal` is a state management framework for Dart and Flutter that bridges the Business Logic Component (BLoC) pattern with Rody Davis's `signals` (v7) primitives. 
+<table border="0">
+  <tr>
+    <td width="230" align="center" valign="middle">
+      <img src="https://raw.githubusercontent.com/RandalSchwartz/BlocSignal/main/assets/logo.png" width="210" alt="BlocSignal Logo" />
+    </td>
+    <td valign="middle">
+      <h1>⚡ BlocSignal</h1>
+      <p><strong><em>"With the rigor of BLoC and the flex and speed of Signals"</em></strong></p>
+      <p>
+        A state management framework for Dart and Flutter that bridges the 
+        Business Logic Component (BLoC) pattern with Rody Davis's <code>signals</code> (v7) primitives.
+      </p>
+    </td>
+  </tr>
+</table> 
 
 This repository is organized as a native Dart workspace and contains the following 8 packages:
 

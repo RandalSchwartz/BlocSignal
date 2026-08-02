@@ -1,5 +1,6 @@
 ## 0.2.9
 
+- Add explicit doc comments to `BlocSignalObserver` and `Mutex` constructors for 100% pub.dev documentation coverage.
 - Add flush-left side-by-side header logo table to README.
 
 ## 0.2.8

@@ -13,6 +13,9 @@ import 'dart:async';
 /// });
 /// ```
 class Mutex {
+  /// Creates a new [Mutex] lock.
+  Mutex();
+
   Completer<void>? _current;
 
   /// Whether the lock is currently held by an active operation.

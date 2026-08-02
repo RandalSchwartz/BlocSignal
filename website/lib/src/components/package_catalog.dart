@@ -9,7 +9,7 @@ class PackageCatalog extends StatelessComponent {
     final packages = [
       (
         name: 'bloc_signals',
-        version: '0.2.8',
+        version: '0.2.9',
         desc:
             'Core pure Dart reactive state container bridging BLoC semantics with signals v7 primitives.',
         icon: '⚡',
@@ -25,7 +25,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_jaspr',
-        version: '0.1.0',
+        version: '0.1.1',
         desc:
             'Jaspr web component integration, InheritedComponent providers, builders, listeners, and selectors.',
         icon: '🌐',
@@ -49,7 +49,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_replay',
-        version: '0.1.0',
+        version: '0.1.1',
         desc:
             'Replay, undo, and redo state tracking utilities (ReplayCubit, ReplayBloc).',
         icon: '↩️',

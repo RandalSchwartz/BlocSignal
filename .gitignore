@@ -7,3 +7,4 @@ coverage/
 lcov.info
 build/
 **/build/
+.firebase/

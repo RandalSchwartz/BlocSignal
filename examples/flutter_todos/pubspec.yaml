@@ -1,0 +1,24 @@
+name: flutter_todos_example
+description: Flagship Todos example with reactive filtering and stats using BlocSignal.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  bloc_signals: ^0.2.8
+  bloc_signals_flutter: ^0.2.8
+  signals_core: ^7.0.0
+  signals_flutter: ^7.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

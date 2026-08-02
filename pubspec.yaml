@@ -25,6 +25,16 @@ workspace:
   - examples/persist_shared_preferences
   - examples/clean_architecture
   - examples/get_it_signals
+  - examples/flutter_timer
+  - examples/flutter_todos
+  - examples/flutter_weather
+  - examples/flutter_dynamic_form
+  - examples/flutter_wizard
+  - examples/flutter_form_validation
+  - examples/bloc_concurrency_visualizer
+  - examples/github_search
+  - examples/flutter_complex_list
+  - examples/flutter_bloc_with_stream
   - website
 
 dev_dependencies:

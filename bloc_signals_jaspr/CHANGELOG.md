@@ -1,4 +1,8 @@
-## 0.1.1
+## 0.1.2
+
+- Fix OSI license detection in LICENSE file.
+
+# 0.1.1
 
 - Add top-level `example/example.dart` for 100% pub.dev score checklist compliance.
 - Update `bloc_signals` dependency to `^0.2.9` for explicit default constructor doc comments.

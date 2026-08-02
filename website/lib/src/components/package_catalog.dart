@@ -25,7 +25,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_jaspr',
-        version: '0.1.1',
+        version: '0.1.2',
         desc:
             'Jaspr web component integration, InheritedComponent providers, builders, listeners, and selectors.',
         icon: '🌐',

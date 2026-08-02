@@ -1,7 +1,7 @@
 name: bloc_signals_jaspr
 resolution: workspace
 description: Jaspr web component integration and state binding for BlocSignal state containers.
-version: 0.1.1
+version: 0.1.2
 repository: https://github.com/RandalSchwartz/BlocSignal
 issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
 

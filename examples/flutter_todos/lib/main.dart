@@ -90,7 +90,7 @@ class TodosState {
   }
 }
 
-/// Events for [TodosBlocSignal].
+/// Sealed class representing all Todo events.
 sealed class TodosEvent {
   const TodosEvent();
 }
@@ -124,7 +124,17 @@ final class AllToggled extends TodosEvent {
   const AllToggled();
 }
 
-/// [TodosBlocSignal] manages state & reactive computed projections for Todos.
+/// Instructive Example: [TodosBlocSignal]
+///
+/// Demonstrates using `computed()` signals inside a BLoC container for zero-plumbing,
+/// reactive state derivations.
+///
+/// **Educational Comparison vs Classic BLoC**:
+/// In classic `package:bloc`, deriving filtered lists or counts often requires listening
+/// to state streams or writing complex Rx stream combiners.
+/// In `BlocSignal`, we simply declare `late final ReadonlySignal<List<Todo>> filteredTodos = computed(...)`.
+/// Whenever `stateValue` emits, `filteredTodos`, `activeCount`, and `completedCount` recalculate
+/// lazily and notify UI builders automatically.
 class TodosBlocSignal extends BlocSignal<TodosEvent, TodosState> {
   TodosBlocSignal({List<Todo> initialTodos = const []})
       : super(initialState: TodosState(todos: initialTodos)) {
@@ -135,7 +145,7 @@ class TodosBlocSignal extends BlocSignal<TodosEvent, TodosState> {
     on<CompletedCleared>(_onCompletedCleared);
     on<AllToggled>(_onAllToggled);
 
-    // Computed signals for reactive derivations
+    // Reactive computed derivations initialized inside constructor
     filteredTodos = computed(() {
       final s = stateValue;
       return switch (s.filter) {
@@ -154,8 +164,13 @@ class TodosBlocSignal extends BlocSignal<TodosEvent, TodosState> {
     });
   }
 
+  /// Reactive computed signal deriving filtered todo items based on active [TodosFilter].
   late final ReadonlySignal<List<Todo>> filteredTodos;
+
+  /// Reactive computed signal deriving active uncompleted todo count.
   late final ReadonlySignal<int> activeCount;
+
+  /// Reactive computed signal deriving completed todo count.
   late final ReadonlySignal<int> completedCount;
 
   void _onAdded(TodoAdded event, void Function(TodosState) emit) {
@@ -318,6 +333,9 @@ class _TodosHomePageState extends State<TodosHomePage> {
   }
 }
 
+/// Educational Widget: [TodosListView]
+///
+/// Demonstrates reading `bloc.filteredTodos.value` inside [BlocSignalBuilder].
 class TodosListView extends StatelessWidget {
   const TodosListView({super.key});
 
@@ -366,6 +384,9 @@ class TodosListView extends StatelessWidget {
   }
 }
 
+/// Educational Widget: [FilterSegmentedControl]
+///
+/// Uses `context.watch<TodosBlocSignal>().stateValue.filter` to drive SegmentedButton UI.
 class FilterSegmentedControl extends StatelessWidget {
   const FilterSegmentedControl({super.key});
 
@@ -391,6 +412,9 @@ class FilterSegmentedControl extends StatelessWidget {
   }
 }
 
+/// Educational Widget: [TodosStatsView]
+///
+/// Reads `bloc.activeCount.value` and `bloc.completedCount.value` derived reactively via [computed].
 class TodosStatsView extends StatelessWidget {
   const TodosStatsView({super.key});
 

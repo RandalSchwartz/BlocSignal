@@ -61,7 +61,7 @@ class WizardState {
       isSubmitted.hashCode;
 }
 
-/// Events.
+/// Sealed class representing all wizard events.
 sealed class WizardEvent {
   const WizardEvent();
 }
@@ -91,7 +91,13 @@ final class WizardReset extends WizardEvent {
   const WizardReset();
 }
 
-/// [WizardBlocSignal] orchestrates multi-step registration workflow.
+/// Instructive Example: [WizardBlocSignal]
+///
+/// Orchestrates a multi-step registration wizard using `computed()` step validation signals.
+///
+/// **Educational Key Takeaway**:
+/// - `isStep1Valid`, `isStep2Valid`, and `canSubmit` update reactively on frame 1 as fields change.
+/// - Allows the Stepper widget to evaluate step completion states cleanly without manual boolean checks.
 class WizardBlocSignal extends BlocSignal<WizardEvent, WizardState> {
   WizardBlocSignal() : super(initialState: const WizardState()) {
     on<WizardStepChanged>(_onStepChanged);
@@ -116,8 +122,13 @@ class WizardBlocSignal extends BlocSignal<WizardEvent, WizardState> {
     canSubmit = computed(() => isStep1Valid.value && isStep2Valid.value);
   }
 
+  /// Reactive computed signal checking if Step 1 (username & email) is valid.
   late final ReadonlySignal<bool> isStep1Valid;
+
+  /// Reactive computed signal checking if Step 2 (fullName & bio) is valid.
   late final ReadonlySignal<bool> isStep2Valid;
+
+  /// Reactive computed signal checking if all required wizard steps are complete for submission.
   late final ReadonlySignal<bool> canSubmit;
 
   void _onStepChanged(WizardStepChanged event, void Function(WizardState) emit) {

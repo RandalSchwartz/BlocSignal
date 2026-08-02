@@ -22,7 +22,7 @@ class VehicleData {
   };
 }
 
-/// Form State.
+/// Dynamic Form Selection State.
 @immutable
 class DynamicFormState {
   const DynamicFormState({
@@ -62,7 +62,7 @@ class DynamicFormState {
 
 const Object _sentinel = Object();
 
-/// Events.
+/// Sealed class representing all dynamic form events.
 sealed class DynamicFormEvent {
   const DynamicFormEvent();
 }
@@ -86,7 +86,13 @@ final class FormReset extends DynamicFormEvent {
   const FormReset();
 }
 
-/// [DynamicFormBlocSignal] manages dynamic form selection & computed options.
+/// Instructive Example: [DynamicFormBlocSignal]
+///
+/// Demonstrates cascading dynamic form selections using `computed()` option derivations.
+///
+/// **Educational Key Takeaway**:
+/// - As the user picks a vehicle brand, `availableModels` computes the valid options instantly.
+/// - Selecting a model derives `availableTrims` and updates `isFormComplete` on the same frame.
 class DynamicFormBlocSignal
     extends BlocSignal<DynamicFormEvent, DynamicFormState> {
   DynamicFormBlocSignal() : super(initialState: const DynamicFormState()) {
@@ -95,7 +101,7 @@ class DynamicFormBlocSignal
     on<TrimSelected>(_onTrimSelected);
     on<FormReset>(_onReset);
 
-    // Computed option derivations
+    // Reactive computed option derivations
     availableBrands = computed(() => VehicleData.data.keys.toList());
 
     availableModels = computed(() {
@@ -119,9 +125,16 @@ class DynamicFormBlocSignal
     });
   }
 
+  /// Reactive computed list of available vehicle brand names.
   late final ReadonlySignal<List<String>> availableBrands;
+
+  /// Reactive computed list of available models for the currently selected brand.
   late final ReadonlySignal<List<String>> availableModels;
+
+  /// Reactive computed list of available trims for the currently selected brand and model.
   late final ReadonlySignal<List<String>> availableTrims;
+
+  /// Reactive computed boolean indicating whether all 3 dropdown selections are complete.
   late final ReadonlySignal<bool> isFormComplete;
 
   void _onBrandSelected(

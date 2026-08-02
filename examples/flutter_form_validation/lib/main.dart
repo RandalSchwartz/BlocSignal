@@ -49,7 +49,7 @@ class FormValidationState {
       isSuccess.hashCode;
 }
 
-/// Events.
+/// Sealed class representing all form validation events.
 sealed class FormValidationEvent {
   const FormValidationEvent();
 }
@@ -72,7 +72,13 @@ final class FormReset extends FormValidationEvent {
   const FormReset();
 }
 
-/// [FormValidationBlocSignal] handles real-time input validation & submission.
+/// Instructive Example: [FormValidationBlocSignal]
+///
+/// Demonstrates real-time synchronous input field validation using `computed()` signals.
+///
+/// **Educational Key Takeaway**:
+/// - `emailError`, `passwordError`, and `isValid` evaluate synchronously as user keystrokes occur.
+/// - Synchronous frame updates eliminate UI input validation lag and microtask delays.
 class FormValidationBlocSignal
     extends BlocSignal<FormValidationEvent, FormValidationState> {
   FormValidationBlocSignal()
@@ -82,7 +88,7 @@ class FormValidationBlocSignal
     on<FormSubmitted>(_onSubmitted);
     on<FormReset>(_onReset);
 
-    // Validation computed signals
+    // Synchronous field validation computed signals
     emailError = computed(() {
       final email = stateValue.email;
       if (email.isEmpty) return null;
@@ -110,8 +116,13 @@ class FormValidationBlocSignal
     });
   }
 
+  /// Reactive computed signal deriving email error message or null if valid.
   late final ReadonlySignal<String?> emailError;
+
+  /// Reactive computed signal deriving password error message or null if valid.
   late final ReadonlySignal<String?> passwordError;
+
+  /// Reactive computed boolean indicating overall form validity.
   late final ReadonlySignal<bool> isValid;
 
   void _onEmailChanged(

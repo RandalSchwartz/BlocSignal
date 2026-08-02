@@ -7,34 +7,40 @@ sealed class TimerEvent {
   const TimerEvent();
 }
 
+/// Event dispatched when starting a new countdown timer.
 final class TimerStarted extends TimerEvent {
   const TimerStarted({required this.duration});
   final int duration;
 }
 
+/// Event dispatched to pause a running countdown.
 final class TimerPaused extends TimerEvent {
   const TimerPaused();
 }
 
+/// Event dispatched to resume a paused countdown.
 final class TimerResumed extends TimerEvent {
   const TimerResumed();
 }
 
+/// Event dispatched to reset the countdown back to default duration.
 final class TimerReset extends TimerEvent {
   const TimerReset();
 }
 
+/// Private internal event dispatched on every ticker tick.
 final class _TimerTicked extends TimerEvent {
   const _TimerTicked({required this.duration});
   final int duration;
 }
 
-/// Sealed class representing timer state.
+/// Sealed class representing timer state options.
 sealed class TimerState {
   const TimerState(this.duration);
   final int duration;
 }
 
+/// Initial state when timer is ready to start.
 final class TimerInitial extends TimerState {
   const TimerInitial(super.duration);
 
@@ -42,6 +48,7 @@ final class TimerInitial extends TimerState {
   String toString() => 'TimerInitial { duration: $duration }';
 }
 
+/// State when countdown is actively running.
 final class TimerRunInProgress extends TimerState {
   const TimerRunInProgress(super.duration);
 
@@ -49,6 +56,7 @@ final class TimerRunInProgress extends TimerState {
   String toString() => 'TimerRunInProgress { duration: $duration }';
 }
 
+/// State when countdown is temporarily paused.
 final class TimerRunPause extends TimerState {
   const TimerRunPause(super.duration);
 
@@ -56,6 +64,7 @@ final class TimerRunPause extends TimerState {
   String toString() => 'TimerRunPause { duration: $duration }';
 }
 
+/// State when countdown reaches zero.
 final class TimerRunComplete extends TimerState {
   const TimerRunComplete() : super(0);
 
@@ -63,7 +72,7 @@ final class TimerRunComplete extends TimerState {
   String toString() => 'TimerRunComplete { duration: 0 }';
 }
 
-/// Ticker dependency helper.
+/// Ticker dependency helper that produces periodic ticks.
 class Ticker {
   const Ticker();
   Stream<int> tick({required int ticks}) {
@@ -74,7 +83,14 @@ class Ticker {
   }
 }
 
-/// [TimerBlocSignal] orchestrates timer events and countdown state propagation.
+/// Instructive Example: [TimerBlocSignal]
+///
+/// Demonstrates timer state transitions, stream subscription management,
+/// and automatic container disposal handling in `BlocSignal`.
+///
+/// **Educational Key Takeaway**:
+/// - `emit()` updates `stateValue` synchronously on the same frame, eliminating microtask queue delays in unit tests.
+/// - Overriding `close()` cancels active `StreamSubscription` resources automatically when the provider is unmounted.
 class TimerBlocSignal extends BlocSignal<TimerEvent, TimerState> {
   TimerBlocSignal({Ticker ticker = const Ticker()})
       : _ticker = ticker,
@@ -125,6 +141,7 @@ class TimerBlocSignal extends BlocSignal<TimerEvent, TimerState> {
     );
   }
 
+  /// Automatically called by [BlocSignalProvider] when the widget subtree is disposed.
   @override
   Future<void> close() {
     _tickerSubscription?.cancel();
@@ -182,6 +199,10 @@ class TimerPage extends StatelessWidget {
   }
 }
 
+/// Educational Widget: [TimerText]
+///
+/// Uses `context.select<TimerBlocSignal, int>` to extract only `stateValue.duration`.
+/// This ensures `TimerText` rebuilds ONLY when the integer duration value actually changes.
 class TimerText extends StatelessWidget {
   const TimerText({super.key});
 
@@ -202,6 +223,9 @@ class TimerText extends StatelessWidget {
   }
 }
 
+/// Educational Widget: [TimerActions]
+///
+/// Uses [BlocSignalBuilder] to pattern match on [TimerState] and render interactive FAB buttons.
 class TimerActions extends StatelessWidget {
   const TimerActions({super.key});
 
@@ -266,6 +290,9 @@ class TimerActions extends StatelessWidget {
   }
 }
 
+/// Educational Widget: [BackgroundGradient]
+///
+/// Uses `context.watch<TimerBlocSignal>().stateValue` to reactively update background colors.
 class BackgroundGradient extends StatelessWidget {
   const BackgroundGradient({super.key});
 

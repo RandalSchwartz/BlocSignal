@@ -65,7 +65,13 @@ abstract class BaseVisualizerBloc
   void clearLogs() => emit(const VisualizerState());
 }
 
-/// 1. Sequential Visualizer Bloc
+/// Instructive Example: [SequentialVisualizerBloc]
+///
+/// Demonstrates the [sequential] event concurrency transformer.
+///
+/// **Educational Key Takeaway**:
+/// - Events are queued and processed strictly one after another (FIFO order).
+/// - Implemented without Rx Streams using pure Dart Mutex lock synchronization.
 class SequentialVisualizerBloc extends BaseVisualizerBloc {
   SequentialVisualizerBloc() {
     on<TaskEvent>(
@@ -89,7 +95,12 @@ class SequentialVisualizerBloc extends BaseVisualizerBloc {
   }
 }
 
-/// 2. Droppable Visualizer Bloc
+/// Instructive Example: [DroppableVisualizerBloc]
+///
+/// Demonstrates the [droppable] event concurrency transformer.
+///
+/// **Educational Key Takeaway**:
+/// - Any incoming event dispatched while a previous event handler is active is dropped immediately.
 class DroppableVisualizerBloc extends BaseVisualizerBloc {
   DroppableVisualizerBloc() {
     on<TaskEvent>(
@@ -113,7 +124,12 @@ class DroppableVisualizerBloc extends BaseVisualizerBloc {
   }
 }
 
-/// 3. Restartable Visualizer Bloc
+/// Instructive Example: [RestartableVisualizerBloc]
+///
+/// Demonstrates the [restartable] event concurrency transformer.
+///
+/// **Educational Key Takeaway**:
+/// - Any new incoming event cancels the execution token of lingering async handlers, starting the new task immediately.
 class RestartableVisualizerBloc extends BaseVisualizerBloc {
   RestartableVisualizerBloc() {
     on<TaskEvent>(

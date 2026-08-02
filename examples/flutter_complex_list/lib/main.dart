@@ -2,7 +2,7 @@ import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
-/// Item Model.
+/// Item Entity Model.
 @immutable
 class Item {
   const Item({
@@ -40,7 +40,7 @@ class Item {
   int get hashCode => id.hashCode ^ value.hashCode ^ isSelected.hashCode;
 }
 
-/// State.
+/// Complex List State.
 @immutable
 class ComplexListState {
   const ComplexListState({
@@ -76,7 +76,7 @@ class ComplexListState {
   }
 }
 
-/// Events.
+/// Sealed Complex List Events.
 sealed class ComplexListEvent {
   const ComplexListEvent();
 }
@@ -104,7 +104,13 @@ final class ItemAdded extends ComplexListEvent {
   final String value;
 }
 
-/// [ComplexListBlocSignal] handles list actions and computes selection counts.
+/// Instructive Example: [ComplexListBlocSignal]
+///
+/// Demonstrates multi-selection list management, batch deletion, and fine-grained rebuild optimizations via [BlocSignalSelector].
+///
+/// **Educational Key Takeaways**:
+/// - `selectedCount` and `isAllSelected` derive counts reactively via `computed()`.
+/// - Using `BlocSignalSelector` ensures list views rebuild ONLY when the selected slice actually changes.
 class ComplexListBlocSignal
     extends BlocSignal<ComplexListEvent, ComplexListState> {
   ComplexListBlocSignal({List<Item> initialItems = const []})
@@ -125,7 +131,10 @@ class ComplexListBlocSignal
     });
   }
 
+  /// Reactive computed signal deriving count of currently selected items.
   late final ReadonlySignal<int> selectedCount;
+
+  /// Reactive computed signal checking if every item in the list is selected.
   late final ReadonlySignal<bool> isAllSelected;
 
   void _onToggled(ItemToggled event, void Function(ComplexListState) emit) {

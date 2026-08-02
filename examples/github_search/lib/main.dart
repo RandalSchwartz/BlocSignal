@@ -1,7 +1,7 @@
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:flutter/material.dart';
 
-/// Repository Model.
+/// Repository Item Model.
 @immutable
 class RepositoryItem {
   const RepositoryItem({
@@ -31,7 +31,7 @@ class RepositoryItem {
       name.hashCode ^ owner.hashCode ^ stars.hashCode ^ description.hashCode;
 }
 
-/// GitHub Search Client Repository.
+/// Simulated GitHub Search Repository.
 class GithubRepository {
   const GithubRepository();
 
@@ -74,7 +74,7 @@ class GithubRepository {
   }
 }
 
-/// Search State.
+/// Sealed Search State.
 sealed class GithubSearchState {
   const GithubSearchState();
 }
@@ -125,13 +125,21 @@ final class SearchError extends GithubSearchState {
   int get hashCode => message.hashCode;
 }
 
-/// Search Event.
+/// Search Event dispatched when text input changes.
 final class SearchQueryChanged {
   const SearchQueryChanged(this.query);
   final String query;
 }
 
-/// [GithubSearchBlocSignal] uses restartable event transformer for debounced search.
+/// Instructive Example: [GithubSearchBlocSignal]
+///
+/// Demonstrates using the [restartable] event concurrency transformer for debounced,
+/// request-canceable network search inputs.
+///
+/// **Educational Key Takeaway**:
+/// - Whenever a user types a new character into the text field, [restartable] cancels
+///   any in-flight search request immediately, ensuring stale network responses are dropped.
+/// - Requires zero Rx Streams or RxDart dependencies.
 class GithubSearchBlocSignal
     extends BlocSignal<SearchQueryChanged, GithubSearchState> {
   GithubSearchBlocSignal(

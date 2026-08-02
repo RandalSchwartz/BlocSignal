@@ -79,7 +79,7 @@ class WeatherRepository {
   }
 }
 
-/// Weather State.
+/// Sealed Weather State.
 sealed class WeatherState {
   const WeatherState();
 }
@@ -138,7 +138,7 @@ final class WeatherFailure extends WeatherState {
   int get hashCode => error.hashCode;
 }
 
-/// Weather Events.
+/// Sealed Weather Events.
 sealed class WeatherEvent {
   const WeatherEvent();
 }
@@ -152,7 +152,13 @@ final class UnitsToggled extends WeatherEvent {
   const UnitsToggled();
 }
 
-/// [WeatherBlocSignal] managing weather retrieval & state.
+/// Instructive Example: [WeatherBlocSignal]
+///
+/// Manages weather fetching, temperature unit conversion, and condition reporting.
+///
+/// **Educational Key Takeaways**:
+/// - Shows how `BlocSignalConsumer` coordinates UI rebuilds with side-effects (e.g. updating app theme).
+/// - Synchronous emissions allow unit tests to verify weather retrieval without stream delay.
 class WeatherBlocSignal extends BlocSignal<WeatherEvent, WeatherState> {
   WeatherBlocSignal({WeatherRepository repository = const WeatherRepository()})
       : _repository = repository,
@@ -186,7 +192,9 @@ class WeatherBlocSignal extends BlocSignal<WeatherEvent, WeatherState> {
   }
 }
 
-/// [ThemeCubitSignal] dynamically driving app color based on WeatherCondition.
+/// Instructive Example: [ThemeCubitSignal]
+///
+/// Manages dynamic application theme color based on active [WeatherCondition].
 class ThemeCubitSignal extends CubitSignal<Color> {
   ThemeCubitSignal() : super(initialState: Colors.blue);
 

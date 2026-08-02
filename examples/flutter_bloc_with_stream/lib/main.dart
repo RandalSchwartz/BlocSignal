@@ -22,7 +22,14 @@ class SensorStreamService {
   }
 }
 
-/// Cubit managing sensor stream data.
+/// Instructive Example: [SensorCubitSignal]
+///
+/// Demonstrates wrapping external Dart `Stream` sources into a `CubitSignal` container,
+/// and exporting `BlocSignal` states back to external consumers using the `.toStream()` extension.
+///
+/// **Educational Key Takeaways**:
+/// - **Ingesting Streams**: Listen to external streams in container constructors and call `emit()`.
+/// - **Exporting Streams**: Use `cubit.toStream()` to produce a broadcast `Stream<State>` for legacyRx stream components.
 class SensorCubitSignal extends CubitSignal<SensorReading> {
   SensorCubitSignal({SensorStreamService service = const SensorStreamService()})
       : super(
@@ -79,7 +86,7 @@ class _StreamInteropPageState extends State<StreamInteropPage> {
   @override
   void initState() {
     super.initState();
-    // Demonstrating cubit.toStream() extension helper directly on BlocSignalBase
+    // Educational API Note: Demonstrates cubit.toStream() extension directly on BlocSignalBase
     final cubit = context.read<SensorCubitSignal>();
     _streamSub = cubit.toStream().listen((reading) {
       if (mounted) {

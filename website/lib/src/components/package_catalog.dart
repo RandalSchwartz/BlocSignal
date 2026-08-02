@@ -40,6 +40,14 @@ class PackageCatalog extends StatelessComponent {
         pubUrl: 'https://pub.dev/packages/bloc_signals_hydrate',
       ),
       (
+        name: 'bloc_signals_replay',
+        version: '0.1.0',
+        desc:
+            'Replay, undo, and redo state tracking utilities (ReplayCubit, ReplayBloc).',
+        icon: '↩️',
+        pubUrl: 'https://pub.dev/packages/bloc_signals_replay',
+      ),
+      (
         name: 'bloc_signals_otel',
         version: '0.2.4',
         desc:

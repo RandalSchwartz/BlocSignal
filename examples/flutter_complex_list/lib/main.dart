@@ -217,9 +217,7 @@ class ComplexListPage extends StatelessWidget {
             builder: (context, state) {
               return IconButton(
                 icon: Icon(
-                  bloc.isAllSelected.value
-                      ? Icons.deselect
-                      : Icons.select_all,
+                  bloc.isAllSelected.value ? Icons.deselect : Icons.select_all,
                 ),
                 onPressed: () => bloc.add(const SelectAllToggled()),
               );
@@ -231,8 +229,8 @@ class ComplexListPage extends StatelessWidget {
           ),
         ],
       ),
-      body:
-          BlocSignalSelector<ComplexListBlocSignal, ComplexListState, List<Item>>(
+      body: BlocSignalSelector<ComplexListBlocSignal, ComplexListState,
+          List<Item>>(
         selector: (state) => state.items,
         builder: (context, items) {
           if (items.isEmpty) {

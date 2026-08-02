@@ -14,6 +14,7 @@ workspace:
   - bloc_signals_riverpod
   - bloc_signals_hydrate
   - bloc_signals_devtools
+  - bloc_signals_replay
   - benchmarks
   - examples/shopping_cart
   - examples/auth_flow

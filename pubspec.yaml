@@ -15,6 +15,9 @@ workspace:
   - bloc_signals_hydrate
   - bloc_signals_devtools
   - benchmarks
+  - examples/shopping_cart
+  - examples/auth_flow
+  - examples/infinite_scroll
 
 dev_dependencies:
   test: ^1.25.6

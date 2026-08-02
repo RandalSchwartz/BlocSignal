@@ -218,6 +218,13 @@ When configuring test runners in packages with `_test.dart` entrypoints:
 When working with or debugging state containers:
 * **Baseline Output**: `BlocSignalBase` overrides `toString()` to output `$runtimeType($stateValue)`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses.
 
+### 22. Website Version Synchronization & Deployment Protocol (`blocsignal.dev`)
+When publishing new package versions or updating framework APIs:
+* **Version Alignment in Website Catalog**: `website/lib/src/components/package_catalog.dart` MUST be updated with the newly published package version numbers.
+* **Hero Snippet Alignment**: `website/lib/src/components/hero.dart` code snippets MUST reflect published pubspec dependency constraints.
+* **Re-compile & Deploy**: Compile static bundle with `cd website && mkdir -p build/www && dart compile js lib/main.dart -o build/www/main.dart.js && cp -r web/* build/www/` and deploy to Firebase Hosting via `firebase deploy --only hosting`.
+
+
 
 
 

@@ -9,7 +9,11 @@ class Navbar extends StatelessComponent {
     return header(classes: 'navbar', [
       div(classes: 'container nav-content', [
         a(href: '/', classes: 'brand', [
-          img(src: 'assets/logo.png', alt: 'BlocSignal Logo', width: 36, height: 36),
+          img(
+              src: 'assets/logo.png',
+              alt: 'BlocSignal Logo',
+              width: 36,
+              height: 36),
           span(classes: 'brand-title', [Component.text('BlocSignal')]),
           span(classes: 'brand-badge', [Component.text('v0.2.8')]),
         ]),
@@ -17,7 +21,10 @@ class Navbar extends StatelessComponent {
           a(href: '#packages', [Component.text('Packages')]),
           a(href: '#visualizer', [Component.text('Live Visualizer')]),
           a(href: '#examples', [Component.text('Examples')]),
-          a(href: 'https://pub.dev/packages/bloc_signals', target: Target.blank, [Component.text('pub.dev')]),
+          a(
+              href: 'https://pub.dev/packages/bloc_signals',
+              target: Target.blank,
+              [Component.text('pub.dev')]),
           a(
             href: 'https://github.com/RandalSchwartz/BlocSignal',
             target: Target.blank,

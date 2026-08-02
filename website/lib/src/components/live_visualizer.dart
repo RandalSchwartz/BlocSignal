@@ -52,9 +52,12 @@ class _LiveVisualizerState extends State<LiveVisualizer> {
   Component build(BuildContext context) {
     return section(id: 'visualizer', classes: 'visualizer-section', [
       div(classes: 'container', [
-        h2(classes: 'section-title', [Component.text('Interactive Live BlocSignal Visualizer')]),
+        h2(
+            classes: 'section-title',
+            [Component.text('Interactive Live BlocSignal Visualizer')]),
         p(classes: 'section-subtitle', [
-          Component.text('Dispatches events to a real BlocSignal container running live in WebAssembly/JS.'),
+          Component.text(
+              'Dispatches events to a real BlocSignal container running live in WebAssembly/JS.'),
         ]),
         div(classes: 'visualizer-card', [
           div(classes: 'viz-display', [
@@ -88,7 +91,9 @@ class _LiveVisualizerState extends State<LiveVisualizer> {
             ),
           ]),
           div(classes: 'viz-logs', [
-            h4(classes: 'logs-title', [Component.text('Synchronous Transition & Event Trace Log')]),
+            h4(
+                classes: 'logs-title',
+                [Component.text('Synchronous Transition & Event Trace Log')]),
             div(classes: 'logs-box', [
               for (final log in _logs.take(8))
                 div(classes: 'log-entry', [Component.text(log)]),

@@ -10,56 +10,64 @@ class PackageCatalog extends StatelessComponent {
       (
         name: 'bloc_signals',
         version: '0.2.8',
-        desc: 'Core pure Dart reactive state container bridging BLoC semantics with signals v7 primitives.',
+        desc:
+            'Core pure Dart reactive state container bridging BLoC semantics with signals v7 primitives.',
         icon: '⚡',
         pubUrl: 'https://pub.dev/packages/bloc_signals',
       ),
       (
         name: 'bloc_signals_flutter',
         version: '0.2.8',
-        desc: 'Flutter UI bindings, InheritedWidget providers, builders, selectors, and Listenable interop.',
+        desc:
+            'Flutter UI bindings, InheritedWidget providers, builders, selectors, and Listenable interop.',
         icon: '💙',
         pubUrl: 'https://pub.dev/packages/bloc_signals_flutter',
       ),
       (
         name: 'bloc_signals_riverpod',
         version: '0.1.5',
-        desc: 'Bidirectional Riverpod 2 & 3 interop adapters (toBlocSignal / toProvider).',
+        desc:
+            'Bidirectional Riverpod 2 & 3 interop adapters (toBlocSignal / toProvider).',
         icon: '🌊',
         pubUrl: 'https://pub.dev/packages/bloc_signals_riverpod',
       ),
       (
         name: 'bloc_signals_hydrate',
         version: '0.1.5',
-        desc: 'Synchronous state persistence across app restarts with primitive and collection support.',
+        desc:
+            'Synchronous state persistence across app restarts with primitive and collection support.',
         icon: '💾',
         pubUrl: 'https://pub.dev/packages/bloc_signals_hydrate',
       ),
       (
         name: 'bloc_signals_otel',
         version: '0.2.4',
-        desc: 'OpenTelemetry lifecycle tracing, transition metrics, and distributed span correlation.',
+        desc:
+            'OpenTelemetry lifecycle tracing, transition metrics, and distributed span correlation.',
         icon: '🔭',
         pubUrl: 'https://pub.dev/packages/bloc_signals_otel',
       ),
       (
         name: 'bloc_signals_devtools',
         version: '0.1.2',
-        desc: 'Custom Flutter DevTools extension for timeline tracing, state diffing, and leak detection.',
+        desc:
+            'Custom Flutter DevTools extension for timeline tracing, state diffing, and leak detection.',
         icon: '🛠️',
         pubUrl: 'https://pub.dev/packages/bloc_signals_devtools',
       ),
       (
         name: 'bloc_signals_test',
         version: '0.1.4',
-        desc: 'Declarative unit testing utilities (`blocSignalTest`) for BLoC and Cubit containers.',
+        desc:
+            'Declarative unit testing utilities (`blocSignalTest`) for BLoC and Cubit containers.',
         icon: '🧪',
         pubUrl: 'https://pub.dev/packages/bloc_signals_test',
       ),
       (
         name: 'bloc_signals_lint',
         version: '0.2.7',
-        desc: 'Static analysis lints, AST rule enforcement, and automated IDE quick-fixes.',
+        desc:
+            'Static analysis lints, AST rule enforcement, and automated IDE quick-fixes.',
         icon: '🔍',
         pubUrl: 'https://pub.dev/packages/bloc_signals_lint',
       ),
@@ -67,16 +75,21 @@ class PackageCatalog extends StatelessComponent {
 
     return section(id: 'packages', classes: 'catalog-section', [
       div(classes: 'container', [
-        h2(classes: 'section-title', [Component.text('Workspace Package Ecosystem')]),
+        h2(
+            classes: 'section-title',
+            [Component.text('Workspace Package Ecosystem')]),
         p(classes: 'section-subtitle', [
-          Component.text('Modular, zero-bloat packages designed to work together seamlessly or independently.'),
+          Component.text(
+              'Modular, zero-bloat packages designed to work together seamlessly or independently.'),
         ]),
         div(classes: 'package-grid', [
           for (final pkg in packages)
             div(classes: 'package-card', [
               div(classes: 'card-header', [
                 span(classes: 'card-icon', [Component.text(pkg.icon)]),
-                span(classes: 'card-version', [Component.text('v${pkg.version}')]),
+                span(
+                    classes: 'card-version',
+                    [Component.text('v${pkg.version}')]),
               ]),
               h3(classes: 'card-title', [Component.text(pkg.name)]),
               p(classes: 'card-desc', [Component.text(pkg.desc)]),

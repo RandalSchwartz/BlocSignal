@@ -10,21 +10,24 @@ class ExamplesSection extends StatelessComponent {
       (
         title: 'Flutter Counter',
         tag: 'Basics',
-        desc: 'Side-by-side comparison of CubitSignal vs BlocSignal with zero microtask latency.',
+        desc:
+            'Side-by-side comparison of CubitSignal vs BlocSignal with zero microtask latency.',
         icon: '🔢',
         path: 'examples/flutter_counter',
       ),
       (
         title: 'Flutter AsyncState',
         tag: 'Async UI',
-        desc: 'Handling AsyncData, AsyncLoading, and AsyncError using signals_core.',
+        desc:
+            'Handling AsyncData, AsyncLoading, and AsyncError using signals_core.',
         icon: '⏳',
         path: 'examples/flutter_async',
       ),
       (
         title: 'Shopping Cart',
         tag: 'State & Selectors',
-        desc: 'CatalogCubit, CartBloc, and fine-grained BlocSignalSelector rebuilds.',
+        desc:
+            'CatalogCubit, CartBloc, and fine-grained BlocSignalSelector rebuilds.',
         icon: '🛒',
         path: 'examples/shopping_cart',
       ),
@@ -45,35 +48,40 @@ class ExamplesSection extends StatelessComponent {
       (
         title: 'Dynamic Colorband',
         tag: 'Signal Derivations',
-        desc: 'Computed RGBA color channels and fine-grained UI slider updates.',
+        desc:
+            'Computed RGBA color channels and fine-grained UI slider updates.',
         icon: '🎨',
         path: 'examples/flutter_colorband',
       ),
       (
         title: 'State Machine Calculator',
         tag: 'Sealed Events',
-        desc: 'Arithmetic state machine with sealed event classes (DigitPressed, EqualsPressed).',
+        desc:
+            'Arithmetic state machine with sealed event classes (DigitPressed, EqualsPressed).',
         icon: '🧮',
         path: 'examples/eval_calculator',
       ),
       (
         title: 'SharedPreferences Persistence',
         tag: 'Hydration',
-        desc: 'Zero-override primitive & collection persistence with HydratedCubitSignal.',
+        desc:
+            'Zero-override primitive & collection persistence with HydratedCubitSignal.',
         icon: '💾',
         path: 'examples/persist_shared_preferences',
       ),
       (
         title: 'Clean Architecture Weather',
         tag: 'Layered Architecture',
-        desc: '3-tier Presentation / Domain / Data separation with mock repositories.',
+        desc:
+            '3-tier Presentation / Domain / Data separation with mock repositories.',
         icon: '🏗️',
         path: 'examples/clean_architecture',
       ),
       (
         title: 'GetIt Service Locator DI',
         tag: 'Dependency Injection',
-        desc: 'Bridging GetIt singletons to widget tree via BlocSignalProvider.value.',
+        desc:
+            'Bridging GetIt singletons to widget tree via BlocSignalProvider.value.',
         icon: '🔌',
         path: 'examples/get_it_signals',
       ),
@@ -81,9 +89,12 @@ class ExamplesSection extends StatelessComponent {
 
     return section(id: 'examples', classes: 'catalog-section', [
       div(classes: 'container', [
-        h2(classes: 'section-title', [Component.text('Runnable Showcase Applications')]),
+        h2(
+            classes: 'section-title',
+            [Component.text('Runnable Showcase Applications')]),
         p(classes: 'section-subtitle', [
-          Component.text('10 fully tested, self-contained example applications with complete doc comments and widget unit tests.'),
+          Component.text(
+              '10 fully tested, self-contained example applications with complete doc comments and widget unit tests.'),
         ]),
         div(classes: 'package-grid', [
           for (final ex in examples)
@@ -95,7 +106,8 @@ class ExamplesSection extends StatelessComponent {
               h3(classes: 'card-title', [Component.text(ex.title)]),
               p(classes: 'card-desc', [Component.text(ex.desc)]),
               a(
-                href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.path}',
+                href:
+                    'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.path}',
                 target: Target.blank,
                 classes: 'card-link',
                 [Component.text('View Source & Tests →')],

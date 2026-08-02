@@ -18,12 +18,15 @@ class HeroBanner extends StatelessComponent {
           ),
         ]),
         div(classes: 'hero-badge-tag', [
-          Component.text('🚀 Powerful & Synchronous State Management for Dart & Flutter'),
+          Component.text(
+              '🚀 Powerful & Synchronous State Management for Dart & Flutter'),
         ]),
         h1(classes: 'hero-title', [
           Component.text('The Rigor of BLoC.'),
           br(),
-          span(classes: 'highlight-text', [Component.text('The Flex & Speed of Signal.')]),
+          span(
+              classes: 'highlight-text',
+              [Component.text('The Flex & Speed of Signal.')]),
         ]),
         p(classes: 'hero-motto', [
           Component.text(

@@ -31,7 +31,7 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
     this.child = const _NullComponent(),
     this.lazy = true,
     super.key,
-  })  : value = null;
+  }) : value = null;
 
   /// Creates a [BlocSignalProvider] that provides an existing [value] to
   /// the tree, without managing its lifecycle (does not close it on dispose).

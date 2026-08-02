@@ -191,7 +191,8 @@ void main() {
       expect(states, [1]);
     });
 
-    testComponents('BlocSignalSelector rebuilds only when selector value changes',
+    testComponents(
+        'BlocSignalSelector rebuilds only when selector value changes',
         (tester) async {
       final cubit = CounterCubit();
       var buildCount = 0;

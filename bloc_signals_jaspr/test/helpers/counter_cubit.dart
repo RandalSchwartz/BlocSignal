@@ -14,6 +14,7 @@ class ThemeCubit extends CubitSignal<String> {
 }
 
 sealed class CounterEvent {}
+
 final class CounterIncrement extends CounterEvent {}
 
 class CounterBloc extends BlocSignal<CounterEvent, int> {

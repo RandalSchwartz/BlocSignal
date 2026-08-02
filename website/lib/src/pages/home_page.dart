@@ -1,5 +1,6 @@
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
+import '../components/examples_section.dart';
 import '../components/footer.dart';
 import '../components/hero.dart';
 import '../components/live_visualizer.dart';
@@ -17,6 +18,7 @@ class HomePage extends StatelessComponent {
         const HeroBanner(),
         const LiveVisualizer(),
         const PackageCatalog(),
+        const ExamplesSection(),
       ]),
       const Footer(),
     ]);

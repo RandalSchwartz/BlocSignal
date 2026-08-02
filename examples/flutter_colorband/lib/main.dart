@@ -16,6 +16,8 @@ import 'package:flutter/material.dart';
 // =============================================================================
 
 /// Immutable state model representing RGBA values and derived color properties.
+///
+/// Note: This state class could also use `package:equatable` (extending `Equatable` with `props`) for concise equality.
 @immutable
 class ColorState {
   const ColorState({

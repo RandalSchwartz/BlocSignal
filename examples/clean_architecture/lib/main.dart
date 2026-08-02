@@ -17,6 +17,8 @@ import 'package:flutter/material.dart';
 // =============================================================================
 
 /// Weather domain entity.
+///
+/// Note: This state class could also use `package:equatable` (extending `Equatable` with `props`) for concise equality.
 @immutable
 class Weather {
   const Weather({

@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+/// Post model.
+///
+/// Note: This state class could also use `package:equatable` (extending `Equatable` with `props`) for concise equality.
 @immutable
 class Post {
   const Post({required this.id, required this.title, required this.body});

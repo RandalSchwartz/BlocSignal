@@ -1,5 +1,9 @@
 import 'package:flutter/foundation.dart';
 
+/// Domain item model.
+///
+/// Note: State and entity models in BlocSignal use `==` equality for automatic de-duplication.
+/// This class could also use `package:equatable` (extending `Equatable` with `props`) for concise equality.
 @immutable
 class Item {
   const Item({required this.id, required this.name, required this.price});

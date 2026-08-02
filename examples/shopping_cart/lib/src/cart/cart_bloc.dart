@@ -20,6 +20,9 @@ final class CartItemRemoved extends CartEvent {
   final Item item;
 }
 
+/// Represents state of the shopping cart.
+///
+/// Note: This state class could also use `package:equatable` (extending `Equatable` with `props`) for concise equality.
 @immutable
 sealed class CartState {
   const CartState();

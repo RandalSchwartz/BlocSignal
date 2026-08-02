@@ -42,6 +42,8 @@ final class ClearPressed extends CalculatorEvent {
 // =============================================================================
 
 /// Immutable state model representing current calculator display and operation buffer.
+///
+/// Note: This state class could also use `package:equatable` (extending `Equatable` with `props`) for concise equality.
 @immutable
 class CalculatorState {
   const CalculatorState({

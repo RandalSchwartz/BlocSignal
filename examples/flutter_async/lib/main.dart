@@ -17,6 +17,8 @@ import 'package:signals_core/signals_core.dart';
 // =============================================================================
 
 /// User domain model.
+///
+/// Note: This state class could also use `package:equatable` (extending `Equatable` with `props`) for concise equality.
 class UserProfile {
   const UserProfile({required this.id, required this.name, required this.role});
 

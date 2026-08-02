@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+/// User domain model.
+///
+/// Note: This state class could also use `package:equatable` (extending `Equatable` with `props`) for concise equality.
 @immutable
 class User {
   const User({required this.id, required this.email, required this.name});

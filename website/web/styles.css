@@ -104,8 +104,21 @@ body {
 
 /* Hero Section */
 .hero-section {
-  padding: 96px 0 64px 0;
+  padding: 80px 0 64px 0;
   text-align: center;
+}
+
+.hero-logo-wrapper {
+  margin-bottom: 20px;
+}
+
+.hero-branding-logo {
+  filter: drop-shadow(0 0 28px rgba(0, 242, 254, 0.45));
+  transition: transform 0.3s ease;
+}
+
+.hero-branding-logo:hover {
+  transform: scale(1.06) rotate(2deg);
 }
 
 .hero-badge-tag {

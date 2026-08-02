@@ -8,8 +8,17 @@ class HeroBanner extends StatelessComponent {
   Component build(BuildContext context) {
     return section(classes: 'hero-section', [
       div(classes: 'container hero-container', [
+        div(classes: 'hero-logo-wrapper', [
+          img(
+            src: 'assets/logo.png',
+            alt: 'BlocSignal Official Logo',
+            classes: 'hero-branding-logo',
+            width: 140,
+            height: 140,
+          ),
+        ]),
         div(classes: 'hero-badge-tag', [
-          Component.text('🚀 Official 1.0.0 Release — Enterprise-Grade Reactive State Management'),
+          Component.text('🚀 Powerful & Synchronous State Management for Dart & Flutter'),
         ]),
         h1(classes: 'hero-title', [
           Component.text('The Rigor of BLoC.'),
@@ -39,8 +48,8 @@ class HeroBanner extends StatelessComponent {
             code([
               Component.text('''
 dependencies:
-  bloc_signals: ^1.0.0
-  bloc_signals_flutter: ^1.0.0'''),
+  bloc_signals: ^0.2.8
+  bloc_signals_flutter: ^0.2.8'''),
             ]),
           ]),
         ]),

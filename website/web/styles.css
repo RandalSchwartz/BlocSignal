@@ -87,8 +87,9 @@ body {
   transition: color 0.2s ease;
 }
 
-.nav-links a:hover {
-  color: var(--text-main);
+.nav-links a:hover,
+.nav-links a.nav-active {
+  color: var(--accent-cyan);
 }
 
 .btn-github {

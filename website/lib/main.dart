@@ -1,6 +1,6 @@
 import 'package:jaspr/jaspr.dart';
-import 'src/pages/home_page.dart';
+import 'src/app.dart';
 
 void main() {
-  runApp(const HomePage());
+  runApp(const App());
 }

@@ -2,7 +2,9 @@ import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
 class Navbar extends StatelessComponent {
-  const Navbar({super.key});
+  const Navbar({this.currentPath = '/', super.key});
+
+  final String currentPath;
 
   @override
   Component build(BuildContext context) {
@@ -18,10 +20,21 @@ class Navbar extends StatelessComponent {
           span(classes: 'brand-badge', [Component.text('v0.2.8')]),
         ]),
         nav(classes: 'nav-links', [
-          a(href: '#packages', [Component.text('Packages')]),
-          a(href: '#visualizer', [Component.text('Live Visualizer')]),
-          a(href: '#ported-examples', [Component.text('Ported Examples')]),
-          a(href: '#examples', [Component.text('Showcase')]),
+          a(
+            href: '/',
+            classes: currentPath == '/' ? 'nav-active' : '',
+            [Component.text('Home')],
+          ),
+          a(
+            href: '/showcase',
+            classes: currentPath == '/showcase' ? 'nav-active' : '',
+            [Component.text('Showcase')],
+          ),
+          a(
+            href: '/ported-examples',
+            classes: currentPath == '/ported-examples' ? 'nav-active' : '',
+            [Component.text('Ported Examples')],
+          ),
           a(
               href: 'https://pub.dev/packages/bloc_signals',
               target: Target.blank,

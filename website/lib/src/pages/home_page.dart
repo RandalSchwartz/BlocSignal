@@ -1,12 +1,10 @@
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
-import '../components/examples_section.dart';
 import '../components/footer.dart';
 import '../components/hero.dart';
 import '../components/live_visualizer.dart';
 import '../components/navbar.dart';
 import '../components/package_catalog.dart';
-import '../components/ported_examples_section.dart';
 
 class HomePage extends StatelessComponent {
   const HomePage({super.key});
@@ -14,13 +12,11 @@ class HomePage extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     return div(classes: 'app-root', [
-      const Navbar(),
+      const Navbar(currentPath: '/'),
       main_([
         const HeroBanner(),
         const LiveVisualizer(),
         const PackageCatalog(),
-        const PortedExamplesSection(),
-        const ExamplesSection(),
       ]),
       const Footer(),
     ]);

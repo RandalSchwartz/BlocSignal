@@ -331,6 +331,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.23.2"
+  jaspr_test:
+    dependency: transitive
+    description:
+      name: jaspr_test
+      sha256: "8afbc623b422aed55b03de3fd7b7579471c96d18ab7eca9a966eac4cf44c9e5d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.23.2"
   json_annotation:
     dependency: transitive
     description:

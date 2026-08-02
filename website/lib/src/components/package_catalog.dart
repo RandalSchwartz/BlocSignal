@@ -24,6 +24,14 @@ class PackageCatalog extends StatelessComponent {
         pubUrl: 'https://pub.dev/packages/bloc_signals_flutter',
       ),
       (
+        name: 'bloc_signals_jaspr',
+        version: '0.1.0',
+        desc:
+            'Jaspr web component integration, InheritedComponent providers, builders, listeners, and selectors.',
+        icon: '🌐',
+        pubUrl: 'https://pub.dev/packages/bloc_signals_jaspr',
+      ),
+      (
         name: 'bloc_signals_riverpod',
         version: '0.1.5',
         desc:

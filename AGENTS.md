@@ -246,3 +246,8 @@ When implementing or working with Jaspr web component bindings:
 When designing Jaspr `InheritedComponent` providers and multi-providers:
 * **O(1) Context Lookups**: Unlistened context lookups (`listen: false`) use `getElementForInheritedComponentOfExactType` (O(1) resolution), while listened lookups (`listen: true`) use `dependOnInheritedComponentOfExactType`.
 * **Null Child Composition Ergonomics**: Optional `child` parameters defaulting to `const _NullComponent()` (where `_NullComponent` returns `const Component.empty()`) enable clean array syntax inside `MultiBlocSignalProvider` and `MultiBlocSignalListener` without requiring dummy child elements at call sites.
+
+### 27. Pub.dev 160 Pub Points Scoring & Documentation Requirements
+When publishing packages to pub.dev to satisfy all 160/160 pub points quality scoring metrics:
+* **Explicit Constructors for Dartdoc Analysis**: Implicit default constructors on classes without explicit constructors (e.g. `abstract class BlocSignalObserver` or `class Mutex`) are treated as un-documented symbols by `dartdoc` analysis when re-exported. Always declare explicit documented constructors (e.g. `const BlocSignalObserver();` and `Mutex();`).
+* **Package Example Requirement**: Every published pub.dev package MUST include a runnable `example/example.dart` top-level file under `example/` in the package root to satisfy the 10/10 points "Package has an example" score checklist rule.

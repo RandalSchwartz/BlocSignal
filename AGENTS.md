@@ -234,3 +234,15 @@ When implementing state history and undo/redo capabilities:
 ### 24. Pub.dev Package Publishing Requirement
 When publishing packages to pub.dev:
 * **Mandatory `LICENSE` File**: Every published package root directory MUST contain a `LICENSE` file in addition to `pubspec.yaml`, `README.md`, and `CHANGELOG.md`.
+
+### 25. Jaspr Web Component Reactivity & Element Hierarchy (`bloc_signals_jaspr`)
+When implementing or working with Jaspr web component bindings:
+* **Component Instance Getter**: In Jaspr `State<T extends StatefulComponent>`, the target component instance getter is `.component` (unlike Flutter's `.widget`).
+* **Component Lifecycle Updates**: Component updates use `didUpdateComponent(T oldComponent)` (unlike Flutter's `didUpdateWidget(T oldWidget)`).
+* **Element Mount Check**: In Jaspr `Element`, element mounting state is checked via `element.binding != null` or `context.binding != null`.
+* **Text Node Declarations**: Text nodes in Jaspr `package:jaspr/dom.dart` are declared via `Component.text('...')` (deprecated top-level `text('...')` should be avoided).
+
+### 26. Jaspr `InheritedComponent` Resolution & Ergonomics (`bloc_signals_jaspr`)
+When designing Jaspr `InheritedComponent` providers and multi-providers:
+* **O(1) Context Lookups**: Unlistened context lookups (`listen: false`) use `getElementForInheritedComponentOfExactType` (O(1) resolution), while listened lookups (`listen: true`) use `dependOnInheritedComponentOfExactType`.
+* **Null Child Composition Ergonomics**: Optional `child` parameters defaulting to `const _NullComponent()` (where `_NullComponent` returns `const Component.empty()`) enable clean array syntax inside `MultiBlocSignalProvider` and `MultiBlocSignalListener` without requiring dummy child elements at call sites.

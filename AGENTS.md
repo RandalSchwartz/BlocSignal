@@ -251,3 +251,7 @@ When designing Jaspr `InheritedComponent` providers and multi-providers:
 When publishing packages to pub.dev to satisfy all 160/160 pub points quality scoring metrics:
 * **Explicit Constructors for Dartdoc Analysis**: Implicit default constructors on classes without explicit constructors (e.g. `abstract class BlocSignalObserver` or `class Mutex`) are treated as un-documented symbols by `dartdoc` analysis when re-exported. Always declare explicit documented constructors (e.g. `const BlocSignalObserver();` and `Mutex();`).
 * **Package Example Requirement**: Every published pub.dev package MUST include a runnable `example/example.dart` top-level file under `example/` in the package root to satisfy the 10/10 points "Package has an example" score checklist rule.
+
+### 28. Monorepo README Package Catalog Consistency
+When standardizing or updating package documentation across the monorepo:
+* **Uniform Package Catalog Table**: Ensure all 10 workspace package README files feature the exact same uniform 10-package ecosystem catalog table with pub version badges and descriptions.

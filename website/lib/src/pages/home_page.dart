@@ -6,6 +6,7 @@ import '../components/hero.dart';
 import '../components/live_visualizer.dart';
 import '../components/navbar.dart';
 import '../components/package_catalog.dart';
+import '../components/ported_examples_section.dart';
 
 class HomePage extends StatelessComponent {
   const HomePage({super.key});
@@ -18,6 +19,7 @@ class HomePage extends StatelessComponent {
         const HeroBanner(),
         const LiveVisualizer(),
         const PackageCatalog(),
+        const PortedExamplesSection(),
         const ExamplesSection(),
       ]),
       const Footer(),

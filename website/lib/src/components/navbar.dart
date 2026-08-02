@@ -20,7 +20,8 @@ class Navbar extends StatelessComponent {
         nav(classes: 'nav-links', [
           a(href: '#packages', [Component.text('Packages')]),
           a(href: '#visualizer', [Component.text('Live Visualizer')]),
-          a(href: '#examples', [Component.text('Examples')]),
+          a(href: '#ported-examples', [Component.text('Ported Examples')]),
+          a(href: '#examples', [Component.text('Showcase')]),
           a(
               href: 'https://pub.dev/packages/bloc_signals',
               target: Target.blank,

@@ -374,6 +374,52 @@ body {
   font-size: 0.9rem;
 }
 
+.subsection-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  margin: 32px 0 16px 0;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 8px;
+}
+
+.spacer-vertical {
+  height: 40px;
+}
+
+.tag-bloc {
+  background: rgba(79, 172, 254, 0.15) !important;
+  color: var(--accent-blue) !important;
+  border: 1px solid rgba(79, 172, 254, 0.3);
+}
+
+.tag-signals {
+  background: rgba(127, 0, 255, 0.15) !important;
+  color: #b388ff !important;
+  border: 1px solid rgba(127, 0, 255, 0.3);
+}
+
+.card-dx {
+  font-size: 0.85rem;
+  color: #d0d7de;
+  background: rgba(0, 0, 0, 0.25);
+  border-left: 3px solid var(--accent-cyan);
+  padding: 8px 12px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.card-links-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.upstream-link {
+  color: var(--accent-blue) !important;
+}
+
 /* Footer */
 .site-footer {
   border-top: 1px solid var(--border-color);

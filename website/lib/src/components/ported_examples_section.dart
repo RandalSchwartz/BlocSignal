@@ -172,14 +172,17 @@ class PortedExamplesSection extends StatelessComponent {
       ),
     ];
 
-    return section(id: 'ported-examples', classes: 'catalog-section', [
+    return section(id: 'ported-examples', classes: 'catalog-section standalone-section', [
       div(classes: 'container', [
+        div(classes: 'section-badge', [
+          Component.text('Comparison Suite'),
+        ]),
         h2(
             classes: 'section-title',
             [Component.text('Ported Benchmark Examples')]),
         p(classes: 'section-subtitle', [
           Component.text(
-              'Side-by-side comparison of 16 applications ported from felangel/bloc and rodydavis/signals.dart, highlighting BlocSignal\'s reactive DX advantages.'),
+              'Coming from BLoC or Signals? Explore these 16 side-by-side benchmark ports showing how BlocSignal simplifies existing state management patterns.'),
         ]),
 
         // Section 1: felangel/bloc Ports

@@ -374,6 +374,30 @@ body {
   font-size: 0.9rem;
 }
 
+.standalone-section {
+  background: rgba(13, 17, 23, 0.6);
+  border-top: 1px dashed var(--border-color);
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.section-badge {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.section-badge span, .section-badge {
+  display: inline-block;
+  background: rgba(0, 242, 254, 0.1);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
 .subsection-title {
   font-size: 1.5rem;
   font-weight: 700;

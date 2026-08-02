@@ -25,6 +25,7 @@ workspace:
   - examples/persist_shared_preferences
   - examples/clean_architecture
   - examples/get_it_signals
+  - website
 
 dev_dependencies:
   test: ^1.25.6

@@ -1,0 +1,18 @@
+name: blocsignal_website
+description: Official documentation and landing site for blocsignal.dev.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  jaspr: ^0.23.1
+  bloc_signals: ^0.2.8
+  signals_core: ^7.0.0
+
+dev_dependencies:
+  test: ^1.25.6
+
+jaspr:
+  mode: static

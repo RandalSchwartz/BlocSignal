@@ -87,43 +87,36 @@ class FormValidationBlocSignal
     on<PasswordChanged>(_onPasswordChanged);
     on<FormSubmitted>(_onSubmitted);
     on<FormReset>(_onReset);
-
-    // Synchronous field validation computed signals
-    emailError = computed(() {
-      final email = stateValue.email;
-      if (email.isEmpty) return null;
-      if (!email.contains('@') || !email.contains('.')) {
-        return 'Please enter a valid email address';
-      }
-      return null;
-    });
-
-    passwordError = computed(() {
-      final pass = stateValue.password;
-      if (pass.isEmpty) return null;
-      if (pass.length < 6) {
-        return 'Password must be at least 6 characters long';
-      }
-      return null;
-    });
-
-    isValid = computed(() {
-      final s = stateValue;
-      return s.email.isNotEmpty &&
-          s.password.isNotEmpty &&
-          emailError.value == null &&
-          passwordError.value == null;
-    });
   }
 
   /// Reactive computed signal deriving email error message or null if valid.
-  late final ReadonlySignal<String?> emailError;
+  late final ReadonlySignal<String?> emailError = computed(() {
+    final email = stateValue.email;
+    if (email.isEmpty) return null;
+    if (!email.contains('@') || !email.contains('.')) {
+      return 'Please enter a valid email address';
+    }
+    return null;
+  });
 
   /// Reactive computed signal deriving password error message or null if valid.
-  late final ReadonlySignal<String?> passwordError;
+  late final ReadonlySignal<String?> passwordError = computed(() {
+    final pass = stateValue.password;
+    if (pass.isEmpty) return null;
+    if (pass.length < 6) {
+      return 'Password must be at least 6 characters long';
+    }
+    return null;
+  });
 
   /// Reactive computed boolean indicating overall form validity.
-  late final ReadonlySignal<bool> isValid;
+  late final ReadonlySignal<bool> isValid = computed(() {
+    final s = stateValue;
+    return s.email.isNotEmpty &&
+        s.password.isNotEmpty &&
+        emailError.value == null &&
+        passwordError.value == null;
+  });
 
   void _onEmailChanged(
       EmailChanged event, void Function(FormValidationState) emit) {

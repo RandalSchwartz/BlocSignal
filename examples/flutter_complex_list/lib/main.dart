@@ -120,22 +120,18 @@ class ComplexListBlocSignal
     on<SelectAllToggled>(_onSelectAllToggled);
     on<BatchDeleted>(_onBatchDeleted);
     on<ItemAdded>(_onItemAdded);
-
-    selectedCount = computed(() {
-      return stateValue.items.where((i) => i.isSelected).length;
-    });
-
-    isAllSelected = computed(() {
-      final items = stateValue.items;
-      return items.isNotEmpty && items.every((i) => i.isSelected);
-    });
   }
 
   /// Reactive computed signal deriving count of currently selected items.
-  late final ReadonlySignal<int> selectedCount;
+  late final ReadonlySignal<int> selectedCount = computed(() {
+    return stateValue.items.where((i) => i.isSelected).length;
+  });
 
   /// Reactive computed signal checking if every item in the list is selected.
-  late final ReadonlySignal<bool> isAllSelected;
+  late final ReadonlySignal<bool> isAllSelected = computed(() {
+    final items = stateValue.items;
+    return items.isNotEmpty && items.every((i) => i.isSelected);
+  });
 
   void _onToggled(ItemToggled event, void Function(ComplexListState) emit) {
     final updated = stateValue.items.map((item) {

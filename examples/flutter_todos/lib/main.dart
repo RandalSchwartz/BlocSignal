@@ -144,34 +144,27 @@ class TodosBlocSignal extends BlocSignal<TodosEvent, TodosState> {
     on<TodosFilterChanged>(_onFilterChanged);
     on<CompletedCleared>(_onCompletedCleared);
     on<AllToggled>(_onAllToggled);
-
-    // Reactive computed derivations initialized inside constructor
-    filteredTodos = computed(() {
-      final s = stateValue;
-      return switch (s.filter) {
-        TodosFilter.all => s.todos,
-        TodosFilter.activeOnly => s.todos.where((t) => !t.isCompleted).toList(),
-        TodosFilter.completedOnly => s.todos.where((t) => t.isCompleted).toList(),
-      };
-    });
-
-    activeCount = computed(() {
-      return stateValue.todos.where((t) => !t.isCompleted).length;
-    });
-
-    completedCount = computed(() {
-      return stateValue.todos.where((t) => t.isCompleted).length;
-    });
   }
 
   /// Reactive computed signal deriving filtered todo items based on active [TodosFilter].
-  late final ReadonlySignal<List<Todo>> filteredTodos;
+  late final ReadonlySignal<List<Todo>> filteredTodos = computed(() {
+    final s = stateValue;
+    return switch (s.filter) {
+      TodosFilter.all => s.todos,
+      TodosFilter.activeOnly => s.todos.where((t) => !t.isCompleted).toList(),
+      TodosFilter.completedOnly => s.todos.where((t) => t.isCompleted).toList(),
+    };
+  });
 
   /// Reactive computed signal deriving active uncompleted todo count.
-  late final ReadonlySignal<int> activeCount;
+  late final ReadonlySignal<int> activeCount = computed(() {
+    return stateValue.todos.where((t) => !t.isCompleted).length;
+  });
 
   /// Reactive computed signal deriving completed todo count.
-  late final ReadonlySignal<int> completedCount;
+  late final ReadonlySignal<int> completedCount = computed(() {
+    return stateValue.todos.where((t) => t.isCompleted).length;
+  });
 
   void _onAdded(TodoAdded event, void Function(TodosState) emit) {
     final newTodo = Todo(

@@ -105,31 +105,25 @@ class WizardBlocSignal extends BlocSignal<WizardEvent, WizardState> {
     on<ProfileInfoUpdated>(_onProfileUpdated);
     on<WizardSubmitted>(_onSubmitted);
     on<WizardReset>(_onReset);
-
-    // Step validation computed projections
-    isStep1Valid = computed(() {
-      final s = stateValue;
-      return s.username.trim().length >= 3 &&
-          s.email.contains('@') &&
-          s.email.contains('.');
-    });
-
-    isStep2Valid = computed(() {
-      final s = stateValue;
-      return s.fullName.trim().isNotEmpty && s.bio.trim().length >= 5;
-    });
-
-    canSubmit = computed(() => isStep1Valid.value && isStep2Valid.value);
   }
 
   /// Reactive computed signal checking if Step 1 (username & email) is valid.
-  late final ReadonlySignal<bool> isStep1Valid;
+  late final ReadonlySignal<bool> isStep1Valid = computed(() {
+    final s = stateValue;
+    return s.username.trim().length >= 3 &&
+        s.email.contains('@') &&
+        s.email.contains('.');
+  });
 
   /// Reactive computed signal checking if Step 2 (fullName & bio) is valid.
-  late final ReadonlySignal<bool> isStep2Valid;
+  late final ReadonlySignal<bool> isStep2Valid = computed(() {
+    final s = stateValue;
+    return s.fullName.trim().isNotEmpty && s.bio.trim().length >= 5;
+  });
 
   /// Reactive computed signal checking if all required wizard steps are complete for submission.
-  late final ReadonlySignal<bool> canSubmit;
+  late final ReadonlySignal<bool> canSubmit =
+      computed(() => isStep1Valid.value && isStep2Valid.value);
 
   void _onStepChanged(WizardStepChanged event, void Function(WizardState) emit) {
     if (event.step >= 0 && event.step <= 2) {

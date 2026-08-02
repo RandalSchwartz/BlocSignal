@@ -100,42 +100,34 @@ class DynamicFormBlocSignal
     on<ModelSelected>(_onModelSelected);
     on<TrimSelected>(_onTrimSelected);
     on<FormReset>(_onReset);
-
-    // Reactive computed option derivations
-    availableBrands = computed(() => VehicleData.data.keys.toList());
-
-    availableModels = computed(() {
-      final brand = stateValue.brand;
-      if (brand == null || !VehicleData.data.containsKey(brand)) return const [];
-      return VehicleData.data[brand]!.keys.toList();
-    });
-
-    availableTrims = computed(() {
-      final brand = stateValue.brand;
-      final model = stateValue.model;
-      if (brand == null || model == null) return const [];
-      final models = VehicleData.data[brand];
-      if (models == null || !models.containsKey(model)) return const [];
-      return models[model]!;
-    });
-
-    isFormComplete = computed(() {
-      final s = stateValue;
-      return s.brand != null && s.model != null && s.trim != null;
-    });
   }
 
   /// Reactive computed list of available vehicle brand names.
-  late final ReadonlySignal<List<String>> availableBrands;
+  late final ReadonlySignal<List<String>> availableBrands =
+      computed(() => VehicleData.data.keys.toList());
 
   /// Reactive computed list of available models for the currently selected brand.
-  late final ReadonlySignal<List<String>> availableModels;
+  late final ReadonlySignal<List<String>> availableModels = computed(() {
+    final brand = stateValue.brand;
+    if (brand == null || !VehicleData.data.containsKey(brand)) return const [];
+    return VehicleData.data[brand]!.keys.toList();
+  });
 
   /// Reactive computed list of available trims for the currently selected brand and model.
-  late final ReadonlySignal<List<String>> availableTrims;
+  late final ReadonlySignal<List<String>> availableTrims = computed(() {
+    final brand = stateValue.brand;
+    final model = stateValue.model;
+    if (brand == null || model == null) return const [];
+    final models = VehicleData.data[brand];
+    if (models == null || !models.containsKey(model)) return const [];
+    return models[model]!;
+  });
 
   /// Reactive computed boolean indicating whether all 3 dropdown selections are complete.
-  late final ReadonlySignal<bool> isFormComplete;
+  late final ReadonlySignal<bool> isFormComplete = computed(() {
+    final s = stateValue;
+    return s.brand != null && s.model != null && s.trim != null;
+  });
 
   void _onBrandSelected(
       BrandSelected event, void Function(DynamicFormState) emit) {

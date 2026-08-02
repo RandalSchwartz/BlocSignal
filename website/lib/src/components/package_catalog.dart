@@ -9,7 +9,7 @@ class PackageCatalog extends StatelessComponent {
     final packages = [
       (
         name: 'bloc_signals',
-        version: '0.2.9',
+        version: '0.2.10',
         desc:
             'Core pure Dart reactive state container bridging BLoC semantics with signals v7 primitives.',
         icon: '⚡',

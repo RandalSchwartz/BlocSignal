@@ -16,7 +16,7 @@ environment:
   sdk: ^3.5.0
 
 dependencies:
-  bloc_signals: ^0.2.9
+  bloc_signals: ^0.2.10
   jaspr: ^0.23.1
   meta: ">=1.11.0 <2.0.0"
   signals_core: ^7.0.0

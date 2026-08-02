@@ -22,11 +22,25 @@ class _AppState extends State<App> {
     web.window.onpopstate = ((web.Event _) {
       setState(_updatePath);
     }).toJS;
+    web.window.onhashchange = ((web.Event _) {
+      setState(_updatePath);
+    }).toJS;
   }
 
   void _updatePath() {
-    _currentPath = web.window.location.pathname;
-    if (_currentPath.isEmpty) {
+    final path = web.window.location.pathname;
+    final rawHash = web.window.location.hash.toLowerCase();
+
+    if (path == '/showcase' ||
+        path.startsWith('/showcase') ||
+        rawHash.contains('showcase')) {
+      _currentPath = '/showcase';
+    } else if (path == '/ported-examples' ||
+        path.startsWith('/ported-examples') ||
+        rawHash.contains('ported-examples') ||
+        rawHash.contains('ported')) {
+      _currentPath = '/ported-examples';
+    } else {
       _currentPath = '/';
     }
   }

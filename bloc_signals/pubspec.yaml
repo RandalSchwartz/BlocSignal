@@ -1,6 +1,6 @@
 name: bloc_signals
 resolution: workspace
-description: A synchronous state management container integrating BLoC patterns with Rody Davis's signals package.
+description: Core pure Dart reactive state container bridging BLoC semantics with signals v7 primitives.
 version: 0.2.9
 repository: https://github.com/RandalSchwartz/BlocSignal
 issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues

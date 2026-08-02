@@ -16,6 +16,9 @@ export 'transition.dart';
 /// Implement this class and assign it to [BlocSignalObserver.observer] to
 /// intercept and log events, transitions, and errors globally.
 abstract class BlocSignalObserver {
+  /// Creates a [BlocSignalObserver].
+  const BlocSignalObserver();
+
   /// The global observer instance used to monitor all [BlocSignalBase]
   /// activity.
   static BlocSignalObserver? observer;

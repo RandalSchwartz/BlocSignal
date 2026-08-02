@@ -27,7 +27,7 @@ class HeroBanner extends StatelessComponent {
         ]),
         p(classes: 'hero-motto', [
           Component.text(
-            '"With the rigor of Bloc and the flex and speed of Signal" — Enterprise-grade state management for Dart & Flutter with 0ms microtask latency, 100% docstring coverage, OpenTelemetry tracing, and universal ecosystem bridges.',
+            'Enterprise-grade state management for Dart & Flutter with 0ms microtask latency, 100% docstring coverage, OpenTelemetry tracing, and universal ecosystem bridges.',
           ),
         ]),
         div(classes: 'hero-actions', [

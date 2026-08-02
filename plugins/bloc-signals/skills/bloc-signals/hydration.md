@@ -51,16 +51,47 @@ class TodosCubit extends HydratedCubitSignal<List<String>> {
 
 ---
 
-## 3. Instance Scoping & Clearing State
+## 3. Storage Keys (`storageToken`) & Instance Scoping
+
+Persistent keys in storage are determined by the `storageToken` getter on `HydratedMixin`:
 
 ```dart
-// Scope storage by instance ID for multi-user/multi-account features
+String get storageToken => '$storagePrefix${id != null ? '_$id' : ''}';
+```
+
+- **`storagePrefix`**: Defaults to `runtimeType.toString()` (e.g. `'CounterCubit'`).
+- **`id`**: An optional instance identifier (defaults to `null`).
+
+### Singletons vs Multi-Instance Cubits
+- **Global / Singleton Cubits**: Leave `id` as `null` (default). Storage key is simply the class name (e.g. `'CounterCubit'`).
+- **Multi-Instance Cubits**: Pass `id` via constructor to prevent key collisions across instances:
+
+```dart
+// Generated keys: "CounterCubit_user_123" vs "CounterCubit_user_456"
 final user1Cubit = CounterCubit(id: 'user_123');
 final user2Cubit = CounterCubit(id: 'user_456');
 
 // Delete stored key and reset state to initialState
 await user1Cubit.clear();
 ```
+
+### Custom Storage Key Overrides
+You can override `storageToken` or `storagePrefix` for custom storage key naming:
+
+```dart
+class CounterCubit extends HydratedCubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  // Custom key stored in SharedPreferences
+  @override
+  String get storageToken => 'custom_counter_v1';
+}
+```
+
+### Key Resolution & Storage Inspection
+- **Listing Stored Keys**: The `HydratedStorage` interface (`read`, `write`, `delete`, `clear`) does not include a `listKeys()` method to keep storage contracts backend-agnostic. Query the underlying storage engine directly (e.g., `prefs.getKeys()`).
+- **Instance Lookup**: `HydratedCubitSignal` does not maintain a global static instance registry by key to prevent memory leaks. Manage cubit instances using standard DI (`BlocSignalProvider`) or factory caches.
+
 
 ---
 

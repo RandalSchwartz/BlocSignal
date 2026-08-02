@@ -93,7 +93,25 @@ class UserCubit extends HydratedCubitSignal<UserModel> {
 }
 ```
 
-### 3. Wiring Custom Storage (`SharedPreferences`)
+### 3. Storage Keys & Instance Scoping
+
+Storage keys are derived via the `storageToken` getter (`'$storagePrefix${id != null ? '_$id' : ''}'`).
+
+* **Singletons**: Omit `id` (defaults to `null`). Storage key automatically uses the class name (e.g. `'CounterCubit'`).
+* **Multi-Instance**: Pass `id` via constructor to scope storage per user/session (`CounterCubit(id: 'user_123')` -> key `'CounterCubit_user_123'`).
+* **Custom Keys**: Override `storageToken` or `storagePrefix` directly for custom key formats:
+
+```dart
+class CounterCubit extends HydratedCubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  // 100% custom storage key stored in SharedPreferences
+  @override
+  String get storageToken => 'app_v2_counter_key';
+}
+```
+
+### 4. Wiring Custom Storage (`SharedPreferences`)
 
 ```dart
 import 'dart:convert';

@@ -224,10 +224,13 @@ When publishing new package versions or updating framework APIs:
 * **Hero Snippet Alignment**: `website/lib/src/components/hero.dart` code snippets MUST reflect published pubspec dependency constraints.
 * **Re-compile & Deploy**: Compile static bundle with `cd website && mkdir -p build/www && dart compile js lib/main.dart -o build/www/main.dart.js && cp -r web/* build/www/` and deploy to Firebase Hosting via `firebase deploy --only hosting`.
 
+### 23. Replay State History Architecture (`bloc_signals_replay`)
+When implementing state history and undo/redo capabilities:
+* **`ReplayCubit` & `ReplayCubitMixin`**: Wrap `CubitSignal` to provide undo and redo history queues (`_ChangeStack`).
+* **`ReplayBloc` & `ReplayBlocMixin`**: Wrap `BlocSignal` to provide undo/redo history. Synthetic `_Undo` and `_Redo` events subclass `ReplayEvent`.
+* **Covariant Event Routing**: `ReplayBlocMixin` overrides `onTransition` and `onEvent` using `covariant ReplayEvent` to route synthetic events to `BlocSignalObserver` without requiring `_Undo` / `_Redo` to subclass user event types.
+* **Super Method Forwarding in `onEvent`**: `onEvent` overrides must call `super.onEvent(event)` for user events to route them to registered `on<E>` handlers.
 
-
-
-
-
-
-
+### 24. Pub.dev Package Publishing Requirement
+When publishing packages to pub.dev:
+* **Mandatory `LICENSE` File**: Every published package root directory MUST contain a `LICENSE` file in addition to `pubspec.yaml`, `README.md`, and `CHANGELOG.md`.

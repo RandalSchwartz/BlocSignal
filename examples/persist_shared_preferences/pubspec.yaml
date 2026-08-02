@@ -1,0 +1,23 @@
+name: persist_shared_preferences_example
+description: SharedPreferences state persistence example with HydratedCubitSignal.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  bloc_signals: ^0.2.8
+  bloc_signals_flutter: ^0.2.8
+  bloc_signals_hydrate: ^0.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

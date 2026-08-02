@@ -18,6 +18,13 @@ workspace:
   - examples/shopping_cart
   - examples/auth_flow
   - examples/infinite_scroll
+  - examples/flutter_counter
+  - examples/flutter_async
+  - examples/flutter_colorband
+  - examples/eval_calculator
+  - examples/persist_shared_preferences
+  - examples/clean_architecture
+  - examples/get_it_signals
 
 dev_dependencies:
   test: ^1.25.6

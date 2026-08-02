@@ -1,0 +1,23 @@
+name: get_it_signals_example
+description: Service locator dependency injection example with GetIt and BlocSignal.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  bloc_signals: ^0.2.8
+  bloc_signals_flutter: ^0.2.8
+  get_it: ^7.7.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

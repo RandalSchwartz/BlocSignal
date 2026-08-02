@@ -43,7 +43,10 @@ class Todo {
 
   @override
   int get hashCode =>
-      id.hashCode ^ title.hashCode ^ description.hashCode ^ isCompleted.hashCode;
+      id.hashCode ^
+      title.hashCode ^
+      description.hashCode ^
+      isCompleted.hashCode;
 }
 
 /// Filter criteria for list view.
@@ -187,11 +190,13 @@ class TodosBlocSignal extends BlocSignal<TodosEvent, TodosState> {
     emit(stateValue.copyWith(todos: updated));
   }
 
-  void _onFilterChanged(TodosFilterChanged event, void Function(TodosState) emit) {
+  void _onFilterChanged(
+      TodosFilterChanged event, void Function(TodosState) emit) {
     emit(stateValue.copyWith(filter: event.filter));
   }
 
-  void _onCompletedCleared(CompletedCleared event, void Function(TodosState) emit) {
+  void _onCompletedCleared(
+      CompletedCleared event, void Function(TodosState) emit) {
     final active = stateValue.todos.where((t) => !t.isCompleted).toList();
     emit(stateValue.copyWith(todos: active));
   }
@@ -232,9 +237,7 @@ class TodosApp extends StatelessWidget {
                 title: 'Build clean Flutter examples',
                 isCompleted: false),
             Todo(
-                id: '3',
-                title: 'Write 100% test coverage',
-                isCompleted: false),
+                id: '3', title: 'Write 100% test coverage', isCompleted: false),
           ],
         ),
         child: const TodosHomePage(),
@@ -284,8 +287,7 @@ class _TodosHomePageState extends State<TodosHomePage> {
         onTap: (index) => setState(() => _tabIndex = index),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Todos'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.show_chart), label: 'Stats'),
+          BottomNavigationBarItem(icon: Icon(Icons.show_chart), label: 'Stats'),
         ],
       ),
     );

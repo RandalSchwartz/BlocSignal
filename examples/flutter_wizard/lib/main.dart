@@ -125,7 +125,8 @@ class WizardBlocSignal extends BlocSignal<WizardEvent, WizardState> {
   late final ReadonlySignal<bool> canSubmit =
       computed(() => isStep1Valid.value && isStep2Valid.value);
 
-  void _onStepChanged(WizardStepChanged event, void Function(WizardState) emit) {
+  void _onStepChanged(
+      WizardStepChanged event, void Function(WizardState) emit) {
     if (event.step >= 0 && event.step <= 2) {
       emit(stateValue.copyWith(currentStep: event.step));
     }
@@ -198,8 +199,7 @@ class WizardPage extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.check_circle,
-                      color: Colors.green, size: 80),
+                  const Icon(Icons.check_circle, color: Colors.green, size: 80),
                   const SizedBox(height: 16),
                   Text('Welcome, ${state.fullName}!',
                       style: Theme.of(context).textTheme.headlineMedium),
@@ -275,8 +275,7 @@ class _AccountStepViewState extends State<AccountStepView> {
   void initState() {
     super.initState();
     final bloc = context.read<WizardBlocSignal>();
-    _usernameController =
-        TextEditingController(text: bloc.stateValue.username);
+    _usernameController = TextEditingController(text: bloc.stateValue.username);
     _emailController = TextEditingController(text: bloc.stateValue.email);
   }
 

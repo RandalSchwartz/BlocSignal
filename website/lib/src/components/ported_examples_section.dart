@@ -30,7 +30,8 @@ class PortedExamplesSection extends StatelessComponent {
       (
         title: 'Flutter Weather',
         tag: 'felangel/bloc',
-        desc: 'Weather search with Celsius/Fahrenheit toggle and theme driving.',
+        desc:
+            'Weather search with Celsius/Fahrenheit toggle and theme driving.',
         dx: 'Cross-cubit/bloc theme driving is seamless via reactive signals, updating the primary app color on frame 1 based on weather condition.',
         icon: '🌦️',
         localPath: 'examples/flutter_weather',
@@ -50,7 +51,8 @@ class PortedExamplesSection extends StatelessComponent {
       (
         title: 'Flutter Wizard',
         tag: 'felangel/bloc',
-        desc: 'Multi-step registration flow with step validation & state preservation.',
+        desc:
+            'Multi-step registration flow with step validation & state preservation.',
         dx: 'Step validation rules are declared cleanly as computed() boolean signals (isStep1Valid, isStep2Valid), preserving multi-page form state.',
         icon: '🪄',
         localPath: 'examples/flutter_wizard',
@@ -70,7 +72,8 @@ class PortedExamplesSection extends StatelessComponent {
       (
         title: 'Bloc Concurrency Visualizer',
         tag: 'felangel/bloc',
-        desc: 'Interactive UI timeline visualizer for streamless event transformers.',
+        desc:
+            'Interactive UI timeline visualizer for streamless event transformers.',
         dx: 'Highlights BlocSignal\'s streamless higher-order event transformers (sequential, droppable, restartable) built with Mutex locks.',
         icon: '⚡',
         localPath: 'examples/bloc_concurrency_visualizer',
@@ -80,7 +83,8 @@ class PortedExamplesSection extends StatelessComponent {
       (
         title: 'GitHub Search',
         tag: 'felangel/bloc',
-        desc: 'GitHub repository search with debounced text input & rate limiting.',
+        desc:
+            'GitHub repository search with debounced text input & rate limiting.',
         dx: 'restartable() transformer cancels lingering API requests on new keypresses with zero Rx stream dependency.',
         icon: '🔍',
         localPath: 'examples/github_search',
@@ -133,7 +137,8 @@ class PortedExamplesSection extends StatelessComponent {
       (
         title: 'GetIt Service Locator DI',
         tag: 'signals.dart',
-        desc: 'Bridging GetIt singletons to widget tree via BlocSignalProvider.value.',
+        desc:
+            'Bridging GetIt singletons to widget tree via BlocSignalProvider.value.',
         dx: 'Integrates GetIt singletons cleanly with widget dependency injection.',
         icon: '🔌',
         localPath: 'examples/get_it_signals',
@@ -172,93 +177,101 @@ class PortedExamplesSection extends StatelessComponent {
       ),
     ];
 
-    return section(id: 'ported-examples', classes: 'catalog-section standalone-section', [
-      div(classes: 'container', [
-        div(classes: 'section-badge', [
-          Component.text('Comparison Suite'),
-        ]),
-        h2(
-            classes: 'section-title',
-            [Component.text('Ported Benchmark Examples')]),
-        p(classes: 'section-subtitle', [
-          Component.text(
-              'Coming from BLoC or Signals? Explore these 16 side-by-side benchmark ports showing how BlocSignal simplifies existing state management patterns.'),
-        ]),
-
-        // Section 1: felangel/bloc Ports
-        h3(
-            classes: 'subsection-title',
-            [Component.text('Ports from felangel/bloc (10 Applications)')]),
-        div(classes: 'package-grid', [
-          for (final ex in blocPorts)
-            div(classes: 'package-card', [
-              div(classes: 'card-header', [
-                span(classes: 'card-icon', [Component.text(ex.icon)]),
-                span(classes: 'card-version tag-bloc', [Component.text(ex.tag)]),
-              ]),
-              h3(classes: 'card-title', [Component.text(ex.title)]),
-              p(classes: 'card-desc', [Component.text(ex.desc)]),
-              div(classes: 'card-dx', [
-                strong([Component.text('💡 BlocSignal DX Gain: ')]),
-                span([Component.text(ex.dx)]),
-              ]),
-              div(classes: 'card-links-row', [
-                a(
-                  href:
-                      'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.localPath}',
-                  target: Target.blank,
-                  classes: 'card-link',
-                  [Component.text('BlocSignal Source →')],
-                ),
-                span([Component.text(' • ')]),
-                a(
-                  href: ex.upstreamUrl,
-                  target: Target.blank,
-                  classes: 'card-link upstream-link',
-                  [Component.text('Original Source ↗')],
-                ),
-              ]),
+    return section(
+        id: 'ported-examples',
+        classes: 'catalog-section standalone-section',
+        [
+          div(classes: 'container', [
+            div(classes: 'section-badge', [
+              Component.text('Comparison Suite'),
             ]),
-        ]),
-
-        div(classes: 'spacer-vertical', []),
-
-        // Section 2: rodydavis/signals.dart Ports
-        h3(
-            classes: 'subsection-title',
-            [Component.text('Ports from rodydavis/signals.dart (6 Applications)')]),
-        div(classes: 'package-grid', [
-          for (final ex in signalsPorts)
-            div(classes: 'package-card', [
-              div(classes: 'card-header', [
-                span(classes: 'card-icon', [Component.text(ex.icon)]),
-                span(classes: 'card-version tag-signals', [Component.text(ex.tag)]),
-              ]),
-              h3(classes: 'card-title', [Component.text(ex.title)]),
-              p(classes: 'card-desc', [Component.text(ex.desc)]),
-              div(classes: 'card-dx', [
-                strong([Component.text('💡 BlocSignal DX Gain: ')]),
-                span([Component.text(ex.dx)]),
-              ]),
-              div(classes: 'card-links-row', [
-                a(
-                  href:
-                      'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.localPath}',
-                  target: Target.blank,
-                  classes: 'card-link',
-                  [Component.text('BlocSignal Source →')],
-                ),
-                span([Component.text(' • ')]),
-                a(
-                  href: ex.upstreamUrl,
-                  target: Target.blank,
-                  classes: 'card-link upstream-link',
-                  [Component.text('Original Source ↗')],
-                ),
-              ]),
+            h2(
+                classes: 'section-title',
+                [Component.text('Ported Benchmark Examples')]),
+            p(classes: 'section-subtitle', [
+              Component.text(
+                  'Coming from BLoC or Signals? Explore these 16 side-by-side benchmark ports showing how BlocSignal simplifies existing state management patterns.'),
             ]),
-        ]),
-      ]),
-    ]);
+
+            // Section 1: felangel/bloc Ports
+            h3(
+                classes: 'subsection-title',
+                [Component.text('Ports from felangel/bloc (10 Applications)')]),
+            div(classes: 'package-grid', [
+              for (final ex in blocPorts)
+                div(classes: 'package-card', [
+                  div(classes: 'card-header', [
+                    span(classes: 'card-icon', [Component.text(ex.icon)]),
+                    span(
+                        classes: 'card-version tag-bloc',
+                        [Component.text(ex.tag)]),
+                  ]),
+                  h3(classes: 'card-title', [Component.text(ex.title)]),
+                  p(classes: 'card-desc', [Component.text(ex.desc)]),
+                  div(classes: 'card-dx', [
+                    strong([Component.text('💡 BlocSignal DX Gain: ')]),
+                    span([Component.text(ex.dx)]),
+                  ]),
+                  div(classes: 'card-links-row', [
+                    a(
+                      href:
+                          'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.localPath}',
+                      target: Target.blank,
+                      classes: 'card-link',
+                      [Component.text('BlocSignal Source →')],
+                    ),
+                    span([Component.text(' • ')]),
+                    a(
+                      href: ex.upstreamUrl,
+                      target: Target.blank,
+                      classes: 'card-link upstream-link',
+                      [Component.text('Original Source ↗')],
+                    ),
+                  ]),
+                ]),
+            ]),
+
+            div(classes: 'spacer-vertical', []),
+
+            // Section 2: rodydavis/signals.dart Ports
+            h3(classes: 'subsection-title', [
+              Component.text(
+                  'Ports from rodydavis/signals.dart (6 Applications)')
+            ]),
+            div(classes: 'package-grid', [
+              for (final ex in signalsPorts)
+                div(classes: 'package-card', [
+                  div(classes: 'card-header', [
+                    span(classes: 'card-icon', [Component.text(ex.icon)]),
+                    span(
+                        classes: 'card-version tag-signals',
+                        [Component.text(ex.tag)]),
+                  ]),
+                  h3(classes: 'card-title', [Component.text(ex.title)]),
+                  p(classes: 'card-desc', [Component.text(ex.desc)]),
+                  div(classes: 'card-dx', [
+                    strong([Component.text('💡 BlocSignal DX Gain: ')]),
+                    span([Component.text(ex.dx)]),
+                  ]),
+                  div(classes: 'card-links-row', [
+                    a(
+                      href:
+                          'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.localPath}',
+                      target: Target.blank,
+                      classes: 'card-link',
+                      [Component.text('BlocSignal Source →')],
+                    ),
+                    span([Component.text(' • ')]),
+                    a(
+                      href: ex.upstreamUrl,
+                      target: Target.blank,
+                      classes: 'card-link upstream-link',
+                      [Component.text('Original Source ↗')],
+                    ),
+                  ]),
+                ]),
+            ]),
+          ]),
+        ]);
   }
 }

@@ -10,28 +10,32 @@ class ExamplesSection extends StatelessComponent {
       (
         title: 'Auth & Session Flow',
         tag: 'Persistence & Hydration',
-        desc: 'HydratedCubitSignal auth state restoration, token storage, and session lifecycle across app restarts.',
+        desc:
+            'HydratedCubitSignal auth state restoration, token storage, and session lifecycle across app restarts.',
         icon: '🔐',
         path: 'examples/auth_flow',
       ),
       (
         title: 'Shopping Cart & Catalog',
         tag: 'State & Selectors',
-        desc: 'CatalogCubit, CartBloc, and fine-grained BlocSignalSelector rebuild optimizations.',
+        desc:
+            'CatalogCubit, CartBloc, and fine-grained BlocSignalSelector rebuild optimizations.',
         icon: '🛒',
         path: 'examples/shopping_cart',
       ),
       (
         title: 'Infinite Scroll Search',
         tag: 'Streamless Concurrency',
-        desc: 'Streamless droppable() list throttling & restartable() search input debouncing without RxStreams.',
+        desc:
+            'Streamless droppable() list throttling & restartable() search input debouncing without RxStreams.',
         icon: '📜',
         path: 'examples/infinite_scroll',
       ),
       (
         title: 'Flutter Counter',
         tag: 'Core Primitives',
-        desc: 'Side-by-side demonstration of CubitSignal vs BlocSignal with zero microtask latency.',
+        desc:
+            'Side-by-side demonstration of CubitSignal vs BlocSignal with zero microtask latency.',
         icon: '🔢',
         path: 'examples/flutter_counter',
       ),

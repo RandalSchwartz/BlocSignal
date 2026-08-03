@@ -8,3 +8,4 @@ lcov.info
 build/
 **/build/
 .firebase/
+.flutter-plugins*

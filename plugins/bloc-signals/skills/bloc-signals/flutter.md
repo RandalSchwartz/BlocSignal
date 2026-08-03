@@ -210,7 +210,51 @@ Key advantages for hook workflows:
 - **Zero-Cost Lifecycle Teardown**: Hooks naturally manage subscription lifecycle and unmount disposal.
 - **Composable State**: Effortlessly combine BLoC signals with local widget signals using `useComputed` or `useSignalEffect`.
 
+## Form Input Synchronization (`TextFormField` with `ValueKey`)
+
+When synchronizing form fields (`TextFormField`) with `BlocSignalBuilder` or signal state, avoid mutating a `TextEditingController.text` property inside a `build` method or `useEffect` hook:
+
+```dart
+// ❌ BAD: Mutating controller during build triggers Flutter assertion:
+// "setState() or markNeedsBuild() called during build."
+useEffect(() {
+  controller.text = displayValue;
+  return null;
+}, [displayValue]);
+```
+
+### Idiomatic `ValueKey` Pattern
+
+The cleanest pattern in `bloc_signals_flutter` is using `initialValue` paired with a state-derived `ValueKey` on `TextFormField` inside `BlocSignalBuilder`:
+
+```dart
+BlocSignalBuilder<UserDataCubit, UserData>(
+  builder: (context, userData) {
+    final displayWeight = userData.displayWeight;
+
+    return TextFormField(
+      // Pair ValueKey with initialValue to re-initialize field on external state changes
+      key: ValueKey('weight_${userData.unit}_$displayWeight'),
+      initialValue: displayWeight.toStringAsFixed(1),
+      keyboardType: TextInputType.number,
+      onChanged: (value) {
+        final parsed = double.tryParse(value);
+        if (parsed != null) {
+          context.read<UserDataCubit>().setWeight(parsed);
+        }
+      },
+    );
+  },
+);
+```
+
+**Why this works**:
+- **Zero Build-Phase Mutations**: Eliminates `controller.text` mutations during frame builds.
+- **Automatic Sync on External Changes**: Updating `ValueKey` forces `TextFormField` to re-initialize cleanly with `initialValue` when state changes externally (e.g. state hydration or unit switching).
+- **Clean Field State**: Allows standard typing and validation while keeping state reactivity declarative.
+
 ## Missing-provider failures
+
 
 `BlocSignalProvider.of<T>` throws `FlutterError` when no exact provider type is found. Check that the
 lookup context is below the provider and that the generic type matches the provided concrete bloc.

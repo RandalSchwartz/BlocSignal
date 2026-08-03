@@ -224,7 +224,29 @@ class CounterScreen extends StatelessWidget {
 
 ---
 
-## 6. `HydratedCubitSignal` vs `PersistentSignal` (`signals.dart`)
+## 7. Persisted Form Field Synchronization (`TextFormField` with `ValueKey`)
+
+When hydrating form fields (`TextFormField`) with `HydratedCubitSignal`, avoid mutating a `TextEditingController.text` property inside a `build` method or `useEffect` hook:
+
+```dart
+BlocSignalBuilder<SettingsCubit, SettingsState>(
+  builder: (context, state) {
+    return TextFormField(
+      // Pair ValueKey with initialValue to re-initialize input field on state hydration
+      key: ValueKey('username_${state.username}'),
+      initialValue: state.username,
+      onChanged: (value) {
+        context.read<SettingsCubit>().updateUsername(value);
+      },
+    );
+  },
+);
+```
+
+Pairing `initialValue` with a state-derived `ValueKey` allows fields to hydrate cleanly without triggering Flutter's `setState() called during build` assertion.
+
+## 8. `HydratedCubitSignal` vs `PersistentSignal` (`signals.dart`)
+
 
 If evaluating state persistence approaches, `bloc_signals_hydrate` and `signals.dart`'s native `PersistentSignal` cater to different architectural patterns:
 

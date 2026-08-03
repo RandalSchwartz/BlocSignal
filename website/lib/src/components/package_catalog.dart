@@ -41,7 +41,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_hydrate',
-        version: '0.1.6',
+        version: '0.1.7',
         desc:
             'Synchronous state persistence across app restarts with primitive and collection support.',
         icon: '💾',

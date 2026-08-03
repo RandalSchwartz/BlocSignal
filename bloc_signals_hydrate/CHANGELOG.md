@@ -1,4 +1,11 @@
+## 0.1.7
+
+- Add assertion-backed `MemoryHydratedStorage` fallback to `HydratedStorage.storage` in testing and debug mode, printing a clear diagnostic warning when accessed prior to explicit initialization.
+- Add `HydratedStorage.isInitialized` getter and `HydratedStorage.reset()` helper.
+- Preserve 100% production tree-shaking for release builds by enclosing fallback inside an assertion block.
+
 ## 0.1.6
+
 
 - Add built-in `SharedPreferencesHydratedStorage` adapter available via `import 'package:bloc_signals_hydrate/shared_preferences.dart';`.
 - Add built-in `SecureHydratedStorage` adapter (`FlutterSecureStorage` / Keychain / KeyStore / Web Crypto) with async pre-loading (`SecureHydratedStorage.build`) for zero-flicker synchronous frame 1 state hydration available via `import 'package:bloc_signals_hydrate/secure_storage.dart';`.

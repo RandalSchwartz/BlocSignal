@@ -633,3 +633,95 @@ body {
   padding-left: 20px;
 }
 
+/* Minesweeper Landing Page Enhancements */
+.ms-landing-title {
+  font-size: 3rem;
+  margin-top: 12px;
+  margin-bottom: 16px;
+}
+
+.ms-landing-subtitle {
+  max-width: 780px;
+  margin: 0 auto 32px auto;
+}
+
+.ms-hero-ctas {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 40px;
+}
+
+.btn-github-source {
+  background: linear-gradient(135deg, #2563eb, #3b82f6) !important;
+  font-weight: 700;
+}
+
+.ms-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  margin-top: 48px;
+  margin-bottom: 48px;
+}
+
+.ms-feature-card {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: left;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.ms-feature-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent-cyan);
+}
+
+.ms-feature-card .feature-icon {
+  font-size: 2rem;
+  margin-bottom: 12px;
+}
+
+.ms-feature-card h3 {
+  font-size: 1.2rem;
+  color: #f8fafc;
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.ms-feature-card p {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.ms-code-preview {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid #334155;
+  padding: 32px;
+  border-radius: 16px;
+  text-align: left;
+  margin-top: 40px;
+}
+
+.ms-code-preview h3 {
+  color: var(--accent-cyan);
+  margin-top: 0;
+  font-size: 1.3rem;
+}
+
+.ms-code-preview p {
+  color: #cbd5e1;
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+}
+
+.ms-code-links {
+  margin-top: 20px;
+  font-size: 0.95rem;
+}
+

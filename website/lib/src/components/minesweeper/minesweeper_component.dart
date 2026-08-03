@@ -14,6 +14,7 @@ class _MinesweeperComponentState extends State<MinesweeperComponent> {
   late final MinesweeperCubit _cubit;
   String _passcodeNotice = '';
   String _passcodeInput = '';
+  DateTime _lastRightClickTime = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
@@ -31,10 +32,15 @@ class _MinesweeperComponentState extends State<MinesweeperComponent> {
   }
 
   void _onCellClick(int r, int c) {
+    // Ignore click events fired immediately after a long-press / right-click
+    if (DateTime.now().difference(_lastRightClickTime).inMilliseconds < 500) {
+      return;
+    }
     _cubit.revealCell(r, c);
   }
 
   void _onCellRightClick(int r, int c) {
+    _lastRightClickTime = DateTime.now();
     _cubit.toggleFlag(r, c);
   }
 

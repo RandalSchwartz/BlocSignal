@@ -1,3 +1,9 @@
+## 0.9.0
+
+- Staging release candidate for the 1.0.0 production milestone.
+- Add streamless custom `EventTransformer` API support and extended `AsyncState` evaluation test suites.
+- Complete 100% pub.dev documentation coverage (`///`) across all exported symbols and constructors.
+
 ## 0.2.10
 
 - Add explicit doc comments to `BlocSignalObserver` and `Mutex` constructors for 100% pub.dev documentation coverage.

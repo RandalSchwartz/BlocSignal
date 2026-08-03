@@ -1,3 +1,8 @@
+## 0.9.0
+
+- Staging release candidate for the 1.0.0 production milestone.
+- Performance optimizations for DevTools instance tree filtering and timeline event history rendering.
+
 ## 0.1.2
 
 - Add comprehensive ecosystem package cross-linking table and motto to README.

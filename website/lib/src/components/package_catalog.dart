@@ -1,4 +1,3 @@
-import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
 class PackageCatalog extends StatelessComponent {
@@ -9,7 +8,7 @@ class PackageCatalog extends StatelessComponent {
     final packages = [
       (
         name: 'bloc_signals',
-        version: '0.2.10',
+        version: '0.9.0',
         desc:
             'Core pure Dart reactive state container bridging BLoC semantics with signals v7 primitives.',
         icon: '⚡',
@@ -17,7 +16,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_flutter',
-        version: '0.2.8',
+        version: '0.9.0',
         desc:
             'Flutter UI bindings, InheritedWidget providers, builders, selectors, and Listenable interop.',
         icon: '💙',
@@ -25,7 +24,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_jaspr',
-        version: '0.1.2',
+        version: '0.9.0',
         desc:
             'Jaspr web component integration, InheritedComponent providers, builders, listeners, and selectors.',
         icon: '🌐',
@@ -33,7 +32,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_riverpod',
-        version: '0.1.5',
+        version: '0.9.0',
         desc:
             'Bidirectional Riverpod 2 & 3 interop adapters (toBlocSignal / toProvider).',
         icon: '🌊',
@@ -41,7 +40,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_hydrate',
-        version: '0.2.1',
+        version: '0.9.0',
         desc:
             'Synchronous state persistence across app restarts with primitive and collection support.',
         icon: '💾',
@@ -49,7 +48,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_replay',
-        version: '0.1.1',
+        version: '0.9.0',
         desc:
             'Replay, undo, and redo state tracking utilities (ReplayCubit, ReplayBloc).',
         icon: '↩️',
@@ -57,7 +56,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_otel',
-        version: '0.2.4',
+        version: '0.9.0',
         desc:
             'OpenTelemetry lifecycle tracing, transition metrics, and distributed span correlation.',
         icon: '🔭',
@@ -65,7 +64,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_devtools',
-        version: '0.1.2',
+        version: '0.9.0',
         desc:
             'Custom Flutter DevTools extension for timeline tracing, state diffing, and leak detection.',
         icon: '🛠️',
@@ -73,51 +72,104 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_test',
-        version: '0.1.4',
+        version: '0.9.0',
         desc:
-            'Declarative unit testing utilities (`blocSignalTest`) for BLoC and Cubit containers.',
+            'Declarative unit testing utilities and test observers for BlocSignal and CubitSignal.',
         icon: '🧪',
         pubUrl: 'https://pub.dev/packages/bloc_signals_test',
       ),
       (
         name: 'bloc_signals_lint',
-        version: '0.2.7',
+        version: '0.9.0',
         desc:
-            'Static analysis lints, AST rule enforcement, and automated IDE quick-fixes.',
+            'Custom analyzer lints and automated IDE quick-fixes for enforcing BlocSignal best practices.',
         icon: '🔍',
         pubUrl: 'https://pub.dev/packages/bloc_signals_lint',
       ),
     ];
 
-    return section(id: 'packages', classes: 'catalog-section', [
-      div(classes: 'container', [
-        h2(
-            classes: 'section-title',
-            [Component.text('Workspace Package Ecosystem')]),
-        p(classes: 'section-subtitle', [
-          Component.text(
-              'Modular, zero-bloat packages designed to work together seamlessly or independently.'),
-        ]),
-        div(classes: 'package-grid', [
-          for (final pkg in packages)
-            div(classes: 'package-card', [
-              div(classes: 'card-header', [
-                span(classes: 'card-icon', [Component.text(pkg.icon)]),
-                span(
-                    classes: 'card-version',
-                    [Component.text('v${pkg.version}')]),
-              ]),
-              h3(classes: 'card-title', [Component.text(pkg.name)]),
-              p(classes: 'card-desc', [Component.text(pkg.desc)]),
-              a(
-                href: pkg.pubUrl,
-                target: Target.blank,
-                classes: 'card-link',
-                [Component.text('pub.dev →')],
-              ),
-            ]),
-        ]),
-      ]),
-    ]);
+    return Component.element(
+      tag: 'section',
+      id: 'packages',
+      classes: 'packages-section',
+      children: [
+        Component.element(
+          tag: 'div',
+          classes: 'container',
+          children: [
+            Component.element(
+              tag: 'h2',
+              classes: 'section-title',
+              children: [
+                Component.text('The '),
+                Component.element(
+                  tag: 'span',
+                  classes: 'gradient-text',
+                  children: [Component.text('BlocSignal Ecosystem')],
+                ),
+              ],
+            ),
+            Component.element(
+              tag: 'p',
+              classes: 'section-subtitle',
+              children: [
+                Component.text(
+                  'Modular, zero-dependency core with first-class interop packages.',
+                ),
+              ],
+            ),
+            Component.element(
+              tag: 'div',
+              classes: 'package-grid',
+              children: [
+                for (final pkg in packages)
+                  Component.element(
+                    tag: 'div',
+                    classes: 'package-card',
+                    children: [
+                      Component.element(
+                        tag: 'div',
+                        classes: 'package-header',
+                        children: [
+                          Component.element(
+                            tag: 'span',
+                            classes: 'package-icon',
+                            children: [Component.text(pkg.icon)],
+                          ),
+                          Component.element(
+                            tag: 'span',
+                            classes: 'package-version',
+                            children: [Component.text('v${pkg.version}')],
+                          ),
+                        ],
+                      ),
+                      Component.element(
+                        tag: 'h3',
+                        classes: 'package-name',
+                        children: [Component.text(pkg.name)],
+                      ),
+                      Component.element(
+                        tag: 'p',
+                        classes: 'package-desc',
+                        children: [Component.text(pkg.desc)],
+                      ),
+                      Component.element(
+                        tag: 'a',
+                        classes: 'package-link',
+                        attributes: {
+                          'href': pkg.pubUrl,
+                          'target': '_blank',
+                          'rel': 'noopener',
+                        },
+                        children: [Component.text('View on pub.dev →')],
+                      ),
+                    ],
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }

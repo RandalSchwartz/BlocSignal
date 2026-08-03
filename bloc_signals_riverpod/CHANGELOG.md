@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0
+
+- Staging release candidate for the 1.0.0 production milestone.
+- Update `bloc_signals` dependency constraint to `^0.9.0`.
+
 ## 0.1.5
 
 - Fix Riverpod 3.3+ export compatibility by importing `package:riverpod/src/internals.dart`.

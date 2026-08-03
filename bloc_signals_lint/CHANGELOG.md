@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0
+
+- Staging release candidate for the 1.0.0 production milestone.
+- Update `bloc_signals` dependency constraint to `^0.9.0`.
+
 ## 0.2.7
 
 - Added 3 footgun prevention lint rules for stateful container lifecycles and disposal (`avoid_top_level_bloc_signal_instances`, `avoid_providing_existing_instance_with_create`, `avoid_manual_close_on_provided_bloc`).

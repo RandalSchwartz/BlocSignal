@@ -1,3 +1,9 @@
+## 0.9.0
+
+- Staging release candidate for the 1.0.0 production milestone.
+- Add storage exception recovery test suite for corrupted payload recovery in `HydratedCubitSignal`.
+- Update `bloc_signals` dependency constraint to `^0.9.0`.
+
 ## 0.2.1
 
 - Add assertion-backed `MemoryHydratedStorage` fallback to `HydratedStorage.storage` in testing and debug mode, printing a clear diagnostic warning when accessed prior to explicit initialization.

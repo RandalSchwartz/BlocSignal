@@ -1,3 +1,8 @@
+## 0.9.0
+
+- Staging release candidate for the 1.0.0 production milestone.
+- Update `bloc_signals` dependency constraint to `^0.9.0`.
+
 ## 0.2.4
 
 - Initial release as `bloc_signals_otel` (formerly `otel_bloc_signals`).

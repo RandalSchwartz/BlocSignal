@@ -1,3 +1,9 @@
+## 0.9.0
+
+- Staging release candidate for the 1.0.0 production milestone.
+- Add widget unmount cleanup test suite for slow async operations.
+- Update `bloc_signals` dependency constraint to `^0.9.0`.
+
 ## 0.2.9
 
 - Add flush-left side-by-side header logo table to README.

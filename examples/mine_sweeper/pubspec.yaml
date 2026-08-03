@@ -11,9 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
-  bloc_signals: ^0.2.8
-  bloc_signals_flutter: ^0.2.8
-  bloc_signals_hydrate: ^0.2.1
+  bloc_signals: ^0.9.0
+  bloc_signals_flutter: ^0.9.0
+  bloc_signals_hydrate: ^0.9.0
   shared_preferences: ^2.3.0
 
 dev_dependencies:

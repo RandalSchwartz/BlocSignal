@@ -115,39 +115,42 @@ class CounterCubit extends HydratedCubitSignal<int> {
 }
 ```
 
-### 4. Wiring Custom Storage (`SharedPreferences`)
+### 4. Built-in Storage Adapters (`SharedPreferences` & `FlutterSecureStorage`)
 
+`package:bloc_signals_hydrate` provides pre-built, tree-shakable adapters for `SharedPreferences` and `FlutterSecureStorage` via sub-library entrypoints:
+
+#### `SharedPreferences`
 ```dart
-import 'dart:convert';
 import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
+import 'package:bloc_signals_hydrate/shared_preferences.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class SharedPreferencesHydratedStorage implements HydratedStorage {
-  SharedPreferencesHydratedStorage(this.prefs);
-  final SharedPreferences prefs;
-
-  @override
-  dynamic read(String key) {
-    final value = prefs.getString(key);
-    return value != null ? jsonDecode(value) : null;
-  }
-
-  @override
-  Future<void> write(String key, dynamic value) async =>
-      prefs.setString(key, jsonEncode(value));
-
-  @override
-  Future<void> delete(String key) async => prefs.remove(key);
-
-  @override
-  Future<void> clear() async => prefs.clear();
-}
-
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
   HydratedStorage.storage = SharedPreferencesHydratedStorage(prefs);
+
+  runApp(const MyApp());
 }
 ```
+
+#### `FlutterSecureStorage` (Keychain / KeyStore / Web Crypto)
+```dart
+import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
+import 'package:bloc_signals_hydrate/secure_storage.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Pre-load secure storage map for synchronous frame 1 hydration
+  final secureStorage = const FlutterSecureStorage();
+  HydratedStorage.storage = await SecureHydratedStorage.build(secureStorage);
+
+  runApp(const MyApp());
+}
+```
+
 
 ---
 

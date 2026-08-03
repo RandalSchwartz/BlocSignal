@@ -14,8 +14,41 @@ abstract class HydratedStorage {
   /// Abstract const constructor for [HydratedStorage] subclasses.
   const HydratedStorage();
 
+  static HydratedStorage? _storage;
+
   /// The global default [HydratedStorage] instance used across hydrated blocs.
-  static HydratedStorage? storage;
+  ///
+  /// In debug mode (when assertions are enabled), if accessed while uninitialized,
+  /// this getter lazily falls back to a [MemoryHydratedStorage] instance and prints
+  /// a diagnostic warning so unit tests and prototypes work without boilerplate setup.
+  static HydratedStorage? get storage {
+    if (_storage == null) {
+      assert(() {
+        _storage = MemoryHydratedStorage();
+        // Print diagnostic guidance for developers
+        print(
+          '[bloc_signals_hydrate] HydratedStorage.storage was accessed before initialization.\n'
+          'Falling back to MemoryHydratedStorage for testing/debugging.\n'
+          'Make sure to set HydratedStorage.storage in main() before running in production.',
+        );
+        return true;
+      }());
+    }
+    return _storage;
+  }
+
+  /// Sets the global default storage backend.
+  static set storage(HydratedStorage? value) {
+    _storage = value;
+  }
+
+  /// Returns whether a global default [HydratedStorage] instance is currently set.
+  static bool get isInitialized => _storage != null;
+
+  /// Resets global default storage to uninitialized state (useful for test tearDown).
+  static void reset() {
+    _storage = null;
+  }
 
   /// Reads value associated with [key] from storage.
   dynamic read(String key);

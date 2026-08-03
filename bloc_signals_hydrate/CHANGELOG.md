@@ -1,4 +1,11 @@
+## 0.2.1
+
+- Add assertion-backed `MemoryHydratedStorage` fallback to `HydratedStorage.storage` in testing and debug mode, printing a clear diagnostic warning when accessed prior to explicit initialization.
+- Add `HydratedStorage.isInitialized` getter and `HydratedStorage.reset()` helper.
+- Preserve 100% production tree-shaking for release builds by enclosing fallback inside an assertion block.
+
 ## 0.1.7
+
 
 - Add assertion-backed `MemoryHydratedStorage` fallback to `HydratedStorage.storage` in testing and debug mode, printing a clear diagnostic warning when accessed prior to explicit initialization.
 - Add `HydratedStorage.isInitialized` getter and `HydratedStorage.reset()` helper.

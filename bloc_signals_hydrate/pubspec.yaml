@@ -1,8 +1,9 @@
 name: bloc_signals_hydrate
 resolution: workspace
 description: State persistence and hydration adapters for BlocSignal state containers.
-version: 0.1.7
+version: 0.2.1
 repository: https://github.com/RandalSchwartz/BlocSignal
+
 
 
 

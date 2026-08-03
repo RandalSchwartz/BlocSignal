@@ -178,12 +178,12 @@ class PortedExamplesSection extends StatelessComponent {
       (
         title: 'Minesweeper Puzzle Game',
         tag: 'signals.dart',
-        desc: 'Classic Minesweeper puzzle game with safe first click & BFS area reveal.',
+        desc:
+            'Classic Minesweeper puzzle game with safe first click & BFS area reveal.',
         dx: 'HydratedBlocSignal provides zero-backend local game state persistence, while Dart 3 sealed event pattern-matching delivers 100% compile-time type-safe action dispatching.',
         icon: '💣',
         localPath: 'examples/mine_sweeper',
-        upstreamUrl:
-            'https://github.com/RandalSchwartz/mine_sweeper',
+        upstreamUrl: 'https://github.com/RandalSchwartz/mine_sweeper',
       ),
     ];
 

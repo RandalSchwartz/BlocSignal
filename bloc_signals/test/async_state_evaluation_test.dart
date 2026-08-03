@@ -30,7 +30,7 @@ class AsyncDataCubit extends CubitSignal<AsyncState<String>> {
     try {
       final result = await repository.fetchData(id);
       emit(AsyncData<String>(result));
-    } catch (e, st) {
+    } on Object catch (e, st) {
       emit(AsyncError<String>(e, st));
     }
   }
@@ -54,7 +54,7 @@ class AsyncFetchBloc extends BlocSignal<AsyncFetchEvent, AsyncState<String>> {
         try {
           final data = await repository.fetchData(event.userId);
           emit(AsyncData<String>(data));
-        } catch (e, st) {
+        } on Object catch (e, st) {
           emit(AsyncError<String>(e, st));
         }
       },
@@ -103,10 +103,9 @@ void main() {
     test('AsyncFetchBloc evaluates async events with restartable transformer',
         () async {
       final repository = AsyncDataRepository();
-      final bloc = AsyncFetchBloc(repository);
-
-      bloc.add(FetchUserEvent('user_1'));
-      bloc.add(FetchUserEvent('user_2')); // Cancels user_1 request
+      final bloc = AsyncFetchBloc(repository)
+        ..add(FetchUserEvent('user_1'))
+        ..add(FetchUserEvent('user_2')); // Cancels user_1 request
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
 

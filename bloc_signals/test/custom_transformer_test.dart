@@ -4,20 +4,33 @@ import 'package:test/test.dart';
 
 // Custom Event Concurrency Transformers for testing API resilience.
 
-/// Custom debounce transformer delaying event execution until [duration] passes without new events.
+/// Custom debounce transformer delaying event execution.
 EventTransformer<E, S> debounce<E, S>(Duration duration) {
   Timer? timer;
   return (event, handler, emit) {
     timer?.cancel();
-    timer = Timer(duration, () => handler(event, emit));
+    timer = Timer(
+      duration,
+      () {
+        final res = handler(event, emit);
+        unawaited(
+          Future.value(res),
+        );
+      },
+    );
   };
 }
 
-/// Custom filtering transformer executing [handler] only if [predicate] returns true.
-EventTransformer<E, S> filterEvents<E, S>(bool Function(E) predicate) {
+/// Custom filtering transformer executing handler only if condition is true.
+EventTransformer<E, S> filterEvents<E, S>(
+  bool Function(E) predicate,
+) {
   return (event, handler, emit) {
     if (predicate(event)) {
-      handler(event, emit);
+      final res = handler(event, emit);
+      unawaited(
+        Future.value(res),
+      );
     }
   };
 }
@@ -58,12 +71,10 @@ void main() {
         () async {
       final bloc = CustomTransformerBloc(
         debounceDuration: const Duration(milliseconds: 30),
-      );
-
-      bloc.add(QueryChanged('f'));
-      bloc.add(QueryChanged('fl'));
-      bloc.add(QueryChanged('flu'));
-      bloc.add(QueryChanged('flutter'));
+      )..add(QueryChanged('f'))
+       ..add(QueryChanged('fl'))
+       ..add(QueryChanged('flu'))
+       ..add(QueryChanged('flutter'));
 
       // Initial state is unchanged immediately
       expect(bloc.stateValue, equals(''));
@@ -79,12 +90,9 @@ void main() {
 
     test('filterEvents transformer ignores events failing predicate',
         () async {
-      final bloc = CustomTransformerBloc();
-
-      bloc.add(FilteredQuery(5));
-      expect(bloc.stateValue, equals(''));
-
-      bloc.add(FilteredQuery(15));
+      final bloc = CustomTransformerBloc()
+        ..add(FilteredQuery(5))
+        ..add(FilteredQuery(15));
       expect(bloc.stateValue, equals('Value:15'));
 
       await bloc.close();

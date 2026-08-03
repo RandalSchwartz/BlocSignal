@@ -36,6 +36,11 @@ class Navbar extends StatelessComponent {
             [Component.text('Ported Examples')],
           ),
           a(
+            href: '/minesweeper',
+            classes: currentPath == '/minesweeper' ? 'nav-active' : '',
+            [Component.text('🎮 Minesweeper')],
+          ),
+          a(
               href: 'https://pub.dev/packages/bloc_signals',
               target: Target.blank,
               [Component.text('pub.dev')]),

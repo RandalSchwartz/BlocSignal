@@ -7,6 +7,25 @@
   <meta name="description" content="Enterprise-grade state management for Dart & Flutter with 0ms microtask latency, 100% docstring coverage, OpenTelemetry tracing, and universal ecosystem bridges.">
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" type="image/png" href="assets/logo.png">
+
+  <!-- Google Analytics (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-34LKXX2GN0"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    gtag('config', 'G-34LKXX2GN0');
+
+    window.trackGaPageView = function(path) {
+      if (typeof gtag === 'function') {
+        gtag('event', 'page_view', {
+          'page_path': path,
+          'page_title': document.title
+        });
+      }
+    };
+  </script>
   <script defer src="main.dart.js"></script>
 </head>
 <body>

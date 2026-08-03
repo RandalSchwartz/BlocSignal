@@ -37,6 +37,18 @@ The `BlocSignal` monorepo consists of 10 modular packages:
 
 ---
 
+## 📖 Background & Architecture References
+
+`bloc_signals` bridges two foundational state management technologies:
+- **[BLoC Architecture (bloclibrary.dev)](https://bloclibrary.dev)**: Business Logic Component event-driven state machines, state decoupling, and global lifecycle observation (`BlocSignalObserver`).
+- **[Signals Primitives (signals.dart)](https://pub.dev/packages/signals)**: Rody Davis's signals v7 reactive primitives providing fine-grained dependency tracking and zero-latency value holding.
+
+### Key Architectural Differences & Design Choices:
+- ⚡ **Synchronous State Propagation**: State changes run synchronously when calling `emit(newState)` rather than asynchronously on microtask-queue Streams.
+- 🔒 **Streamless Concurrency**: Support for `Mutex`, `droppable()`, `sequential()`, and `restartable()` event transformers using pure Dart higher-order functions with zero stream memory allocations.
+
+---
+
 ## ⚡ Key Features
 
 - 🚀 **Synchronous Propagation**: `emit()` updates state immediately in the exact same frame without microtask delay.

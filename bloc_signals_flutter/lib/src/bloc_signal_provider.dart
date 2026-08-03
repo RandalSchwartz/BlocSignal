@@ -175,6 +175,15 @@ extension BlocSignalProviderExtension on BuildContext {
 
   /// Listens to changes on a selected value of the [BlocSignal] state.
   ///
+  /// Note on Generic Type Parameters:
+  /// Unlike Riverpod's 3-parameter `context.select` or `package:flutter_bloc`,
+  /// `BlocSignal`'s `context.select` takes **2** generic type parameters:
+  /// 1. `T`: The [BlocSignalBase] container type (e.g., `CounterBloc` or `UserCubit`).
+  /// 2. `R`: The selected return value type (e.g., `int` or `String`).
+  ///
+  /// The selector callback receives the **`bloc` instance** directly:
+  /// `(bloc) => bloc.stateValue.property`.
+  ///
   /// Example:
   /// ```dart
   /// final username = context.select<UserBloc, String>(

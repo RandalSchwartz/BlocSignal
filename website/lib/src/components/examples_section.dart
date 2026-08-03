@@ -14,6 +14,7 @@ class ExamplesSection extends StatelessComponent {
             'HydratedCubitSignal auth state restoration, token storage, and session lifecycle across app restarts.',
         icon: '🔐',
         path: 'examples/auth_flow',
+        webLink: null,
       ),
       (
         title: 'Shopping Cart & Catalog',
@@ -22,6 +23,7 @@ class ExamplesSection extends StatelessComponent {
             'CatalogCubit, CartBloc, and fine-grained BlocSignalSelector rebuild optimizations.',
         icon: '🛒',
         path: 'examples/shopping_cart',
+        webLink: null,
       ),
       (
         title: 'Infinite Scroll Search',
@@ -30,6 +32,7 @@ class ExamplesSection extends StatelessComponent {
             'Streamless droppable() list throttling & restartable() search input debouncing without RxStreams.',
         icon: '📜',
         path: 'examples/infinite_scroll',
+        webLink: null,
       ),
       (
         title: 'Flutter Counter',
@@ -38,6 +41,7 @@ class ExamplesSection extends StatelessComponent {
             'Side-by-side demonstration of CubitSignal vs BlocSignal with zero microtask latency.',
         icon: '🔢',
         path: 'examples/flutter_counter',
+        webLink: null,
       ),
       (
         title: 'Minesweeper Puzzle Game',
@@ -46,6 +50,7 @@ class ExamplesSection extends StatelessComponent {
             'HydratedBlocSignal puzzle game with Dart 3 pattern matching, safe first click & BFS flood fill.',
         icon: '💣',
         path: 'examples/mine_sweeper',
+        webLink: '/minesweeper',
       ),
     ];
 
@@ -67,13 +72,23 @@ class ExamplesSection extends StatelessComponent {
               ]),
               h3(classes: 'card-title', [Component.text(ex.title)]),
               p(classes: 'card-desc', [Component.text(ex.desc)]),
-              a(
-                href:
-                    'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.path}',
-                target: Target.blank,
-                classes: 'card-link',
-                [Component.text('View Source & Tests →')],
-              ),
+              div(classes: 'card-links-row', [
+                if (ex.webLink != null) ...[
+                  a(
+                    href: ex.webLink!,
+                    classes: 'card-link demo-link',
+                    [Component.text('🎮 Play Interactive Web Demo →')],
+                  ),
+                  span([Component.text(' • ')]),
+                ],
+                a(
+                  href:
+                      'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.path}',
+                  target: Target.blank,
+                  classes: 'card-link',
+                  [Component.text('View Source & Tests ↗')],
+                ),
+              ]),
             ]),
         ]),
       ]),

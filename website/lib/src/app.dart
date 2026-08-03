@@ -2,8 +2,12 @@ import 'dart:js_interop';
 import 'package:jaspr/jaspr.dart';
 import 'package:web/web.dart' as web;
 import 'pages/home_page.dart';
+import 'pages/minesweeper_page.dart';
 import 'pages/ported_examples_page.dart';
 import 'pages/showcase_page.dart';
+
+@JS('trackGaPageView')
+external void _trackGaPageView(JSString path);
 
 class App extends StatefulComponent {
   const App({super.key});
@@ -40,8 +44,18 @@ class _AppState extends State<App> {
         rawHash.contains('ported-examples') ||
         rawHash.contains('ported')) {
       _currentPath = '/ported-examples';
+    } else if (path == '/minesweeper' ||
+        path.startsWith('/minesweeper') ||
+        rawHash.contains('minesweeper')) {
+      _currentPath = '/minesweeper';
     } else {
       _currentPath = '/';
+    }
+
+    try {
+      _trackGaPageView(_currentPath.toJS);
+    } catch (_) {
+      // Ignore if running outside browser or JS interop binding is unavailable.
     }
   }
 
@@ -52,6 +66,8 @@ class _AppState extends State<App> {
         return const ShowcasePage();
       case '/ported-examples':
         return const PortedExamplesPage();
+      case '/minesweeper':
+        return const MinesweeperPage();
       case '/':
       default:
         return const HomePage();

@@ -123,6 +123,7 @@ class PortedExamplesSection extends StatelessComponent {
         localPath: 'examples/eval_calculator',
         upstreamUrl:
             'https://github.com/rodydavis/signals.dart/tree/main/examples/eval_calculator',
+        demoUrl: null,
       ),
       (
         title: 'Dynamic Colorband',
@@ -133,6 +134,7 @@ class PortedExamplesSection extends StatelessComponent {
         localPath: 'examples/flutter_colorband',
         upstreamUrl:
             'https://github.com/rodydavis/signals.dart/tree/main/examples/flutter_colorband',
+        demoUrl: null,
       ),
       (
         title: 'GetIt Service Locator DI',
@@ -144,6 +146,7 @@ class PortedExamplesSection extends StatelessComponent {
         localPath: 'examples/get_it_signals',
         upstreamUrl:
             'https://github.com/rodydavis/signals.dart/tree/main/examples/get_it_signals',
+        demoUrl: null,
       ),
       (
         title: 'Flutter AsyncState',
@@ -154,6 +157,7 @@ class PortedExamplesSection extends StatelessComponent {
         localPath: 'examples/flutter_async',
         upstreamUrl:
             'https://github.com/rodydavis/signals.dart/tree/main/examples/flutter_async',
+        demoUrl: null,
       ),
       (
         title: 'Clean Architecture Weather',
@@ -164,6 +168,7 @@ class PortedExamplesSection extends StatelessComponent {
         localPath: 'examples/clean_architecture',
         upstreamUrl:
             'https://github.com/rodydavis/signals.dart/tree/main/examples/clean_architecture',
+        demoUrl: null,
       ),
       (
         title: 'SharedPreferences Persistence',
@@ -174,6 +179,7 @@ class PortedExamplesSection extends StatelessComponent {
         localPath: 'examples/persist_shared_preferences',
         upstreamUrl:
             'https://github.com/rodydavis/signals.dart/tree/main/examples/persist_shared_preferences',
+        demoUrl: null,
       ),
       (
         title: 'Minesweeper Puzzle Game',
@@ -184,6 +190,7 @@ class PortedExamplesSection extends StatelessComponent {
         icon: '💣',
         localPath: 'examples/mine_sweeper',
         upstreamUrl: 'https://github.com/RandalSchwartz/mine_sweeper',
+        demoUrl: '/minesweeper',
       ),
     ];
 
@@ -264,6 +271,14 @@ class PortedExamplesSection extends StatelessComponent {
                     span([Component.text(ex.dx)]),
                   ]),
                   div(classes: 'card-links-row', [
+                    if (ex.demoUrl != null) ...[
+                      a(
+                        href: ex.demoUrl!,
+                        classes: 'card-link demo-link',
+                        [Component.text('🎮 Play Web Demo →')],
+                      ),
+                      span([Component.text(' • ')]),
+                    ],
                     a(
                       href:
                           'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.localPath}',

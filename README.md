@@ -46,6 +46,19 @@ The `BlocSignal` monorepo consists of 10 modular packages:
 
 ---
 
+## 📖 Background & Architecture References
+
+`BlocSignal` combines two foundational pillars of the Dart & Flutter state management ecosystem:
+- **[BLoC Architecture (bloclibrary.dev)](https://bloclibrary.dev)**: Event-driven state machine discipline, state separation, and enterprise observability (`BlocSignalObserver`).
+- **[Signals Primitives (signals.dart)](https://pub.dev/packages/signals)**: Fine-grained reactive dependency graphs and zero-latency value holding.
+
+### Key Architectural Differences & Design Choices:
+- ⚡ **Synchronous vs. Asynchronous Emission**: Unlike classic `package:bloc` which dispatches state changes on microtask-queue Streams, `BlocSignal` updates propagate **synchronously**. Calling `emit(newState)` triggers downstream calculations and widget rebuilds in the exact same frame.
+- 📦 **Zero `RepositoryProvider` Bloat**: Dependency injection in `BlocSignal` is handled directly via `BlocSignalProvider` (or Riverpod/Jaspr context providers) without forcing a separate `RepositoryProvider` wrapper.
+- 🔒 **Streamless Event Concurrency**: Event concurrency transformers (`droppable`, `sequential`, `restartable`, `Mutex`) run via pure Dart higher-order functions without stream allocations or Rx dependencies.
+
+---
+
 ## 📚 Documentation
 
 - **[Migration Guide](./plugins/bloc-signals/skills/bloc-signals/migration.md)**: Moving from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.

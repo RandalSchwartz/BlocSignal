@@ -51,8 +51,8 @@ class HeroBanner extends StatelessComponent {
             code([
               Component.text('''
 dependencies:
-  bloc_signals: ^0.2.8
-  bloc_signals_flutter: ^0.2.8'''),
+  bloc_signals: ^0.9.0
+  bloc_signals_flutter: ^0.9.0'''),
             ]),
           ]),
         ]),

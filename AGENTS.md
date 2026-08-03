@@ -255,3 +255,8 @@ When publishing packages to pub.dev to satisfy all 160/160 pub points quality sc
 ### 28. Monorepo README Package Catalog Consistency
 When standardizing or updating package documentation across the monorepo:
 * **Uniform Package Catalog Table**: Ensure all 10 workspace package README files feature the exact same uniform 10-package ecosystem catalog table with pub version badges and descriptions.
+
+### 29. `context.select` Generic Type Signature Ergonomics
+When using `context.select` in `bloc_signals_flutter`:
+* **2 Generic Type Parameters**: Pass exactly **2** generic type parameters: `<B, R>` where `B` is the `BlocSignalBase` container type (e.g., `UserCubit`) and `R` is the selected value type (e.g., `bool`).
+* **Callback Receives Container**: The selector callback receives the **`bloc` container instance** as its single parameter (`(bloc) => bloc.stateValue.property`), not the state object directly. This allows selecting computed properties, signals, or state fields cleanly.

@@ -167,6 +167,63 @@ class GameBlocSignal extends HydratedBlocSignal<GameEvent, MineSweeperState> {
     final grid = _deepCopyGrid(stateValue.grid);
     final cell = grid[row][col];
 
+    // Chording support: clicking an uncovered cell with adjacent mines
+    if (!cell.isCovered && cell.adjacentMines > 0) {
+      final difficulty = stateValue.difficulty;
+      int flaggedCount = 0;
+      for (int i = -1; i <= 1; i++) {
+        for (int j = -1; j <= 1; j++) {
+          if (i == 0 && j == 0) continue;
+          int nr = row + i;
+          int nc = col + j;
+          if (_isValidCell(nr, nc, difficulty) && grid[nr][nc].isFlagged) {
+            flaggedCount++;
+          }
+        }
+      }
+
+      if (flaggedCount == cell.adjacentMines) {
+        bool hitMine = false;
+        for (int i = -1; i <= 1; i++) {
+          for (int j = -1; j <= 1; j++) {
+            if (i == 0 && j == 0) continue;
+            int nr = row + i;
+            int nc = col + j;
+            if (_isValidCell(nr, nc, difficulty)) {
+              final neighbor = grid[nr][nc];
+              if (neighbor.isCovered && !neighbor.isFlagged) {
+                grid[nr][nc] = neighbor.copyWith(isCovered: false);
+                if (neighbor.isMine) {
+                  hitMine = true;
+                } else if (neighbor.adjacentMines == 0) {
+                  _floodFillUncover(grid, nr, nc);
+                }
+              }
+            }
+          }
+        }
+
+        if (hitMine) {
+          _revealAllMines(grid);
+          _stopTimer();
+          emit(stateValue.copyWith(grid: grid, status: GameStatus.lost));
+          return;
+        }
+
+        final isWon = _checkWinCondition(grid);
+        if (isWon) {
+          _stopTimer();
+        }
+        emit(
+          stateValue.copyWith(
+            grid: grid,
+            status: isWon ? GameStatus.won : stateValue.status,
+          ),
+        );
+      }
+      return;
+    }
+
     if (!cell.isCovered || cell.isFlagged) {
       return;
     }

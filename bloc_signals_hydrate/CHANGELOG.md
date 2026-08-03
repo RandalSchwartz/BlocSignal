@@ -1,4 +1,11 @@
+## 0.1.6
+
+- Add built-in `SharedPreferencesHydratedStorage` adapter available via `import 'package:bloc_signals_hydrate/shared_preferences.dart';`.
+- Add built-in `SecureHydratedStorage` adapter (`FlutterSecureStorage` / Keychain / KeyStore / Web Crypto) with async pre-loading (`SecureHydratedStorage.build`) for zero-flicker synchronous frame 1 state hydration available via `import 'package:bloc_signals_hydrate/secure_storage.dart';`.
+- Maintain 100% pure Dart package compatibility with zero Flutter SDK dependencies in core `pubspec.yaml`.
+
 ## 0.2.0
+
 
 - Add built-in `SharedPreferencesHydratedStorage` adapter available via `import 'package:bloc_signals_hydrate/shared_preferences.dart';`.
 - Add built-in `SecureHydratedStorage` adapter (`FlutterSecureStorage` / Keychain / KeyStore / Web Crypto) with async pre-loading (`SecureHydratedStorage.build`) for zero-flicker synchronous frame 1 state hydration available via `import 'package:bloc_signals_hydrate/secure_storage.dart';`.

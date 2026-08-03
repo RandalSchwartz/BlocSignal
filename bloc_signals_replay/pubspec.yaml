@@ -1,7 +1,7 @@
 name: bloc_signals_replay
 resolution: workspace
 description: Undo and redo state history tracking utilities for CubitSignal and BlocSignal.
-version: 0.1.1
+version: 0.9.0
 repository: https://github.com/RandalSchwartz/BlocSignal
 issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
 

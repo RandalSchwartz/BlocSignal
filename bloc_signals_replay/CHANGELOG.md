@@ -1,3 +1,8 @@
+## 0.9.0
+
+- Staging release candidate for the 1.0.0 production milestone.
+- Update `bloc_signals` dependency constraint to `^0.9.0`.
+
 ## 0.1.1
 
 - Add top-level `example/example.dart` for 100% pub.dev score checklist compliance.

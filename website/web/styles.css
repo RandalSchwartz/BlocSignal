@@ -725,3 +725,23 @@ body {
   font-size: 0.95rem;
 }
 
+.ms-code-box {
+  max-width: 100%;
+  overflow-x: auto;
+  background: #090d16;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.ms-code-box pre {
+  margin: 0;
+  white-space: pre;
+  overflow-x: auto;
+  font-family: 'Fira Code', 'Courier New', monospace;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: #e2e8f0;
+}
+

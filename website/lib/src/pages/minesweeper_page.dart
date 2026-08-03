@@ -100,18 +100,21 @@ class MinesweeperPage extends StatelessComponent {
                   'Below is a snippet of the MinesweeperCubit running live on this page, demonstrating synchronous state updates and recursive flood fill:',
                 ),
               ]),
-              div(classes: 'code-snippet-box', [
+              div(classes: 'ms-code-box', [
                 pre([
                   code([
                     Component.text('''
 class MinesweeperCubit extends CubitSignal<MinesweeperState> {
   void revealCell(int row, int col) {
-    if (stateValue.status == GameStatus.won || stateValue.status == GameStatus.lost) return;
+    if (stateValue.status == GameStatus.won ||
+        stateValue.status == GameStatus.lost) return;
 
     final cell = stateValue.board[row][col];
     if (cell.isRevealed || cell.isFlagged) return;
 
-    final newBoard = stateValue.board.map((r) => r.map((c) => c).toList()).toList();
+    final newBoard = stateValue.board
+        .map((r) => r.map((c) => c).toList())
+        .toList();
 
     // 0ms Synchronous Flood Fill Recursion
     void floodFill(int r, int c) {

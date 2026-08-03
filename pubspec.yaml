@@ -37,6 +37,7 @@ workspace:
   - examples/github_search
   - examples/flutter_complex_list
   - examples/flutter_bloc_with_stream
+  - examples/mine_sweeper
   - website
 
 dev_dependencies:

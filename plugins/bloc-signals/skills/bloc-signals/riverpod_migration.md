@@ -91,8 +91,8 @@ For a simple selected rebuild, `BlocSignalSelector` is closer to widget `select`
 builder. It rebuilds when its selected value changes by equality. It does not reproduce Riverpod
 scope, provider recomputation, or family caching.
 
-`context.select<T, R>` is another narrow widget option, but 0.2.0 caches calls by element and call
-index. Keep calls unconditional and stable in order. It does not depend on inherited provider
+`context.select<B, R>` is another narrow widget option (using 2 generic type parameters: container type `B` and return type `R`, passing the `bloc` instance to the callback: `(bloc) => bloc.stateValue.property`), but 0.2.0 caches calls by element and call
+index. Keep calls unconditional and stable in order. Note that unlike Riverpod's `ref.watch(provider.select(...))` or 3-generic-parameter signatures, `bloc_signals_flutter`'s `context.select` takes exactly 2 generic arguments `<B, R>`. It does not depend on inherited provider
 replacement, so prefer `BlocSignalSelector` when the bloc instance can change.
 
 `signals_flutter` 7.1.0 also exports the lower-level `SignalEffect` and its `SignalListener` alias.

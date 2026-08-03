@@ -56,13 +56,21 @@ context.read<CounterBloc>().add(Increment());
 It does not subscribe to `bloc.state`. Do not replace a state-aware `BlocBuilder` with
 `context.watch<T>().stateValue`; use `BlocSignalBuilder` or a signals widget.
 
-Use `context.select<T, R>` inside `build` for a narrow state slice:
+Use `context.select<B, R>` inside `build` for a narrow state slice:
 
 ```dart
 final isSubmitEnabled = context.select<FormCubit, bool>(
   (cubit) => cubit.stateValue.canSubmit,
 );
 ```
+
+> [!TIP]
+> **Generic Type Signature & Selector Parameter (`context.select<B, R>`)**:
+> In `bloc_signals_flutter`, `context.select` takes **2** generic type parameters:
+> 1. `B`: The `BlocSignalBase` container type (e.g. `FormCubit` or `CounterBloc`).
+> 2. `R`: The selected return value type (e.g. `bool` or `String`).
+>
+> Unlike `flutter_riverpod` (which uses 3 generic parameters in some forms) or classic `flutter_bloc` context selection, `bloc_signals_flutter` passes the **`bloc` container instance** to the selector callback (`(bloc) => bloc.stateValue.canSubmit`), allowing direct property access via `bloc.stateValue`.
 
 It rebuilds the element when the selected value changes by `!=`. Keep each element's select calls
 unconditional and in a stable order because 0.2.0 caches subscriptions by call index. The lookup

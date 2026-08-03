@@ -175,6 +175,16 @@ class PortedExamplesSection extends StatelessComponent {
         upstreamUrl:
             'https://github.com/rodydavis/signals.dart/tree/main/examples/persist_shared_preferences',
       ),
+      (
+        title: 'Minesweeper Puzzle Game',
+        tag: 'signals.dart',
+        desc: 'Classic Minesweeper puzzle game with safe first click & BFS area reveal.',
+        dx: 'HydratedBlocSignal provides zero-backend local game state persistence, while Dart 3 sealed event pattern-matching delivers 100% compile-time type-safe action dispatching.',
+        icon: '💣',
+        localPath: 'examples/mine_sweeper',
+        upstreamUrl:
+            'https://github.com/RandalSchwartz/mine_sweeper',
+      ),
     ];
 
     return section(
@@ -190,7 +200,7 @@ class PortedExamplesSection extends StatelessComponent {
                 [Component.text('Ported Benchmark Examples')]),
             p(classes: 'section-subtitle', [
               Component.text(
-                  'Coming from BLoC or Signals? Explore these 16 side-by-side benchmark ports showing how BlocSignal simplifies existing state management patterns.'),
+                  'Coming from BLoC or Signals? Explore these 17 side-by-side benchmark ports showing how BlocSignal simplifies existing state management patterns.'),
             ]),
 
             // Section 1: felangel/bloc Ports
@@ -236,7 +246,7 @@ class PortedExamplesSection extends StatelessComponent {
             // Section 2: rodydavis/signals.dart Ports
             h3(classes: 'subsection-title', [
               Component.text(
-                  'Ports from rodydavis/signals.dart (6 Applications)')
+                  'Ports from rodydavis/signals.dart (7 Applications)')
             ]),
             div(classes: 'package-grid', [
               for (final ex in signalsPorts)

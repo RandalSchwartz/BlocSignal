@@ -1,0 +1,25 @@
+name: mine_sweeper_example
+description: "A classic Minesweeper game built with BlocSignal and HydratedBlocSignal."
+publish_to: 'none'
+resolution: workspace
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  bloc_signals: ^0.2.8
+  bloc_signals_flutter: ^0.2.8
+  bloc_signals_hydrate: ^0.2.1
+  shared_preferences: ^2.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

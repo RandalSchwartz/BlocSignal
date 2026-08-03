@@ -133,7 +133,7 @@ BlocSignalConsumer<CartBloc, CartState>(
 )
 ```
 
-### 4. Selective Rebuilds (`BlocSignalSelector`)
+### 4. Selective Rebuilds (`BlocSignalSelector` & `context.select`)
 
 ```dart
 BlocSignalSelector<UserBloc, UserState, String>(
@@ -143,6 +143,14 @@ BlocSignalSelector<UserBloc, UserState, String>(
     return Text('Hello, $username!');
   },
 )
+```
+
+Or directly via `BuildContext` (using 2 generic parameters `<B, R>`: container type `B` and return type `R`):
+
+```dart
+final canSubmit = context.select<FormCubit, bool>(
+  (cubit) => cubit.stateValue.canSubmit,
+);
 ```
 
 ### 5. MultiBlocSignalProvider

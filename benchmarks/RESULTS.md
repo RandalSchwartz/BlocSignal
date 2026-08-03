@@ -23,3 +23,14 @@ Each benchmark measures execution time in microseconds (μs) required for **1,00
 2. **Provider / ChangeNotifier vs Signals**: `Provider` (`ChangeNotifier`) uses an internal array dispatch loop (`notifyListeners()`). While `ChangeNotifier` is fast for simple arrays, fine-grained `Signal` graph tracking in `BlocSignal` avoids unnecessary rebuilds for non-dependent UI subtrees.
 3. **Stream Buffering vs Direct Execution**: Classic `package:bloc` delegates dispatches onto asynchronous `StreamController` microtask queues. While buffering items to a queue yields fast initial function returns, actual UI rebuilds must wait for microtask queue draining in subsequent frames.
 4. **Zero Resolution Overhead**: `BlocSignal` operates directly on lightweight signal nodes without requiring provider container lookup or provider dependency resolution on every state write.
+
+## 💡 Practical Application & Unit Test Determinism Analysis
+
+In real-world Flutter applications (rendering at 60Hz or 120Hz = 16.6ms or 8.3ms per frame), microsecond-level dispatch latency differences are imperceptible during UI rendering. The true architectural advantages of `BlocSignal` reside in:
+
+1. **Synchronous Test Determinism**:
+   In classic `package:bloc`, state updates execute asynchronously on microtask streams, requiring continuous `await tester.pump()` or stream draining delays in unit and widget tests. With `BlocSignal`, state changes propagate **synchronously on the exact call stack frame**, enabling faster, cleaner, and zero-flakiness test suites.
+2. **Fine-Grained Signal Graph De-duplication**:
+   `BlocSignal` delegates to signals v7 primitives using `==` equality. Non-dependent UI components and unchanged computed values bypass rebuild cycles entirely, eliminating wasteful widget subtree rebuilds.
+3. **Streamless Concurrency Control**:
+   Event transformers (`droppable()`, `sequential()`, `restartable()`, `Mutex`) operate without allocating Rx streams or microtask queues, providing zero-overhead event coordination.

@@ -15,9 +15,8 @@ class _MinesweeperComponentState extends State<MinesweeperComponent> {
   late final MinesweeperCubit _cubit;
   String _passcodeNotice = '';
   String _passcodeInput = '';
-  DateTime _lastRightClickTime = DateTime.fromMillisecondsSinceEpoch(0);
   Timer? _longPressTimer;
-  bool _longPressTriggered = false;
+  bool _didLongPress = false;
 
   @override
   void initState() {
@@ -36,35 +35,27 @@ class _MinesweeperComponentState extends State<MinesweeperComponent> {
   }
 
   void _onCellClick(int r, int c) {
-    // Ignore click events fired immediately after long-press or right-click
-    if (DateTime.now().difference(_lastRightClickTime).inMilliseconds < 600) {
+    if (_didLongPress) {
+      _didLongPress = false;
       return;
     }
     _cubit.revealCell(r, c);
   }
 
   void _onCellRightClick(int r, int c) {
-    _lastRightClickTime = DateTime.now();
     _cubit.toggleFlag(r, c);
   }
 
-  void _onCellTouchStart(int r, int c) {
-    _longPressTriggered = false;
+  void _startPressTimer(int r, int c) {
+    _didLongPress = false;
     _longPressTimer?.cancel();
     _longPressTimer = Timer(const Duration(milliseconds: 350), () {
-      _longPressTriggered = true;
+      _didLongPress = true;
       _onCellRightClick(r, c);
     });
   }
 
-  void _onCellTouchEnd(int r, int c) {
-    _longPressTimer?.cancel();
-    if (_longPressTriggered) {
-      _lastRightClickTime = DateTime.now();
-    }
-  }
-
-  void _onCellTouchCancel() {
+  void _cancelPressTimer() {
     _longPressTimer?.cancel();
   }
 
@@ -193,11 +184,15 @@ class _MinesweeperComponentState extends State<MinesweeperComponent> {
         'click': (e) => _onCellClick(cell.row, cell.col),
         'contextmenu': (e) {
           e.preventDefault();
+          _didLongPress = true;
           _onCellRightClick(cell.row, cell.col);
         },
-        'touchstart': (e) => _onCellTouchStart(cell.row, cell.col),
-        'touchend': (e) => _onCellTouchEnd(cell.row, cell.col),
-        'touchcancel': (e) => _onCellTouchCancel(),
+        'mousedown': (e) => _startPressTimer(cell.row, cell.col),
+        'mouseup': (e) => _cancelPressTimer(),
+        'mouseleave': (e) => _cancelPressTimer(),
+        'touchstart': (e) => _startPressTimer(cell.row, cell.col),
+        'touchend': (e) => _cancelPressTimer(),
+        'touchcancel': (e) => _cancelPressTimer(),
       },
       [Component.text(cellText)],
     );

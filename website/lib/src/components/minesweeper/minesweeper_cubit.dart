@@ -1,8 +1,22 @@
 import 'dart:convert';
+import 'dart:js_interop';
 import 'dart:math';
 
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:web/web.dart' as web;
+
+@JS('trackMinesweeperEvent')
+external void _trackMinesweeperEvent(
+  JSString eventName,
+  JSString difficulty,
+  JSNumber val,
+);
+
+void _trackAnalytics(String eventName, String difficulty, [int val = 0]) {
+  try {
+    _trackMinesweeperEvent(eventName.toJS, difficulty.toJS, val.toJS);
+  } catch (_) {}
+}
 
 enum Difficulty {
   beginner(rows: 9, cols: 9, mines: 10, name: 'Beginner'),
@@ -238,6 +252,7 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
     final newState = _generateNewGame(difficulty: diff, seed: seed);
     emit(newState);
     _persistState(newState);
+    _trackAnalytics('minesweeper_new_game', diff.name);
   }
 
   void revealCell(int row, int col) {
@@ -331,14 +346,21 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
           }
         }
 
+        final nextStatus = hitMine
+            ? GameStatus.lost
+            : (hasWon ? GameStatus.won : GameStatus.playing);
         final newState = stateValue.copyWith(
           board: newBoard,
-          status: hitMine
-              ? GameStatus.lost
-              : (hasWon ? GameStatus.won : GameStatus.playing),
+          status: nextStatus,
         );
         emit(newState);
         _persistState(newState);
+
+        if (nextStatus == GameStatus.lost) {
+          _trackAnalytics('minesweeper_loss', stateValue.difficulty.name, stateValue.timerSeconds);
+        } else if (nextStatus == GameStatus.won) {
+          _trackAnalytics('minesweeper_win', stateValue.difficulty.name, stateValue.timerSeconds);
+        }
       }
       return;
     }
@@ -399,6 +421,7 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
       );
       emit(newState);
       _persistState(newState);
+      _trackAnalytics('minesweeper_loss', stateValue.difficulty.name, stateValue.timerSeconds);
       return;
     }
 
@@ -434,12 +457,17 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
       }
     }
 
+    final nextStatus = hasWon ? GameStatus.won : GameStatus.playing;
     final newState = stateValue.copyWith(
       board: newBoard,
-      status: hasWon ? GameStatus.won : GameStatus.playing,
+      status: nextStatus,
     );
     emit(newState);
     _persistState(newState);
+
+    if (nextStatus == GameStatus.won) {
+      _trackAnalytics('minesweeper_win', stateValue.difficulty.name, stateValue.timerSeconds);
+    }
   }
 
   void toggleFlag(int row, int col) {
@@ -468,6 +496,7 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
   }
 
   String generatePasscode() {
+    _trackAnalytics('minesweeper_share_seed', stateValue.difficulty.name);
     final payload = '${stateValue.difficulty.name}:${stateValue.seed}';
     return base64Url.encode(utf8.encode(payload));
   }
@@ -483,6 +512,7 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
         (d) => d.name == diffName,
         orElse: () => Difficulty.beginner,
       );
+      _trackAnalytics('minesweeper_load_seed', diff.name);
       resetGame(difficulty: diff, seed: seed);
       return true;
     } catch (_) {

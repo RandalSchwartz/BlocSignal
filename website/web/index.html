@@ -25,6 +25,16 @@
         });
       }
     };
+
+    window.trackMinesweeperEvent = function(eventName, difficulty, val) {
+      if (typeof gtag === 'function') {
+        gtag('event', eventName, {
+          'event_category': 'Minesweeper',
+          'difficulty': difficulty || 'Beginner',
+          'value': val || 0
+        });
+      }
+    };
   </script>
   <script defer src="main.dart.js"></script>
 </head>

@@ -39,6 +39,14 @@ class ExamplesSection extends StatelessComponent {
         icon: '🔢',
         path: 'examples/flutter_counter',
       ),
+      (
+        title: 'Minesweeper Puzzle Game',
+        tag: 'Sealed Events & Hydration',
+        desc:
+            'HydratedBlocSignal puzzle game with Dart 3 pattern matching, safe first click & BFS flood fill.',
+        icon: '💣',
+        path: 'examples/mine_sweeper',
+      ),
     ];
 
     return section(id: 'examples', classes: 'catalog-section', [

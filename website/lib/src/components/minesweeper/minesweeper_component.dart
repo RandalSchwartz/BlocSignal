@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -15,6 +16,8 @@ class _MinesweeperComponentState extends State<MinesweeperComponent> {
   String _passcodeNotice = '';
   String _passcodeInput = '';
   DateTime _lastRightClickTime = DateTime.fromMillisecondsSinceEpoch(0);
+  Timer? _longPressTimer;
+  bool _longPressTriggered = false;
 
   @override
   void initState() {
@@ -27,13 +30,14 @@ class _MinesweeperComponentState extends State<MinesweeperComponent> {
 
   @override
   void dispose() {
+    _longPressTimer?.cancel();
     _cubit.close();
     super.dispose();
   }
 
   void _onCellClick(int r, int c) {
-    // Ignore click events fired immediately after a long-press / right-click
-    if (DateTime.now().difference(_lastRightClickTime).inMilliseconds < 500) {
+    // Ignore click events fired immediately after long-press or right-click
+    if (DateTime.now().difference(_lastRightClickTime).inMilliseconds < 600) {
       return;
     }
     _cubit.revealCell(r, c);
@@ -42,6 +46,26 @@ class _MinesweeperComponentState extends State<MinesweeperComponent> {
   void _onCellRightClick(int r, int c) {
     _lastRightClickTime = DateTime.now();
     _cubit.toggleFlag(r, c);
+  }
+
+  void _onCellTouchStart(int r, int c) {
+    _longPressTriggered = false;
+    _longPressTimer?.cancel();
+    _longPressTimer = Timer(const Duration(milliseconds: 350), () {
+      _longPressTriggered = true;
+      _onCellRightClick(r, c);
+    });
+  }
+
+  void _onCellTouchEnd(int r, int c) {
+    _longPressTimer?.cancel();
+    if (_longPressTriggered) {
+      _lastRightClickTime = DateTime.now();
+    }
+  }
+
+  void _onCellTouchCancel() {
+    _longPressTimer?.cancel();
   }
 
   @override
@@ -171,6 +195,9 @@ class _MinesweeperComponentState extends State<MinesweeperComponent> {
           e.preventDefault();
           _onCellRightClick(cell.row, cell.col);
         },
+        'touchstart': (e) => _onCellTouchStart(cell.row, cell.col),
+        'touchend': (e) => _onCellTouchEnd(cell.row, cell.col),
+        'touchcancel': (e) => _onCellTouchCancel(),
       },
       [Component.text(cellText)],
     );

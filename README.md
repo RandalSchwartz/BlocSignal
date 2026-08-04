@@ -54,6 +54,7 @@ The `BlocSignal` monorepo consists of 10 modular packages:
 
 ### Key Architectural Differences & Design Choices:
 - ⚡ **Synchronous vs. Asynchronous Emission**: Unlike classic `package:bloc` which dispatches state changes on microtask-queue Streams, `BlocSignal` updates propagate **synchronously**. Calling `emit(newState)` triggers downstream calculations and widget rebuilds in the exact same frame.
+- 🎯 **`context.select<B, R>` 2-Argument Generic Signature**: Unlike Riverpod (3 generic arguments) or classic `flutter_bloc`, `context.select<B, R>` takes **2** generic type parameters (`<Bloc, SelectedType>`) and passes the `bloc` instance directly to the callback: `(bloc) => bloc.stateValue.property`.
 - 📦 **Zero `RepositoryProvider` Bloat**: Dependency injection in `BlocSignal` is handled directly via `BlocSignalProvider` (or Riverpod/Jaspr context providers) without forcing a separate `RepositoryProvider` wrapper.
 - 🔒 **Streamless Event Concurrency**: Event concurrency transformers (`droppable`, `sequential`, `restartable`, `Mutex`) run via pure Dart higher-order functions without stream allocations or Rx dependencies.
 

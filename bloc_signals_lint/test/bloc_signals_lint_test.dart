@@ -2,6 +2,7 @@ import 'package:bloc_signals_lint/bloc_signals_lint.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_emit_in_build.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_invalid_context_select_generics.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
@@ -14,14 +15,14 @@ import 'package:test/test.dart';
 
 void main() {
   group('bloc_signals_lint plugin entrypoint', () {
-    test('createPlugin returns PluginBase with 10 core and UI rules', () {
+    test('createPlugin returns PluginBase with 11 core and UI rules', () {
       final plugin = createPlugin();
       expect(plugin, isA<PluginBase>());
 
       /// Ignore internal member usage for testing.
       // ignore: invalid_use_of_internal_member
       final rules = plugin.getLintRules(CustomLintConfigs.empty);
-      expect(rules, hasLength(10));
+      expect(rules, hasLength(11));
       expect(rules, contains(isA<AvoidDuplicateEventHandlers>()));
       expect(rules, contains(isA<RequireSuperOnEvent>()));
       expect(rules, contains(isA<AvoidStreamTransformersOnBlocSignal>()));
@@ -35,6 +36,7 @@ void main() {
       expect(rules, contains(isA<AvoidTopLevelBlocSignalInstances>()));
       expect(rules, contains(isA<AvoidProvidingExistingInstanceWithCreate>()));
       expect(rules, contains(isA<AvoidManualCloseOnProvidedBloc>()));
+      expect(rules, contains(isA<AvoidInvalidContextSelectGenerics>()));
     });
   });
 
@@ -107,6 +109,14 @@ void main() {
       expect(
         rule.code.name,
         equals('avoid_manual_close_on_provided_bloc'),
+      );
+    });
+
+    test('AvoidInvalidContextSelectGenerics code is properly configured', () {
+      const rule = AvoidInvalidContextSelectGenerics();
+      expect(
+        rule.code.name,
+        equals('avoid_invalid_context_select_generics'),
       );
     });
   });

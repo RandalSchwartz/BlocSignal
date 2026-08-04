@@ -71,10 +71,11 @@ void main() {
         () async {
       final bloc = CustomTransformerBloc(
         debounceDuration: const Duration(milliseconds: 30),
-      )..add(QueryChanged('f'))
-       ..add(QueryChanged('fl'))
-       ..add(QueryChanged('flu'))
-       ..add(QueryChanged('flutter'));
+      )
+        ..add(QueryChanged('f'))
+        ..add(QueryChanged('fl'))
+        ..add(QueryChanged('flu'))
+        ..add(QueryChanged('flutter'));
 
       // Initial state is unchanged immediately
       expect(bloc.stateValue, equals(''));
@@ -88,8 +89,7 @@ void main() {
       await bloc.close();
     });
 
-    test('filterEvents transformer ignores events failing predicate',
-        () async {
+    test('filterEvents transformer ignores events failing predicate', () async {
       final bloc = CustomTransformerBloc()
         ..add(FilteredQuery(5))
         ..add(FilteredQuery(15));

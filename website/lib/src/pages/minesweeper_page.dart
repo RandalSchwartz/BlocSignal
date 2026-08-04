@@ -94,7 +94,10 @@ class MinesweeperPage extends StatelessComponent {
 
             // Code Preview Section
             div(classes: 'ms-code-preview', [
-              h3([Component.text('💻 Game Engine Source Preview (MinesweeperCubit)')]),
+              h3([
+                Component.text(
+                    '💻 Game Engine Source Preview (MinesweeperCubit)')
+              ]),
               p([
                 Component.text(
                   'Below is a snippet of the MinesweeperCubit running live on this page, demonstrating synchronous state updates and recursive flood fill:',

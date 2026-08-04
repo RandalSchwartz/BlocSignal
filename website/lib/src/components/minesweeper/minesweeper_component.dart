@@ -83,7 +83,8 @@ class _MinesweeperComponentState extends State<MinesweeperComponent> {
         div(classes: 'ms-status-bar', [
           div(classes: 'ms-counter', [
             span(classes: 'ms-label', [Component.text('Mines: ')]),
-            span(classes: 'ms-val', [Component.text('${state.minesRemaining}')]),
+            span(
+                classes: 'ms-val', [Component.text('${state.minesRemaining}')]),
           ]),
           button(
             classes: 'ms-btn ms-btn-reset',
@@ -148,9 +149,8 @@ class _MinesweeperComponentState extends State<MinesweeperComponent> {
             if (_passcodeInput.isNotEmpty) {
               final ok = _cubit.loadPasscode(_passcodeInput);
               setState(() {
-                _passcodeNotice = ok
-                    ? 'Loaded challenge seed!'
-                    : 'Invalid passcode!';
+                _passcodeNotice =
+                    ok ? 'Loaded challenge seed!' : 'Invalid passcode!';
               });
             }
           },

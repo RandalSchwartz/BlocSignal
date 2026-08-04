@@ -242,8 +242,7 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
 
   void _persistState(MinesweeperState state) {
     try {
-      web.window.localStorage
-          .setItem(_storageKey, jsonEncode(state.toJson()));
+      web.window.localStorage.setItem(_storageKey, jsonEncode(state.toJson()));
     } catch (_) {}
   }
 
@@ -262,9 +261,8 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
     }
 
     final cell = stateValue.board[row][col];
-    final newBoard = stateValue.board
-        .map((r) => r.map((c) => c).toList())
-        .toList();
+    final newBoard =
+        stateValue.board.map((r) => r.map((c) => c).toList()).toList();
 
     // 1. Chording support for already revealed cells with adjacent mines
     if (cell.isRevealed && cell.adjacentMines > 0) {
@@ -357,9 +355,11 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
         _persistState(newState);
 
         if (nextStatus == GameStatus.lost) {
-          _trackAnalytics('minesweeper_loss', stateValue.difficulty.name, stateValue.timerSeconds);
+          _trackAnalytics('minesweeper_loss', stateValue.difficulty.name,
+              stateValue.timerSeconds);
         } else if (nextStatus == GameStatus.won) {
-          _trackAnalytics('minesweeper_win', stateValue.difficulty.name, stateValue.timerSeconds);
+          _trackAnalytics('minesweeper_win', stateValue.difficulty.name,
+              stateValue.timerSeconds);
         }
       }
       return;
@@ -421,7 +421,8 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
       );
       emit(newState);
       _persistState(newState);
-      _trackAnalytics('minesweeper_loss', stateValue.difficulty.name, stateValue.timerSeconds);
+      _trackAnalytics('minesweeper_loss', stateValue.difficulty.name,
+          stateValue.timerSeconds);
       return;
     }
 
@@ -466,7 +467,8 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
     _persistState(newState);
 
     if (nextStatus == GameStatus.won) {
-      _trackAnalytics('minesweeper_win', stateValue.difficulty.name, stateValue.timerSeconds);
+      _trackAnalytics('minesweeper_win', stateValue.difficulty.name,
+          stateValue.timerSeconds);
     }
   }
 
@@ -479,9 +481,8 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
     final cell = stateValue.board[row][col];
     if (cell.isRevealed) return;
 
-    final newBoard = stateValue.board
-        .map((r) => r.map((c) => c).toList())
-        .toList();
+    final newBoard =
+        stateValue.board.map((r) => r.map((c) => c).toList()).toList();
     final newFlagged = !cell.isFlagged;
     newBoard[row][col] = cell.copyWith(isFlagged: newFlagged);
 

@@ -1,3 +1,7 @@
+## 0.9.0+1
+
+- Metadata release to verify repository URL on pub.dev.
+
 ## 0.9.0
 
 - Staging release candidate for the 1.0.0 production milestone.

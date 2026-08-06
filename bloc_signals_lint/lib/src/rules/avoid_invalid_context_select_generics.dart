@@ -20,8 +20,7 @@ class AvoidInvalidContextSelectGenerics extends DartLintRule {
     problemMessage:
         'In "bloc_signals_flutter", "context.select<B, R>" takes 2 generic '
         'type parameters (<Bloc, Selected>) instead of 3.',
-    correctionMessage:
-        'Remove the redundant State generic argument. Use '
+    correctionMessage: 'Remove the redundant State generic argument. Use '
         '"context.select<Bloc, Selected>((bloc) => ...)" instead.',
   );
 

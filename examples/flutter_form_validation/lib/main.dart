@@ -76,9 +76,14 @@ final class FormReset extends FormValidationEvent {
 ///
 /// Demonstrates real-time synchronous input field validation using `computed()` signals.
 ///
-/// **Educational Key Takeaway**:
-/// - `emailError`, `passwordError`, and `isValid` evaluate synchronously as user keystrokes occur.
-/// - Synchronous frame updates eliminate UI input validation lag and microtask delays.
+/// **Educational Key Takeaways**:
+/// - **Primary vs. Derived State**: [FormValidationState] stores *only* primary source of truth
+///   (`email`, `password`, `isSubmitting`, `isSuccess`). Validation errors (`emailError`, `passwordError`)
+///   and overall form validity (`isValid`) are **never** stored inside the state model; they are derived
+///   lazily via `computed()` signals.
+/// - **Lazy & Memoized**: `computed()` signals evaluate only when inputs change, eliminating redundant
+///   validations and out-of-sync state bugs.
+/// - **Zero Microtask Lag**: Synchronous frame updates eliminate UI input validation lag and microtask delays.
 class FormValidationBlocSignal
     extends BlocSignal<FormValidationEvent, FormValidationState> {
   FormValidationBlocSignal()

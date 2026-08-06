@@ -258,5 +258,11 @@ When standardizing or updating package documentation across the monorepo:
 
 ### 29. `context.select` Generic Type Signature Ergonomics
 When using `context.select` in `bloc_signals_flutter`:
-* **2 Generic Type Parameters**: Pass exactly **2** generic type parameters: `<B, R>` where `B` is the `BlocSignalBase` container type (e.g., `UserCubit`) and `R` is the selected value type (e.g., `bool`).
+* **2 Generic Type Parameters**: Pass exactly **2** generic type parameters: `<B, R>` where `B` is the `BlocSignalBase` container type (for example, `UserCubit`) and `R` is the selected value type (for example, `bool`).
 * **Callback Receives Container**: The selector callback receives the **`bloc` container instance** as its single parameter (`(bloc) => bloc.stateValue.property`), not the state object directly. This allows selecting computed properties, signals, or state fields cleanly.
+
+### 30. Phrasing & Style Standard (No "e.g." or "i.e.")
+When authoring code, documentation, comments, pull requests, or article content:
+* **No `e.g.`**: Never use the abbreviation `e.g.`. Always write out **"for example"**.
+* **No `i.e.`**: Never use the abbreviation `i.e.`. Always write out **"that is"**.
+

@@ -56,7 +56,7 @@ Add `bloc_signals_flutter` to your `pubspec.yaml`:
 dependencies:
   flutter:
     sdk: flutter
-  bloc_signals_flutter: ^0.2.7
+  bloc_signals_flutter: ^0.9.0
 ```
 
 ---

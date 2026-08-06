@@ -50,8 +50,8 @@ Add `bloc_signals_otel` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^0.2.6
-  bloc_signals_otel: ^0.2.3
+  bloc_signals: ^0.9.0
+  bloc_signals_otel: ^0.9.0
   opentelemetry: ^0.1.0
 ```
 

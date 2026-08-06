@@ -50,8 +50,8 @@ Add `bloc_signals_hydrate` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^0.2.5
-  bloc_signals_hydrate: ^0.1.1
+  bloc_signals: ^0.9.0
+  bloc_signals_hydrate: ^0.9.0
 ```
 
 ---

@@ -53,8 +53,8 @@ Add `bloc_signals_riverpod` to your `pubspec.yaml`:
 ```yaml
 dependencies:
   riverpod: ^2.5.0 # or ^3.0.0
-  bloc_signals: ^0.2.5
-  bloc_signals_riverpod: ^0.1.0
+  bloc_signals: ^0.9.0
+  bloc_signals_riverpod: ^0.9.0
 ```
 
 ---

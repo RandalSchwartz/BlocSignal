@@ -53,7 +53,7 @@ Add `bloc_signals_test` to your `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  bloc_signals_test: ^0.1.0
+  bloc_signals_test: ^0.9.0
   test: ^1.24.0
 ```
 

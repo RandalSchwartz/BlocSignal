@@ -64,7 +64,7 @@ Add `bloc_signals` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^0.2.7
+  bloc_signals: ^0.9.0
 ```
 
 ---

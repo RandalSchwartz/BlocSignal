@@ -24,7 +24,7 @@ To satisfy pub.dev publishing requirements while maintaining local developer wor
 - Example in `bloc_signals_flutter/pubspec.yaml`:
   ```yaml
   dependencies:
-    bloc_signals: ^0.1.0
+    bloc_signals: ^0.9.0
   ```
 - The native Dart workspace compiler will automatically route this constraint to the local workspace folder during development.
 

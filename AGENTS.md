@@ -231,7 +231,7 @@ When updating or publishing changes to the `blocsignal.dev` website (`website/`)
      ```bash
      cd website && dart run tool/update_publications.dart && mkdir -p build/www && dart compile js lib/main.dart -o build/www/main.dart.js && cp -r web/* build/www/ && cp build/www/index.html build/www/publications/index.html && cp build/www/index.html build/www/showcase/index.html && cp build/www/index.html build/www/ported-examples/index.html && cp build/www/index.html build/www/minesweeper/index.html
      ```
-  2. Deploy to Firebase Hosting: `firebase deploy --only hosting`.
+  2. Deploy to Firebase Hosting: `npx -y firebase-tools deploy --only hosting`.
 
 ### 23. Replay State History Architecture (`bloc_signals_replay`)
 When implementing state history and undo/redo capabilities:

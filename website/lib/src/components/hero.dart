@@ -10,7 +10,7 @@ class HeroBanner extends StatelessComponent {
       div(classes: 'container hero-container', [
         div(classes: 'hero-logo-wrapper', [
           img(
-            src: 'assets/logo.png',
+            src: '/assets/logo.png',
             alt: 'BlocSignal Official Logo',
             classes: 'hero-branding-logo',
             width: 140,

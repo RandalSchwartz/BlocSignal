@@ -4,6 +4,7 @@ import 'package:web/web.dart' as web;
 import 'pages/home_page.dart';
 import 'pages/minesweeper_page.dart';
 import 'pages/ported_examples_page.dart';
+import 'pages/publications_page.dart';
 import 'pages/showcase_page.dart';
 
 @JS('trackGaPageView')
@@ -48,6 +49,10 @@ class _AppState extends State<App> {
         path.startsWith('/minesweeper') ||
         rawHash.contains('minesweeper')) {
       _currentPath = '/minesweeper';
+    } else if (path == '/publications' ||
+        path.startsWith('/publications') ||
+        rawHash.contains('publications')) {
+      _currentPath = '/publications';
     } else {
       _currentPath = '/';
     }
@@ -68,6 +73,8 @@ class _AppState extends State<App> {
         return const PortedExamplesPage();
       case '/minesweeper':
         return const MinesweeperPage();
+      case '/publications':
+        return const PublicationsPage();
       case '/':
       default:
         return const HomePage();

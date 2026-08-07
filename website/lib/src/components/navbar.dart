@@ -12,7 +12,7 @@ class Navbar extends StatelessComponent {
       div(classes: 'container nav-content', [
         a(href: '/', classes: 'brand', [
           img(
-              src: 'assets/logo.png',
+              src: '/assets/logo.png',
               alt: 'BlocSignal Logo',
               width: 36,
               height: 36),
@@ -39,6 +39,11 @@ class Navbar extends StatelessComponent {
             href: '/minesweeper',
             classes: currentPath == '/minesweeper' ? 'nav-active' : '',
             [Component.text('🎮 Minesweeper')],
+          ),
+          a(
+            href: '/publications',
+            classes: currentPath == '/publications' ? 'nav-active' : '',
+            [Component.text('📚 Publications')],
           ),
           a(
               href: 'https://pub.dev/packages/bloc_signals',

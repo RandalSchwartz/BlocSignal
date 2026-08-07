@@ -196,25 +196,28 @@ class _PublicationsPageState extends State<PublicationsPage> {
         div(classes: 'container pub-grid-section', [
           div(classes: 'pub-grid', [
             for (final pub in filteredPublications)
-              div(classes: 'pub-card', [
-                div(classes: 'pub-card-top', [
-                  span(classes: 'pub-category', [Component.text(pub.category)]),
-                  span(classes: 'pub-readtime', [Component.text(pub.readTime)]),
-                ]),
-                h3(classes: 'pub-card-title', [
-                  a(href: pub.url, target: Target.blank, [Component.text(pub.title)]),
-                ]),
-                p(classes: 'pub-card-desc', [Component.text(pub.description)]),
-                div(classes: 'pub-card-footer', [
-                  div(classes: 'pub-tags-list', [
-                    for (final tag in pub.tags)
-                      span(classes: 'pub-tag-pill', [Component.text('#\$tag')]),
+              a(
+                href: pub.url,
+                target: Target.blank,
+                classes: 'pub-card',
+                [
+                  div(classes: 'pub-card-top', [
+                    span(classes: 'pub-category', [Component.text(pub.category)]),
+                    span(classes: 'pub-readtime', [Component.text(pub.readTime)]),
                   ]),
-                  a(href: pub.url, target: Target.blank, classes: 'pub-link-btn', [
-                    Component.text('Read on DEV.to ↗'),
+                  h3(classes: 'pub-card-title', [Component.text(pub.title)]),
+                  p(classes: 'pub-card-desc', [Component.text(pub.description)]),
+                  div(classes: 'pub-card-footer', [
+                    div(classes: 'pub-tags-list', [
+                      for (final tag in pub.tags)
+                        span(classes: 'pub-tag-pill', [Component.text('#\$tag')]),
+                    ]),
+                    span(classes: 'pub-link-btn', [
+                      Component.text('Read on DEV.to ↗'),
+                    ]),
                   ]),
-                ]),
-              ]),
+                ],
+              ),
           ]),
         ]),
       ]),

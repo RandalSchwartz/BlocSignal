@@ -886,13 +886,20 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  text-decoration: none;
+  color: var(--text-main);
+  cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .pub-card:hover {
   transform: translateY(-4px);
   border-color: var(--accent-cyan);
-  box-shadow: 0 8px 24px rgba(0, 242, 254, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 242, 254, 0.12);
+}
+
+.pub-card:hover .pub-card-title {
+  color: var(--accent-cyan);
 }
 
 .pub-card-top {
@@ -921,17 +928,9 @@ body {
   font-size: 1.15rem;
   font-weight: 700;
   line-height: 1.4;
-  margin-bottom: 10px;
-}
-
-.pub-card-title a {
   color: var(--text-main);
-  text-decoration: none;
+  margin-bottom: 10px;
   transition: color 0.2s ease;
-}
-
-.pub-card-title a:hover {
-  color: var(--accent-cyan);
 }
 
 .pub-card-desc {

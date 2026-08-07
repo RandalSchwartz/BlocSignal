@@ -50,8 +50,8 @@ Add `bloc_signals_hydrate` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^0.9.0
-  bloc_signals_hydrate: ^0.9.0
+  bloc_signals: ^1.0.0
+  bloc_signals_hydrate: ^1.0.0
 ```
 
 ---
@@ -60,19 +60,16 @@ dependencies:
 
 ### 1. Primitive State Hydration (`HydratedCubitSignal`)
 
+Primitive and collection state containers (`int`, `double`, `String`, `bool`, `Map`, `List`) require **zero method overrides** for `fromJson` or `toJson`!
+
 ```dart
 import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
 
+// Zero fromJson/toJson overrides required for primitive state types!
 class CounterCubit extends HydratedCubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
   void increment() => emit(stateValue + 1);
-
-  @override
-  int? fromJson(dynamic json) => json as int?;
-
-  @override
-  dynamic toJson(int state) => state; // Return primitive directly!
 }
 ```
 

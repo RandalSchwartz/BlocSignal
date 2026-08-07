@@ -6,10 +6,14 @@ This guide details state persistence and hydration in `BlocSignal` using `packag
 
 ---
 
-## 🚀 Key Improvements Over `hydrated_bloc`
+## 🚀 Key Features & Built-In Conveniences
 
-- **`dynamic` / `Object?` JSON Support**:
-  `fromJson(dynamic json)` and `toJson(StateType state)` accept any valid JSON primitive or collection (`Map`, `List`, `String`, `num`, `bool`, `null`). Primitive states (e.g. `int`, `String`, `List<String>`) do **not** require map wrappers like `{"value": 42}`!
+- **Zero Overrides for Core & Primitive Types**:
+  `HydratedMixin` provides default `fromJson` and `toJson` implementations that handle core primitives (`int`, `double`, `String`, `bool`, `Map`, `List`) with automatic type casting. Primitive state containers require **zero method overrides**!
+- **Built-In Storage Adapters**:
+  No need to manually write storage adapters! `package:bloc_signals_hydrate` provides tree-shakable adapters for `SharedPreferences` and `FlutterSecureStorage` via sub-library entrypoints:
+  - `import 'package:bloc_signals_hydrate/shared_preferences.dart';`
+  - `import 'package:bloc_signals_hydrate/secure_storage.dart';`
 - **Synchronous Initial Hydration**:
   State is restored synchronously during constructor execution—meaning initial widget builds render hydrated data immediately with **zero frame flicker**.
 
@@ -17,35 +21,41 @@ This guide details state persistence and hydration in `BlocSignal` using `packag
 
 ## 1. Primitive State Hydration (e.g. `int`, `String`, `bool`)
 
-Primitive state types require **zero method overrides**! Default `fromJson` and `toJson` implementations automatically pass primitive values through safely:
+Primitive and collection state containers require **zero method overrides** for `fromJson` or `toJson`. `HydratedMixin` handles serialization and deserialization out-of-the-box!
 
 ```dart
 import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
 
+// Primitive cubits require ZERO fromJson/toJson overrides!
 class CounterCubit extends HydratedCubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
   void increment() => emit(stateValue + 1);
-
-  // fromJson and toJson default to identity casting for primitives!
-  // No overrides needed!
 }
 ```
 
 ---
 
-## 2. Collection & Map State Hydration
+## 2. Complex Object Hydration (`UserModel`, `CustomState`)
 
-Collection states (`List<T>`, `Map<K, V>`) also require **zero method overrides** for standard primitive elements! `HydratedMixin.fromJson` automatically casts raw `jsonDecode` outputs (`List<dynamic>`, `Map<dynamic, dynamic>`) to typed collections:
+For custom class states or complex domain models, override `fromJson` and `toJson` on your `HydratedCubitSignal` or `HydratedBlocSignal`:
 
 ```dart
-class TodosCubit extends HydratedCubitSignal<List<String>> {
-  TodosCubit() : super(initialState: const []);
+import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
 
-  void addTodo(String text) => emit([...stateValue, text]);
+class UserCubit extends HydratedCubitSignal<UserModel> {
+  UserCubit() : super(initialState: UserModel.anonymous);
 
-  // fromJson and toJson default to smart collection type casting!
-  // No overrides needed!
+  @override
+  UserModel? fromJson(dynamic json) {
+    if (json is Map<String, dynamic>) {
+      return UserModel.fromJson(json);
+    }
+    return null;
+  }
+
+  @override
+  dynamic toJson(UserModel state) => state.toJson();
 }
 ```
 
@@ -82,7 +92,7 @@ You can override `storageToken` or `storagePrefix` for custom storage key naming
 class CounterCubit extends HydratedCubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
-  // Custom key stored in SharedPreferences
+  // Custom key stored in storage
   @override
   String get storageToken => 'custom_counter_v1';
 }
@@ -92,12 +102,11 @@ class CounterCubit extends HydratedCubitSignal<int> {
 - **Listing Stored Keys**: The `HydratedStorage` interface (`read`, `write`, `delete`, `clear`) does not include a `listKeys()` method to keep storage contracts backend-agnostic. Query the underlying storage engine directly (e.g., `prefs.getKeys()`).
 - **Instance Lookup**: `HydratedCubitSignal` does not maintain a global static instance registry by key to prevent memory leaks. Manage cubit instances using standard DI (`BlocSignalProvider`) or factory caches.
 
-
 ---
 
-## 4. Built-in Storage Adapters (`SharedPreferences` & `FlutterSecureStorage`)
+## 4. Wiring Storage Adapters (`SharedPreferences` & `FlutterSecureStorage`)
 
-`package:bloc_signals_hydrate` provides pre-built, tree-shakable adapters for `SharedPreferences` and `FlutterSecureStorage` via sub-library entrypoints:
+Use the built-in storage adapters exported directly from sub-libraries in `package:bloc_signals_hydrate`:
 
 ### `SharedPreferences`
 ```dart
@@ -108,6 +117,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+  
+  // Use the built-in SharedPreferencesHydratedStorage adapter directly!
   HydratedStorage.storage = SharedPreferencesHydratedStorage(prefs);
 
   runApp(const MyApp());
@@ -122,8 +133,8 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Pre-load secure storage map for synchronous frame 1 hydration
+  
+  // Pre-load secure storage map for zero-flicker synchronous frame 1 hydration
   final secureStorage = const FlutterSecureStorage();
   HydratedStorage.storage = await SecureHydratedStorage.build(secureStorage);
 
@@ -131,57 +142,30 @@ void main() async {
 }
 ```
 
-
 ---
 
 ## 5. Complete Flutter Hydrated Counter App
 
 ```dart
-import 'dart:convert';
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
+import 'package:bloc_signals_hydrate/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// 1. Define your Hydrated Cubit with zero map-wrapping!
+// 1. Primitive Cubit requires ZERO fromJson/toJson overrides!
 class CounterCubit extends HydratedCubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
   void increment() => emit(stateValue + 1);
-
-  @override
-  int? fromJson(dynamic json) => json as int?;
-
-  @override
-  dynamic toJson(int state) => state;
 }
 
-// 2. Storage Adapter
-class SharedPreferencesHydratedStorage implements HydratedStorage {
-  SharedPreferencesHydratedStorage(this.prefs);
-  final SharedPreferences prefs;
-
-  @override
-  dynamic read(String key) {
-    final value = prefs.getString(key);
-    return value != null ? jsonDecode(value) : null;
-  }
-
-  @override
-  Future<void> write(String key, dynamic value) async =>
-      prefs.setString(key, jsonEncode(value));
-
-  @override
-  Future<void> delete(String key) async => prefs.remove(key);
-
-  @override
-  Future<void> clear() async => prefs.clear();
-}
-
-// 3. Entrypoint
+// 2. Entrypoint
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final prefs = await SharedPreferences.getInstance();
+  
+  // 3. Use built-in SharedPreferencesHydratedStorage adapter
   HydratedStorage.storage = SharedPreferencesHydratedStorage(prefs);
 
   runApp(
@@ -224,7 +208,7 @@ class CounterScreen extends StatelessWidget {
 
 ---
 
-## 7. Persisted Form Field Synchronization (`TextFormField` with `ValueKey`)
+## 6. Persisted Form Field Synchronization (`TextFormField` with `ValueKey`)
 
 When hydrating form fields (`TextFormField`) with `HydratedCubitSignal`, avoid mutating a `TextEditingController.text` property inside a `build` method or `useEffect` hook:
 
@@ -245,8 +229,9 @@ BlocSignalBuilder<SettingsCubit, SettingsState>(
 
 Pairing `initialValue` with a state-derived `ValueKey` allows fields to hydrate cleanly without triggering Flutter's `setState() called during build` assertion.
 
-## 8. `HydratedCubitSignal` vs `PersistentSignal` (`signals.dart`)
+---
 
+## 7. `HydratedCubitSignal` vs `PersistentSignal` (`signals.dart`)
 
 If evaluating state persistence approaches, `bloc_signals_hydrate` and `signals.dart`'s native `PersistentSignal` cater to different architectural patterns:
 

@@ -147,8 +147,21 @@ class AlwaysEmitBloc extends BlocSignal<CounterEvent, CounterState> {
 | :--- | :--- | :--- |
 | **Foundation** | Asynchronous Dart Streams | Synchronous Reactive Signals |
 | **State Propagation** | Asynchronous (Microtask queue) | Immediate & Synchronous |
+| **Constructor Initial State** | Positional `: super(initialState)` | Named `: super(initialState: ...)` |
+| **Reading Current State Value** | `state` returns `StateType` | `stateValue` returns `StateType`, `state` returns `ReadonlySignal<StateType>` |
 | **Rebuilding** | Tree-based rebuild filter (`buildWhen`) | Fine-grained reactivity (Signal updates) |
 | **Lifecycle** | Manual close / Provider-driven | `SignalModel` lifecycle scope |
+
+> [!IMPORTANT]
+> ### Critical API Differences from Felix BLoC (`package:bloc`)
+>
+> 1. **Constructor Initial State (`initialState:` named argument)**:
+>    - **Felix BLoC**: Uses positional argument `: super(0)` or `: super(initialState)`.
+>    - **`BlocSignal` / `CubitSignal`**: Uses required named parameter `: super(initialState: 0)`. Passing a positional argument (e.g. `: super(0)`) is a compile-time syntax error.
+>
+> 2. **State Value Access (`stateValue` vs `state`)**:
+>    - **Felix BLoC**: `state` returns the raw `StateType` value directly (`emit(state + 1)`).
+>    - **`BlocSignal` / `CubitSignal`**: `state` returns `ReadonlySignal<StateType>` for reactive signal observers. To read the raw value in state methods or event handlers, use `stateValue` (or `state.value`), e.g., `emit(stateValue + 1)`. Writing `emit(state + 1)` triggers a compilation error because arithmetic operators like `+` are not defined on `ReadonlySignal`.
 
 ---
 
@@ -188,7 +201,12 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
 
 In classic BLoC, a `Cubit` removes the event-mapping boilerplate to let you invoke methods that call `emit` directly. 
 
-With `BlocSignal`, you can achieve the exact same behavior by setting the `Event` type parameter to `void` (or `dynamic`) and defining direct methods on your class:
+With `BlocSignal`, extend `CubitSignal<StateType>` and define direct methods on your class:
+
+> [!NOTE]
+> Pay close attention to the syntax differences when converting a `Cubit` to `CubitSignal`:
+> - Use `: super(initialState: 0)` with the named `initialState:` parameter (classic Cubit uses positional `: super(0)`).
+> - Use `stateValue` to read the raw state value in method logic, e.g. `emit(stateValue + 1)` (classic Cubit uses `state`, whereas `CubitSignal.state` returns a `ReadonlySignal<int>`).
 
 #### Before (Classic Cubit)
 ```dart

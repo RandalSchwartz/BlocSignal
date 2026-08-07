@@ -47,7 +47,7 @@ Add `bloc_signals_jaspr` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals_jaspr: ^0.9.0
+  bloc_signals_jaspr: ^1.0.0
 ```
 
 ### Providing & Consuming State in Jaspr

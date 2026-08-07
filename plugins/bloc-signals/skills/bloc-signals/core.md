@@ -24,6 +24,11 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 The state remains readable after closure. `add` silently drops new events. `emit` has a debug
 assertion and then returns without changing state when assertions are disabled.
 
+> [!NOTE]
+> **Key Differences for Developers Migrating from Felix BLoC (`package:bloc`)**:
+> - **Named Initial State**: Constructors take required named argument `initialState:` (`: super(initialState: ...)`), NOT positional `super(...)`.
+> - **State Access**: Use `stateValue` (or `state.value`) to read raw `StateType` values inside methods/handlers (`emit(stateValue + 1)`). `state` returns `ReadonlySignal<StateType>` for reactive signal observers.
+
 ## Custom Equality & Identity Comparison (`equals`)
 
 By default, `BlocSignalBase` uses standard value equality (`previous == current`) to de-duplicate state emissions and prevent redundant reactive updates.

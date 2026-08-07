@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0+1
+
+- Re-trigger pub.dev Pana static analysis.
+
+## 1.0.0
+
+- Official 1.0.0 production release.
+- Update `bloc_signals` dependency constraint to `^1.0.0`.
+
 ## 0.9.0
 
 - Staging release candidate for the 1.0.0 production milestone.

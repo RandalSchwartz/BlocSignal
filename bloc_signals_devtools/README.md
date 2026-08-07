@@ -50,7 +50,7 @@ Add `bloc_signals_devtools` to your `pubspec.yaml`:
 
 ```yaml
 dev_dependencies:
-  bloc_signals_devtools: ^0.9.0
+  bloc_signals_devtools: ^1.0.0
 ```
 
 ---

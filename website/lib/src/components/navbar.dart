@@ -17,7 +17,7 @@ class Navbar extends StatelessComponent {
               width: 36,
               height: 36),
           span(classes: 'brand-title', [Component.text('BlocSignal')]),
-          span(classes: 'brand-badge', [Component.text('v0.9.0')]),
+          span(classes: 'brand-badge', [Component.text('v1.0.0')]),
         ]),
         nav(classes: 'nav-links', [
           a(

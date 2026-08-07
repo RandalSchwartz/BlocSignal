@@ -10,8 +10,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  bloc_signals: ^0.9.0
-  bloc_signals_flutter: ^0.9.0
+  bloc_signals: ^1.0.0
+  bloc_signals_flutter: ^1.0.0
   signals_core: ^7.0.0
   signals_flutter: ^7.0.0
 

@@ -24,7 +24,7 @@ To satisfy pub.dev publishing requirements while maintaining local developer wor
 - Example in `bloc_signals_flutter/pubspec.yaml`:
   ```yaml
   dependencies:
-    bloc_signals: ^0.9.0
+    bloc_signals: ^1.0.0
   ```
 - The native Dart workspace compiler will automatically route this constraint to the local workspace folder during development.
 
@@ -265,4 +265,10 @@ When using `context.select` in `bloc_signals_flutter`:
 When authoring code, documentation, comments, pull requests, or article content:
 * **No `e.g.`**: Never use the abbreviation `e.g.`. Always write out **"for example"**.
 * **No `i.e.`**: Never use the abbreviation `i.e.`. Always write out **"that is"**.
+
+### 31. Constructor Parameter and State Access Differences from Felix BLoC (`package:bloc`)
+When migrating code or authoring state containers:
+* **Named Constructor Parameter**: `BlocSignal` and `CubitSignal` constructors use named parameter `initialState:` (for example, `: super(initialState: 0)`), NOT positional `: super(0)`.
+* **`stateValue` vs `state`**: `state` exposes `ReadonlySignal<StateType>` for signals reactivity. To access the current raw state value inside methods or event handlers, use `stateValue` (for example, `emit(stateValue + 1)`). Writing `emit(state + 1)` causes a type compilation error.
+
 

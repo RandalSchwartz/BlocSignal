@@ -68,7 +68,7 @@ The `BlocSignal` monorepo consists of 10 modular packages:
 ```yaml
 dev_dependencies:
   custom_lint: ^0.7.0
-  bloc_signals_lint: ^0.9.0
+  bloc_signals_lint: ^1.0.0
 ```
 
 2. Enable `custom_lint` in your `analysis_options.yaml`:

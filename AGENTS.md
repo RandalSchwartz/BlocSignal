@@ -218,11 +218,20 @@ When configuring test runners in packages with `_test.dart` entrypoints:
 When working with or debugging state containers:
 * **Baseline Output**: `BlocSignalBase` overrides `toString()` to output `$runtimeType($stateValue)`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses.
 
-### 22. Website Version Synchronization & Deployment Protocol (`blocsignal.dev`)
-When publishing new package versions or updating framework APIs:
-* **Version Alignment in Website Catalog**: `website/lib/src/components/package_catalog.dart` MUST be updated with the newly published package version numbers.
+### 22. Website Structure, Publications Sync & Deployment Protocol (`blocsignal.dev`)
+When updating or publishing changes to the `blocsignal.dev` website (`website/`):
+* **Page Architecture & Routing**: The Jaspr web application supports `HomePage` (`/`), `ShowcasePage` (`/showcase`), `PortedExamplesPage` (`/ported-examples`), `MinesweeperPage` (`/minesweeper`), and `PublicationsPage` (`/publications`). Routes support both HTML5 history API pathnames and `/#<route>` hash routing.
+* **Automated DEV.to Publications Sync Tool (`website/tool/update_publications.dart`)**:
+  - `website/tool/update_publications.dart` queries the DEV.to public API (`https://dev.to/api/articles?username=randalschwartz&per_page=50`), extracts canonical article URLs, titles, descriptions, reading times, publish dates, and tags, and automatically regenerates `website/lib/src/pages/publications_page.dart`.
+  - **Execution Command**: Run `cd website && dart run tool/update_publications.dart` whenever new DEV.to articles or media are published.
+* **Version Alignment**: `website/lib/src/components/package_catalog.dart` MUST be updated with newly published package version numbers.
 * **Hero Snippet Alignment**: `website/lib/src/components/hero.dart` code snippets MUST reflect published pubspec dependency constraints.
-* **Re-compile & Deploy**: Compile static bundle with `cd website && mkdir -p build/www && dart compile js lib/main.dart -o build/www/main.dart.js && cp -r web/* build/www/` and deploy to Firebase Hosting via `firebase deploy --only hosting`.
+* **Re-compile & Deploy Protocol**:
+  1. Compile static bundle and generate route fallback index files for static servers (`dhttpd` and Firebase Hosting):
+     ```bash
+     cd website && dart run tool/update_publications.dart && mkdir -p build/www && dart compile js lib/main.dart -o build/www/main.dart.js && cp -r web/* build/www/ && cp build/www/index.html build/www/publications/index.html && cp build/www/index.html build/www/showcase/index.html && cp build/www/index.html build/www/ported-examples/index.html && cp build/www/index.html build/www/minesweeper/index.html
+     ```
+  2. Deploy to Firebase Hosting: `firebase deploy --only hosting`.
 
 ### 23. Replay State History Architecture (`bloc_signals_replay`)
 When implementing state history and undo/redo capabilities:

@@ -1,3 +1,13 @@
+## 1.0.1
+
+- Clarify in documentation and README that primitive and collection state containers (`int`, `double`, `String`, `bool`, `Map`, `List`) require zero method overrides for `fromJson` or `toJson`.
+- Emphasize built-in `SharedPreferences` and `SecureStorage` sub-library adapters.
+
+## 1.0.0
+
+- Official 1.0.0 production release.
+- Update `bloc_signals` dependency constraint to `^1.0.0`.
+
 ## 0.9.0
 
 - Staging release candidate for the 1.0.0 production milestone.

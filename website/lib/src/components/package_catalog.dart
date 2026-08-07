@@ -8,7 +8,7 @@ class PackageCatalog extends StatelessComponent {
     final packages = [
       (
         name: 'bloc_signals',
-        version: '0.9.0',
+        version: '1.0.0',
         desc:
             'Core pure Dart reactive state container bridging BLoC semantics with signals v7 primitives.',
         icon: '⚡',
@@ -16,7 +16,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_flutter',
-        version: '0.9.0',
+        version: '1.0.0',
         desc:
             'Flutter UI bindings, InheritedWidget providers, builders, selectors, and Listenable interop.',
         icon: '💙',
@@ -24,7 +24,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_jaspr',
-        version: '0.9.0',
+        version: '1.0.0',
         desc:
             'Jaspr web component integration, InheritedComponent providers, builders, listeners, and selectors.',
         icon: '🌐',
@@ -32,7 +32,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_riverpod',
-        version: '0.9.0',
+        version: '1.0.0',
         desc:
             'Bidirectional Riverpod 2 & 3 interop adapters (toBlocSignal / toProvider).',
         icon: '🌊',
@@ -40,7 +40,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_hydrate',
-        version: '0.9.0',
+        version: '1.0.1',
         desc:
             'Synchronous state persistence across app restarts with primitive and collection support.',
         icon: '💾',
@@ -48,7 +48,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_replay',
-        version: '0.9.0',
+        version: '1.0.0',
         desc:
             'Replay, undo, and redo state tracking utilities (ReplayCubit, ReplayBloc).',
         icon: '↩️',
@@ -56,7 +56,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_otel',
-        version: '0.9.0',
+        version: '1.0.0',
         desc:
             'OpenTelemetry lifecycle tracing, transition metrics, and distributed span correlation.',
         icon: '🔭',
@@ -64,7 +64,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_devtools',
-        version: '0.9.0',
+        version: '1.0.0',
         desc:
             'Custom Flutter DevTools extension for timeline tracing, state diffing, and leak detection.',
         icon: '🛠️',
@@ -72,7 +72,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_test',
-        version: '0.9.0',
+        version: '1.0.0',
         desc:
             'Declarative unit testing utilities and test observers for BlocSignal and CubitSignal.',
         icon: '🧪',
@@ -80,7 +80,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_lint',
-        version: '0.9.0',
+        version: '1.0.0',
         desc:
             'Custom analyzer lints and automated IDE quick-fixes for enforcing BlocSignal best practices.',
         icon: '🔍',

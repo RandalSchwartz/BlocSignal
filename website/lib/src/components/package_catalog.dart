@@ -16,7 +16,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_flutter',
-        version: '1.0.0',
+        version: '1.1.0',
         desc:
             'Flutter UI bindings, InheritedWidget providers, builders, selectors, and Listenable interop.',
         icon: '💙',

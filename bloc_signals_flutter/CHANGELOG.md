@@ -1,3 +1,8 @@
+## 1.1.0
+
+- Make `child` parameter optional in `BlocSignalProvider` and `BlocSignalListener`, defaulting to `const SizedBox.shrink()`.
+- Eliminate required dummy `child:` arguments when using `MultiBlocSignalProvider` or `MultiBlocSignalListener`.
+
 ## 1.0.0+1
 
 - Re-trigger pub.dev Pana static analysis.

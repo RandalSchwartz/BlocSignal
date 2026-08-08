@@ -19,6 +19,22 @@ Future<void> main() async {
   }
 
   final List<dynamic> articles = jsonDecode(jsonString);
+  
+  // Check if new article is present in list; if not, prepend it
+  const newArticleUrl = 'https://dev.to/gde/from-raw-signals-to-blocsignal-taming-reactivity-for-enterprise-scale-2cmi';
+  final hasNewArticle = articles.any((a) => (a['canonical_url'] ?? a['url']) == newArticleUrl);
+  if (!hasNewArticle) {
+    articles.insert(0, {
+      'title': 'From Raw Signals to BlocSignal: Taming Reactivity for Enterprise Scale',
+      'description': 'Learn how BlocSignal encapsulates raw signals inside BLoC & Cubit containers to bring dispatch rigor, event hierarchies, and 0ms synchronous speed to Flutter and Jaspr apps.',
+      'url': newArticleUrl,
+      'canonical_url': newArticleUrl,
+      'readable_publish_date': 'Aug 8',
+      'reading_time_minutes': 6,
+      'tag_list': ['flutter', 'dart', 'architecture', 'webdev'],
+    });
+  }
+
   print('✅ Found ${articles.length} published articles on DEV.to.');
 
   final buffer = StringBuffer();

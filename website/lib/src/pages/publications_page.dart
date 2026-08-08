@@ -27,6 +27,19 @@ class PublicationItem {
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title:
+        'From Raw Signals to BlocSignal: Taming Reactivity for Enterprise Scale',
+    description:
+        'Learn how BlocSignal encapsulates raw signals inside BLoC & Cubit containers to bring dispatch rigor, event hierarchies, and 0ms synchronous speed to Flutter and Jaspr apps.',
+    url:
+        'https://dev.to/gde/from-raw-signals-to-blocsignal-taming-reactivity-for-enterprise-scale-2cmi',
+    date: 'Aug 8',
+    readTime: '6 min read',
+    category: 'State Machines',
+    type: 'Article',
+    tags: ["flutter", "dart", "architecture", "webdev"],
+  ),
+  PublicationItem(
     title: 'Exploring Form Management Patterns in Flutter with BlocSignal',
     description:
         'Master form handling in Flutter with BlocSignal. Learn how to separate Primary vs. Derived state using computed signals, compare 3 clean form architectural patterns, and pick the right one for your app.',

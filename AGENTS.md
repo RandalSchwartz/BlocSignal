@@ -251,10 +251,11 @@ When implementing or working with Jaspr web component bindings:
 * **Element Mount Check**: In Jaspr `Element`, element mounting state is checked via `element.binding != null` or `context.binding != null`.
 * **Text Node Declarations**: Text nodes in Jaspr `package:jaspr/dom.dart` are declared via `Component.text('...')` (deprecated top-level `text('...')` should be avoided).
 
-### 26. Jaspr `InheritedComponent` Resolution & Ergonomics (`bloc_signals_jaspr`)
-When designing Jaspr `InheritedComponent` providers and multi-providers:
-* **O(1) Context Lookups**: Unlistened context lookups (`listen: false`) use `getElementForInheritedComponentOfExactType` (O(1) resolution), while listened lookups (`listen: true`) use `dependOnInheritedComponentOfExactType`.
-* **Null Child Composition Ergonomics**: Optional `child` parameters defaulting to `const _NullComponent()` (where `_NullComponent` returns `const Component.empty()`) enable clean array syntax inside `MultiBlocSignalProvider` and `MultiBlocSignalListener` without requiring dummy child elements at call sites.
+### 26. Provider & Listener Optional Child Composition Ergonomics (`bloc_signals_flutter` & `bloc_signals_jaspr`)
+When designing or using UI provider and listener components (`BlocSignalProvider`, `BlocSignalListener`, `MultiBlocSignalProvider`, `MultiBlocSignalListener`):
+* **Optional Child Defaulting**: The `child` parameter is optional and defaults to `const SizedBox.shrink()` in `bloc_signals_flutter` (and `const _NullComponent()` in `bloc_signals_jaspr`).
+* **Clean Array Syntax in Multi-Providers/Listeners**: Individual provider and listener elements in `MultiBlocSignalProvider.providers` or `MultiBlocSignalListener.listeners` do not require dummy `child:` arguments (such as `child: const SizedBox.shrink()`), as `copyWith` or linear composition overrides the default child automatically.
+* **O(1) Context Lookups**: Unlistened context lookups (`listen: false`) use `getElementForInheritedWidgetOfExactType` (in Flutter) or `getElementForInheritedComponentOfExactType` (in Jaspr) for O(1) time resolution.
 
 ### 27. Pub.dev 160 Pub Points Scoring & Documentation Requirements
 When publishing packages to pub.dev to satisfy all 160/160 pub points quality scoring metrics:

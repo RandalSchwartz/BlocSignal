@@ -79,7 +79,8 @@ Load only the references needed for the task.
 - A non-equal event transition runs before state mutation. `onChange` runs after mutation. Both
   local hooks require `super`; equal emits run neither hook.
 - `BlocSignalProvider(create:)` is lazy by default, owns its bloc, and closes it. Use `lazy: false`
-  for eager creation. `BlocSignalProvider.value` does not own its bloc.
+  for eager creation. `BlocSignalProvider.value` does not own its bloc. Both `BlocSignalProvider`
+  and `BlocSignalListener` support an optional `child` parameter (defaulting to `const SizedBox.shrink()` in Flutter and `const _NullComponent()` in Jaspr), eliminating placeholder `child` arguments inside `MultiBlocSignalProvider` or `MultiBlocSignalListener`.
 - `context.watch<T>()` tracks provider replacement, not state changes. Use `BlocSignalBuilder` or a
   signals widget to rebuild for state.
 - `BlocSignalListener` suppresses its initial effect run and supports `listenWhen(previous,

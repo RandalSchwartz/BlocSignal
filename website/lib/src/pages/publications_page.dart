@@ -34,7 +34,7 @@ const List<PublicationItem> _publications = [
     url:
         'https://dev.to/gde/from-raw-signals-to-blocsignal-taming-reactivity-for-enterprise-scale-2cmi',
     date: 'Aug 8',
-    readTime: '6 min read',
+    readTime: '5 min read',
     category: 'State Machines',
     type: 'Article',
     tags: ["flutter", "dart", "architecture", "webdev"],

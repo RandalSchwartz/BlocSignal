@@ -81,8 +81,22 @@ Future<void> main() async {
     final description =
         (article['description'] as String).replaceAll("'", "\\'");
     final url = article['canonical_url'] ?? article['url'];
-    final publishDate = article['readable_publish_date'];
     final readTime = '${article['reading_time_minutes']} min read';
+    String publishDate = article['readable_publish_date']?.toString() ?? '';
+    if (publishDate.isEmpty || publishDate == 'null') {
+      final rawDate = article['published_at'] ?? article['created_at'];
+      if (rawDate != null) {
+        try {
+          final dt = DateTime.parse(rawDate.toString());
+          final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          publishDate = '${months[dt.month - 1]} ${dt.day}';
+        } catch (_) {
+          publishDate = 'Aug 8';
+        }
+      } else {
+        publishDate = 'Aug 8';
+      }
+    }
     final tagList =
         (article['tag_list'] as List<dynamic>).map((t) => t.toString()).toList();
 

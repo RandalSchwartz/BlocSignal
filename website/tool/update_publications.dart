@@ -4,11 +4,20 @@ import 'dart:io';
 /// Automated tool to fetch the latest DEV.to articles for @randalschwartz
 /// and regenerate `website/lib/src/pages/publications_page.dart`.
 Future<void> main() async {
-  print('📡 Fetching latest DEV.to articles for user: randalschwartz...');
-
+  final apiKey = Platform.environment['DEVTO_API_KEY'];
   final client = HttpClient();
-  final request = await client
-      .getUrl(Uri.parse('https://dev.to/api/articles?username=randalschwartz&per_page=50'));
+  
+  final Uri uri = (apiKey != null && apiKey.isNotEmpty)
+      ? Uri.parse('https://dev.to/api/articles/me/published?per_page=50')
+      : Uri.parse('https://dev.to/api/articles?username=randalschwartz&per_page=50');
+
+  print('📡 Fetching latest DEV.to articles (${apiKey != null ? 'Authenticated' : 'Public API'})...');
+
+  final request = await client.getUrl(uri);
+  if (apiKey != null && apiKey.isNotEmpty) {
+    request.headers.add('api-key', apiKey);
+  }
+
   final response = await request.close();
   final jsonString = await response.transform(utf8.decoder).join();
   client.close();

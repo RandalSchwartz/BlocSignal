@@ -120,19 +120,16 @@ selector is reinitialized when its bloc or selector callback changes. In 0.2.0 i
 effect but does not explicitly dispose the `Computed` object; inspect the installed implementation
 when deterministic computed disposal matters.
 
-`MultiBlocSignalListener` nests several listeners around one child. Each list entry still requires
-its own placeholder child because `copyWith` replaces it:
+`MultiBlocSignalListener` nests several listeners around one child. Individual listeners do not require a placeholder `child` parameter:
 
 ```dart
 MultiBlocSignalListener(
   listeners: [
     BlocSignalListener<AuthBloc, AuthState>(
       listener: onAuthState,
-      child: const SizedBox.shrink(),
     ),
     BlocSignalListener<SyncCubit, SyncState>(
       listener: onSyncState,
-      child: const SizedBox.shrink(),
     ),
   ],
   child: const AppShell(),
@@ -141,26 +138,21 @@ MultiBlocSignalListener(
 
 ## Multiple providers
 
-`MultiBlocSignalProvider` nests its providers in list order. Keep distinct concrete bloc types when
-reading them by generic type:
+`MultiBlocSignalProvider` nests its providers in list order. Individual providers do not require a placeholder `child` parameter:
 
 ```dart
 MultiBlocSignalProvider(
   providers: [
     BlocSignalProvider<AuthBloc>(
       create: (_) => AuthBloc(),
-      child: const SizedBox.shrink(),
     ),
     BlocSignalProvider<ThemeBloc>(
       create: (_) => ThemeBloc(),
-      child: const SizedBox.shrink(),
     ),
   ],
   child: const AppShell(),
 )
 ```
-
-The placeholder children are replaced by `MultiBlocSignalProvider` through `copyWith`.
 
 ## Derived state and side effects
 

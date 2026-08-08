@@ -22,7 +22,7 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S>
   /// Creates a [BlocSignalListener] widget.
   const BlocSignalListener({
     required this.listener,
-    required this.child,
+    this.child = const SizedBox.shrink(),
     this.bloc,
     this.listenWhen,
     super.key,

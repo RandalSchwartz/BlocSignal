@@ -20,8 +20,8 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
   /// Creates a [BlocSignalProvider] that manages the lifecycle of a new
   /// [BlocSignal] returned by [create].
   const BlocSignalProvider({
-    required this.child,
     required T Function(BuildContext context) this.create,
+    this.child = const SizedBox.shrink(),
     this.lazy = true,
     super.key,
   }) : value = null;
@@ -29,8 +29,8 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
   /// Creates a [BlocSignalProvider] that provides an existing [value] to
   /// the tree, without managing its lifecycle (does not close it on dispose).
   const BlocSignalProvider.value({
-    required this.child,
     required T this.value,
+    this.child = const SizedBox.shrink(),
     super.key,
   })  : create = null,
         lazy = false;

@@ -117,11 +117,9 @@ void main() {
           providers: [
             BlocSignalProvider<CounterBloc>(
               create: (_) => CounterBloc(),
-              child: const SizedBox(),
             ),
             BlocSignalProvider<CounterBloc>.value(
               value: bloc,
-              child: const SizedBox(),
             ),
           ],
           child: Builder(
@@ -138,6 +136,38 @@ void main() {
       expect(find.byType(SizedBox), findsOneWidget);
       await bloc.close();
     });
+
+    testWidgets(
+      'BlocSignalProvider and BlocSignalListener support optional child '
+      'parameter',
+      (tester) async {
+        final bloc = CounterBloc();
+        final states = <int>[];
+
+        final widget = MaterialApp(
+          home: MultiBlocSignalListener(
+            listeners: [
+              BlocSignalListener<CounterBloc, int>(
+                bloc: bloc,
+                listener: (context, state) => states.add(state),
+              ),
+            ],
+            child: BlocSignalProvider<CounterBloc>.value(
+              value: bloc,
+            ),
+          ),
+        );
+
+        await tester.pumpWidget(widget);
+        expect(states, isEmpty);
+
+        bloc.add(Increment());
+        await tester.pump();
+        expect(states, equals([1]));
+
+        await bloc.close();
+      },
+    );
 
     testWidgets(
       'BlocSignalProvider.value injects existing bloc without closing it',

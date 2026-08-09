@@ -222,9 +222,12 @@ class _PublicationsPageState extends State<PublicationsPage> {
     final filteredPublications = _activeCategory == 'All'
         ? _publications
         : _publications
-            .where((pub) =>
-                pub.category == _activeCategory || pub.type == _activeCategory)
-            .toList();
+              .where(
+                (pub) =>
+                    pub.category == _activeCategory ||
+                    pub.type == _activeCategory,
+              )
+              .toList();
 
     return div(classes: 'app-root', [
       const Navbar(currentPath: '/publications'),
@@ -239,7 +242,8 @@ class _PublicationsPageState extends State<PublicationsPage> {
           ]),
           p(classes: 'hero-motto', [
             Component.text(
-                'Explore technical deep dives, architectural guides, DEV.to articles, and video walkthroughs by Randal L. Schwartz.'),
+              'Explore technical deep dives, architectural guides, DEV.to articles, and video walkthroughs by Randal L. Schwartz.',
+            ),
           ]),
         ]),
 
@@ -247,9 +251,9 @@ class _PublicationsPageState extends State<PublicationsPage> {
         div(classes: 'container', [
           div(classes: 'video-featured-card', [
             div(classes: 'video-card-badge', [
-              span(
-                  classes: 'badge-video',
-                  [Component.text('🎬 Featured Video')]),
+              span(classes: 'badge-video', [
+                Component.text('🎬 Featured Video'),
+              ]),
               span(classes: 'badge-date', [Component.text('Aug 06, 2026')]),
             ]),
             h2(classes: 'video-title', [
@@ -257,7 +261,8 @@ class _PublicationsPageState extends State<PublicationsPage> {
             ]),
             p(classes: 'video-desc', [
               Component.text(
-                  'By Randal L. Schwartz — A comprehensive technical walkthrough demonstrating synchronous signal graph propagation, 0ms microtask delay, BLoC event traceability, and multi-package interop across Flutter, Riverpod, and Jaspr web.'),
+                'By Randal L. Schwartz — A comprehensive technical walkthrough demonstrating synchronous signal graph propagation, 0ms microtask delay, BLoC event traceability, and multi-package interop across Flutter, Riverpod, and Jaspr web.',
+              ),
             ]),
             div(classes: 'video-player-box', [
               iframe(
@@ -293,7 +298,7 @@ class _PublicationsPageState extends State<PublicationsPage> {
               'Architecture',
               'Flutter & Jaspr',
               'State Machines',
-              'Interop & Telemetry'
+              'Interop & Telemetry',
             ])
               button(
                 classes: 'btn-filter ${_activeCategory == cat ? 'active' : ''}',
@@ -311,35 +316,23 @@ class _PublicationsPageState extends State<PublicationsPage> {
         div(classes: 'container pub-grid-section', [
           div(classes: 'pub-grid', [
             for (final pub in filteredPublications)
-              a(
-                href: pub.url,
-                target: Target.blank,
-                classes: 'pub-card',
-                [
-                  div(classes: 'pub-card-top', [
-                    span(
-                        classes: 'pub-category',
-                        [Component.text(pub.category)]),
-                    span(
-                        classes: 'pub-readtime',
-                        [Component.text(pub.readTime)]),
+              a(href: pub.url, target: Target.blank, classes: 'pub-card', [
+                div(classes: 'pub-card-top', [
+                  span(classes: 'pub-category', [Component.text(pub.category)]),
+                  span(classes: 'pub-readtime', [Component.text(pub.readTime)]),
+                ]),
+                h3(classes: 'pub-card-title', [Component.text(pub.title)]),
+                p(classes: 'pub-card-desc', [Component.text(pub.description)]),
+                div(classes: 'pub-card-footer', [
+                  div(classes: 'pub-tags-list', [
+                    for (final tag in pub.tags)
+                      span(classes: 'pub-tag-pill', [Component.text('#$tag')]),
                   ]),
-                  h3(classes: 'pub-card-title', [Component.text(pub.title)]),
-                  p(
-                      classes: 'pub-card-desc',
-                      [Component.text(pub.description)]),
-                  div(classes: 'pub-card-footer', [
-                    div(classes: 'pub-tags-list', [
-                      for (final tag in pub.tags)
-                        span(
-                            classes: 'pub-tag-pill', [Component.text('#$tag')]),
-                    ]),
-                    span(classes: 'pub-link-btn', [
-                      Component.text('Read on DEV.to ↗'),
-                    ]),
+                  span(classes: 'pub-link-btn', [
+                    Component.text('Read on DEV.to ↗'),
                   ]),
-                ],
-              ),
+                ]),
+              ]),
           ]),
         ]),
       ]),

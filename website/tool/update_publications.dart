@@ -6,12 +6,14 @@ import 'dart:io';
 Future<void> main() async {
   final apiKey = Platform.environment['DEVTO_API_KEY'];
   final client = HttpClient();
-  
+
   final Uri uri = (apiKey != null && apiKey.isNotEmpty)
       ? Uri.parse('https://dev.to/api/articles/me/published?per_page=50')
-      : Uri.parse('https://dev.to/api/articles?username=randalschwartz&per_page=50');
+      : Uri.parse(
+          'https://dev.to/api/articles?username=randalschwartz&per_page=50');
 
-  print('📡 Fetching latest DEV.to articles (${apiKey != null ? 'Authenticated' : 'Public API'})...');
+  print(
+      '📡 Fetching latest DEV.to articles (${apiKey != null ? 'Authenticated' : 'Public API'})...');
 
   final request = await client.getUrl(uri);
   if (apiKey != null && apiKey.isNotEmpty) {
@@ -28,14 +30,18 @@ Future<void> main() async {
   }
 
   final List<dynamic> articles = jsonDecode(jsonString);
-  
+
   // Check if new article is present in list; if not, prepend it
-  const newArticleUrl = 'https://dev.to/gde/from-raw-signals-to-blocsignal-taming-reactivity-for-enterprise-scale-2cmi';
-  final hasNewArticle = articles.any((a) => (a['canonical_url'] ?? a['url']) == newArticleUrl);
+  const newArticleUrl =
+      'https://dev.to/gde/from-raw-signals-to-blocsignal-taming-reactivity-for-enterprise-scale-2cmi';
+  final hasNewArticle =
+      articles.any((a) => (a['canonical_url'] ?? a['url']) == newArticleUrl);
   if (!hasNewArticle) {
     articles.insert(0, {
-      'title': 'From Raw Signals to BlocSignal: Taming Reactivity for Enterprise Scale',
-      'description': 'Learn how BlocSignal encapsulates raw signals inside BLoC & Cubit containers to bring dispatch rigor, event hierarchies, and 0ms synchronous speed to Flutter and Jaspr apps.',
+      'title':
+          'From Raw Signals to BlocSignal: Taming Reactivity for Enterprise Scale',
+      'description':
+          'Learn how BlocSignal encapsulates raw signals inside BLoC & Cubit containers to bring dispatch rigor, event hierarchies, and 0ms synchronous speed to Flutter and Jaspr apps.',
       'url': newArticleUrl,
       'canonical_url': newArticleUrl,
       'readable_publish_date': 'Aug 8',
@@ -88,7 +94,20 @@ Future<void> main() async {
       if (rawDate != null) {
         try {
           final dt = DateTime.parse(rawDate.toString());
-          final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          final months = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec'
+          ];
           publishDate = '${months[dt.month - 1]} ${dt.day}';
         } catch (_) {
           publishDate = 'Aug 8';
@@ -97,8 +116,9 @@ Future<void> main() async {
         publishDate = 'Aug 8';
       }
     }
-    final tagList =
-        (article['tag_list'] as List<dynamic>).map((t) => t.toString()).toList();
+    final tagList = (article['tag_list'] as List<dynamic>)
+        .map((t) => t.toString())
+        .toList();
 
     // Categorization logic
     String category = 'Architecture';
@@ -275,5 +295,6 @@ class _PublicationsPageState extends State<PublicationsPage> {
     print('✨ Code formatted successfully.');
   }
 
-  print('🎉 Done! Run `dart compile js lib/main.dart -o build/www/main.dart.js` to build static site.');
+  print(
+      '🎉 Done! Run `dart compile js lib/main.dart -o build/www/main.dart.js` to build static site.');
 }

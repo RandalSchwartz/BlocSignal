@@ -281,4 +281,10 @@ When migrating code or authoring state containers:
 * **Named Constructor Parameter**: `BlocSignal` and `CubitSignal` constructors use named parameter `initialState:` (for example, `: super(initialState: 0)`), NOT positional `: super(0)`.
 * **`stateValue` vs `state`**: `state` exposes `ReadonlySignal<StateType>` for signals reactivity. To access the current raw state value inside methods or event handlers, use `stateValue` (for example, `emit(stateValue + 1)`). Writing `emit(state + 1)` causes a type compilation error.
 
+### 32. DEV.to Article Frontmatter & Series Protocol
+When generating or updating DEV.to draft articles:
+* **Series Frontmatter**: Always include `series: "BlocSignal Architecture & Practice"` (or the designated series title) as the **very first line** inside the YAML frontmatter right under `---`. Placing `series:` at the top of frontmatter ensures DEV.to's API & background parser index the article into the correct series automatically.
+* **Frontmatter Standards**: Always set `published: true`, `title:`, `description:`, and `tags:`.
+* **Body Subhead**: Always start the article body text (immediately after the closing `---` of frontmatter) with a Level 2 subhead (`## ...`).
+
 

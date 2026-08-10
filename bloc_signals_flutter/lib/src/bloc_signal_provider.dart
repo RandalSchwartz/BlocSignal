@@ -258,8 +258,8 @@ class MultiBlocSignalProvider extends StatelessWidget {
     super.key,
   });
 
-  /// The list of [BlocSignalProvider] instances to inject.
-  final List<BlocSignalProvider<BlocSignalBase<dynamic>>> providers;
+  /// The list of provider widgets (such as [BlocSignalProvider]) to inject.
+  final List<dynamic> providers;
 
   /// The child widget subtree that will have access to all provided blocs.
   final Widget child;
@@ -268,7 +268,9 @@ class MultiBlocSignalProvider extends StatelessWidget {
   Widget build(BuildContext context) {
     var current = child;
     for (final provider in providers.reversed) {
-      current = provider.copyWith(current);
+      if (provider is BlocSignalProvider) {
+        current = (provider as dynamic).copyWith(current) as Widget;
+      }
     }
     return current;
   }

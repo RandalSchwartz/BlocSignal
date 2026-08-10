@@ -1,4 +1,3 @@
-import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_flutter/src/bloc_signal_listener.dart';
 import 'package:flutter/widgets.dart';
 
@@ -27,8 +26,8 @@ class MultiBlocSignalListener extends StatelessWidget {
     super.key,
   });
 
-  /// The list of [BlocSignalListener] instances to run.
-  final List<BlocSignalListener<BlocSignalBase<dynamic>, dynamic>> listeners;
+  /// The list of listener widgets (such as [BlocSignalListener]) to run.
+  final List<dynamic> listeners;
 
   /// The child widget subtree.
   final Widget child;
@@ -37,7 +36,9 @@ class MultiBlocSignalListener extends StatelessWidget {
   Widget build(BuildContext context) {
     var current = child;
     for (final listener in listeners.reversed) {
-      current = listener.copyWith(current);
+      if (listener is BlocSignalListener) {
+        current = (listener as dynamic).copyWith(current) as Widget;
+      }
     }
     return current;
   }

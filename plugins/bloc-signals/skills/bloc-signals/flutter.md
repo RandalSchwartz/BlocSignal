@@ -101,9 +101,17 @@ uses a non-listening provider lookup, so a provider instance swap can be missed 
 widget update runs. Pass the bloc explicitly or verify replacement behavior in a widget test when
 the provider can change.
 
-`BlocSignalConsumer<T, S>` combines that listener with `BlocSignalBuilder`. It has the same
-initial-callback suppression and forwards `listenWhen`. It still has no `buildWhen`. Its provider
-lookup does listen for instance replacement.
+`BlocSignalBuilder` supports `buildWhen(previous, current)` to conditionally suppress rebuilds when state changes:
+
+```dart
+BlocSignalBuilder<CounterBloc, int>(
+  buildWhen: (previous, current) => current.isEven,
+  builder: (context, count) => Text('$count'),
+)
+```
+
+`BlocSignalConsumer<T, S>` combines that listener with `BlocSignalBuilder`. It forwards both `listenWhen` and `buildWhen`. Its provider lookup does listen for instance replacement.
+
 
 `BlocSignalSelector<T, S, V>` computes `V` from each source state and rebuilds only when the new
 selection is unequal to the previous selection:
@@ -259,4 +267,3 @@ BlocSignalBuilder<UserDataCubit, UserData>(
 `BlocSignalProvider.of<T>` throws `FlutterError` when no exact provider type is found. Check that the
 lookup context is below the provider and that the generic type matches the provided concrete bloc.
 Do not catch the error and construct a hidden fallback bloc.
-

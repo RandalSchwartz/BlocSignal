@@ -630,5 +630,150 @@ void main() {
 
       await bloc.close();
     });
+
+    testWidgets(
+      'MultiBlocSignalProvider enables context lookups across providers',
+      (tester) async {
+        late CounterCubit cubit;
+        late CounterBloc bloc;
+
+        final widget = MultiBlocSignalProvider(
+          providers: [
+            BlocSignalProvider(create: (context) => cubit = CounterCubit()),
+            BlocSignalProvider(
+              create: (context) {
+                // Ensure lower provider can read upper provider in create
+                final parentCubit = context.read<CounterCubit>();
+                expect(parentCubit, equals(cubit));
+                return bloc = CounterBloc();
+              },
+            ),
+          ],
+          child: Builder(
+            builder: (context) {
+              final retrievedCubit = context.read<CounterCubit>();
+              final retrievedBloc = context.read<CounterBloc>();
+              expect(retrievedCubit, equals(cubit));
+              expect(retrievedBloc, equals(bloc));
+              return const SizedBox();
+            },
+          ),
+        );
+
+        await tester.pumpWidget(MaterialApp(home: widget));
+        expect(find.byType(SizedBox), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'BlocSignalBuilder respects buildWhen predicate',
+      (tester) async {
+        final bloc = CounterBloc();
+        var buildCount = 0;
+
+        final widget = MaterialApp(
+          home: BlocSignalBuilder<CounterBloc, int>(
+            bloc: bloc,
+            buildWhen: (previous, current) => current.isEven,
+            builder: (context, state) {
+              buildCount++;
+              return Text('State: $state');
+            },
+          ),
+        );
+
+        await tester.pumpWidget(widget);
+        expect(find.text('State: 0'), findsOneWidget);
+        expect(buildCount, equals(1));
+
+        bloc.add(Increment()); // State becomes 1 (odd) -> skipped by buildWhen
+        await tester.pump();
+        expect(find.text('State: 0'), findsOneWidget);
+        expect(buildCount, equals(1));
+
+        bloc.add(Increment()); // State becomes 2 (even) -> built by buildWhen
+        await tester.pump();
+        expect(find.text('State: 2'), findsOneWidget);
+        expect(buildCount, equals(2));
+
+        await bloc.close();
+      },
+    );
+
+    testWidgets(
+      'BlocSignalConsumer respects buildWhen and listenWhen predicates',
+      (tester) async {
+        final bloc = CounterBloc();
+        final listenedStates = <int>[];
+        var buildCount = 0;
+
+        final widget = MaterialApp(
+          home: BlocSignalConsumer<CounterBloc, int>(
+            bloc: bloc,
+            buildWhen: (previous, current) => current.isEven,
+            listenWhen: (previous, current) => current > 1,
+            listener: (context, state) => listenedStates.add(state),
+            builder: (context, state) {
+              buildCount++;
+              return Text('Count: $state');
+            },
+          ),
+        );
+
+        await tester.pumpWidget(widget);
+        expect(find.text('Count: 0'), findsOneWidget);
+        expect(buildCount, equals(1));
+
+        bloc.add(Increment()); // State 1: buildWhen false, listenWhen false
+        await tester.pump();
+        expect(find.text('Count: 0'), findsOneWidget);
+        expect(buildCount, equals(1));
+        expect(listenedStates, isEmpty);
+
+        bloc.add(Increment()); // State 2: buildWhen true, listenWhen true
+        await tester.pump();
+        expect(find.text('Count: 2'), findsOneWidget);
+        expect(buildCount, equals(2));
+        expect(listenedStates, equals([2]));
+
+        await bloc.close();
+      },
+    );
+
+    testWidgets(
+      'MultiBlocSignalListener executes multiple listeners in list literal',
+      (tester) async {
+        final cubit = CounterCubit();
+        final bloc = CounterBloc();
+        final cubitStates = <int>[];
+        final blocStates = <int>[];
+
+        final widget = MultiBlocSignalListener(
+          listeners: [
+            BlocSignalListener<CounterCubit, int>(
+              bloc: cubit,
+              listener: (context, state) => cubitStates.add(state),
+            ),
+            BlocSignalListener<CounterBloc, int>(
+              bloc: bloc,
+              listener: (context, state) => blocStates.add(state),
+            ),
+          ],
+          child: const SizedBox(),
+        );
+
+        await tester.pumpWidget(MaterialApp(home: widget));
+
+        cubit.increment();
+        bloc.add(Increment());
+        await tester.pump();
+
+        expect(cubitStates, equals([1]));
+        expect(blocStates, equals([1]));
+
+        await cubit.close();
+        await bloc.close();
+      },
+    );
   });
 }

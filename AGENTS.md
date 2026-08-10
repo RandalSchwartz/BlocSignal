@@ -287,4 +287,7 @@ When generating or updating DEV.to draft articles:
 * **Frontmatter Standards**: Always set `published: true`, `title:`, `description:`, and `tags:`.
 * **Body Subhead**: Always start the article body text (immediately after the closing `---` of frontmatter) with a Level 2 subhead (`## ...`).
 
-
+### 33. Multi-Provider List Literal Generic Preservation & Stateful `buildWhen` Reactivity
+When designing multi-provider container widgets (`MultiBlocSignalProvider`, `MultiBlocSignalListener`) and stateful UI builders (`BlocSignalBuilder`, `BlocSignalConsumer`):
+* **List Literal Generic Preservation**: Declare `providers` or `listeners` parameter types as `List<dynamic>` and invoke `(provider as dynamic).copyWith(current)`. This prevents Dart list literal element type inference from downcasting elements to `BlocSignalBase<dynamic>` and erasing concrete generic types `T` (`BlocSignalProvider<CounterCubit>`), ensuring descendant `InheritedWidget` lookups (`context.read<T>()`) resolve in O(1) time.
+* **Stateful `buildWhen` Filtering**: In `BlocSignalBuilder`, subscribe to `effectiveBloc.state` inside an `effect()` callback in `_BlocSignalBuilderState`. Evaluate `buildWhen(previous, current)` and invoke `setState()` ONLY when `buildWhen` returns `true` (or is null), preventing redundant widget rebuilds when state changes.

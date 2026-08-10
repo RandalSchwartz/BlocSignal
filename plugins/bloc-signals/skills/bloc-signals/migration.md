@@ -281,9 +281,10 @@ BlocBuilder<CounterBloc, int>(
 )
 ```
 
-### After (BlocSignalBuilder)
+### After (BlocSignalBuilder with optional buildWhen)
 ```dart
 BlocSignalBuilder<CounterBloc, int>(
+  buildWhen: (previous, current) => current.isEven,
   builder: (context, state) {
     return Text('Count: $state');
   },
@@ -317,6 +318,8 @@ BlocSignalListener<AuthBloc, AuthState>(
 ### Before (Classic `BlocConsumer`)
 ```dart
 BlocConsumer<CounterBloc, int>(
+  listenWhen: (previous, current) => current > 5,
+  buildWhen: (previous, current) => current.isEven,
   listener: (context, state) {
     if (state == 10) showSnackbar(context, 'Limit!');
   },
@@ -329,6 +332,8 @@ BlocConsumer<CounterBloc, int>(
 ### After (BlocSignalConsumer)
 ```dart
 BlocSignalConsumer<CounterBloc, int>(
+  listenWhen: (previous, current) => current > 5,
+  buildWhen: (previous, current) => current.isEven,
   listener: (context, state) {
     if (state == 10) showSnackbar(context, 'Limit!');
   },
@@ -641,4 +646,3 @@ class ModernCounterView extends HookWidget {
 | `useBlocBuilder(bloc)` | `useSignalValue(bloc.state)` | Reads any `ReadonlySignal<S>` directly |
 | `useBlocListener(bloc, fn)` | `useSignalEffect(() => ...)` | Inlined reactive effect; zero widget tree wrappers |
 | `useBlocSelector(bloc, fn)` | `useComputed(() => ...)` | Reactive signal derivation with fine-grained equality |
-

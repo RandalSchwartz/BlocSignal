@@ -1,3 +1,9 @@
+## 1.2.0
+
+- Fix generic type erasure in `MultiBlocSignalProvider` when passed list literals (#136).
+- Add `buildWhen` predicate parameter to `BlocSignalBuilder` and `BlocSignalConsumer`.
+- Update `MultiBlocSignalListener.listeners` parameter to `List<dynamic>` for list literal generic type preservation.
+
 ## 1.1.0
 
 - Make `child` parameter optional in `BlocSignalProvider` and `BlocSignalListener`, defaulting to `const SizedBox.shrink()`.

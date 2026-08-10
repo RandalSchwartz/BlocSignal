@@ -27,6 +27,7 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
     required this.builder,
     required this.listener,
     this.bloc,
+    this.buildWhen,
     this.listenWhen,
     super.key,
   });
@@ -41,6 +42,10 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
   /// The callback that runs whenever the state changes.
   final void Function(BuildContext context, S state) listener;
 
+  /// An optional predicate function that determines whether [builder] should
+  /// rebuild.
+  final bool Function(S previous, S current)? buildWhen;
+
   /// A function that determines whether the [listener] should be called.
   ///
   /// Defaults to null, in which case the listener will be called on every
@@ -49,14 +54,15 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
 
   @override
   Widget build(BuildContext context) {
-    final effectiveBloc =
-        bloc ?? BlocSignalProvider.of<T>(context, listen: true);
+    final effectiveBloc = bloc ?? BlocSignalProvider.of<T>(context);
+
     return BlocSignalListener<T, S>(
       bloc: effectiveBloc,
       listener: listener,
       listenWhen: listenWhen,
       child: BlocSignalBuilder<T, S>(
         bloc: effectiveBloc,
+        buildWhen: buildWhen,
         builder: builder,
       ),
     );

@@ -27,6 +27,18 @@ class PublicationItem {
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title:
+        'Riverpod to BlocSignal: Incremental Migration and Zero-Codegen Signals for Flutter',
+    description:
+        'Learn how to trial or incrementally migrate from Riverpod to BlocSignal with zero code generation, fine-grained signal graph reactivity, and bidirectional interop.',
+    url: 'https://blocsignal.dev',
+    date: 'Aug 12',
+    readTime: '5 min read',
+    category: 'Flutter & Jaspr',
+    type: 'Article',
+    tags: ["flutter", "dart", "riverpod", "statemanagement"],
+  ),
+  PublicationItem(
     title: 'Unit Testing in BlocSignal: The Practical Handbook',
     description:
         'A practical handbook for unit testing Flutter and Dart state machines with BlocSignal and bloc_signals_test. Learn why testing is faster and easier than classic BLoC, plus how to leverage AI agent testing skills.',

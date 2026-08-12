@@ -295,3 +295,17 @@ subscriptions stop after disposal.
 
 Stop at an unsupported boundary instead of hiding it behind a global cache, timer, or unowned
 reaction.
+
+## Reference Benchmark Ports (from rrousselGit/riverpod)
+
+The repository provides three canonical standalone Flutter benchmark ports translated directly from [`rrousselGit/riverpod/examples`](https://github.com/rrousselGit/riverpod/tree/master/examples):
+
+1. **`examples/riverpod_todos`** (Port of Riverpod Todos):
+   - Demonstrates replacing `Notifier` / `StateNotifier` and `@riverpod` codegen with `CubitSignal<List<Todo>>`.
+   - Uses synchronous `computed()` signals (`filteredTodos`, `uncompletedCount`, `completedCount`) for reactive filter tabs (`All`, `Active`, `Completed`) without extra events or Rx streams.
+2. **`examples/riverpod_pub`** (Port of Riverpod Pub Package Search):
+   - Demonstrates replacing Riverpod `AsyncNotifier` and `FutureProvider` with `BlocSignal`.
+   - Uses streamless `restartable()` event transformers for keypress debouncing and automatic API request cancellation.
+3. **`examples/riverpod_marvel`** (Port of Riverpod Marvel Character Browser):
+   - Demonstrates replacing Riverpod `ProviderScope(overrides: [...])` with `BlocSignal` pagination, character search, and clean Flutter widget tree scoping via `BlocSignalProvider.value`.
+

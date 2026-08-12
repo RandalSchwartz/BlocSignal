@@ -38,6 +38,9 @@ workspace:
   - examples/flutter_complex_list
   - examples/flutter_bloc_with_stream
   - examples/mine_sweeper
+  - examples/riverpod_todos
+  - examples/riverpod_pub
+  - examples/riverpod_marvel
   - website
 
 dev_dependencies:

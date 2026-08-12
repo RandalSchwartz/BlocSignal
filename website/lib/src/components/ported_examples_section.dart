@@ -194,6 +194,55 @@ class PortedExamplesSection extends StatelessComponent {
       ),
     ];
 
+    final List<
+        ({
+          String title,
+          String tag,
+          String desc,
+          String dx,
+          String icon,
+          String localPath,
+          String upstreamUrl,
+          String? demoUrl
+        })> riverpodPorts = [
+      (
+
+        title: 'Riverpod Todos',
+        tag: 'rrousselGit/riverpod',
+        desc: 'Flagship Todos CRUD app with filter tabs and statistics.',
+        dx: 'Replaces Notifier/StateNotifier & @riverpod codegen with CubitSignal<List<Todo>> and synchronous computed() signals.',
+        icon: '📝',
+        localPath: 'examples/riverpod_todos',
+        upstreamUrl:
+            'https://github.com/rrousselGit/riverpod/tree/master/examples/todos',
+        demoUrl: null,
+      ),
+      (
+        title: 'Pub.dev Search',
+        tag: 'rrousselGit/riverpod',
+        desc:
+            'Pub.dev package search with debounced queries & AsyncValue state.',
+        dx: 'Streamless restartable() event transformer automatically cancels in-flight API requests on keypresses without Rx streams or codegen.',
+        icon: '🔍',
+        localPath: 'examples/riverpod_pub',
+        upstreamUrl:
+            'https://github.com/rrousselGit/riverpod/tree/master/examples/pub',
+        demoUrl: null,
+      ),
+      (
+        title: 'Marvel Character Browser',
+        tag: 'rrousselGit/riverpod',
+        desc:
+            'Marvel character browser with search, pagination, and details view.',
+        dx: 'Demonstrates clean BlocSignal character pagination and widget tree scope injection via BlocSignalProvider.value.',
+        icon: '🦸',
+        localPath: 'examples/riverpod_marvel',
+        upstreamUrl:
+            'https://github.com/rrousselGit/riverpod/tree/master/examples/marvel',
+        demoUrl: null,
+      ),
+    ];
+
     return section(
         id: 'ported-examples',
         classes: 'catalog-section standalone-section',
@@ -207,7 +256,7 @@ class PortedExamplesSection extends StatelessComponent {
                 [Component.text('Ported Benchmark Examples')]),
             p(classes: 'section-subtitle', [
               Component.text(
-                  'Coming from BLoC or Signals? Explore these 17 side-by-side benchmark ports showing how BlocSignal simplifies existing state management patterns.'),
+                  'Coming from BLoC, Signals, or Riverpod? Explore these 20 side-by-side benchmark ports showing how BlocSignal simplifies existing state management patterns.'),
             ]),
 
             // Section 1: felangel/bloc Ports
@@ -262,6 +311,54 @@ class PortedExamplesSection extends StatelessComponent {
                     span(classes: 'card-icon', [Component.text(ex.icon)]),
                     span(
                         classes: 'card-version tag-signals',
+                        [Component.text(ex.tag)]),
+                  ]),
+                  h3(classes: 'card-title', [Component.text(ex.title)]),
+                  p(classes: 'card-desc', [Component.text(ex.desc)]),
+                  div(classes: 'card-dx', [
+                    strong([Component.text('💡 BlocSignal DX Gain: ')]),
+                    span([Component.text(ex.dx)]),
+                  ]),
+                  div(classes: 'card-links-row', [
+                    if (ex.demoUrl != null) ...[
+                      a(
+                        href: ex.demoUrl!,
+                        classes: 'card-link demo-link',
+                        [Component.text('🎮 Play Web Demo →')],
+                      ),
+                      span([Component.text(' • ')]),
+                    ],
+                    a(
+                      href:
+                          'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.localPath}',
+                      target: Target.blank,
+                      classes: 'card-link',
+                      [Component.text('BlocSignal Source →')],
+                    ),
+                    span([Component.text(' • ')]),
+                    a(
+                      href: ex.upstreamUrl,
+                      target: Target.blank,
+                      classes: 'card-link upstream-link',
+                      [Component.text('Original Source ↗')],
+                    ),
+                  ]),
+                ]),
+            ]),
+
+            div(classes: 'spacer-vertical', []),
+
+            // Section 3: rrousselGit/riverpod Ports
+            h3(classes: 'subsection-title', [
+              Component.text('Ports from rrousselGit/riverpod (3 Applications)')
+            ]),
+            div(classes: 'package-grid', [
+              for (final ex in riverpodPorts)
+                div(classes: 'package-card', [
+                  div(classes: 'card-header', [
+                    span(classes: 'card-icon', [Component.text(ex.icon)]),
+                    span(
+                        classes: 'card-version tag-riverpod',
                         [Component.text(ex.tag)]),
                   ]),
                   h3(classes: 'card-title', [Component.text(ex.title)]),

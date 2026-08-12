@@ -29,7 +29,8 @@ jobs:
       - name: Execute Gemini Code Review
         uses: actions/github-script@v7
         env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || secrets.GITHUB_ACTION }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+
         with:
           script: |
             const fs = require('fs');

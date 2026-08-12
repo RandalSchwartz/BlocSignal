@@ -1,6 +1,11 @@
 # Changelog
 
+## 1.0.0+1
+
+- Maintenance patch release for pub.dev package score re-analysis.
+
 ## 1.0.0
+
 
 - Official 1.0.0 production release.
 - Update `bloc_signals` dependency constraint to `^1.0.0`.

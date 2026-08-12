@@ -24,7 +24,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_jaspr',
-        version: '1.0.0',
+        version: '1.0.0+1',
         desc:
             'Jaspr web component integration, InheritedComponent providers, builders, listeners, and selectors.',
         icon: '🌐',
@@ -32,7 +32,7 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_riverpod',
-        version: '1.0.0',
+        version: '1.0.0+1',
         desc:
             'Bidirectional Riverpod 2 & 3 interop adapters (toBlocSignal / toProvider).',
         icon: '🌊',
@@ -56,12 +56,13 @@ class PackageCatalog extends StatelessComponent {
       ),
       (
         name: 'bloc_signals_otel',
-        version: '1.0.0',
+        version: '1.0.0+1',
         desc:
             'OpenTelemetry lifecycle tracing, transition metrics, and distributed span correlation.',
         icon: '🔭',
         pubUrl: 'https://pub.dev/packages/bloc_signals_otel',
       ),
+
       (
         name: 'bloc_signals_devtools',
         version: '1.0.0',

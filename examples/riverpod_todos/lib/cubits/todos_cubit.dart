@@ -1,5 +1,7 @@
 import 'package:bloc_signals/bloc_signals.dart';
+import 'package:flutter/foundation.dart';
 import 'package:signals_core/signals_core.dart';
+
 import '../models/todo.dart';
 
 /// Cubit managing a collection of [Todo]s.
@@ -9,7 +11,8 @@ import '../models/todo.dart';
 class TodosCubit extends CubitSignal<List<Todo>> {
   /// Creates a [TodosCubit] with optional [initialTodos].
   TodosCubit([List<Todo> initialTodos = const []])
-      : super(initialState: initialTodos) {
+      : super(initialState: initialTodos, equals: listEquals) {
+
     // Derived signal: Active filter
     filter = signal(TodoFilter.all);
 

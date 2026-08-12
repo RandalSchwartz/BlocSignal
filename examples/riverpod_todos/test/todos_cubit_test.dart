@@ -74,5 +74,23 @@ void main() {
       cubit.toggleAll(); // All are completed, so uncompletes all
       expect(cubit.completedCount.value, equals(0));
     });
+
+    test('listEquals comparator de-duplicates emissions for identical content',
+        () {
+      var emitCount = 0;
+      final dispose = cubit.state.subscribe((_) => emitCount++);
+      addTearDown(dispose);
+      expect(emitCount, equals(1)); // Initial callback on subscription
+
+      final currentContent = List<Todo>.from(cubit.stateValue);
+      cubit.addTodo(''); // Empty description is ignored
+      expect(emitCount, equals(1));
+
+      // Emitting a new list instance with identical items is ignored via listEquals
+      cubit.emit(currentContent);
+      expect(emitCount, equals(1));
+    });
+
   });
 }
+

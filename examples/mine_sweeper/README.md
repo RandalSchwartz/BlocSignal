@@ -11,6 +11,10 @@ A complete, responsive Minesweeper game built with Flutter, `BlocSignal`, and `H
 - **Three Difficulty Levels**: Beginner (9x9, 10 mines), Intermediate (16x16, 40 mines), and Expert (16x30, 99 mines).
 - **Safe First Click**: Guarantees the first click and its immediate neighbors are never mines.
 
+## 🌐 Live Web Demo
+
+- Play the live web version on [blocsignal.dev/minesweeper](https://blocsignal.dev/minesweeper).
+
 ## 🚀 Running the Example
 
 ```bash

@@ -4,3 +4,5 @@ linter:
     - use_declaring_parameters
     - unnecessary_type_name_in_constructor
     - unnecessary_primary_constructor_body
+    - simplify_variable_pattern
+    - use_named_constants

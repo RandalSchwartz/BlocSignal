@@ -19,3 +19,5 @@ linter:
     use_declaring_parameters: true
     unnecessary_type_name_in_constructor: true
     unnecessary_primary_constructor_body: true
+    simplify_variable_pattern: true
+    use_named_constants: true

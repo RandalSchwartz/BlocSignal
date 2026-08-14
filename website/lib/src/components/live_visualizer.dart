@@ -60,12 +60,6 @@ class _LiveVisualizerState extends State<LiveVisualizer> {
       return 'ZERO';
     });
 
-    _bloc.state.subscribe((val) {
-      if (mounted) {
-        setState(() {});
-      }
-    });
-
     final now = DateTime.now();
     final timeStr = _formatTime(now);
     _logs.add('[$timeStr] 🚀 LiveCounterBloc initialized with initialState: 0');

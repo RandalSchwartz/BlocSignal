@@ -10,7 +10,7 @@
 | :--- | :--- |
 | **`BlocSignalProvider<T>`** | Provides a `BlocSignal` or `CubitSignal` instance down the Jaspr component tree via `InheritedComponent`. Supports `lazy:` creation and `.value` injection. |
 | **`MultiBlocSignalProvider`** | Combines multiple `BlocSignalProvider` instances into a single linear component hierarchy. |
-| **`BlocSignalBuilder<T, S>`** | Rebuilds Jaspr components dynamically whenever container state updates. |
+| **`BlocSignalBuilder<T, S>`** | Rebuilds Jaspr components dynamically whenever container state updates with automatic subscription teardown. |
 | **`BlocSignalListener<T, S>`** | Fires side-effect callbacks (such as notifications or JS interop calls) on state updates with optional `listenWhen` predicate filtering. |
 | **`BlocSignalConsumer<T, S>`** | Combines `BlocSignalBuilder` and `BlocSignalListener`. |
 | **`BlocSignalSelector<T, S, V>`** | Subscribes to fine-grained computed state slices and rebuilds only when selection changes. |
@@ -23,6 +23,39 @@
 - **`context.read<T>()`**: Reads container instance without registering a component rebuild dependency.
 - **`context.watch<T>()`**: Listens to provider updates and rebuilds component on container reference swap.
 - **`context.select<T, R>(selector)`**: Subscribes to a computed state derivation and marks component dirty only when selection changes.
+
+---
+
+## 🛡️ Best Practices & Anti-Patterns
+
+### 1. Prefer Declarative Builders Over Raw `.subscribe()` in `StatefulComponent`
+* **Anti-Pattern (Double `setState` & Unhandled Subscriptions)**:
+  ```dart
+  // ❌ AVOID: Double-triggering setState and unhandled subscription closures
+  @override
+  void initState() {
+    super.initState();
+    _bloc.state.subscribe((val) {
+      if (mounted) setState(() {}); // Fires redundant setState alongside onClick
+    });
+  }
+  ```
+  Calling `_bloc.state.subscribe(...)` manually inside `initState` causes:
+  1. **Double Re-renders**: UI handlers (like `onClick`) calling `setState()` alongside `_bloc.add()` trigger two back-to-back framework rebuild passes on every event.
+  2. **Batch UI Thrashing**: High-frequency loops or benchmarks (e.g. 1,000 events) force 1,000 individual `setState()` calls during the loop.
+  3. **Resource Retain**: The subscription handle returned by `.subscribe()` must be captured and cancelled in `dispose()`.
+
+* **Idiomatic Approach**:
+  Use `BlocSignalBuilder` or `BlocSignalBuilder.value` to let the framework manage subscription lifecycle and dirty flags automatically:
+  ```dart
+  // ✅ RECOMMENDED: Declarative binding with automatic lifecycle teardown
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalBuilder<CounterCubit, int>(
+      builder: (context, count) => h1([Component.text('Count: $count')]),
+    );
+  }
+  ```
 
 ---
 

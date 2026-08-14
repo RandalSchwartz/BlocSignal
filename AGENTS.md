@@ -324,4 +324,10 @@ When designing mobile drawers, modals, or fixed overlay panels nested inside sti
 * **Containing Block Trap**: In the CSS specification, any ancestor element with `backdrop-filter` or `transform` creates a new containing block for `position: fixed` children, causing `position: fixed; inset: 0;` to resolve relative to the ancestor's box rather than the viewport.
 * **Full-Viewport Protection**: To prevent fixed overlays from getting constrained to navbar heights, explicitly specify `width: 100vw; height: 100vh; height: 100dvh;` on `.nav-drawer-backdrop` and `.nav-drawer-panel` with high z-indices (`10001+`).
 
+### 38. High-Frequency Micro-Benchmarks & UI Re-render Decoupling
+When building in-browser or UI benchmark runners (e.g. 1,000 synchronous event loops):
+* **Decouple Event Loops from Per-Event `setState`**: In synchronous reactive architectures (`BlocSignal`), firing `add(event)` in a loop executes immediately in the current frame. Avoid attaching raw `.subscribe((_) => setState())` handlers that trigger framework component rebuilds on every individual iteration.
+* **Batch Update Pattern**: Allow the loop to execute cleanly in memory under `Stopwatch` timing, then invoke a single `setState()` at the conclusion of the batch to update metrics, logs, and derived view states without browser UI thrashing.
+
+
 

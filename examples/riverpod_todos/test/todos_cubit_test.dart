@@ -90,7 +90,5 @@ void main() {
       cubit.emit(currentContent);
       expect(emitCount, equals(1));
     });
-
   });
 }
-

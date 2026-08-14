@@ -1,17 +1,14 @@
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
-class ExamplesSection extends StatelessComponent {
-  const ExamplesSection({super.key});
-
+class const ExamplesSection({super.key}) extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     final nativeShowcase = [
       (
         title: 'Auth & Session Flow',
         tag: 'Persistence & Hydration',
-        desc:
-            'HydratedCubitSignal auth state restoration, token storage, and session lifecycle across app restarts.',
+        desc: 'HydratedCubitSignal auth state restoration, token storage, and session lifecycle across app restarts.',
         icon: '🔐',
         path: 'examples/auth_flow',
         webLink: null,
@@ -19,8 +16,7 @@ class ExamplesSection extends StatelessComponent {
       (
         title: 'Shopping Cart & Catalog',
         tag: 'State & Selectors',
-        desc:
-            'CatalogCubit, CartBloc, and fine-grained BlocSignalSelector rebuild optimizations.',
+        desc: 'CatalogCubit, CartBloc, and fine-grained BlocSignalSelector rebuild optimizations.',
         icon: '🛒',
         path: 'examples/shopping_cart',
         webLink: null,
@@ -28,8 +24,7 @@ class ExamplesSection extends StatelessComponent {
       (
         title: 'Infinite Scroll Search',
         tag: 'Streamless Concurrency',
-        desc:
-            'Streamless droppable() list throttling & restartable() search input debouncing without RxStreams.',
+        desc: 'Streamless droppable() list throttling & restartable() search input debouncing without RxStreams.',
         icon: '📜',
         path: 'examples/infinite_scroll',
         webLink: null,
@@ -37,8 +32,7 @@ class ExamplesSection extends StatelessComponent {
       (
         title: 'Flutter Counter',
         tag: 'Core Primitives',
-        desc:
-            'Side-by-side demonstration of CubitSignal vs BlocSignal with zero microtask latency.',
+        desc: 'Side-by-side demonstration of CubitSignal vs BlocSignal with zero microtask latency.',
         icon: '🔢',
         path: 'examples/flutter_counter',
         webLink: null,
@@ -46,8 +40,7 @@ class ExamplesSection extends StatelessComponent {
       (
         title: 'Minesweeper Puzzle Game',
         tag: 'Sealed Events & Hydration',
-        desc:
-            'HydratedBlocSignal puzzle game with Dart 3 pattern matching, safe first click & BFS flood fill.',
+        desc: 'HydratedBlocSignal puzzle game with Dart 3 pattern matching, safe first click & BFS flood fill.',
         icon: '💣',
         path: 'examples/mine_sweeper',
         webLink: '/minesweeper',
@@ -56,12 +49,13 @@ class ExamplesSection extends StatelessComponent {
 
     return section(id: 'examples', classes: 'catalog-section', [
       div(classes: 'container', [
-        h2(
-            classes: 'section-title',
-            [Component.text('Native Showcase Applications')]),
+        h2(classes: 'section-title', [
+          Component.text('Native Showcase Applications'),
+        ]),
         p(classes: 'section-subtitle', [
           Component.text(
-              'Real-world applications built natively for BlocSignal demonstrating production architecture, hydration, and fine-grained selector rebuilds.'),
+            'Real-world applications built natively for BlocSignal demonstrating production architecture, hydration, and fine-grained selector rebuilds.',
+          ),
         ]),
         div(classes: 'package-grid', [
           for (final ex in nativeShowcase)
@@ -74,11 +68,9 @@ class ExamplesSection extends StatelessComponent {
               p(classes: 'card-desc', [Component.text(ex.desc)]),
               div(classes: 'card-links-row', [
                 if (ex.webLink != null) ...[
-                  a(
-                    href: ex.webLink!,
-                    classes: 'card-link demo-link',
-                    [Component.text('🎮 Play Interactive Web Demo →')],
-                  ),
+                  a(href: ex.webLink!, classes: 'card-link demo-link', [
+                    Component.text('🎮 Play Interactive Web Demo →'),
+                  ]),
                   span([Component.text(' • ')]),
                 ],
                 a(

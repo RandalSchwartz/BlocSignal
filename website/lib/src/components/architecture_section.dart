@@ -1,30 +1,19 @@
 import 'dart:async';
+
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
-class ArchStageData {
-  const ArchStageData({
-    required this.id,
-    required this.number,
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.summary,
-    required this.details,
-    required this.code,
-    required this.benefits,
-  });
-
-  final String id;
-  final String number;
-  final String title;
-  final String subtitle;
-  final String icon;
-  final String summary;
-  final String details;
-  final String code;
-  final List<String> benefits;
-}
+class const ArchStageData({
+  required final String id,
+  required final String number,
+  required final String title,
+  required final String subtitle,
+  required final String icon,
+  required final String summary,
+  required final String details,
+  required final String code,
+  required final List<String> benefits,
+}) {}
 
 const List<ArchStageData> _archStages = [
   ArchStageData(
@@ -35,8 +24,7 @@ const List<ArchStageData> _archStages = [
     icon: '📥',
     summary:
         'Events enter through bloc.add() with streamless Mutex coordination.',
-    details:
-        'BlocSignal replaces heavy Rx stream transformers with pure Dart higher-order functions and streamless Mutex locks. Events are dispatched synchronously and coordinated using customizable transformers (sequential, restartable, droppable) without stream controller allocations.',
+    details: 'BlocSignal replaces heavy Rx stream transformers with pure Dart higher-order functions and streamless Mutex locks. Events are dispatched synchronously and coordinated using customizable transformers (sequential, restartable, droppable) without stream controller allocations.',
     code: '''// Register event handlers with streamless concurrency transformers
 on<FetchUserEvent>(
   (event, emit) async {
@@ -59,8 +47,7 @@ on<FetchUserEvent>(
     icon: '⚙️',
     summary:
         'emit(newState) updates state synchronously in the exact same frame.',
-    details:
-        'Unlike classic BLoC where state updates are queued onto asynchronous microtasks, BlocSignal executes emit() synchronously. Transitions capture zone context for seamless telemetry correlation with zero signature changes.',
+    details: 'Unlike classic BLoC where state updates are queued onto asynchronous microtasks, BlocSignal executes emit() synchronously. Transitions capture zone context for seamless telemetry correlation with zero signature changes.',
     code: '''class UserBloc extends BlocSignal<UserEvent, UserState> {
   UserBloc() : super(initialState: UserState.initial()) {
     on<IncrementEvent>((event, emit) {
@@ -81,10 +68,8 @@ on<FetchUserEvent>(
     title: 'Fine-Grained Reactive Signal Graph',
     subtitle: 'Preact Signals v7 Core',
     icon: '⚡',
-    summary:
-        'Underlying Preact signals graph de-duplicates states & drives computed derivations.',
-    details:
-        'BlocSignal.state exposes a ReadonlySignal<S>. Calling emit() updates the signal graph directly. Identical states are automatically de-duplicated using == equality, and fine-grained computed() signals update instantly without triggering parent component rebuilds.',
+    summary: 'Underlying Preact signals graph de-duplicates states & drives computed derivations.',
+    details: 'BlocSignal.state exposes a ReadonlySignal<S>. Calling emit() updates the signal graph directly. Identical states are automatically de-duplicated using == equality, and fine-grained computed() signals update instantly without triggering parent component rebuilds.',
     code: '''// State is backed by Preact Signals v7 primitive
 final userBloc = UserBloc();
 
@@ -105,10 +90,8 @@ userBloc.emit(userBloc.stateValue); // Zero downstream notifications''',
     title: 'Universal Ecosystem Consumers',
     subtitle: 'Flutter • Jaspr • Riverpod • OTel',
     icon: '🌐',
-    summary:
-        'Universal adapters connect state to UI frameworks, persistence, and telemetry.',
-    details:
-        'A single core architecture powers all Dart environments. First-class packages connect BlocSignal to Flutter UI widgets, Jaspr web components, Riverpod providers, Hydrated state storage, Replay history stacks, and OpenTelemetry distributed spans.',
+    summary: 'Universal adapters connect state to UI frameworks, persistence, and telemetry.',
+    details: 'A single core architecture powers all Dart environments. First-class packages connect BlocSignal to Flutter UI widgets, Jaspr web components, Riverpod providers, Hydrated state storage, Replay history stacks, and OpenTelemetry distributed spans.',
     code: '''// Flutter UI Binding
 BlocSignalBuilder<UserBloc, UserState>(
   builder: (context, state) => Text('User: \${state.name}'),
@@ -127,14 +110,12 @@ class HydratedCounter extends HydratedCubitSignal<int> { ... }''',
   ),
 ];
 
-class ArchitectureSection extends StatefulComponent {
-  const ArchitectureSection({super.key});
-
+class const ArchitectureSection({super.key}) extends StatefulComponent {
   @override
   State<ArchitectureSection> createState() => _ArchitectureSectionState();
 }
 
-class _ArchitectureSectionState extends State<ArchitectureSection> {
+class _ArchitectureSectionState() extends State<ArchitectureSection> {
   int _selectedStageIndex = 0;
   int? _simulatedStageIndex;
   Timer? _simulationTimer;
@@ -168,7 +149,9 @@ class _ArchitectureSectionState extends State<ArchitectureSection> {
 
     var currentStep = 0;
     _simulationTimer?.cancel();
-    _simulationTimer = Timer.periodic(const Duration(milliseconds: 1400), (timer) {
+    _simulationTimer = Timer.periodic(const Duration(milliseconds: 1400), (
+      timer,
+    ) {
       currentStep++;
       if (currentStep >= _archStages.length) {
         timer.cancel();
@@ -310,7 +293,9 @@ class _ArchitectureSectionState extends State<ArchitectureSection> {
             div(classes: 'inspector-explanation-col', [
               h4(classes: 'col-heading', [Component.text('How It Works')]),
               p(classes: 'col-text', [Component.text(currentStage.details)]),
-              h4(classes: 'col-heading', [Component.text('Key Architectural Advantages')]),
+              h4(classes: 'col-heading', [
+                Component.text('Key Architectural Advantages'),
+              ]),
               ul(classes: 'benefits-list', [
                 for (final benefit in currentStage.benefits)
                   li(classes: 'benefit-item', [
@@ -328,7 +313,9 @@ class _ArchitectureSectionState extends State<ArchitectureSection> {
                 span(classes: 'code-lang-label', [Component.text('Dart')]),
               ]),
               pre(classes: 'code-pre', [
-                code(classes: 'code-content', [Component.text(currentStage.code)]),
+                code(classes: 'code-content', [
+                  Component.text(currentStage.code),
+                ]),
               ]),
             ]),
           ]),

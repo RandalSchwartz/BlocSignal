@@ -4,32 +4,33 @@ import 'package:benchmark_harness/benchmark_harness.dart';
 import 'package:bloc/bloc.dart' as classic;
 
 /// Classic BLoC event hierarchy.
-sealed class ClassicCounterEvent {}
+sealed class ClassicCounterEvent() {}
 
 /// Classic increment event.
-final class ClassicIncrement extends ClassicCounterEvent {}
+final class ClassicIncrement() extends ClassicCounterEvent {}
 
 /// Classic Stream-based BLoC.
-final class ClassicCounterBloc extends classic.Bloc<ClassicCounterEvent, int> {
+final class ClassicCounterBloc()
+    extends classic.Bloc<ClassicCounterEvent, int> {
   /// Creates a [ClassicCounterBloc].
-  ClassicCounterBloc() : super(0) {
+  this : super(0) {
     on<ClassicIncrement>((event, emit) => emit(state + 1));
   }
 }
 
 /// Classic Cubit.
-final class ClassicCounterCubit extends classic.Cubit<int> {
+final class ClassicCounterCubit() extends classic.Cubit<int> {
   /// Creates a [ClassicCounterCubit].
-  ClassicCounterCubit() : super(0);
+  this : super(0);
 
   /// Increments state.
   void increment() => emit(state + 1);
 }
 
 /// Measures throughput for classic Stream BLoC event dispatches.
-class ClassicBlocThroughputBenchmark extends BenchmarkBase {
+class ClassicBlocThroughputBenchmark() extends BenchmarkBase {
   /// Creates a [ClassicBlocThroughputBenchmark].
-  ClassicBlocThroughputBenchmark() : super('ClassicBloc.add');
+  this : super('ClassicBloc.add');
 
   /// Active container instance.
   late ClassicCounterBloc bloc;
@@ -53,9 +54,9 @@ class ClassicBlocThroughputBenchmark extends BenchmarkBase {
 }
 
 /// Measures throughput for classic BLoC with active listener.
-class ClassicBlocWithListenerBenchmark extends BenchmarkBase {
+class ClassicBlocWithListenerBenchmark() extends BenchmarkBase {
   /// Creates a [ClassicBlocWithListenerBenchmark].
-  ClassicBlocWithListenerBenchmark() : super('ClassicBloc + Listener');
+  this : super('ClassicBloc + Listener');
 
   /// Active container instance.
   late ClassicCounterBloc bloc;
@@ -82,9 +83,9 @@ class ClassicBlocWithListenerBenchmark extends BenchmarkBase {
 }
 
 /// Measures true end-to-end throughput for classic BLoC with drained stream.
-class ClassicBlocDrainedBenchmark extends AsyncBenchmarkBase {
+class ClassicBlocDrainedBenchmark() extends AsyncBenchmarkBase {
   /// Creates a [ClassicBlocDrainedBenchmark].
-  ClassicBlocDrainedBenchmark() : super('ClassicBloc (Drained Stream)');
+  this : super('ClassicBloc (Drained Stream)');
 
   /// Active container instance.
   late ClassicCounterBloc bloc;
@@ -110,9 +111,9 @@ class ClassicBlocDrainedBenchmark extends AsyncBenchmarkBase {
 }
 
 /// Measures throughput for classic Cubit state emissions.
-class ClassicCubitThroughputBenchmark extends BenchmarkBase {
+class ClassicCubitThroughputBenchmark() extends BenchmarkBase {
   /// Creates a [ClassicCubitThroughputBenchmark].
-  ClassicCubitThroughputBenchmark() : super('ClassicCubit.emit');
+  this : super('ClassicCubit.emit');
 
   /// Active container instance.
   late ClassicCounterCubit cubit;

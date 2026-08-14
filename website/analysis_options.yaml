@@ -1,0 +1,6 @@
+linter:
+  rules:
+    - use_primary_constructors
+    - use_declaring_parameters
+    - unnecessary_type_name_in_constructor
+    - unnecessary_primary_constructor_body

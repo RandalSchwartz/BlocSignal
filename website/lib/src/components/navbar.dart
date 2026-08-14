@@ -1,16 +1,13 @@
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
-class Navbar extends StatefulComponent {
-  const Navbar({this.currentPath = '/', super.key});
-
-  final String currentPath;
-
+class const Navbar({final String currentPath = '/', super.key})
+    extends StatefulComponent {
   @override
   State<Navbar> createState() => _NavbarState();
 }
 
-class _NavbarState extends State<Navbar> {
+class _NavbarState() extends State<Navbar> {
   bool _isOpen = false;
 
   void _toggleDrawer() {
@@ -31,21 +28,16 @@ class _NavbarState extends State<Navbar> {
   Component build(BuildContext context) {
     return header(classes: 'navbar', [
       div(classes: 'container nav-content', [
-        a(
-          href: '/',
-          classes: 'brand',
-          onClick: _closeDrawer,
-          [
-            img(
-              src: '/assets/logo.png',
-              alt: 'BlocSignal Logo',
-              width: 36,
-              height: 36,
-            ),
-            span(classes: 'brand-title', [Component.text('BlocSignal')]),
-            span(classes: 'brand-badge', [Component.text('v1.0.0')]),
-          ],
-        ),
+        a(href: '/', classes: 'brand', onClick: _closeDrawer, [
+          img(
+            src: '/assets/logo.png',
+            alt: 'BlocSignal Logo',
+            width: 36,
+            height: 36,
+          ),
+          span(classes: 'brand-title', [Component.text('BlocSignal')]),
+          span(classes: 'brand-badge', [Component.text('v1.0.0')]),
+        ]),
 
         // Desktop Navigation Links
         nav(classes: 'nav-links nav-desktop', [
@@ -54,10 +46,7 @@ class _NavbarState extends State<Navbar> {
             classes: component.currentPath == '/' ? 'nav-active' : '',
             [Component.text('Home')],
           ),
-          a(
-            href: '/#architecture',
-            [Component.text('Architecture')],
-          ),
+          a(href: '/#architecture', [Component.text('Architecture')]),
           a(
             href: '/showcase',
             classes: component.currentPath == '/showcase' ? 'nav-active' : '',
@@ -65,17 +54,23 @@ class _NavbarState extends State<Navbar> {
           ),
           a(
             href: '/ported-examples',
-            classes: component.currentPath == '/ported-examples' ? 'nav-active' : '',
+            classes: component.currentPath == '/ported-examples'
+                ? 'nav-active'
+                : '',
             [Component.text('Ported Examples')],
           ),
           a(
             href: '/minesweeper',
-            classes: component.currentPath == '/minesweeper' ? 'nav-active' : '',
+            classes: component.currentPath == '/minesweeper'
+                ? 'nav-active'
+                : '',
             [Component.text('🎮 Minesweeper')],
           ),
           a(
             href: '/publications',
-            classes: component.currentPath == '/publications' ? 'nav-active' : '',
+            classes: component.currentPath == '/publications'
+                ? 'nav-active'
+                : '',
             [Component.text('📚 Publications')],
           ),
           a(
@@ -116,10 +111,7 @@ class _NavbarState extends State<Navbar> {
         ),
         nav(
           classes: 'nav-drawer-panel',
-          attributes: {
-            'role': 'dialog',
-            'aria-label': 'Mobile Navigation',
-          },
+          attributes: {'role': 'dialog', 'aria-label': 'Mobile Navigation'},
           [
             div(classes: 'drawer-header', [
               span(classes: 'drawer-title', [Component.text('Navigation')]),
@@ -147,7 +139,9 @@ class _NavbarState extends State<Navbar> {
                 onClick: _closeDrawer,
                 [
                   span(classes: 'drawer-link-icon', [Component.text('⚡')]),
-                  span(classes: 'drawer-link-label', [Component.text('Architecture')]),
+                  span(classes: 'drawer-link-label', [
+                    Component.text('Architecture'),
+                  ]),
                 ],
               ),
               a(
@@ -157,7 +151,9 @@ class _NavbarState extends State<Navbar> {
                 onClick: _closeDrawer,
                 [
                   span(classes: 'drawer-link-icon', [Component.text('✨')]),
-                  span(classes: 'drawer-link-label', [Component.text('Showcase')]),
+                  span(classes: 'drawer-link-label', [
+                    Component.text('Showcase'),
+                  ]),
                 ],
               ),
               a(
@@ -167,7 +163,9 @@ class _NavbarState extends State<Navbar> {
                 onClick: _closeDrawer,
                 [
                   span(classes: 'drawer-link-icon', [Component.text('🔄')]),
-                  span(classes: 'drawer-link-label', [Component.text('Ported Examples')]),
+                  span(classes: 'drawer-link-label', [
+                    Component.text('Ported Examples'),
+                  ]),
                 ],
               ),
               a(
@@ -177,7 +175,9 @@ class _NavbarState extends State<Navbar> {
                 onClick: _closeDrawer,
                 [
                   span(classes: 'drawer-link-icon', [Component.text('🎮')]),
-                  span(classes: 'drawer-link-label', [Component.text('Minesweeper')]),
+                  span(classes: 'drawer-link-label', [
+                    Component.text('Minesweeper'),
+                  ]),
                 ],
               ),
               a(
@@ -187,7 +187,9 @@ class _NavbarState extends State<Navbar> {
                 onClick: _closeDrawer,
                 [
                   span(classes: 'drawer-link-icon', [Component.text('📚')]),
-                  span(classes: 'drawer-link-label', [Component.text('Publications')]),
+                  span(classes: 'drawer-link-label', [
+                    Component.text('Publications'),
+                  ]),
                 ],
               ),
             ]),

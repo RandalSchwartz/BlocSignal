@@ -18,43 +18,32 @@ void _trackAnalytics(String eventName, String difficulty, [int val = 0]) {
   } catch (_) {}
 }
 
-enum Difficulty {
+enum Difficulty({
+  required final int rows,
+  required final int cols,
+  required final int mines,
+  required final String name,
+}) {
   beginner(rows: 9, cols: 9, mines: 10, name: 'Beginner'),
   intermediate(rows: 12, cols: 12, mines: 20, name: 'Intermediate'),
   expert(rows: 16, cols: 16, mines: 40, name: 'Expert');
-
-  const Difficulty({
-    required this.rows,
-    required this.cols,
-    required this.mines,
-    required this.name,
-  });
-
-  final int rows;
-  final int cols;
-  final int mines;
-  final String name;
 }
 
-enum GameStatus { initial, playing, won, lost }
+enum GameStatus() {
+  initial,
+  playing,
+  won,
+  lost
+}
 
-class MinesweeperCell {
-  const MinesweeperCell({
-    required this.row,
-    required this.col,
-    this.hasMine = false,
-    this.isRevealed = false,
-    this.isFlagged = false,
-    this.adjacentMines = 0,
-  });
-
-  final int row;
-  final int col;
-  final bool hasMine;
-  final bool isRevealed;
-  final bool isFlagged;
-  final int adjacentMines;
-
+class const MinesweeperCell({
+  required final int row,
+  required final int col,
+  final bool hasMine = false,
+  final bool isRevealed = false,
+  final bool isFlagged = false,
+  final int adjacentMines = 0,
+}) {
   MinesweeperCell copyWith({
     bool? hasMine,
     bool? isRevealed,
@@ -72,15 +61,15 @@ class MinesweeperCell {
   }
 
   Map<String, dynamic> toJson() => {
-        'row': row,
-        'col': col,
-        'hasMine': hasMine,
-        'isRevealed': isRevealed,
-        'isFlagged': isFlagged,
-        'adjacentMines': adjacentMines,
-      };
+    'row': row,
+    'col': col,
+    'hasMine': hasMine,
+    'isRevealed': isRevealed,
+    'isFlagged': isFlagged,
+    'adjacentMines': adjacentMines,
+  };
 
-  factory MinesweeperCell.fromJson(Map<String, dynamic> json) {
+  factory fromJson(Map<String, dynamic> json) {
     return MinesweeperCell(
       row: json['row'] as int,
       col: json['col'] as int,
@@ -92,23 +81,14 @@ class MinesweeperCell {
   }
 }
 
-class MinesweeperState {
-  const MinesweeperState({
-    required this.difficulty,
-    required this.board,
-    required this.status,
-    required this.minesRemaining,
-    required this.timerSeconds,
-    required this.seed,
-  });
-
-  final Difficulty difficulty;
-  final List<List<MinesweeperCell>> board;
-  final GameStatus status;
-  final int minesRemaining;
-  final int timerSeconds;
-  final int seed;
-
+class const MinesweeperState({
+  required final Difficulty difficulty,
+  required final List<List<MinesweeperCell>> board,
+  required final GameStatus status,
+  required final int minesRemaining,
+  required final int timerSeconds,
+  required final int seed,
+}) {
   MinesweeperState copyWith({
     Difficulty? difficulty,
     List<List<MinesweeperCell>>? board,
@@ -128,27 +108,31 @@ class MinesweeperState {
   }
 
   Map<String, dynamic> toJson() => {
-        'difficulty': difficulty.name,
-        'board': board
-            .map((row) => row.map((cell) => cell.toJson()).toList())
-            .toList(),
-        'status': status.name,
-        'minesRemaining': minesRemaining,
-        'timerSeconds': timerSeconds,
-        'seed': seed,
-      };
+    'difficulty': difficulty.name,
+    'board': board
+        .map((row) => row.map((cell) => cell.toJson()).toList())
+        .toList(),
+    'status': status.name,
+    'minesRemaining': minesRemaining,
+    'timerSeconds': timerSeconds,
+    'seed': seed,
+  };
 
-  factory MinesweeperState.fromJson(Map<String, dynamic> json) {
+  factory fromJson(Map<String, dynamic> json) {
     final diff = Difficulty.values.firstWhere(
       (d) => d.name == json['difficulty'],
       orElse: () => Difficulty.beginner,
     );
     final boardJson = json['board'] as List<dynamic>;
     final board = boardJson
-        .map((rowJson) => (rowJson as List<dynamic>)
-            .map((cellJson) =>
-                MinesweeperCell.fromJson(cellJson as Map<String, dynamic>))
-            .toList())
+        .map(
+          (rowJson) => (rowJson as List<dynamic>)
+              .map(
+                (cellJson) =>
+                    MinesweeperCell.fromJson(cellJson as Map<String, dynamic>),
+              )
+              .toList(),
+        )
         .toList();
     final status = GameStatus.values.firstWhere(
       (s) => s.name == json['status'],
@@ -165,11 +149,11 @@ class MinesweeperState {
   }
 }
 
-class MinesweeperCubit extends CubitSignal<MinesweeperState> {
+class MinesweeperCubit({Difficulty difficulty = Difficulty.beginner})
+    extends CubitSignal<MinesweeperState> {
   static const _storageKey = 'blocsignal_minesweeper_state';
 
-  MinesweeperCubit({Difficulty difficulty = Difficulty.beginner})
-      : super(initialState: _loadInitialState(difficulty));
+  this : super(initialState: _loadInitialState(difficulty));
 
   static MinesweeperState _loadInitialState(Difficulty difficulty) {
     try {
@@ -261,8 +245,9 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
     }
 
     final cell = stateValue.board[row][col];
-    final newBoard =
-        stateValue.board.map((r) => r.map((c) => c).toList()).toList();
+    final newBoard = stateValue.board
+        .map((r) => r.map((c) => c).toList())
+        .toList();
 
     // 1. Chording support for already revealed cells with adjacent mines
     if (cell.isRevealed && cell.adjacentMines > 0) {
@@ -287,7 +272,8 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
           if (r < 0 ||
               r >= stateValue.difficulty.rows ||
               c < 0 ||
-              c >= stateValue.difficulty.cols) return;
+              c >= stateValue.difficulty.cols)
+            return;
           final target = newBoard[r][c];
           if (target.isRevealed || target.isFlagged) return;
 
@@ -355,11 +341,17 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
         _persistState(newState);
 
         if (nextStatus == GameStatus.lost) {
-          _trackAnalytics('minesweeper_loss', stateValue.difficulty.name,
-              stateValue.timerSeconds);
+          _trackAnalytics(
+            'minesweeper_loss',
+            stateValue.difficulty.name,
+            stateValue.timerSeconds,
+          );
         } else if (nextStatus == GameStatus.won) {
-          _trackAnalytics('minesweeper_win', stateValue.difficulty.name,
-              stateValue.timerSeconds);
+          _trackAnalytics(
+            'minesweeper_win',
+            stateValue.difficulty.name,
+            stateValue.timerSeconds,
+          );
         }
       }
       return;
@@ -421,8 +413,11 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
       );
       emit(newState);
       _persistState(newState);
-      _trackAnalytics('minesweeper_loss', stateValue.difficulty.name,
-          stateValue.timerSeconds);
+      _trackAnalytics(
+        'minesweeper_loss',
+        stateValue.difficulty.name,
+        stateValue.timerSeconds,
+      );
       return;
     }
 
@@ -430,7 +425,8 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
       if (r < 0 ||
           r >= stateValue.difficulty.rows ||
           c < 0 ||
-          c >= stateValue.difficulty.cols) return;
+          c >= stateValue.difficulty.cols)
+        return;
       final target = newBoard[r][c];
       if (target.isRevealed || target.isFlagged || target.hasMine) return;
 
@@ -459,16 +455,16 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
     }
 
     final nextStatus = hasWon ? GameStatus.won : GameStatus.playing;
-    final newState = stateValue.copyWith(
-      board: newBoard,
-      status: nextStatus,
-    );
+    final newState = stateValue.copyWith(board: newBoard, status: nextStatus);
     emit(newState);
     _persistState(newState);
 
     if (nextStatus == GameStatus.won) {
-      _trackAnalytics('minesweeper_win', stateValue.difficulty.name,
-          stateValue.timerSeconds);
+      _trackAnalytics(
+        'minesweeper_win',
+        stateValue.difficulty.name,
+        stateValue.timerSeconds,
+      );
     }
   }
 
@@ -481,8 +477,9 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
     final cell = stateValue.board[row][col];
     if (cell.isRevealed) return;
 
-    final newBoard =
-        stateValue.board.map((r) => r.map((c) => c).toList()).toList();
+    final newBoard = stateValue.board
+        .map((r) => r.map((c) => c).toList())
+        .toList();
     final newFlagged = !cell.isFlagged;
     newBoard[row][col] = cell.copyWith(isFlagged: newFlagged);
 

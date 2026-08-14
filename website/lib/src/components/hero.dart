@@ -1,16 +1,15 @@
 import 'dart:async';
+
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:web/web.dart' as web;
 
-class HeroBanner extends StatefulComponent {
-  const HeroBanner({super.key});
-
+class const HeroBanner({super.key}) extends StatefulComponent {
   @override
   State<HeroBanner> createState() => _HeroBannerState();
 }
 
-class _HeroBannerState extends State<HeroBanner> {
+class _HeroBannerState() extends State<HeroBanner> {
   String _selectedTab = 'Flutter';
   bool _isCopied = false;
   Timer? _copyTimer;
@@ -75,14 +74,15 @@ class _HeroBannerState extends State<HeroBanner> {
         div(classes: 'hero-badge-tag', [
           span(classes: 'hero-badge-dot', []),
           Component.text(
-              '⚡ v1.1.0 Released — 0ms Latency State Management for Dart & Flutter'),
+            '⚡ v1.1.0 Released — 0ms Latency State Management for Dart & Flutter',
+          ),
         ]),
         h1(classes: 'hero-title', [
           Component.text('The Rigor of BLoC.'),
           br(),
-          span(
-              classes: 'highlight-text',
-              [Component.text('The Flex & Speed of Signal.')]),
+          span(classes: 'highlight-text', [
+            Component.text('The Flex & Speed of Signal.'),
+          ]),
         ]),
         p(classes: 'hero-motto', [
           Component.text(
@@ -90,11 +90,9 @@ class _HeroBannerState extends State<HeroBanner> {
           ),
         ]),
         div(classes: 'hero-actions', [
-          a(
-            href: '#visualizer',
-            classes: 'btn-primary',
-            [Component.text('Try Live Visualizer ⚡')],
-          ),
+          a(href: '#visualizer', classes: 'btn-primary', [
+            Component.text('Try Live Visualizer ⚡'),
+          ]),
           a(
             href: 'https://pub.dev/packages/bloc_signals',
             target: Target.blank,
@@ -173,21 +171,24 @@ emit(LoadedState());  // Queued in Microtask 2 ⏳
                   span(classes: 'feature-bullet', [Component.text('⚠️')]),
                   span([
                     Component.text(
-                        'Asynchronous microtask lag & intermediate frame tearing'),
+                      'Asynchronous microtask lag & intermediate frame tearing',
+                    ),
                   ]),
                 ]),
                 li(classes: 'comp-feature-item negative', [
                   span(classes: 'feature-bullet', [Component.text('⚠️')]),
                   span([
                     Component.text(
-                        'Heavy StreamController heap allocations on every event'),
+                      'Heavy StreamController heap allocations on every event',
+                    ),
                   ]),
                 ]),
                 li(classes: 'comp-feature-item negative', [
                   span(classes: 'feature-bullet', [Component.text('⚠️')]),
                   span([
                     Component.text(
-                        'Complex async Rx streams required for simple state reads'),
+                      'Complex async Rx streams required for simple state reads',
+                    ),
                   ]),
                 ]),
               ]),
@@ -220,21 +221,24 @@ emit(LoadedState());  // Instant UI frame settling!
                   span(classes: 'feature-bullet', [Component.text('✅')]),
                   span([
                     Component.text(
-                        '0ms latency: emits and settles in the exact same call stack'),
+                      '0ms latency: emits and settles in the exact same call stack',
+                    ),
                   ]),
                 ]),
                 li(classes: 'comp-feature-item positive', [
                   span(classes: 'feature-bullet', [Component.text('✅')]),
                   span([
                     Component.text(
-                        'Automatic == equality de-duplication drops redundant builds'),
+                      'Automatic == equality de-duplication drops redundant builds',
+                    ),
                   ]),
                 ]),
                 li(classes: 'comp-feature-item positive', [
                   span(classes: 'feature-bullet', [Component.text('✅')]),
                   span([
                     Component.text(
-                        '100% BLoC API parity: onEvent, onTransition, and OpenTelemetry'),
+                      '100% BLoC API parity: onEvent, onTransition, and OpenTelemetry',
+                    ),
                   ]),
                 ]),
               ]),

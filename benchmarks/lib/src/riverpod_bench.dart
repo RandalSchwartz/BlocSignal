@@ -2,7 +2,7 @@ import 'package:benchmark_harness/benchmark_harness.dart';
 import 'package:riverpod/riverpod.dart';
 
 /// Counter Notifier for Riverpod benchmark.
-final class CounterNotifier extends Notifier<int> {
+final class CounterNotifier() extends Notifier<int> {
   @override
   int build() => 0;
 
@@ -16,9 +16,9 @@ final counterProvider = NotifierProvider<CounterNotifier, int>(
 );
 
 /// Measures throughput for Riverpod state updates via ProviderContainer.
-class RiverpodThroughputBenchmark extends BenchmarkBase {
+class RiverpodThroughputBenchmark() extends BenchmarkBase {
   /// Creates a [RiverpodThroughputBenchmark].
-  RiverpodThroughputBenchmark() : super('Riverpod.Notifier');
+  this : super('Riverpod.Notifier');
 
   /// Active container instance.
   late ProviderContainer container;
@@ -43,9 +43,9 @@ class RiverpodThroughputBenchmark extends BenchmarkBase {
 }
 
 /// Measures throughput for Riverpod with active container listener.
-class RiverpodWithListenerBenchmark extends BenchmarkBase {
+class RiverpodWithListenerBenchmark() extends BenchmarkBase {
   /// Creates a [RiverpodWithListenerBenchmark].
-  RiverpodWithListenerBenchmark() : super('Riverpod + Listener');
+  this : super('Riverpod + Listener');
 
   /// Active container instance.
   late ProviderContainer container;

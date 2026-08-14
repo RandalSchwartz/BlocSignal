@@ -37,14 +37,13 @@ Future<void> main() async {
   // Check if new article is present in list; if not, prepend it
   const newArticleUrl =
       'https://dev.to/gde/from-raw-signals-to-blocsignal-taming-reactivity-for-enterprise-scale-2cmi';
-  final hasNewArticle =
-      articles.any((a) => (a['canonical_url'] ?? a['url']) == newArticleUrl);
+  final hasNewArticle = articles.any(
+    (a) => (a['canonical_url'] ?? a['url']) == newArticleUrl,
+  );
   if (!hasNewArticle) {
     articles.insert(0, {
-      'title':
-          'From Raw Signals to BlocSignal: Taming Reactivity for Enterprise Scale',
-      'description':
-          'Learn how BlocSignal encapsulates raw signals inside BLoC & Cubit containers to bring dispatch rigor, event hierarchies, and 0ms synchronous speed to Flutter and Jaspr apps.',
+      'title': 'From Raw Signals to BlocSignal: Taming Reactivity for Enterprise Scale',
+      'description': 'Learn how BlocSignal encapsulates raw signals inside BLoC & Cubit containers to bring dispatch rigor, event hierarchies, and 0ms synchronous speed to Flutter and Jaspr apps.',
       'url': newArticleUrl,
       'canonical_url': newArticleUrl,
       'readable_publish_date': 'Aug 8',
@@ -61,34 +60,25 @@ Future<void> main() async {
   buffer.writeln("import '../components/footer.dart';");
   buffer.writeln("import '../components/navbar.dart';");
   buffer.writeln();
-  buffer.writeln('class PublicationItem {');
-  buffer.writeln('  final String title;');
-  buffer.writeln('  final String description;');
-  buffer.writeln('  final String url;');
-  buffer.writeln('  final String date;');
-  buffer.writeln('  final String readTime;');
-  buffer.writeln('  final String category;');
-  buffer.writeln("  final String type; // 'Video' or 'Article'");
-  buffer.writeln('  final List<String> tags;');
-  buffer.writeln();
-  buffer.writeln('  const PublicationItem({');
-  buffer.writeln('    required this.title,');
-  buffer.writeln('    required this.description,');
-  buffer.writeln('    required this.url,');
-  buffer.writeln('    required this.date,');
-  buffer.writeln('    required this.readTime,');
-  buffer.writeln('    required this.category,');
-  buffer.writeln('    required this.type,');
-  buffer.writeln('    required this.tags,');
-  buffer.writeln('  });');
-  buffer.writeln('}');
+  buffer.writeln('class const PublicationItem({');
+  buffer.writeln('  required final String title,');
+  buffer.writeln('  required final String description,');
+  buffer.writeln('  required final String url,');
+  buffer.writeln('  required final String date,');
+  buffer.writeln('  required final String readTime,');
+  buffer.writeln('  required final String category,');
+  buffer.writeln('  required final String type,');
+  buffer.writeln('  required final List<String> tags,');
+  buffer.writeln('});');
   buffer.writeln();
   buffer.writeln('const List<PublicationItem> _publications = [');
 
   for (final article in articles) {
     final title = (article['title'] as String).replaceAll("'", "\\'");
-    final description =
-        (article['description'] as String).replaceAll("'", "\\'");
+    final description = (article['description'] as String).replaceAll(
+      "'",
+      "\\'",
+    );
     final url = article['canonical_url'] ?? article['url'];
     final readTime = '${article['reading_time_minutes']} min read';
     String publishDate = article['readable_publish_date']?.toString() ?? '';
@@ -109,7 +99,7 @@ Future<void> main() async {
             'Sep',
             'Oct',
             'Nov',
-            'Dec'
+            'Dec',
           ];
           publishDate = '${months[dt.month - 1]} ${dt.day}';
         } catch (_) {
@@ -157,14 +147,13 @@ Future<void> main() async {
 
   buffer.writeln('];');
   buffer.writeln();
-  buffer.writeln('''class PublicationsPage extends StatefulComponent {
-  const PublicationsPage({super.key});
-
+  buffer.writeln(
+    '''class const PublicationsPage({super.key}) extends StatefulComponent {
   @override
   State<PublicationsPage> createState() => _PublicationsPageState();
 }
 
-class _PublicationsPageState extends State<PublicationsPage> {
+class _PublicationsPageState() extends State<PublicationsPage> {
   String _activeCategory = 'All';
 
   @override
@@ -286,7 +275,8 @@ class _PublicationsPageState extends State<PublicationsPage> {
       const Footer(),
     ]);
   }
-}''');
+}''',
+  );
 
   final targetFile = File('lib/src/pages/publications_page.dart');
   await targetFile.writeAsString(buffer.toString());
@@ -299,5 +289,6 @@ class _PublicationsPageState extends State<PublicationsPage> {
   }
 
   print(
-      '🎉 Done! Run `dart compile js lib/main.dart -o build/www/main.dart.js` to build static site.');
+    '🎉 Done! Run `dart compile js lib/main.dart -o build/www/main.dart.js` to build static site.',
+  );
 }

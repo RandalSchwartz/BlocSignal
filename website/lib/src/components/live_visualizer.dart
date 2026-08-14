@@ -4,22 +4,19 @@ import 'package:jaspr/jaspr.dart';
 import 'package:signals_core/signals_core.dart';
 
 // Live Counter Events
-sealed class CounterEvent {}
+sealed class CounterEvent() {}
 
-final class IncrementEvent extends CounterEvent {}
+final class IncrementEvent() extends CounterEvent {}
 
-final class DecrementEvent extends CounterEvent {}
+final class DecrementEvent() extends CounterEvent {}
 
-final class ResetEvent extends CounterEvent {}
+final class ResetEvent() extends CounterEvent {}
 
-final class SetEvent extends CounterEvent {
-  SetEvent(this.value);
-  final int value;
-}
+final class SetEvent(final int value) extends CounterEvent {}
 
 // Live Counter Bloc
-class LiveCounterBloc extends BlocSignal<CounterEvent, int> {
-  LiveCounterBloc() : super(initialState: 0) {
+class LiveCounterBloc() extends BlocSignal<CounterEvent, int> {
+  this : super(initialState: 0) {
     on<IncrementEvent>((event, emit) => emit(stateValue + 1));
     on<DecrementEvent>((event, emit) => emit(stateValue - 1));
     on<ResetEvent>((event, emit) => emit(0));
@@ -27,14 +24,12 @@ class LiveCounterBloc extends BlocSignal<CounterEvent, int> {
   }
 }
 
-class LiveVisualizer extends StatefulComponent {
-  const LiveVisualizer({super.key});
-
+class const LiveVisualizer({super.key}) extends StatefulComponent {
   @override
   State<LiveVisualizer> createState() => _LiveVisualizerState();
 }
 
-class _LiveVisualizerState extends State<LiveVisualizer> {
+class _LiveVisualizerState() extends State<LiveVisualizer> {
   late final LiveCounterBloc _bloc;
   late final ReadonlySignal<int> _doubled;
   late final ReadonlySignal<String> _parity;
@@ -81,9 +76,9 @@ class _LiveVisualizerState extends State<LiveVisualizer> {
 
   String _formatNumber(int n) {
     return n.toString().replaceAllMapped(
-          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-          (m) => '${m[1]},',
-        );
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (m) => '${m[1]},',
+    );
   }
 
   void _dispatchEvent(CounterEvent event, String label) {
@@ -150,16 +145,12 @@ class _LiveVisualizerState extends State<LiveVisualizer> {
 
     return section(id: 'visualizer', classes: 'visualizer-section', [
       div(classes: 'container', [
-        h2(
-          classes: 'section-title',
-          [
-            Component.text('Interactive '),
-            span(
-              classes: 'gradient-text',
-              [Component.text('Live Visualizer & Benchmark')],
-            ),
-          ],
-        ),
+        h2(classes: 'section-title', [
+          Component.text('Interactive '),
+          span(classes: 'gradient-text', [
+            Component.text('Live Visualizer & Benchmark'),
+          ]),
+        ]),
         p(classes: 'section-subtitle', [
           Component.text(
             'Dispatches events to a real BlocSignal container running live in WebAssembly/JS with 0ms microtask latency.',
@@ -197,11 +188,9 @@ class _LiveVisualizerState extends State<LiveVisualizer> {
                       'status-chip ${parityVal == "EVEN" ? "even" : "odd"}',
                   [Component.text(parityVal)],
                 ),
-                span(
-                  classes:
-                      'status-chip status-${statusVal.toLowerCase()}',
-                  [Component.text(statusVal)],
-                ),
+                span(classes: 'status-chip status-${statusVal.toLowerCase()}', [
+                  Component.text(statusVal),
+                ]),
               ]),
               span(classes: 'metric-badge badge-computed', [
                 Component.text('computed()'),
@@ -231,18 +220,12 @@ class _LiveVisualizerState extends State<LiveVisualizer> {
               ),
             ]),
             div(classes: 'viz-benchmark-row', [
-              button(
-                classes: 'btn-viz-benchmark',
-                onClick: _runBenchmark,
-                [
-                  span(classes: 'bench-icon', [Component.text('⚡')]),
-                  span(classes: 'bench-label', [
-                    Component.text(
-                      'Stress Test 1,000 Synchronous Events',
-                    ),
-                  ]),
-                ],
-              ),
+              button(classes: 'btn-viz-benchmark', onClick: _runBenchmark, [
+                span(classes: 'bench-icon', [Component.text('⚡')]),
+                span(classes: 'bench-label', [
+                  Component.text('Stress Test 1,000 Synchronous Events'),
+                ]),
+              ]),
               if (_lastBenchmarkMs != null && _lastOpsPerSec != null)
                 div(classes: 'bench-result-pill', [
                   span(classes: 'bench-time', [
@@ -263,18 +246,13 @@ class _LiveVisualizerState extends State<LiveVisualizer> {
           // Telemetry Trace Log Inspector
           div(classes: 'viz-logs', [
             div(classes: 'logs-header-row', [
-              h4(
-                classes: 'logs-title',
-                [
-                  Component.text('📡 Synchronous Trace Log (Last 10 Events)'),
-                ],
-              ),
+              h4(classes: 'logs-title', [
+                Component.text('📡 Synchronous Trace Log (Last 10 Events)'),
+              ]),
               if (_logs.isNotEmpty)
-                button(
-                  classes: 'btn-clear-logs',
-                  onClick: _clearLogs,
-                  [Component.text('Clear Log ✕')],
-                ),
+                button(classes: 'btn-clear-logs', onClick: _clearLogs, [
+                  Component.text('Clear Log ✕'),
+                ]),
             ]),
             div(classes: 'logs-box', [
               if (_logs.isNotEmpty)
@@ -286,7 +264,9 @@ class _LiveVisualizerState extends State<LiveVisualizer> {
                   )
               else
                 div(classes: 'log-entry empty', [
-                  Component.text('No events dispatched yet. Click a button above!'),
+                  Component.text(
+                    'No events dispatched yet. Click a button above!',
+                  ),
                 ]),
             ]),
           ]),

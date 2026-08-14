@@ -1,7 +1,7 @@
 import 'package:benchmark_harness/benchmark_harness.dart';
 
 /// Counter ChangeNotifier implementation for Provider benchmarks.
-class CounterChangeNotifier {
+class CounterChangeNotifier() {
   int _count = 0;
   final List<void Function()> _listeners = [];
 
@@ -33,9 +33,9 @@ class CounterChangeNotifier {
 }
 
 /// Measures throughput for ChangeNotifier state notifications.
-class ProviderThroughputBenchmark extends BenchmarkBase {
+class ProviderThroughputBenchmark() extends BenchmarkBase {
   /// Creates a [ProviderThroughputBenchmark].
-  ProviderThroughputBenchmark() : super('Provider (ChangeNotifier)');
+  this : super('Provider (ChangeNotifier)');
 
   /// Active notifier instance.
   late CounterChangeNotifier notifier;
@@ -54,9 +54,9 @@ class ProviderThroughputBenchmark extends BenchmarkBase {
 }
 
 /// Measures throughput for Provider/ChangeNotifier with active listener.
-class ProviderWithListenerBenchmark extends BenchmarkBase {
+class ProviderWithListenerBenchmark() extends BenchmarkBase {
   /// Creates a [ProviderWithListenerBenchmark].
-  ProviderWithListenerBenchmark() : super('Provider + Listener');
+  this : super('Provider + Listener');
 
   /// Active notifier instance.
   late CounterChangeNotifier notifier;

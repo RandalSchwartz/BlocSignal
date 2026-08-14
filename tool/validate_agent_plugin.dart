@@ -168,11 +168,7 @@ void _validateManifests(
       if (value is! String || value.trim().isEmpty) {
         _errors.add('Claude manifest author.$field must be nonempty.');
       }
-      _expectEqual(
-        codexAuthor[field],
-        value,
-        'manifest author.$field parity',
-      );
+      _expectEqual(codexAuthor[field], value, 'manifest author.$field parity');
     }
     _expectEqual(claudeAuthor['name'], 'Randal L. Schwartz', 'manifest author');
   }
@@ -262,10 +258,7 @@ void _validateNoLegacySkillCopies(Directory root) {
 }
 
 void _validateNoLegacySkillReferences(Directory root) {
-  const legacyFragments = [
-    'context7.com/skills',
-    'ctx7@',
-  ];
+  const legacyFragments = ['context7.com/skills', 'ctx7@'];
   for (final entity in listValidationFiles(root)) {
     if (!entity.path.endsWith('.md')) continue;
     final relative = entity.path.substring(root.path.length + 1);
@@ -367,20 +360,23 @@ void _validateOpenAiYaml(File file) {
         line.codeUnitAt(2) == 0x20 ||
         line.contains('\t')) {
       _errors.add(
-          'agents/openai.yaml has invalid indentation on line ${index + 1}.');
+        'agents/openai.yaml has invalid indentation on line ${index + 1}.',
+      );
       continue;
     }
     final separator = line.indexOf(':', 2);
     if (separator == -1) {
-      _errors
-          .add('agents/openai.yaml has an invalid field on line ${index + 1}.');
+      _errors.add(
+        'agents/openai.yaml has an invalid field on line ${index + 1}.',
+      );
       continue;
     }
     final key = line.substring(2, separator).trim();
     final rawValue = line.substring(separator + 1).trim();
     if (!RegExp(r'^[a-z][a-z0-9_]*$').hasMatch(key) || rawValue.isEmpty) {
-      _errors
-          .add('agents/openai.yaml has an invalid field on line ${index + 1}.');
+      _errors.add(
+        'agents/openai.yaml has an invalid field on line ${index + 1}.',
+      );
       continue;
     }
     if (values.containsKey(key)) {
@@ -407,8 +403,9 @@ void _validateOpenAiYaml(File file) {
     _errors.add('agents/openai.yaml is missing: ${missing.join(', ')}.');
   }
   if (unknown.isNotEmpty) {
-    _errors
-        .add('agents/openai.yaml has unknown fields: ${unknown.join(', ')}.');
+    _errors.add(
+      'agents/openai.yaml has unknown fields: ${unknown.join(', ')}.',
+    );
   }
 
   _expectEqual(values['display_name'], 'BlocSignal', 'skill display_name');

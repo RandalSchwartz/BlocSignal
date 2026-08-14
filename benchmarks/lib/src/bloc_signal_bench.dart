@@ -4,32 +4,32 @@ import 'package:benchmark_harness/benchmark_harness.dart';
 import 'package:bloc_signals/bloc_signals.dart';
 
 /// Counter event hierarchy for BlocSignal benchmarks.
-sealed class CounterEvent {}
+sealed class CounterEvent() {}
 
 /// Increment event.
-final class Increment extends CounterEvent {}
+final class Increment() extends CounterEvent {}
 
 /// Counter BlocSignal implementation.
-final class CounterBlocSignal extends BlocSignal<CounterEvent, int> {
+final class CounterBlocSignal() extends BlocSignal<CounterEvent, int> {
   /// Creates a [CounterBlocSignal].
-  CounterBlocSignal() : super(initialState: 0) {
+  this : super(initialState: 0) {
     on<Increment>((event, emit) => emit(stateValue + 1));
   }
 }
 
 /// Counter CubitSignal implementation.
-final class CounterCubitSignal extends CubitSignal<int> {
+final class CounterCubitSignal() extends CubitSignal<int> {
   /// Creates a [CounterCubitSignal].
-  CounterCubitSignal() : super(initialState: 0);
+  this : super(initialState: 0);
 
   /// Increments state.
   void increment() => emit(stateValue + 1);
 }
 
 /// Measures throughput for BlocSignal event dispatches.
-class BlocSignalThroughputBenchmark extends BenchmarkBase {
+class BlocSignalThroughputBenchmark() extends BenchmarkBase {
   /// Creates a [BlocSignalThroughputBenchmark].
-  BlocSignalThroughputBenchmark() : super('BlocSignal.add');
+  this : super('BlocSignal.add');
 
   /// Active container instance.
   late CounterBlocSignal bloc;
@@ -53,9 +53,9 @@ class BlocSignalThroughputBenchmark extends BenchmarkBase {
 }
 
 /// Measures throughput for BlocSignal with active subscriber.
-class BlocSignalWithListenerBenchmark extends BenchmarkBase {
+class BlocSignalWithListenerBenchmark() extends BenchmarkBase {
   /// Creates a [BlocSignalWithListenerBenchmark].
-  BlocSignalWithListenerBenchmark() : super('BlocSignal + Subscriber');
+  this : super('BlocSignal + Subscriber');
 
   /// Active container instance.
   late CounterBlocSignal bloc;
@@ -82,9 +82,9 @@ class BlocSignalWithListenerBenchmark extends BenchmarkBase {
 }
 
 /// Measures throughput for CubitSignal state emissions.
-class CubitSignalThroughputBenchmark extends BenchmarkBase {
+class CubitSignalThroughputBenchmark() extends BenchmarkBase {
   /// Creates a [CubitSignalThroughputBenchmark].
-  CubitSignalThroughputBenchmark() : super('CubitSignal.emit');
+  this : super('CubitSignal.emit');
 
   /// Active container instance.
   late CounterCubitSignal cubit;

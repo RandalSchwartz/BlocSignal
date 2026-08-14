@@ -10,6 +10,7 @@ dependencies:
   jaspr: ^0.23.1
   bloc_signals: ^1.0.0
   signals_core: ^7.0.0
+  web: ^1.1.1
 
 dev_dependencies:
   test: ^1.25.6

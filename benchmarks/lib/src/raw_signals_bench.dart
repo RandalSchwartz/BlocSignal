@@ -2,9 +2,9 @@ import 'package:benchmark_harness/benchmark_harness.dart';
 import 'package:signals_core/signals_core.dart';
 
 /// Measures throughput for raw Signals primitive state updates.
-class RawSignalThroughputBenchmark extends BenchmarkBase {
+class RawSignalThroughputBenchmark() extends BenchmarkBase {
   /// Creates a [RawSignalThroughputBenchmark].
-  RawSignalThroughputBenchmark() : super('RawSignal.value');
+  this : super('RawSignal.value');
 
   /// Active signal instance.
   late Signal<int> countSignal;

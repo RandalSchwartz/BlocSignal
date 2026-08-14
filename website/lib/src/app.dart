@@ -1,6 +1,8 @@
 import 'dart:js_interop';
+
 import 'package:jaspr/jaspr.dart';
 import 'package:web/web.dart' as web;
+
 import 'pages/home_page.dart';
 import 'pages/minesweeper_page.dart';
 import 'pages/ported_examples_page.dart';
@@ -10,14 +12,12 @@ import 'pages/showcase_page.dart';
 @JS('trackGaPageView')
 external void _trackGaPageView(JSString path);
 
-class App extends StatefulComponent {
-  const App({super.key});
-
+class const App({super.key}) extends StatefulComponent {
   @override
   State<App> createState() => _AppState();
 }
 
-class _AppState extends State<App> {
+class _AppState() extends State<App> {
   String _currentPath = '/';
 
   @override

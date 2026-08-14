@@ -5,9 +5,7 @@ import '../components/footer.dart';
 import '../components/minesweeper/minesweeper_component.dart';
 import '../components/navbar.dart';
 
-class MinesweeperPage extends StatelessComponent {
-  const MinesweeperPage({super.key});
-
+class const MinesweeperPage({super.key}) extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     return div(classes: 'app-root', [
@@ -30,8 +28,7 @@ class MinesweeperPage extends StatelessComponent {
             // Prominent CTAs
             div(classes: 'ms-hero-ctas', [
               a(
-                href:
-                    'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/mine_sweeper',
+                href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/mine_sweeper',
                 target: Target.blank,
                 classes: 'btn-primary btn-github-source',
                 [Component.text('⭐ View Live Source Code on GitHub ↗')],
@@ -42,11 +39,9 @@ class MinesweeperPage extends StatelessComponent {
                 classes: 'btn-secondary btn-pub',
                 [Component.text('📦 View on pub.dev ↗')],
               ),
-              a(
-                href: '/',
-                classes: 'btn-secondary',
-                [Component.text('📖 Framework Overview')],
-              ),
+              a(href: '/', classes: 'btn-secondary', [
+                Component.text('📖 Framework Overview'),
+              ]),
             ]),
 
             // Live Game Board Component
@@ -96,7 +91,8 @@ class MinesweeperPage extends StatelessComponent {
             div(classes: 'ms-code-preview', [
               h3([
                 Component.text(
-                    '💻 Game Engine Source Preview (MinesweeperCubit)')
+                  '💻 Game Engine Source Preview (MinesweeperCubit)',
+                ),
               ]),
               p([
                 Component.text(
@@ -149,16 +145,14 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
               ]),
               div(classes: 'ms-code-links', [
                 a(
-                  href:
-                      'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/mine_sweeper',
+                  href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/mine_sweeper',
                   target: Target.blank,
                   classes: 'card-link',
                   [Component.text('View Full Flutter Example Repository ↗')],
                 ),
                 span([Component.text(' • ')]),
                 a(
-                  href:
-                      'https://github.com/RandalSchwartz/BlocSignal/tree/main/website/lib/src/components/minesweeper',
+                  href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/website/lib/src/components/minesweeper',
                   target: Target.blank,
                   classes: 'card-link',
                   [Component.text('View Web Jaspr Component Source ↗')],

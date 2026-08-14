@@ -178,7 +178,6 @@ class _TodosScreenState extends State<TodosScreen> {
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           padding: const EdgeInsets.all(8),
           child: Row(
-
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               TextButton.icon(

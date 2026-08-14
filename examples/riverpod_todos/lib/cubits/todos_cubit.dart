@@ -12,7 +12,6 @@ class TodosCubit extends CubitSignal<List<Todo>> {
   /// Creates a [TodosCubit] with optional [initialTodos].
   TodosCubit([List<Todo> initialTodos = const []])
       : super(initialState: initialTodos, equals: listEquals) {
-
     // Derived signal: Active filter
     filter = signal(TodoFilter.all);
 

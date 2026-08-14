@@ -312,22 +312,35 @@ code, pre, .font-mono {
   transform: scale(0.97);
 }
 
-.code-snippet-box {
-  max-width: 440px;
-  margin: 0 auto;
-  background: var(--bg-surface-1);
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  padding: 20px 24px;
-  text-align: left;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 0.88rem;
-  box-shadow: var(--shadow-card);
-  position: relative;
-  overflow: hidden;
+.hero-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+  box-shadow: 0 0 8px var(--accent-cyan);
+  animation: pulse-dot 2s infinite ease-in-out;
 }
 
-.code-snippet-box::before {
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+
+/* ==========================================================================
+   Install Terminal Box
+   ========================================================================== */
+.install-terminal-box {
+  max-width: 580px;
+  margin: 0 auto 56px auto;
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  position: relative;
+}
+
+.install-terminal-box::before {
   content: '';
   position: absolute;
   top: 0;
@@ -335,6 +348,265 @@ code, pre, .font-mono {
   right: 0;
   height: 1px;
   background: var(--gradient-card-shine);
+}
+
+.install-terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(6, 9, 17, 0.6);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.install-tabs-list {
+  display: flex;
+  gap: 4px;
+}
+
+.install-tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-weight: 600;
+  font-size: 0.82rem;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.install-tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.install-tab-btn.active {
+  color: var(--accent-cyan);
+  background: rgba(56, 189, 248, 0.12);
+  font-weight: 700;
+}
+
+.btn-copy-install {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-copy-install:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: var(--border-focus);
+}
+
+.btn-copy-install:active {
+  transform: scale(0.95);
+}
+
+.btn-copy-install.copied {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.install-terminal-body {
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  text-align: left;
+  background: #060911;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.92rem;
+  overflow-x: auto;
+}
+
+.terminal-prompt {
+  color: var(--accent-cyan);
+  font-weight: bold;
+  user-select: none;
+  margin-right: 8px;
+}
+
+.terminal-command {
+  color: var(--text-code);
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   Hero Before & After Comparison Grid
+   ========================================================================== */
+.hero-comparison-wrapper {
+  margin-top: 56px;
+  text-align: center;
+}
+
+.comparison-headline {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+}
+
+.comparison-subheadline {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  max-width: 740px;
+  margin: 0 auto 36px auto;
+  line-height: 1.6;
+}
+
+.comparison-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+  text-align: left;
+}
+
+.comparison-card {
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  padding: 26px;
+  box-shadow: var(--shadow-card);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: transform var(--transition-base), border-color var(--transition-base);
+}
+
+.comparison-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--gradient-card-shine);
+}
+
+.comparison-card:hover {
+  transform: translateY(-3px);
+}
+
+.comparison-card-classic {
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.comparison-card-classic:hover {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.comparison-card-signal {
+  border-color: rgba(56, 189, 248, 0.3);
+  box-shadow: 0 8px 30px rgba(56, 189, 248, 0.08), var(--shadow-card);
+}
+
+.comparison-card-signal:hover {
+  border-color: var(--accent-cyan);
+  box-shadow: 0 12px 36px rgba(56, 189, 248, 0.15), var(--shadow-card-hover);
+}
+
+.comp-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.comp-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.comp-icon {
+  font-size: 1.4rem;
+}
+
+.comp-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.comp-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.comp-badge-classic {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.comp-badge-signal {
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+}
+
+.comp-code-box {
+  background: #060911;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+
+.comp-code-box pre {
+  margin: 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--text-code);
+}
+
+.comp-features-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.comp-feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.comp-feature-item.negative {
+  color: #cbd5e1;
+}
+
+.comp-feature-item.positive {
+  color: #f8fafc;
+  font-weight: 500;
+}
+
+.feature-bullet {
+  font-size: 0.95rem;
+  flex-shrink: 0;
+  line-height: 1.4;
 }
 
 /* ==========================================================================

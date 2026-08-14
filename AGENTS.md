@@ -308,3 +308,20 @@ When authoring, refactoring, or reviewing packages and examples across the monor
 * **Examples & Showcase Flexibility**: Examples, demos, benchmarks, and website packages can conform to Dart 3.5 or Dart 3.13+.
 * **Side-by-Side Presentation**: When demonstrating code in documentation, articles, slides, or tutorials, show Dart 3.5 and Dart 3.13 implementations side-by-side whenever feasible to highlight modern developer ergonomics while preserving baseline reference patterns.
 
+### 35. Modern Dart Web Interop & Wasm Safety (`package:web` vs `dart:html`)
+When authoring web components, clipboard interactions, or browser DOM APIs:
+* **`package:web` as Standard**: Use `import 'package:web/web.dart' as web;`. Do NOT use `dart:html`, `dart:js`, `dart:js_util`, or `package:js`, as they rely on legacy JS runtime boxing and fail under Dart WebAssembly (Wasm) compilation.
+* **String Arguments**: Modern `package:web` APIs (such as `web.window.navigator.clipboard.writeText(str)`) accept standard Dart `String` arguments directly without requiring manual `.toJS` casting.
+* **Defensive Fault-Tolerance**: Always wrap browser APIs in `try-catch` blocks to prevent uncaught exceptions in headless, iframe, or permission-restricted environments.
+
+### 36. Jaspr Component Event Delegation (`onClick:` vs `events: {'click': ...}`)
+When attaching event listeners to Jaspr DOM components:
+* **Interactive Elements (`button`, `a`)**: Provide direct named parameter `onClick: () => ...`.
+* **Generic Elements (`div`, `nav`, `section`, `span`)**: Generic container elements do not expose named `onClick:` parameters. Attach listeners using the `events:` map: `events: {'click': (_) => ...}`.
+
+### 37. CSS `backdrop-filter` Stacking Context & Full-Viewport Overlays
+When designing mobile drawers, modals, or fixed overlay panels nested inside sticky/glassmorphic headers:
+* **Containing Block Trap**: In the CSS specification, any ancestor element with `backdrop-filter` or `transform` creates a new containing block for `position: fixed` children, causing `position: fixed; inset: 0;` to resolve relative to the ancestor's box rather than the viewport.
+* **Full-Viewport Protection**: To prevent fixed overlays from getting constrained to navbar heights, explicitly specify `width: 100vw; height: 100vh; height: 100dvh;` on `.nav-drawer-backdrop` and `.nav-drawer-panel` with high z-indices (`10001+`).
+
+

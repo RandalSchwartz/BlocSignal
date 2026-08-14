@@ -55,6 +55,10 @@ class _NavbarState extends State<Navbar> {
             [Component.text('Home')],
           ),
           a(
+            href: '/#architecture',
+            [Component.text('Architecture')],
+          ),
+          a(
             href: '/showcase',
             classes: component.currentPath == '/showcase' ? 'nav-active' : '',
             [Component.text('Showcase')],
@@ -135,6 +139,15 @@ class _NavbarState extends State<Navbar> {
                 [
                   span(classes: 'drawer-link-icon', [Component.text('🏠')]),
                   span(classes: 'drawer-link-label', [Component.text('Home')]),
+                ],
+              ),
+              a(
+                href: '/#architecture',
+                classes: 'drawer-link',
+                onClick: _closeDrawer,
+                [
+                  span(classes: 'drawer-link-icon', [Component.text('⚡')]),
+                  span(classes: 'drawer-link-label', [Component.text('Architecture')]),
                 ],
               ),
               a(

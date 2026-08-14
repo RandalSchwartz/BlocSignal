@@ -28,6 +28,19 @@ class PublicationItem {
 const List<PublicationItem> _publications = [
   PublicationItem(
     title:
+        'Dart 3.13 Primary Constructors + BlocSignal: Boilerplate-Free Reactive Architecture',
+    description:
+        'Discover how Dart 3.13 primary constructors, \'this\' constructor bodies, and constructor shorthands transform BlocSignal into the cleanest state management architecture in Flutter.',
+    url:
+        'https://dev.to/gde/dart-313-primary-constructors-blocsignal-boilerplate-free-reactive-architecture-5fll',
+    date: 'Aug 14',
+    readTime: '4 min read',
+    category: 'State Machines',
+    type: 'Article',
+    tags: ["flutter", "dart", "statemanagement", "programming"],
+  ),
+  PublicationItem(
+    title:
         'Riverpod to BlocSignal: Incremental Migration and Zero-Codegen Signals for Flutter',
     description:
         'Learn how to trial or incrementally migrate from Riverpod to BlocSignal with zero code generation, fine-grained signal graph reactivity, and bidirectional interop.',

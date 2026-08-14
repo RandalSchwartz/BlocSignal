@@ -7,15 +7,18 @@ Future<void> main() async {
   final apiKey = Platform.environment['DEVTO_API_KEY'];
   final client = HttpClient();
 
-  final Uri uri = (apiKey != null && apiKey.isNotEmpty)
-      ? Uri.parse('https://dev.to/api/articles/me/published?per_page=50')
-      : Uri.parse(
-          'https://dev.to/api/articles?username=randalschwartz&per_page=50');
+  final Uri uri = Uri.parse(
+    'https://dev.to/api/articles?username=randalschwartz&per_page=50',
+  );
 
-  print(
-      '📡 Fetching latest DEV.to articles (${apiKey != null ? 'Authenticated' : 'Public API'})...');
+  print('📡 Fetching latest DEV.to articles for @randalschwartz...');
 
   final request = await client.getUrl(uri);
+  request.headers.set(
+    HttpHeaders.userAgentHeader,
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  );
+  request.headers.set(HttpHeaders.acceptHeader, 'application/json');
   if (apiKey != null && apiKey.isNotEmpty) {
     request.headers.add('api-key', apiKey);
   }

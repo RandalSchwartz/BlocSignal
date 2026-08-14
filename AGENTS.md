@@ -28,6 +28,16 @@ To satisfy pub.dev publishing requirements while maintaining local developer wor
   ```
 - The native Dart workspace compiler will automatically route this constraint to the local workspace folder during development.
 
+### SDK & Language Versioning Policy
+To balance broad ecosystem compatibility with modern language innovation:
+- **Published Packages (`bloc_signals*`)**:
+  - Must specify and strictly conform to `sdk: ^3.5.0`.
+  - Must not use Dart language features or APIs introduced after Dart 3.5 (for example, primary constructors).
+  - This guarantees zero SDK compatibility friction for downstream users across all Flutter and Dart channels.
+- **Examples, Demos, Benchmarks & Documentation (`examples/*`, `benchmarks/`, `website/`)**:
+  - May conform to either Dart 3.5 or Dart 3.13+.
+  - **Side-by-Side Presentation**: In code samples, READMEs, tutorials, and example code comments, show both Dart 3.5 (traditional syntax) and Dart 3.13 (modern primary constructors, `this` constructor bodies, and constructor shorthands) side-by-side whenever feasible to highlight modern developer ergonomics while preserving baseline reference patterns.
+
 ---
 
 ## ⚡ Architectural Guidelines
@@ -291,3 +301,10 @@ When generating or updating DEV.to draft articles:
 When designing multi-provider container widgets (`MultiBlocSignalProvider`, `MultiBlocSignalListener`) and stateful UI builders (`BlocSignalBuilder`, `BlocSignalConsumer`):
 * **List Literal Generic Preservation**: Declare `providers` or `listeners` parameter types as `List<dynamic>` and invoke `(provider as dynamic).copyWith(current)`. This prevents Dart list literal element type inference from downcasting elements to `BlocSignalBase<dynamic>` and erasing concrete generic types `T` (`BlocSignalProvider<CounterCubit>`), ensuring descendant `InheritedWidget` lookups (`context.read<T>()`) resolve in O(1) time.
 * **Stateful `buildWhen` Filtering**: In `BlocSignalBuilder`, subscribe to `effectiveBloc.state` inside an `effect()` callback in `_BlocSignalBuilderState`. Evaluate `buildWhen(previous, current)` and invoke `setState()` ONLY when `buildWhen` returns `true` (or is null), preventing redundant widget rebuilds when state changes.
+
+### 34. SDK & Language Versioning Policy (Dart 3.5 Published Libraries vs Dart 3.13 Examples)
+When authoring, refactoring, or reviewing packages and examples across the monorepo:
+* **Published Packages Strict Baseline**: All published library packages (`bloc_signals`, `bloc_signals_flutter`, `bloc_signals_riverpod`, `bloc_signals_test`, `bloc_signals_lint`, `bloc_signals_hydrate`, `bloc_signals_otel`, `bloc_signals_replay`, `bloc_signals_jaspr`, `bloc_signals_devtools`) must conform strictly to Dart 3.5 (`sdk: ^3.5.0`) with no language features newer than Dart 3.5.
+* **Examples & Showcase Flexibility**: Examples, demos, benchmarks, and website packages can conform to Dart 3.5 or Dart 3.13+.
+* **Side-by-Side Presentation**: When demonstrating code in documentation, articles, slides, or tutorials, show Dart 3.5 and Dart 3.13 implementations side-by-side whenever feasible to highlight modern developer ergonomics while preserving baseline reference patterns.
+

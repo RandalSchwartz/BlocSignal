@@ -1,7 +1,6 @@
-import 'package:bloc_signals/bloc_signals.dart';
+import 'package:bloc_signals_jaspr/bloc_signals_jaspr.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
-import 'package:signals_core/signals_core.dart';
 
 // Live Counter Events
 sealed class CounterEvent() {}
@@ -24,17 +23,22 @@ class LiveCounterBloc() extends BlocSignal<CounterEvent, int> {
   }
 }
 
-class const LiveVisualizer({super.key}) extends StatefulComponent {
+class const LiveVisualizer({super.key}) extends StatelessComponent {
   @override
-  State<LiveVisualizer> createState() => _LiveVisualizerState();
+  Component build(BuildContext context) {
+    return BlocSignalProvider<LiveCounterBloc>(
+      create: (_) => LiveCounterBloc(),
+      child: const _LiveVisualizerContent(),
+    );
+  }
 }
 
-class _LiveVisualizerState() extends State<LiveVisualizer> {
-  late final LiveCounterBloc _bloc;
-  late final ReadonlySignal<int> _doubled;
-  late final ReadonlySignal<String> _parity;
-  late final ReadonlySignal<String> _status;
+class const _LiveVisualizerContent() extends StatefulComponent {
+  @override
+  State<_LiveVisualizerContent> createState() => _LiveVisualizerContentState();
+}
 
+class _LiveVisualizerContentState() extends State<_LiveVisualizerContent> {
   final List<String> _logs = [];
   double? _lastBenchmarkMs;
   int? _lastOpsPerSec;
@@ -43,27 +47,9 @@ class _LiveVisualizerState() extends State<LiveVisualizer> {
   @override
   void initState() {
     super.initState();
-    _bloc = LiveCounterBloc();
-
-    // Fine-grained computed derivations
-    _doubled = computed(() => _bloc.state() * 2);
-    _parity = computed(() => _bloc.state() % 2 == 0 ? 'EVEN' : 'ODD');
-    _status = computed(() {
-      final s = _bloc.state();
-      if (s > 0) return 'POSITIVE';
-      if (s < 0) return 'NEGATIVE';
-      return 'ZERO';
-    });
-
     final now = DateTime.now();
     final timeStr = _formatTime(now);
     _logs.add('[$timeStr] 🚀 LiveCounterBloc initialized with initialState: 0');
-  }
-
-  @override
-  void dispose() {
-    _bloc.close();
-    super.dispose();
   }
 
   String _formatTime(DateTime dt) {
@@ -81,17 +67,13 @@ class _LiveVisualizerState() extends State<LiveVisualizer> {
     );
   }
 
-  void _dispatchEvent(CounterEvent event, String label) {
+  void _onStateTransition(BuildContext context, int state) {
     final now = DateTime.now();
     final timeStr = _formatTime(now);
-    final prev = _bloc.stateValue;
-    _bloc.add(event);
-    final next = _bloc.stateValue;
-
     setState(() {
       _logs.insert(
         0,
-        '[$timeStr] ⚡ EVENT $label -> Transition ($prev -> $next) [0ms Synchronous]',
+        '[$timeStr] ⚡ TRANSITION -> State: $state [0ms Synchronous]',
       );
       if (_logs.length > 50) {
         _logs.removeLast();
@@ -99,15 +81,16 @@ class _LiveVisualizerState() extends State<LiveVisualizer> {
     });
   }
 
-  void _runBenchmark() {
+  void _runBenchmark(BuildContext context) {
+    final bloc = context.read<LiveCounterBloc>();
     final sw = Stopwatch()..start();
-    final startVal = _bloc.stateValue;
+    final startVal = bloc.stateValue;
     for (var i = 0; i < _benchmarkCount; i++) {
-      _bloc.add(IncrementEvent());
+      bloc.add(IncrementEvent());
     }
     sw.stop();
 
-    final endVal = _bloc.stateValue;
+    final endVal = bloc.stateValue;
     final elapsedUs = sw.elapsedMicroseconds;
     final elapsedMs = elapsedUs / 1000.0;
     final opsPerSec = elapsedUs > 0
@@ -138,140 +121,178 @@ class _LiveVisualizerState() extends State<LiveVisualizer> {
 
   @override
   Component build(BuildContext context) {
-    final stateVal = _bloc.stateValue;
-    final doubledVal = _doubled.value;
-    final parityVal = _parity.value;
-    final statusVal = _status.value;
-
-    return section(id: 'visualizer', classes: 'visualizer-section', [
-      div(classes: 'container', [
-        h2(classes: 'section-title', [
-          Component.text('Interactive '),
-          span(classes: 'gradient-text', [
-            Component.text('Live Visualizer & Benchmark'),
+    return BlocSignalListener<LiveCounterBloc, int>(
+      listener: _onStateTransition,
+      child: section(id: 'visualizer', classes: 'visualizer-section', [
+        div(classes: 'container', [
+          h2(classes: 'section-title', [
+            Component.text('Interactive '),
+            span(classes: 'gradient-text', [
+              Component.text('Live Visualizer & Benchmark'),
+            ]),
           ]),
-        ]),
-        p(classes: 'section-subtitle', [
-          Component.text(
-            'Dispatches events to a real BlocSignal container running live in WebAssembly/JS with 0ms microtask latency.',
-          ),
-        ]),
+          p(classes: 'section-subtitle', [
+            Component.text(
+              'Dispatches events to a real BlocSignal container running live in Jaspr Web with 0ms microtask latency.',
+            ),
+          ]),
 
-        div(classes: 'visualizer-card', [
-          // Real-time Reactive Metrics Grid
-          div(classes: 'viz-metrics-grid', [
-            div(classes: 'viz-metric-card primary', [
-              span(classes: 'metric-label', [Component.text('Primary State')]),
-              span(classes: 'metric-value highlight', [
-                Component.text('$stateVal'),
-              ]),
-              span(classes: 'metric-badge badge-signal', [
-                Component.text('Signal<int>'),
-              ]),
-            ]),
-            div(classes: 'viz-metric-card computed', [
-              span(classes: 'metric-label', [
-                Component.text('Computed (State × 2)'),
-              ]),
-              span(classes: 'metric-value', [Component.text('$doubledVal')]),
-              span(classes: 'metric-badge badge-computed', [
-                Component.text('computed()'),
-              ]),
-            ]),
-            div(classes: 'viz-metric-card computed', [
-              span(classes: 'metric-label', [
-                Component.text('Parity & Status'),
-              ]),
-              div(classes: 'metric-status-row', [
-                span(
-                  classes:
-                      'status-chip ${parityVal == "EVEN" ? "even" : "odd"}',
-                  [Component.text(parityVal)],
+          div(classes: 'visualizer-card', [
+            // Real-time Reactive Metrics Grid powered by BlocSignalSelector
+            div(classes: 'viz-metrics-grid', [
+              // 1. Primary State
+              BlocSignalSelector<LiveCounterBloc, int, int>(
+                selector: (state) => state,
+                builder: (context, stateVal) {
+                  return div(classes: 'viz-metric-card primary', [
+                    span(classes: 'metric-label', [
+                      Component.text('Primary State'),
+                    ]),
+                    span(classes: 'metric-value highlight', [
+                      Component.text('$stateVal'),
+                    ]),
+                    span(classes: 'metric-badge badge-signal', [
+                      Component.text('BlocSignalSelector'),
+                    ]),
+                  ]);
+                },
+              ),
+
+              // 2. Computed Doubled (2x)
+              BlocSignalSelector<LiveCounterBloc, int, int>(
+                selector: (state) => state * 2,
+                builder: (context, doubledVal) {
+                  return div(classes: 'viz-metric-card computed', [
+                    span(classes: 'metric-label', [
+                      Component.text('Computed (State × 2)'),
+                    ]),
+                    span(classes: 'metric-value', [
+                      Component.text('$doubledVal'),
+                    ]),
+                    span(classes: 'metric-badge badge-computed', [
+                      Component.text('context.select()'),
+                    ]),
+                  ]);
+                },
+              ),
+
+              // 3. Computed Parity & Status
+              BlocSignalSelector<
+                LiveCounterBloc,
+                int,
+                ({String parity, String status})
+              >(
+                selector: (state) => (
+                  parity: state % 2 == 0 ? 'EVEN' : 'ODD',
+                  status: state > 0
+                      ? 'POSITIVE'
+                      : (state < 0 ? 'NEGATIVE' : 'ZERO'),
                 ),
-                span(classes: 'status-chip status-${statusVal.toLowerCase()}', [
-                  Component.text(statusVal),
-                ]),
-              ]),
-              span(classes: 'metric-badge badge-computed', [
-                Component.text('computed()'),
-              ]),
+                builder: (context, derived) {
+                  return div(classes: 'viz-metric-card computed', [
+                    span(classes: 'metric-label', [
+                      Component.text('Parity & Status'),
+                    ]),
+                    div(classes: 'metric-status-row', [
+                      span(
+                        classes:
+                            'status-chip ${derived.parity == "EVEN" ? "even" : "odd"}',
+                        [Component.text(derived.parity)],
+                      ),
+                      span(
+                        classes:
+                            'status-chip status-${derived.status.toLowerCase()}',
+                        [Component.text(derived.status)],
+                      ),
+                    ]),
+                    span(classes: 'metric-badge badge-computed', [
+                      Component.text('Fine-Grained Selector'),
+                    ]),
+                  ]);
+                },
+              ),
             ]),
-          ]),
 
-          // Interactive Controls
-          div(classes: 'viz-controls-wrapper', [
-            div(classes: 'viz-controls-row', [
-              button(
-                classes: 'btn-viz btn-decrement',
-                onClick: () =>
-                    _dispatchEvent(DecrementEvent(), 'DecrementEvent'),
-                [Component.text('- 1 Decrement')],
-              ),
-              button(
-                classes: 'btn-viz btn-reset',
-                onClick: () => _dispatchEvent(ResetEvent(), 'ResetEvent'),
-                [Component.text('↺ Reset')],
-              ),
-              button(
-                classes: 'btn-viz btn-increment',
-                onClick: () =>
-                    _dispatchEvent(IncrementEvent(), 'IncrementEvent'),
-                [Component.text('+ 1 Increment')],
-              ),
-            ]),
-            div(classes: 'viz-benchmark-row', [
-              button(classes: 'btn-viz-benchmark', onClick: _runBenchmark, [
-                span(classes: 'bench-icon', [Component.text('⚡')]),
-                span(classes: 'bench-label', [
-                  Component.text('Stress Test 1,000 Synchronous Events'),
-                ]),
+            // Interactive Controls using context.read
+            div(classes: 'viz-controls-wrapper', [
+              div(classes: 'viz-controls-row', [
+                button(
+                  classes: 'btn-viz btn-decrement',
+                  onClick: () =>
+                      context.read<LiveCounterBloc>().add(DecrementEvent()),
+                  [Component.text('- 1 Decrement')],
+                ),
+                button(
+                  classes: 'btn-viz btn-reset',
+                  onClick: () =>
+                      context.read<LiveCounterBloc>().add(ResetEvent()),
+                  [Component.text('↺ Reset')],
+                ),
+                button(
+                  classes: 'btn-viz btn-increment',
+                  onClick: () =>
+                      context.read<LiveCounterBloc>().add(IncrementEvent()),
+                  [Component.text('+ 1 Increment')],
+                ),
               ]),
-              if (_lastBenchmarkMs != null && _lastOpsPerSec != null)
-                div(classes: 'bench-result-pill', [
-                  span(classes: 'bench-time', [
+              div(classes: 'viz-benchmark-row', [
+                button(
+                  classes: 'btn-viz-benchmark',
+                  onClick: () => _runBenchmark(context),
+                  [
+                    span(classes: 'bench-icon', [Component.text('⚡')]),
+                    span(classes: 'bench-label', [
+                      Component.text('Stress Test 1,000 Synchronous Events'),
+                    ]),
+                  ],
+                ),
+                if (_lastBenchmarkMs != null && _lastOpsPerSec != null)
+                  div(classes: 'bench-result-pill', [
+                    span(classes: 'bench-time', [
+                      Component.text(
+                        '⏱️ ${_lastBenchmarkMs!.toStringAsFixed(2)} ms',
+                      ),
+                    ]),
+                    span(classes: 'bench-divider', [Component.text('•')]),
+                    span(classes: 'bench-rate', [
+                      Component.text(
+                        '🚀 ${_formatNumber(_lastOpsPerSec!)} ops/sec',
+                      ),
+                    ]),
+                  ]),
+              ]),
+            ]),
+
+            // Telemetry Trace Log Inspector
+            div(classes: 'viz-logs', [
+              div(classes: 'logs-header-row', [
+                h4(classes: 'logs-title', [
+                  Component.text('📡 Synchronous Trace Log (Last 10 Events)'),
+                ]),
+                if (_logs.isNotEmpty)
+                  button(classes: 'btn-clear-logs', onClick: _clearLogs, [
+                    Component.text('Clear Log ✕'),
+                  ]),
+              ]),
+              div(classes: 'logs-box', [
+                if (_logs.isNotEmpty)
+                  for (final log in _logs.take(10))
+                    div(
+                      classes:
+                          'log-entry ${log.contains("BENCHMARK") ? "benchmark-log" : ""}',
+                      [Component.text(log)],
+                    )
+                else
+                  div(classes: 'log-entry empty', [
                     Component.text(
-                      '⏱️ ${_lastBenchmarkMs!.toStringAsFixed(2)} ms',
+                      'No events dispatched yet. Click a button above!',
                     ),
                   ]),
-                  span(classes: 'bench-divider', [Component.text('•')]),
-                  span(classes: 'bench-rate', [
-                    Component.text(
-                      '🚀 ${_formatNumber(_lastOpsPerSec!)} ops/sec',
-                    ),
-                  ]),
-                ]),
-            ]),
-          ]),
-
-          // Telemetry Trace Log Inspector
-          div(classes: 'viz-logs', [
-            div(classes: 'logs-header-row', [
-              h4(classes: 'logs-title', [
-                Component.text('📡 Synchronous Trace Log (Last 10 Events)'),
               ]),
-              if (_logs.isNotEmpty)
-                button(classes: 'btn-clear-logs', onClick: _clearLogs, [
-                  Component.text('Clear Log ✕'),
-                ]),
-            ]),
-            div(classes: 'logs-box', [
-              if (_logs.isNotEmpty)
-                for (final log in _logs.take(10))
-                  div(
-                    classes:
-                        'log-entry ${log.contains("BENCHMARK") ? "benchmark-log" : ""}',
-                    [Component.text(log)],
-                  )
-              else
-                div(classes: 'log-entry empty', [
-                  Component.text(
-                    'No events dispatched yet. Click a button above!',
-                  ),
-                ]),
             ]),
           ]),
         ]),
       ]),
-    ]);
+    );
   }
 }

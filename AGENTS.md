@@ -30,11 +30,15 @@ To satisfy pub.dev publishing requirements while maintaining local developer wor
 
 ### SDK & Language Versioning Policy
 To balance broad ecosystem compatibility with modern language innovation:
+- **Monorepo Workspace & Internal Tooling (`/`, `tool/`, `website/`, `benchmarks/`)**:
+  - Requires `sdk: ^3.13.0` for local development, website tooling, CI orchestration, and benchmarks.
+  - Allows full use of Dart 3.13 language ergonomics (primary constructors, parameter shorthands, newer core library APIs) in website, generators, and dev tooling.
 - **Published Packages (`bloc_signals*`)**:
   - Must specify and strictly conform to `sdk: ^3.5.0`.
   - Must not use Dart language features or APIs introduced after Dart 3.5 (for example, primary constructors).
+  - The Dart 3.13 analyzer and compiler automatically enforce Dart 3.5 language version semantics on these packages based on their `pubspec.yaml` declaration.
   - This guarantees zero SDK compatibility friction for downstream users across all Flutter and Dart channels.
-- **Examples, Demos, Benchmarks & Documentation (`examples/*`, `benchmarks/`, `website/`)**:
+- **Examples, Demos & Documentation (`examples/*`, `website/`)**:
   - May conform to either Dart 3.5 or Dart 3.13+.
   - **Side-by-Side Presentation**: In code samples, READMEs, tutorials, and example code comments, show both Dart 3.5 (traditional syntax) and Dart 3.13 (modern primary constructors, `this` constructor bodies, and constructor shorthands) side-by-side whenever feasible to highlight modern developer ergonomics while preserving baseline reference patterns.
 

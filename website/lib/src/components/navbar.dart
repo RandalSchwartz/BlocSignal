@@ -3,8 +3,9 @@ import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
 import '../cubits/navigation_cubit.dart';
+import '../models/app_route.dart';
 
-class const Navbar({final String? currentPath, super.key})
+class const Navbar({final AppRoute? currentRoute, super.key})
     extends StatefulComponent {
   @override
   State<Navbar> createState() => _NavbarState();
@@ -29,19 +30,21 @@ class _NavbarState() extends State<Navbar> {
 
   @override
   Component build(BuildContext context) {
-    final activePath =
-        component.currentPath ??
+    final activeRoute =
+        component.currentRoute ??
         (() {
           try {
-            return context.select<NavigationCubit, String>((c) => c.stateValue);
+            return context.select<NavigationCubit, AppRoute>(
+              (c) => c.stateValue,
+            );
           } catch (_) {
-            return '/';
+            return AppRoute.home;
           }
         })();
 
     return header(classes: 'navbar', [
       div(classes: 'container nav-content', [
-        a(href: '/', classes: 'brand', onClick: _closeDrawer, [
+        a(href: AppRoute.home.path, classes: 'brand', onClick: _closeDrawer, [
           img(
             src: '/assets/logo.png',
             alt: 'BlocSignal Logo',
@@ -54,29 +57,31 @@ class _NavbarState() extends State<Navbar> {
 
         // Desktop Navigation Links
         nav(classes: 'nav-links nav-desktop', [
-          a(href: '/', classes: activePath == '/' ? 'nav-active' : '', [
-            Component.text('Home'),
-          ]),
+          a(
+            href: AppRoute.home.path,
+            classes: activeRoute == AppRoute.home ? 'nav-active' : '',
+            [Component.text('Home')],
+          ),
           a(href: '/#architecture', [Component.text('Architecture')]),
           a(
-            href: '/showcase',
-            classes: activePath == '/showcase' ? 'nav-active' : '',
-            [Component.text('Showcase')],
+            href: AppRoute.showcase.path,
+            classes: activeRoute == AppRoute.showcase ? 'nav-active' : '',
+            [Component.text(AppRoute.showcase.label)],
           ),
           a(
-            href: '/ported-examples',
-            classes: activePath == '/ported-examples' ? 'nav-active' : '',
-            [Component.text('Ported Examples')],
+            href: AppRoute.portedExamples.path,
+            classes: activeRoute == AppRoute.portedExamples ? 'nav-active' : '',
+            [Component.text(AppRoute.portedExamples.label)],
           ),
           a(
-            href: '/minesweeper',
-            classes: activePath == '/minesweeper' ? 'nav-active' : '',
-            [Component.text('🎮 Minesweeper')],
+            href: AppRoute.minesweeper.path,
+            classes: activeRoute == AppRoute.minesweeper ? 'nav-active' : '',
+            [Component.text(AppRoute.minesweeper.label)],
           ),
           a(
-            href: '/publications',
-            classes: activePath == '/publications' ? 'nav-active' : '',
-            [Component.text('📚 Publications')],
+            href: AppRoute.publications.path,
+            classes: activeRoute == AppRoute.publications ? 'nav-active' : '',
+            [Component.text(AppRoute.publications.label)],
           ),
           a(
             href: 'https://pub.dev/packages/bloc_signals',
@@ -129,8 +134,9 @@ class _NavbarState() extends State<Navbar> {
             ]),
             div(classes: 'drawer-links', [
               a(
-                href: '/',
-                classes: 'drawer-link ${activePath == "/" ? "active" : ""}',
+                href: AppRoute.home.path,
+                classes:
+                    'drawer-link ${activeRoute == AppRoute.home ? "active" : ""}',
                 onClick: _closeDrawer,
                 [
                   span(classes: 'drawer-link-icon', [Component.text('🏠')]),
@@ -149,33 +155,33 @@ class _NavbarState() extends State<Navbar> {
                 ],
               ),
               a(
-                href: '/showcase',
+                href: AppRoute.showcase.path,
                 classes:
-                    'drawer-link ${activePath == "/showcase" ? "active" : ""}',
+                    'drawer-link ${activeRoute == AppRoute.showcase ? "active" : ""}',
                 onClick: _closeDrawer,
                 [
                   span(classes: 'drawer-link-icon', [Component.text('✨')]),
                   span(classes: 'drawer-link-label', [
-                    Component.text('Showcase'),
+                    Component.text(AppRoute.showcase.label),
                   ]),
                 ],
               ),
               a(
-                href: '/ported-examples',
+                href: AppRoute.portedExamples.path,
                 classes:
-                    'drawer-link ${activePath == "/ported-examples" ? "active" : ""}',
+                    'drawer-link ${activeRoute == AppRoute.portedExamples ? "active" : ""}',
                 onClick: _closeDrawer,
                 [
                   span(classes: 'drawer-link-icon', [Component.text('🔄')]),
                   span(classes: 'drawer-link-label', [
-                    Component.text('Ported Examples'),
+                    Component.text(AppRoute.portedExamples.label),
                   ]),
                 ],
               ),
               a(
-                href: '/minesweeper',
+                href: AppRoute.minesweeper.path,
                 classes:
-                    'drawer-link ${activePath == "/minesweeper" ? "active" : ""}',
+                    'drawer-link ${activeRoute == AppRoute.minesweeper ? "active" : ""}',
                 onClick: _closeDrawer,
                 [
                   span(classes: 'drawer-link-icon', [Component.text('🎮')]),
@@ -185,9 +191,9 @@ class _NavbarState() extends State<Navbar> {
                 ],
               ),
               a(
-                href: '/publications',
+                href: AppRoute.publications.path,
                 classes:
-                    'drawer-link ${activePath == "/publications" ? "active" : ""}',
+                    'drawer-link ${activeRoute == AppRoute.publications ? "active" : ""}',
                 onClick: _closeDrawer,
                 [
                   span(classes: 'drawer-link-icon', [Component.text('📚')]),

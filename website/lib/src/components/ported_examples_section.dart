@@ -1,6 +1,8 @@
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
+import '../models/app_route.dart';
+
 class const PortedExamplesSection({super.key}) extends StatelessComponent {
   @override
   Component build(BuildContext context) {
@@ -167,7 +169,7 @@ class const PortedExamplesSection({super.key}) extends StatelessComponent {
         icon: '💣',
         localPath: 'examples/mine_sweeper',
         upstreamUrl: 'https://github.com/RandalSchwartz/mine_sweeper',
-        demoUrl: '/minesweeper',
+        demoUrl: AppRoute.minesweeper.path,
       ),
     ];
 

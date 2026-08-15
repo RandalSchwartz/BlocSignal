@@ -3,6 +3,7 @@ import 'package:jaspr/jaspr.dart';
 
 import '../components/footer.dart';
 import '../components/navbar.dart';
+import '../models/app_route.dart';
 
 class const PublicationItem({
   required final String title,
@@ -231,7 +232,7 @@ class _PublicationsPageState() extends State<PublicationsPage> {
               .toList();
 
     return div(classes: 'app-root', [
-      const Navbar(currentPath: '/publications'),
+      const Navbar(currentRoute: AppRoute.publications),
       main_([
         div(classes: 'publications-hero container', [
           div(classes: 'section-badge', [

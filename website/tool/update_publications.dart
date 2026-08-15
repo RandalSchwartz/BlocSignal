@@ -42,10 +42,8 @@ Future<void> main() async {
   );
   if (!hasSideEffectsArticle) {
     articles.insert(0, {
-      'title':
-          'One-Shot UI Side Effects in BlocSignal: Snackbars, Dialogs, and Navigation Without State Pollution',
-      'description':
-          'Why persistent domain state is the wrong place for transient dialogs and snackbars, how classic BLoC solved it with bloc_presentation, and how to handle one-shot side effects in BlocSignal with zero dependencies.',
+      'title': 'One-Shot UI Side Effects in BlocSignal: Snackbars, Dialogs, and Navigation Without State Pollution',
+      'description': 'Why persistent domain state is the wrong place for transient dialogs and snackbars, how classic BLoC solved it with bloc_presentation, and how to handle one-shot side effects in BlocSignal with zero dependencies.',
       'url': sideEffectsArticleUrl,
       'canonical_url': sideEffectsArticleUrl,
       'readable_publish_date': 'Aug 15',
@@ -97,6 +95,7 @@ Future<void> main() async {
   buffer.writeln("import 'package:jaspr/jaspr.dart';");
   buffer.writeln("import '../components/footer.dart';");
   buffer.writeln("import '../components/navbar.dart';");
+  buffer.writeln("import '../models/app_route.dart';");
   buffer.writeln();
   buffer.writeln('class const PublicationItem({');
   buffer.writeln('  required final String title,');
@@ -203,7 +202,7 @@ class _PublicationsPageState() extends State<PublicationsPage> {
             .toList();
 
     return div(classes: 'app-root', [
-      const Navbar(currentPath: '/publications'),
+      const Navbar(currentRoute: AppRoute.publications),
       main_([
         div(classes: 'publications-hero container', [
           div(classes: 'section-badge', [

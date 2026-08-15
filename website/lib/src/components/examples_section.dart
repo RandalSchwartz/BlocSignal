@@ -1,6 +1,8 @@
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
+import '../models/app_route.dart';
+
 class const ExamplesSection({super.key}) extends StatelessComponent {
   @override
   Component build(BuildContext context) {
@@ -43,7 +45,7 @@ class const ExamplesSection({super.key}) extends StatelessComponent {
         desc: 'HydratedBlocSignal puzzle game with Dart 3 pattern matching, safe first click & BFS flood fill.',
         icon: '💣',
         path: 'examples/mine_sweeper',
-        webLink: '/minesweeper',
+        webLink: AppRoute.minesweeper.path,
       ),
     ];
 

@@ -4,12 +4,13 @@ import 'package:jaspr/jaspr.dart';
 import '../components/footer.dart';
 import '../components/minesweeper/minesweeper_component.dart';
 import '../components/navbar.dart';
+import '../models/app_route.dart';
 
 class const MinesweeperPage({super.key}) extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     return div(classes: 'app-root', [
-      const Navbar(currentPath: '/minesweeper'),
+      const Navbar(currentRoute: AppRoute.minesweeper),
       main_([
         section(classes: 'minesweeper-hero-section', [
           div(classes: 'container', [

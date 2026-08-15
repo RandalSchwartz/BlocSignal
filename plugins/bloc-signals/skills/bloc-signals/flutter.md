@@ -144,6 +144,13 @@ MultiBlocSignalListener(
 )
 ```
 
+### One-shot presentation side effects
+
+For transient UI actions (dialogs, snackbars, navigation) that should not pollute domain state, prefer:
+1. **Direct async UI handlers**: `await cubit.action(); if (context.mounted) ...` in the widget `onPressed` callback. Because `BlocSignal` updates synchronously, state is settled immediately upon return.
+2. **`BlocSignalPresentationMixin` & `BlocSignalPresentationListener`**: A lightweight zero-dependency mixin pattern for 100% `bloc_presentation` API compatibility (see [migration.md](migration.md#migrating-from-bloc_presentation-to-blocsignal-one-shot-ui-side-effects)).
+
+
 ## Multiple providers
 
 `MultiBlocSignalProvider` nests its providers in list order. Individual providers do not require a placeholder `child` parameter:

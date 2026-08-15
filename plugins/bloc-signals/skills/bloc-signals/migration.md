@@ -646,3 +646,188 @@ class ModernCounterView extends HookWidget {
 | `useBlocBuilder(bloc)` | `useSignalValue(bloc.state)` | Reads any `ReadonlySignal<S>` directly |
 | `useBlocListener(bloc, fn)` | `useSignalEffect(() => ...)` | Inlined reactive effect; zero widget tree wrappers |
 | `useBlocSelector(bloc, fn)` | `useComputed(() => ...)` | Reactive signal derivation with fine-grained equality |
+
+---
+
+## 📣 Migrating from `bloc_presentation` to `BlocSignal` (One-Shot UI Side Effects)
+
+In classic BLoC, developers often face a dilemma when handling one-shot presentation events (such as showing a `SnackBar`, displaying an alert dialog, or triggering navigation):
+1. **Persistent State Dilemma**: If you put `ShowSnackbarState(message)` directly into domain state, subsequent widget rebuilds (like device rotations or keyboard popups) can re-trigger the snackbar.
+2. **Artificial Reset Hacks**: Emitting `ResetState` or adding boolean flags (`isHandled: true`) clutters state models and introduces redundant emissions and rebuild cycles.
+
+In the legacy BLoC ecosystem, [`bloc_presentation`](https://pub.dev/packages/bloc_presentation) solved this by adding a secondary broadcast stream to Blocs.
+
+In `BlocSignal`, you do not need a separate third-party package. You can handle one-shot side effects using either **Direct Async UI Handlers** or a **Lightweight Zero-Dependency Presentation Mixin**.
+
+### Pattern 1: Direct Async UI Handlers (Recommended for User-Triggered Actions)
+
+Because `BlocSignal` state updates propagate **synchronously** in 0ms (no microtask queue delays), asynchronous methods on `CubitSignal` or `BlocSignal` return only after the state has been updated. You can safely coordinate dialogs, snackbars, and navigation directly in the UI event handler:
+
+```dart
+ElevatedButton(
+  onPressed: () async {
+    final cubit = context.read<AuthCubit>();
+    await cubit.signIn(email, password);
+
+    if (!context.mounted) return;
+
+    if (cubit.stateValue case AuthSuccess(:final user)) {
+      Navigator.of(context).pushReplacementNamed('/home');
+    } else if (cubit.stateValue case AuthFailure(:final error)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error)),
+      );
+    }
+  },
+  child: const Text('Sign In'),
+)
+```
+
+### Pattern 2: Zero-Dependency `PresentationMixin` (Drop-in `bloc_presentation` Parity)
+
+If you are migrating a large codebase that relies on `emitPresentation(event)` and `BlocPresentationListener`, you can achieve 100% API and architectural parity with zero external dependencies using this 25-line pattern:
+
+#### 1. Define the Presentation Mixin
+```dart
+import 'dart:async';
+import 'package:bloc_signals/bloc_signals.dart';
+
+/// Mixin that adds one-shot presentation event broadcasting to any [BlocSignalBase].
+mixin BlocSignalPresentationMixin<Event, State> on BlocSignalBase<State> {
+  final _presentationController = StreamController<Event>.broadcast();
+
+  /// Stream of one-shot presentation events.
+  Stream<Event> get presentationStream => _presentationController.stream;
+
+  /// Dispatches a one-shot presentation event to active listeners.
+  void emitPresentation(Event event) {
+    if (!isClosed) {
+      _presentationController.add(event);
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _presentationController.close();
+    return super.close();
+  }
+}
+```
+
+#### 2. Define the Presentation Listener Widget
+```dart
+import 'dart:async';
+import 'package:flutter/widgets.dart';
+import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
+
+/// Listens to one-shot presentation events from a [BlocSignalBase] with [BlocSignalPresentationMixin].
+class BlocSignalPresentationListener<B extends BlocSignalPresentationMixin<Event, dynamic>, Event>
+    extends StatefulWidget {
+  const BlocSignalPresentationListener({
+    required this.listener,
+    this.bloc,
+    this.child,
+    super.key,
+  });
+
+  final B? bloc;
+  final void Function(BuildContext context, Event event) listener;
+  final Widget? child;
+
+  @override
+  State<BlocSignalPresentationListener<B, Event>> createState() =>
+      _BlocSignalPresentationListenerState<B, Event>();
+}
+
+class _BlocSignalPresentationListenerState<
+        B extends BlocSignalPresentationMixin<Event, dynamic>, Event>
+    extends State<BlocSignalPresentationListener<B, Event>> {
+  StreamSubscription<Event>? _subscription;
+  B? _resolvedBloc;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final bloc = widget.bloc ?? context.read<B>();
+    if (_resolvedBloc != bloc) {
+      _unsubscribe();
+      _resolvedBloc = bloc;
+      _subscribe();
+    }
+  }
+
+  void _subscribe() {
+    _subscription = _resolvedBloc?.presentationStream.listen((event) {
+      if (mounted) widget.listener(context, event);
+    });
+  }
+
+  void _unsubscribe() {
+    _subscription?.cancel();
+    _subscription = null;
+  }
+
+  @override
+  void dispose() {
+    _unsubscribe();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child ?? const SizedBox.shrink();
+}
+```
+
+#### 3. Usage Example (Drop-in Replacement)
+```dart
+// 1. Cubit / Bloc definition
+sealed class AuthPresentationEvent {}
+class ShowErrorToast extends AuthPresentationEvent {
+  ShowErrorToast(this.message);
+  final String message;
+}
+class NavigateToDashboard extends AuthPresentationEvent {}
+
+class AuthCubit extends CubitSignal<AuthState>
+    with BlocSignalPresentationMixin<AuthPresentationEvent, AuthState> {
+  AuthCubit() : super(initialState: AuthInitial());
+
+  Future<void> submit() async {
+    emit(AuthLoading());
+    try {
+      await api.login();
+      emit(AuthSuccess());
+      emitPresentation(NavigateToDashboard());
+    } catch (e) {
+      emit(AuthFailure(e.toString()));
+      emitPresentation(ShowErrorToast(e.toString()));
+    }
+  }
+}
+
+// 2. Flutter UI Consumption
+BlocSignalPresentationListener<AuthCubit, AuthPresentationEvent>(
+  listener: (context, event) {
+    switch (event) {
+      case ShowErrorToast(:final message):
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message)),
+        );
+      case NavigateToDashboard():
+        Navigator.of(context).pushReplacementNamed('/dashboard');
+    }
+  },
+  child: const LoginForm(),
+)
+```
+
+### Side-by-Side Migration Matrix
+
+| Feature | Legacy `bloc_presentation` | `BlocSignal` Zero-Dependency Recipe |
+| :--- | :--- | :--- |
+| **Package Dependency** | `package:bloc_presentation` | **None** (pure Dart stream controller + widget) |
+| **Mixin Contract** | `with BlocPresentationMixin` | `with BlocSignalPresentationMixin<E, S>` |
+| **Emission API** | `emitPresentation(event)` | `emitPresentation(event)` |
+| **Listener Widget** | `BlocPresentationListener` | `BlocSignalPresentationListener` |
+| **Lifecycle Safety** | Manual / Stream cleanup | Closed automatically in `super.close()` |
+

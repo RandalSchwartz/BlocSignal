@@ -27,6 +27,16 @@ const List<PublicationItem> _publications = [
     tags: ["flutter", "dart", "webdev", "statemanagement"],
   ),
   PublicationItem(
+    title: 'One-Shot UI Side Effects in BlocSignal: Snackbars, Dialogs, and Navigation Without State Pollution',
+    description: 'Why persistent domain state is the wrong place for transient dialogs and snackbars, how classic BLoC solved it with bloc_presentation, and how to handle one-shot side effects in BlocSignal with zero dependencies.',
+    url: 'https://dev.to/gde/one-shot-ui-side-effects-in-blocsignal-snackbars-dialogs-and-navigation-without-state-pollution-52j4',
+    date: 'Aug 15',
+    readTime: '4 min read',
+    category: 'State Machines',
+    type: 'Article',
+    tags: ["flutter", "dart", "statemanagement", "webdev"],
+  ),
+  PublicationItem(
     title: 'Dart 3.13 Primary Constructors + BlocSignal: Boilerplate-Free Reactive Architecture',
     description: 'Discover how Dart 3.13 primary constructors, \'this\' constructor bodies, and constructor shorthands transform BlocSignal into the cleanest state management architecture in Flutter.',
     url: 'https://dev.to/gde/dart-313-primary-constructors-blocsignal-boilerplate-free-reactive-architecture-5fll',

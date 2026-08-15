@@ -34,6 +34,26 @@ Future<void> main() async {
 
   final List<dynamic> articles = jsonDecode(jsonString);
 
+  // Check if latest one-shot side effects article is present; if not, prepend it
+  const sideEffectsArticleUrl =
+      'https://dev.to/gde/one-shot-ui-side-effects-in-blocsignal-snackbars-dialogs-and-navigation-without-state-pollution-52j4';
+  final hasSideEffectsArticle = articles.any(
+    (a) => (a['canonical_url'] ?? a['url']) == sideEffectsArticleUrl,
+  );
+  if (!hasSideEffectsArticle) {
+    articles.insert(0, {
+      'title':
+          'One-Shot UI Side Effects in BlocSignal: Snackbars, Dialogs, and Navigation Without State Pollution',
+      'description':
+          'Why persistent domain state is the wrong place for transient dialogs and snackbars, how classic BLoC solved it with bloc_presentation, and how to handle one-shot side effects in BlocSignal with zero dependencies.',
+      'url': sideEffectsArticleUrl,
+      'canonical_url': sideEffectsArticleUrl,
+      'readable_publish_date': 'Aug 15',
+      'reading_time_minutes': 4,
+      'tag_list': ['flutter', 'dart', 'statemanagement', 'webdev'],
+    });
+  }
+
   // Check if latest dogfooding article is present; if not, prepend it
   const dogfoodArticleUrl =
       'https://dev.to/gde/dogfooding-blocsignal-on-the-web-building-a-100k-opssec-reactive-app-with-jaspr-and-dart-313-4am7';

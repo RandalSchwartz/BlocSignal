@@ -333,5 +333,12 @@ When building in-browser or UI benchmark runners (e.g. 1,000 synchronous event l
 * **Decouple Event Loops from Per-Event `setState`**: In synchronous reactive architectures (`BlocSignal`), firing `add(event)` in a loop executes immediately in the current frame. Avoid attaching raw `.subscribe((_) => setState())` handlers that trigger framework component rebuilds on every individual iteration.
 * **Batch Update Pattern**: Allow the loop to execute cleanly in memory under `Stopwatch` timing, then invoke a single `setState()` at the conclusion of the batch to update metrics, logs, and derived view states without browser UI thrashing.
 
+### 39. `bloc_signals_jaspr` Component Tree Dogfooding & Dart 3.13 Primary Constructor Fields
+When integrating `bloc_signals_jaspr` into Jaspr web applications:
+* **Declarative Consumer Integration**: Use `BlocSignalProvider<T>` at the root (or feature scope) with `BlocSignalBuilder<T, S>`, `BlocSignalSelector<T, S, R>`, `BlocSignalListener<T, S>`, and `context.select<T, R>()` / `context.read<T>()`. This completely eliminates manual `StatefulComponent` subscription loops (`_cubit.state.subscribe(...)`) and manual `close()` in `dispose()`, as `BlocSignalProvider` automatically manages lifecycle and unmount disposal.
+* **Dart 3.13 Primary Constructor Parameter Disambiguation**: When using Dart 3.13 primary constructor syntax on components (`class const Navbar({final String? currentPath, super.key}) extends StatefulComponent`), do NOT re-declare `final String? currentPath;` inside the class body—the constructor parameter list already establishes the field declaration, and body redeclaration causes `duplicate_definition` analyzer errors.
+* **Private Component Parameter Hygiene**: Omit unused `super.key` parameters from private helper components (e.g. `class const _AppRouter() extends StatelessComponent`) to prevent `unused_element_parameter` lints.
+
+
 
 

@@ -57,10 +57,21 @@
   }
   ```
 
+### 2. Fine-Grained Reactive Updates with `BlocSignalSelector`
+Use `BlocSignalSelector` when child components only need to re-render when a specific slice of the container state changes:
+```dart
+// Rebuilds ONLY when the derived doubled count changes
+BlocSignalSelector<CounterBloc, int, int>(
+  selector: (state) => state * 2,
+  builder: (context, doubled) => span([Component.text('Doubled: $doubled')]),
+)
+```
+
 ---
 
 ## 📝 Jaspr Web Example
 
+### Classic Dart 3.5 Syntax
 ```dart
 import 'package:bloc_signals_jaspr/bloc_signals_jaspr.dart';
 import 'package:jaspr/dom.dart';
@@ -94,3 +105,36 @@ class CounterApp extends StatelessComponent {
   }
 }
 ```
+
+### Modern Dart 3.13 Primary Constructor Syntax
+```dart
+import 'package:bloc_signals_jaspr/bloc_signals_jaspr.dart';
+import 'package:jaspr/dom.dart';
+import 'package:jaspr/jaspr.dart';
+
+class CounterCubit() extends CubitSignal<int> {
+  this : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
+}
+
+class const CounterApp({super.key}) extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalProvider<CounterCubit>(
+      create: (_) => CounterCubit(),
+      child: div([
+        BlocSignalSelector<CounterCubit, int, int>(
+          selector: (state) => state,
+          builder: (context, count) => h1([Component.text('Count: $count')]),
+        ),
+        button(
+          onClick: () => context.read<CounterCubit>().increment(),
+          [Component.text('Increment')],
+        ),
+      ]),
+    );
+  }
+}
+```
+

@@ -34,21 +34,39 @@ Future<void> main() async {
 
   final List<dynamic> articles = jsonDecode(jsonString);
 
-  // Check if new article is present in list; if not, prepend it
-  const newArticleUrl =
-      'https://dev.to/gde/from-raw-signals-to-blocsignal-taming-reactivity-for-enterprise-scale-2cmi';
-  final hasNewArticle = articles.any(
-    (a) => (a['canonical_url'] ?? a['url']) == newArticleUrl,
+  // Check if latest dogfooding article is present; if not, prepend it
+  const dogfoodArticleUrl =
+      'https://dev.to/gde/dogfooding-blocsignal-on-the-web-building-a-100k-opssec-reactive-app-with-jaspr-and-dart-313-4am7';
+  final hasDogfoodArticle = articles.any(
+    (a) => (a['canonical_url'] ?? a['url']) == dogfoodArticleUrl,
   );
-  if (!hasNewArticle) {
+  if (!hasDogfoodArticle) {
     articles.insert(0, {
-      'title': 'From Raw Signals to BlocSignal: Taming Reactivity for Enterprise Scale',
-      'description': 'Learn how BlocSignal encapsulates raw signals inside BLoC & Cubit containers to bring dispatch rigor, event hierarchies, and 0ms synchronous speed to Flutter and Jaspr apps.',
-      'url': newArticleUrl,
-      'canonical_url': newArticleUrl,
-      'readable_publish_date': 'Aug 8',
-      'reading_time_minutes': 6,
-      'tag_list': ['flutter', 'dart', 'architecture', 'webdev'],
+      'title': 'Dogfooding BlocSignal on the Web: Building a 100K Ops/sec Reactive App with Jaspr and Dart 3.13',
+      'description': 'A behind-the-scenes look at how we dogfooded bloc_signals_jaspr on blocsignal.dev, achieving 100K ops/sec in browser JS with declarative consumer components and Dart 3.13.',
+      'url': dogfoodArticleUrl,
+      'canonical_url': dogfoodArticleUrl,
+      'readable_publish_date': 'Aug 14',
+      'reading_time_minutes': 5,
+      'tag_list': ['flutter', 'dart', 'webdev', 'statemanagement'],
+    });
+  }
+
+  // Check if primary constructors article is present; if not, prepend it
+  const primaryConstArticleUrl =
+      'https://dev.to/gde/dart-313-primary-constructors-blocsignal-boilerplate-free-reactive-architecture-5fll';
+  final hasPrimaryArticle = articles.any(
+    (a) => (a['canonical_url'] ?? a['url']) == primaryConstArticleUrl,
+  );
+  if (!hasPrimaryArticle) {
+    articles.insert(1, {
+      'title': 'Dart 3.13 Primary Constructors + BlocSignal: Boilerplate-Free Reactive Architecture',
+      'description': 'Discover how Dart 3.13 primary constructors, \'this\' constructor bodies, and constructor shorthands transform BlocSignal into the cleanest state management architecture in Flutter.',
+      'url': primaryConstArticleUrl,
+      'canonical_url': primaryConstArticleUrl,
+      'readable_publish_date': 'Aug 14',
+      'reading_time_minutes': 4,
+      'tag_list': ['flutter', 'dart', 'statemanagement', 'programming'],
     });
   }
 

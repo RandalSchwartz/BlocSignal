@@ -17,6 +17,16 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title: 'Dogfooding BlocSignal on the Web: Building a 100K Ops/sec Reactive App with Jaspr and Dart 3.13',
+    description: 'A behind-the-scenes look at how we dogfooded bloc_signals_jaspr on blocsignal.dev, achieving 100K ops/sec in browser JS with declarative consumer components and Dart 3.13.',
+    url: 'https://dev.to/gde/dogfooding-blocsignal-on-the-web-building-a-100k-opssec-reactive-app-with-jaspr-and-dart-313-4am7',
+    date: 'Aug 14',
+    readTime: '5 min read',
+    category: 'State Machines',
+    type: 'Article',
+    tags: ["flutter", "dart", "webdev", "statemanagement"],
+  ),
+  PublicationItem(
     title: 'Dart 3.13 Primary Constructors + BlocSignal: Boilerplate-Free Reactive Architecture',
     description: 'Discover how Dart 3.13 primary constructors, \'this\' constructor bodies, and constructor shorthands transform BlocSignal into the cleanest state management architecture in Flutter.',
     url: 'https://dev.to/gde/dart-313-primary-constructors-blocsignal-boilerplate-free-reactive-architecture-5fll',

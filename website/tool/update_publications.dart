@@ -34,6 +34,24 @@ Future<void> main() async {
 
   final List<dynamic> articles = jsonDecode(jsonString);
 
+  // Check if latest dogfooding article is present; if not, prepend it
+  const dogfoodArticleUrl =
+      'https://dev.to/gde/dogfooding-blocsignal-on-the-web-building-a-100k-opssec-reactive-app-with-jaspr-and-dart-313-4am7';
+  final hasDogfoodArticle = articles.any(
+    (a) => (a['canonical_url'] ?? a['url']) == dogfoodArticleUrl,
+  );
+  if (!hasDogfoodArticle) {
+    articles.insert(0, {
+      'title': 'Dogfooding BlocSignal on the Web: Building a 100K Ops/sec Reactive App with Jaspr and Dart 3.13',
+      'description': 'A behind-the-scenes look at how we dogfooded bloc_signals_jaspr on blocsignal.dev, achieving 100K ops/sec in browser JS with declarative consumer components and Dart 3.13.',
+      'url': dogfoodArticleUrl,
+      'canonical_url': dogfoodArticleUrl,
+      'readable_publish_date': 'Aug 14',
+      'reading_time_minutes': 5,
+      'tag_list': ['flutter', 'dart', 'webdev', 'statemanagement'],
+    });
+  }
+
   // Check if latest one-shot side effects article is present; if not, prepend it
   const sideEffectsArticleUrl =
       'https://dev.to/gde/one-shot-ui-side-effects-in-blocsignal-snackbars-dialogs-and-navigation-without-state-pollution-52j4';
@@ -52,21 +70,21 @@ Future<void> main() async {
     });
   }
 
-  // Check if latest dogfooding article is present; if not, prepend it
-  const dogfoodArticleUrl =
-      'https://dev.to/gde/dogfooding-blocsignal-on-the-web-building-a-100k-opssec-reactive-app-with-jaspr-and-dart-313-4am7';
-  final hasDogfoodArticle = articles.any(
-    (a) => (a['canonical_url'] ?? a['url']) == dogfoodArticleUrl,
+  // Check if latest 'Why BlocSignal Doesn't Need Provider' article is present; if not, prepend it
+  const providerArticleUrl =
+      'https://dev.to/gde/why-blocsignal-doesnt-need-provider-and-why-classic-bloc-always-did-1j3g';
+  final hasProviderArticle = articles.any(
+    (a) => (a['canonical_url'] ?? a['url']) == providerArticleUrl,
   );
-  if (!hasDogfoodArticle) {
+  if (!hasProviderArticle) {
     articles.insert(0, {
-      'title': 'Dogfooding BlocSignal on the Web: Building a 100K Ops/sec Reactive App with Jaspr and Dart 3.13',
-      'description': 'A behind-the-scenes look at how we dogfooded bloc_signals_jaspr on blocsignal.dev, achieving 100K ops/sec in browser JS with declarative consumer components and Dart 3.13.',
-      'url': dogfoodArticleUrl,
-      'canonical_url': dogfoodArticleUrl,
-      'readable_publish_date': 'Aug 14',
-      'reading_time_minutes': 5,
-      'tag_list': ['flutter', 'dart', 'webdev', 'statemanagement'],
+      'title': "Why BlocSignal Doesn't Need Provider (And Why Classic BLoC Always Did)",
+      'description': "How shedding package:provider eliminates dependency hell, fixes Flutter's lingering ghost rebuild bug, and delivers fine-grained synchronous reactivity in 2026.",
+      'url': providerArticleUrl,
+      'canonical_url': providerArticleUrl,
+      'readable_publish_date': 'Aug 16',
+      'reading_time_minutes': 6,
+      'tag_list': ['flutter', 'dart', 'statemanagement', 'webdev'],
     });
   }
 

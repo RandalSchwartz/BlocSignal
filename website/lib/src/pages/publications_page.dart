@@ -18,14 +18,14 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
-    title: 'Dogfooding BlocSignal on the Web: Building a 100K Ops/sec Reactive App with Jaspr and Dart 3.13',
-    description: 'A behind-the-scenes look at how we dogfooded bloc_signals_jaspr on blocsignal.dev, achieving 100K ops/sec in browser JS with declarative consumer components and Dart 3.13.',
-    url: 'https://dev.to/gde/dogfooding-blocsignal-on-the-web-building-a-100k-opssec-reactive-app-with-jaspr-and-dart-313-4am7',
-    date: 'Aug 14',
-    readTime: '5 min read',
+    title: 'Why BlocSignal Doesn\'t Need Provider (And Why Classic BLoC Always Did)',
+    description: 'How shedding package:provider eliminates dependency hell, fixes Flutter\'s lingering ghost rebuild bug, and delivers fine-grained synchronous reactivity in 2026.',
+    url: 'https://dev.to/gde/why-blocsignal-doesnt-need-provider-and-why-classic-bloc-always-did-1j3g',
+    date: 'Aug 16',
+    readTime: '6 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["flutter", "dart", "webdev", "statemanagement"],
+    tags: ["flutter", "dart", "statemanagement", "webdev"],
   ),
   PublicationItem(
     title: 'One-Shot UI Side Effects in BlocSignal: Snackbars, Dialogs, and Navigation Without State Pollution',
@@ -36,6 +36,16 @@ const List<PublicationItem> _publications = [
     category: 'State Machines',
     type: 'Article',
     tags: ["flutter", "dart", "statemanagement", "webdev"],
+  ),
+  PublicationItem(
+    title: 'Dogfooding BlocSignal on the Web: Building a 100K Ops/sec Reactive App with Jaspr and Dart 3.13',
+    description: 'A behind-the-scenes look at how we dogfooded bloc_signals_jaspr on blocsignal.dev, achieving 100K ops/sec in browser JS with declarative consumer components and Dart 3.13.',
+    url: 'https://dev.to/gde/dogfooding-blocsignal-on-the-web-building-a-100k-opssec-reactive-app-with-jaspr-and-dart-313-4am7',
+    date: 'Aug 14',
+    readTime: '5 min read',
+    category: 'State Machines',
+    type: 'Article',
+    tags: ["flutter", "dart", "webdev", "statemanagement"],
   ),
   PublicationItem(
     title: 'Dart 3.13 Primary Constructors + BlocSignal: Boilerplate-Free Reactive Architecture',

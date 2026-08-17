@@ -340,6 +340,34 @@ When integrating `bloc_signals_jaspr` into Jaspr web applications:
 * **Dart 3.13 Primary Constructor Parameter Disambiguation**: When using Dart 3.13 primary constructor syntax on components (`class const Navbar({final String? currentPath, super.key}) extends StatefulComponent`), do NOT re-declare `final String? currentPath;` inside the class body—the constructor parameter list already establishes the field declaration, and body redeclaration causes `duplicate_definition` analyzer errors.
 * **Private Component Parameter Hygiene**: Omit unused `super.key` parameters from private helper components (e.g. `class const _AppRouter() extends StatelessComponent`) to prevent `unused_element_parameter` lints.
 
+### 40. Mandatory Public API Doc-Comments
+When modifying or adding public-facing classes, methods, getters, constructors, or extension members across any package in the monorepo:
+* **Complete Docstring Coverage**: Always write clear, comprehensive Dart doc-comments (`///`) with descriptive summaries, parameter explanations, and runnable code examples.
+* **No Undocumented Members**: No public member or re-exported symbol should ever be committed or published without complete docstrings.
 
+### 41. Agent Skills Synchronization & Push Protocol
+When framework architecture, state primitives, builders, providers, or testing conventions change:
+* **Skill Bundle Maintenance**: You MUST update the corresponding skill file(s) under `plugins/bloc-signals/skills/bloc-signals/` (and `.agents/skills/`).
+* **Validation**: Run `dart run tool/validate_agent_plugin.dart` to verify skill bundle integrity.
+* **Push to Remote**: Commit and push skill updates to GitHub so the whole agent ecosystem and other developers operate on up-to-date knowledge.
 
+### 42. Website Documentation Review & Deployment Protocol (`blocsignal.dev/docs`)
+After every code or architectural change across the monorepo:
+* **Documentation Review**: Review whether the standalone website documentation hub (`website/` at `blocsignal.dev/docs`) needs to be updated to reflect the new feature, migration path, or API change.
+* **Update Chapters**: Update the matching documentation chapter(s) in `website/lib/src/components/docs/pages/`.
+* **Re-compile & Deploy Proposal**: Run `dart run website/tool/build_static.dart` to compile the static bundle for local IDE preview, and propose deploying live to Firebase Hosting (`npx -y firebase-tools deploy --only hosting`) after user review and approval.
 
+### 43. SPA Navigation Semantic Architecture (Button Navigation vs Link Navigation)
+In Single Page Applications (SPAs) with 0ms synchronous DOM swapping:
+* **Semantic `<button>` Elements for Internal Navigation**: Sidebar navigation items, category links, and footer pagination cards MUST use semantic `<button>` elements (with CSS resets) rather than `<a>` tags for internal state-driven route switching.
+* **Double-Bounce Prevention**: This eliminates trailing native browser navigation conflicts and `preventDefault` JS interop errors on extension types during 0ms synchronous DOM swaps, while maintaining full keyboard accessibility and clean HTML5 history integration.
+
+### 44. Jaspr Component Reactivity & `BlocSignalBuilder`
+When building reactive Jaspr web applications:
+* **Declarative Builders**: `StatelessComponent.build()` executes during initial rendering but will NOT automatically re-render when a state container (`DocsCubit` or `BlocSignal`) emits new state unless the component is wrapped in `BlocSignalBuilder<B, S>` (or uses `SignalBuilder` / `Observer`).
+* **State Wrapping**: Always wrap dynamic article viewers or state-dependent components in `BlocSignalBuilder` to ensure state updates trigger immediate UI rebuilds.
+
+### 45. Dual Dart Syntax Documentation Standard (`selectedDartVersion`)
+When authoring code snippets and documentation:
+* **Dual Presentation**: Maintain the dual Dart 3.13+ (modern primary constructors, parameter shorthands, `this` bodies) vs Dart 3.5 (baseline) presentation in docs and snippets whenever feasible.
+* **Global Preference with Local Overrides**: Connect `DocsCodeBlock` to `DocsCubit.selectedDartVersion` via the global sidebar toggle (`3.13+ Modern` vs `3.5 Baseline`), while allowing readers to override individual code blocks via inline tabs.

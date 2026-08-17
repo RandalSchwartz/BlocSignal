@@ -60,7 +60,7 @@ class const DocsCubitVsBlocPage({super.key}) extends StatelessComponent {
               Component.text(', '),
               apiLink(DocSymbol.blocSignalListener),
               Component.text(', '),
-              code([Component.text('context.select')]),
+              apiLink(DocSymbol.contextSelect, label: 'context.select'),
               Component.text(
                 ') interact with both Cubits and Blocs interchangeably. You can even migrate from CubitSignal to BlocSignal without changing a single line of widget code.',
               ),

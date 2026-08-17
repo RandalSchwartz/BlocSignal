@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -68,22 +69,29 @@ class const DocsMigrationRiverpodPage({super.key}) extends StatelessComponent {
             ]),
             tr([
               td([Component.text('ref.watch(provider)')]),
-              td([Component.text('context.watch<B>() or BlocSignalBuilder')]),
+              td([
+                apiLink(DocSymbol.contextWatch, label: 'context.watch<B>()'),
+                Component.text(' or '),
+                apiLink(DocSymbol.blocSignalBuilder),
+              ]),
             ]),
             tr([
               td([Component.text('ref.read(provider.notifier)')]),
-              td([Component.text('context.read<B>()')]),
+              td([apiLink(DocSymbol.contextRead, label: 'context.read<B>()')]),
             ]),
             tr([
               td([Component.text('ref.listen(provider, ...)')]),
-              td([Component.text('BlocSignalListener')]),
+              td([apiLink(DocSymbol.blocSignalListener)]),
             ]),
             tr([
               td([Component.text('ref.watch(provider.select(...))')]),
               td([
-                Component.text(
-                  'context.select<B, S, R>() or BlocSignalSelector',
+                apiLink(
+                  DocSymbol.contextSelect,
+                  label: 'context.select<B, R>()',
                 ),
+                Component.text(' or '),
+                apiLink(DocSymbol.blocSignalSelector),
               ]),
             ]),
           ]),

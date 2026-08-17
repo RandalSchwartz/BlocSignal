@@ -12,7 +12,7 @@ class const DocsFlutterContextPage({super.key}) extends StatelessComponent {
   static const List<TocHeading> headings = [
     TocHeading(title: '1. context.read<B>()', anchor: 'read'),
     TocHeading(title: '2. context.watch<B>()', anchor: 'watch'),
-    TocHeading(title: '3. context.select<B, S, R>()', anchor: 'select'),
+    TocHeading(title: '3. context.select<B, R>()', anchor: 'select'),
   ];
 
   @override
@@ -41,10 +41,7 @@ class const DocsFlutterContextPage({super.key}) extends StatelessComponent {
             'Retrieves the nearest ancestor state container without registering a rebuild dependency. '
             'Always use ',
           ),
-          apiLink(
-            DocSymbol.blocSignalProviderExtension,
-            label: 'context.read<B>()',
-          ),
+          apiLink(DocSymbol.contextRead, label: 'context.read<B>()'),
           Component.text(
             ' inside event handlers, callback closures, button presses, and gestures '
             'where you want to dispatch an action or read a one-off value without causing the enclosing '
@@ -102,7 +99,7 @@ class IncrementButton extends StatelessWidget {
       section(id: 'watch', classes: 'docs-section', [
         h2([Component.text('2. context.watch<B>()')]),
         p([
-          code([Component.text('context.watch<B>()')]),
+          apiLink(DocSymbol.contextWatch, label: 'context.watch<B>()'),
           Component.text(
             ' resolves the container and registers the current widget’s Element '
             'as a listener on the InheritedWidget. Whenever the container emits a new state, '
@@ -147,9 +144,12 @@ class ThemeIconHeader extends StatelessWidget {
       ]),
 
       section(id: 'select', classes: 'docs-section', [
-        h2([Component.text('3. context.select<B, S, R>()')]),
+        h2([Component.text('3. context.select<B, R>()')]),
         p([
-          code([Component.text('context.select<B, S, R>((bloc) => ...)')]),
+          apiLink(
+            DocSymbol.contextSelect,
+            label: 'context.select<B, R>((bloc) => ...)',
+          ),
           Component.text(
             ' listens to a specific derived property of a state container. '
             'The calling widget rebuilds ',
@@ -170,7 +170,7 @@ class UsernameDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Only rebuilds when state.username string changes
-    final username = context.select<UserBloc, UserState, String>(
+    final username = context.select<UserBloc, String>(
       (bloc) => bloc.stateValue.username,
     );
 
@@ -184,7 +184,7 @@ class UsernameDisplay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String username = context.select<UserBloc, UserState, String>(
+    final String username = context.select<UserBloc, String>(
       (UserBloc bloc) => bloc.stateValue.username,
     );
 

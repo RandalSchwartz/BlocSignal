@@ -1,6 +1,6 @@
 # AI Agent Developer Handbook (`AGENTS.md`)
 
-Welcome, agent! This document details the development standards, architectural designs, and workspace configurations of the `BlocSignal` monorepo. Please review and align all your code changes with these guidelines.
+Welcome, agent! This document defines the core workspace constitution, SDK baselines, code quality standards, and on-demand guidance routing for the `BlocSignal` monorepo. Align all code changes with these guidelines.
 
 ---
 
@@ -8,374 +8,71 @@ Welcome, agent! This document details the development standards, architectural d
 
 We use a native Dart workspace (supported in Dart 3.5+) instead of Melos.
 - **Root Configuration**: [pubspec.yaml](pubspec.yaml) defines the workspace.
-- **Members**:
+- **Member Packages**:
   - `bloc_signals` (Core pure Dart package)
   - `bloc_signals_flutter` (Flutter bindings & Listenable interop)
-  - `bloc_signals_flutter/example` (Example Flutter application)
   - `bloc_signals_riverpod` (Bidirectional Riverpod interop adapters)
   - `bloc_signals_test` (Declarative unit testing utilities)
   - `bloc_signals_lint` (Static analysis lints & IDE diagnostics)
+  - `bloc_signals_hydrate` (Persistent state storage adapters)
+  - `bloc_signals_otel` (OpenTelemetry tracing & metrics)
+  - `bloc_signals_replay` (State history & undo/redo tracking)
+  - `bloc_signals_jaspr` (Jaspr web component bindings)
+  - `bloc_signals_devtools` (DevTools extension & VM Service RPC)
 
-
-
-
-### Dependency Management
-To satisfy pub.dev publishing requirements while maintaining local developer workspaces, **always use version constraints rather than path dependencies for intra-workspace dependencies**. 
-- Example in `bloc_signals_flutter/pubspec.yaml`:
-  ```yaml
-  dependencies:
-    bloc_signals: ^1.0.0
-  ```
-- The native Dart workspace compiler will automatically route this constraint to the local workspace folder during development.
+### Intra-Workspace Dependency Management
+To satisfy pub.dev publishing requirements while maintaining local developer workspaces, **always use version constraints rather than path dependencies for intra-workspace dependencies** (for example `bloc_signals: ^1.0.0` in `bloc_signals_flutter/pubspec.yaml`). The Dart workspace compiler routes this constraint to the local workspace folder automatically during development.
 
 ### SDK & Language Versioning Policy
-To balance broad ecosystem compatibility with modern language innovation:
-- **Monorepo Workspace & Internal Tooling (`/`, `tool/`, `website/`, `benchmarks/`)**:
-  - Requires `sdk: ^3.13.0` for local development, website tooling, CI orchestration, and benchmarks.
-  - Allows full use of Dart 3.13 language ergonomics (primary constructors, parameter shorthands, newer core library APIs) in website, generators, and dev tooling.
+- **Monorepo Workspace, Tooling & Website (`/`, `tool/`, `website/`, `benchmarks/`)**:
+  - Requires `sdk: ^3.13.0` for development, website tooling, CI orchestration, and benchmarks.
+  - Allows full use of modern Dart 3.13 language ergonomics (primary constructors, parameter shorthands, newer core library APIs).
 - **Published Packages (`bloc_signals*`)**:
   - Must specify and strictly conform to `sdk: ^3.5.0`.
-  - Must not use Dart language features or APIs introduced after Dart 3.5 (for example, primary constructors).
-  - The Dart 3.13 analyzer and compiler automatically enforce Dart 3.5 language version semantics on these packages based on their `pubspec.yaml` declaration.
-  - This guarantees zero SDK compatibility friction for downstream users across all Flutter and Dart channels.
-- **Examples, Demos & Documentation (`examples/*`, `website/`)**:
-  - May conform to either Dart 3.5 or Dart 3.13+.
-  - **Side-by-Side Presentation**: In code samples, READMEs, tutorials, and example code comments, show both Dart 3.5 (traditional syntax) and Dart 3.13 (modern primary constructors, `this` constructor bodies, and constructor shorthands) side-by-side whenever feasible to highlight modern developer ergonomics while preserving baseline reference patterns.
+  - Must NOT use Dart language features or APIs introduced after Dart 3.5 (for example primary constructors).
+- **Examples, Demos & Documentation**:
+  - Show both Dart 3.5 (traditional syntax) and Dart 3.13 (modern syntax) side-by-side whenever feasible to highlight modern developer ergonomics while preserving baseline reference patterns.
 
 ---
 
-## ⚡ Architectural Guidelines
+## ⚡ Core Framework Principles
 
-`BlocSignal` bridges the BLoC pattern with Rody Davis's signals v7 primitives.
-
-### 1. Synchronous Propagation
-Unlike classic BLoC which runs asynchronously on microtask-queue Streams, state updates in `BlocSignal` propagate **synchronously**. Calling `emit(newState)` triggers downstream recalculations and rebuilds in the exact same frame. Keep this synchronous behavior in mind when designing state relationships and test expectations.
-
-### 2. Automatic De-duplication
-Signals automatically de-duplicate identical states using `==` equality. If you call `emit()` with a state that is equal to the current state, downstream effects and widget builders will **not** trigger.
-
-### 3. Stream Transformations
-Because `BlocSignal` does not use streams under the hood, standard stream-transformer properties (e.g. `debounce`, `throttle`, `switchMap`) are not available. Use custom timing triggers or signal effects to reproduce these behaviors.
-
-### 4. Lifecycle & Disposal (`isClosed`)
-Calling `close()` disposes of the underlying `SignalModel` effect tracking and marks the bloc as closed (`isClosed = true`). Subsequent calls to `add(event)` or `emit(state)` are dropped automatically to prevent memory leaks and unexpected side-effects. The state remains readable after closure to align with classic BLoC semantics.
-
-### 5. Asynchronous Event Handling
-We support `FutureOr<void>` handlers in `onEvent(event)`. If an event handler triggers asynchronous processes (Futures), operational exceptions are captured and reported via `onError` automatically, while programmer faults (`Error` objects) are rethrown to fail fast.
-
-### 6. Transition Event Tracing
-Transitions triggered via `emit()` are associated with their causing `event` using dynamic Zone context values (`Zone.current[_zoneEventKey]`). This provides full event traceability to observers without modifying the signature of `emit()`.
-
-### 7. Event Handler Registry (`on<Event>`)
-To support BLoC-style syntax, events can be registered using `on<E>((event, emit) => ..., transformer: ...)` inside constructor scopes:
-- **Single Registration**: Enforces that each event type `E` is registered at most once; duplicates throw a `StateError` in debug mode.
-- **Concurrent Future Coordination**: By default, multiple matching event handlers have their returned futures orchestrated concurrently using `Future.wait`.
-- **Event Concurrency Transformers**: Handlers accept an optional `transformer` (such as `droppable()`, `sequential()`, `restartable()`, or a custom `Mutex` lock) to control execution strategy without Rx streams.
-- **Backwards Compatibility**: Subclasses can continue to override `onEvent(event)` manually if they do not wish to use the registry.
-
-### 8. Observability & OpenTelemetry (`bloc_signals_otel`)
-When designing telemetry observers (such as `OtelBlocSignalObserver`):
-- **Leak Prevention**: Because `onTransition` is not guaranteed to fire for every event (e.g., on de-duplicated states or errors), active span maps MUST be capped in size (default 100) and evict oldest keys. Furthermore, `onClose(BlocSignalBase)` MUST purge and end lingering spans to prevent memory accumulation upon container disposal.
-- **Span Correlation on Errors**: Route exceptions directly to the active event span inside `onError` using identity hash-matching, rather than creating disconnected transient error spans.
-
-### 9. String Representation (`toString()`)
-`BlocSignalBase` overrides `toString()` to output `$runtimeType($stateValue)`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses.
-
----
-
-## 🛠️ Agent Plugin Maintenance
-
-The public agent plugin owns its skill bundle at `plugins/bloc-signals/skills/bloc-signals/`. Run `dart run tool/validate_agent_plugin.dart` after changing the plugin or either marketplace catalog.
-
-**Crucial Agent Instruction**:
-* Whenever you modify the framework architecture, introduce new UI builders/providers, change testing conventions, or update telemetry spans, **you must update the corresponding skill file(s)** under `plugins/bloc-signals/skills/bloc-signals/`.
-* Keep the main API examples, FAQs, and migration path snippets in sync with the codebase state.
-
+1. **Synchronous Propagation**: State updates propagate synchronously in the exact same frame on `emit(newState)`.
+2. **Automatic De-duplication**: Transitions skip when `newState == currentState` by default.
+3. **Streamless Execution**: No Rx streams or microtask queues under the hood; event transformers use higher-order functions and async `Mutex` locks.
+4. **Constructor & State Ergonomics**: Constructors require named parameter `initialState:` (`: super(initialState: ...)`). Use `stateValue` for raw value access (`emit(stateValue + 1)`); `state` exposes `ReadonlySignal<StateType>` for reactive subscriptions.
+5. **Lifecycle & Disposal**: `close()` marks `isClosed = true` and cleans up effects. Subsequent `add()` or `emit()` calls are safely dropped.
 
 ---
 
 ## 🧪 Code Quality Standards
 
-
-We maintain a production-grade codebase with strict enforcement rules:
-
-1. **Strict Linting**: We use `very_good_analysis` for code analysis. Ensure all public member APIs are documented with complete doc comments (`///`) and examples.
-2. **100% Test Coverage**: We maintain **100% line coverage** for both packages. If you modify or add features, write unit tests to keep coverage at 100%.
-   - **Running Coverage (Core)**:
-     ```bash
-     dart test --coverage=coverage
-     dart run coverage:format_coverage --report-on=lib --in=coverage --out=coverage/lcov.info --lcov
-     ```
-   - **Running Coverage (Flutter)**:
-     ```bash
-     flutter test --coverage
-     ```
+1. **Strict Linting**: We use `very_good_analysis`. All public member APIs must have complete doc comments (`///`) with runnable code examples.
+2. **100% Test Coverage**: Maintain **100% line coverage** across all packages.
+   - Core packages: `dart test --coverage=coverage`
+   - Flutter packages: `flutter test --coverage`
+   - Monorepo runner: `dart run tool/run_workspace_tests.dart`
 3. **Format**: Always run `dart format .` to maintain uniform formatting before committing.
+4. **Phrasing Standard**: Never use the abbreviation `e.g.` (write **"for example"**) or `i.e.` (write **"that is"**).
 
 ---
 
-## 🧠 Compounded Learnings & Best Practices
+## 📚 On-Demand Guidance & Routing
 
-### 1. Overriding `@mustCallSuper` Methods
-When overriding a method annotated with `@mustCallSuper` (e.g., `onEvent`), you MUST invoke `super.<method>`.
-* If the method returns `FutureOr<void>` (like `onEvent`), invoking it directly in a synchronous context will trigger `discarded_futures` lints.
-* To resolve this:
-  * If the override does not need to be async, wrap the call as: `unawaited(Future.value(super.onEvent(event)));` (requires importing `dart:async`).
-  * If the override is async, declare the signature as:
-    ```dart
-    @override
-    Future<void> onEvent(Event event) async {
-      await super.onEvent(event);
-      // Custom async handling
-    }
-    ```
+Detailed architecture guides and maintainer operations are maintained in dedicated reference documents. **Read the relevant document on demand using `view_file` when executing specialized tasks**:
 
-### 2. O(1) InheritedWidget Lookup
-When retrieving a parent `InheritedWidget` from `BuildContext` without registering a rebuild dependency (e.g., inside a `read()` or non-listening `of()` method), do **NOT** use `findAncestorWidgetOfExactType` (which runs in O(N) by traversing the tree). Instead, use `getElementForInheritedWidgetOfExactType` which resolves in O(1) time and extracts the widget from the element:
-```dart
-final provider = context
-    .getElementForInheritedWidgetOfExactType<MyInheritedWidget>()
-    ?.widget as MyInheritedWidget?;
-```
+### Public Framework Skills (`plugins/bloc-signals/skills/bloc-signals/`)
+- [SKILL.md](plugins/bloc-signals/skills/bloc-signals/SKILL.md): Plugin skill entrypoint and router.
+- [core.md](plugins/bloc-signals/skills/bloc-signals/core.md): Core event dispatch, equality, `@mustCallSuper`, error handling, and reactive ownership.
+- [flutter.md](plugins/bloc-signals/skills/bloc-signals/flutter.md): Providers, listeners, builders, consumers, `context.select<B, R>`, and widget rebuild optimizations.
+- [testing.md](plugins/bloc-signals/skills/bloc-signals/testing.md): Declarative unit testing (`blocSignalTest`), observer scoping, and test runners.
+- [jaspr.md](plugins/bloc-signals/skills/bloc-signals/jaspr.md): Jaspr web components, reactivity, and HTML bindings.
+- [hydration.md](plugins/bloc-signals/skills/bloc-signals/hydration.md): Hydrated state persistence and JSON serialization.
+- [replay.md](plugins/bloc-signals/skills/bloc-signals/replay.md): Undo/redo state history and replay architecture.
+- [interoperability.md](plugins/bloc-signals/skills/bloc-signals/interoperability.md) & [riverpod_migration.md](plugins/bloc-signals/skills/bloc-signals/riverpod_migration.md): Riverpod, Flutter Listenable, and Stream bridges.
+- [devtools.md](plugins/bloc-signals/skills/bloc-signals/devtools.md), [lint.md](plugins/bloc-signals/skills/bloc-signals/lint.md), [otel.md](plugins/bloc-signals/skills/bloc-signals/otel.md): DevTools extensions, custom linter rules, and OpenTelemetry.
 
-### 3. InheritedWidget Dependency Registration on Swapping
-When widgets resolve an ancestor provider from `BuildContext` (e.g., resolving `BlocSignalProvider` in a builder or listener), always use `listen: true` (which calls `dependOnInheritedWidgetOfExactType`) if the widget subtree might be cached (like `const` widgets or cached builders) and the provided instance could change. If `listen: false` is used, the widget will not register a dependency and will fail to rebuild/update if a parent widget swaps the provided instance.
-
-### 4. Optimized Rebuilds via Computed and State
-Using `SignalBuilder` directly with a `computed` signal inside a build method can trigger redundant builds. Even if the computed output value is unchanged, the dirty status of its dependencies will trigger the `SignalBuilder` to rebuild. For optimal performance, wrap selection logic in a `StatefulWidget` that manually subscribes to the computed signal inside an `effect()` callback, and calls `setState` **only** if the evaluated value actually changed. Ensure that you also re-initialize the computed signal in `didUpdateWidget` if the selector callback closure changes to prevent using stale references.
-
-### 5. Memory Leaks in Expando Values (WeakReference Solution)
-When using an `Expando` mapping a key (e.g. `Element`) to some state/subscription object, ensure the stored object does NOT hold a strong reference back to the key (either directly or transitively inside closures/effects). Doing so creates a strong reference cycle that prevents garbage collection of both the key and the value from the `Expando`. Always wrap references to the key inside the value object with a `WeakReference<Key>` to allow natural garbage collection.
-
-### 6. Declarative Testing & Observer Scoping (`bloc_signals_test`)
-When orchestrating test helpers like `blocSignalTest`:
-* Set `BlocSignalObserver.observer` to a test observer **before** invoking `build()` so that `onCreate` lifecycle events are captured.
-* Maintain the test observer active through `await bloc.close()` so `onClose` is captured, and restore the previous observer in a `finally` block.
-* Pass parent observer calls down to `previousObserver` to prevent breaking global telemetry or logging set up outside individual tests.
-* State seeding is performed directly in `build()` (e.g. `build: () => CounterBloc(initialState: 5)`).
-
-### 7. Analyzer Rule Testing ("When testing rules, test the rules")
-When authoring custom lint plugins or analyzer diagnostics:
-* Do not rely solely on unit tests that verify `PluginBase` registration or rule metadata.
-* Always write sample code AST integration tests (e.g. using `package:analyzer/dart/analysis/utilities.dart`'s `parseString` or custom lint test runners).
-* Test both **negative cases** (sample problem code that must trigger detection) and **positive cases** (sample valid code that must pass without flags).
-
-### 8. Extension-Based Interop Protocols & Stream Auto-Disposal
-When designing interop adapters, conversion helpers, or external protocol bridges (e.g., `toStream()`, `toBlocSignal()`):
-* Do **NOT** pollute or burden core base class interfaces (`BlocSignalBase`). Implement conversion helpers as **Dart Extensions** exported from the main library entrypoint (`package:bloc_signals/bloc_signals.dart`). This keeps base class contracts unburdened while giving developers out-of-the-box IDE autocomplete convenience.
-* When wrapping external event streams (e.g., `StreamBlocSignal`), always handle `onDone` in `stream.listen()` to automatically close the container instance when the source stream completes (`onDone: () => unawaited(close());`).
-
-### 9. Riverpod Interoperability & Subscription Duplication Prevention (`bloc_signals_riverpod`)
-When creating Riverpod interop bridges:
-* **`ProviderListenable` as Pivot**: Use `ProviderListenable<T>` to adapt Riverpod state into `BlocSignalBase`. Use `ProviderContainer.listen` to sync state changes synchronously.
-* **Auto-Disposal Binding**: Automatically bind `ref.onDispose(bloc.close)` when passing a `Ref` or `WidgetRef` to `.toBlocSignal(ref)` to prevent `autoDispose` retain count leaks.
-* **Avoiding Subscription Duplication in Provider Callbacks**: Never call `state.subscribe(...)` inside standard `Provider((ref) => ...)` closures if `ref.invalidateSelf()` is called inside the callback, as Riverpod re-executes the closure on invalidation, duplicating listeners exponentially. Use `Notifier` / `NotifierProvider` where `build()` runs once.
-* **Riverpod 3 Export Compatibility**: In Riverpod 3.3+, `ProviderListenable` is exported via `package:riverpod/src/internals.dart`. Importing `src/internals.dart` ensures cross-version compatibility for Riverpod 2 and 3.
-
-### 10. Flutter `Listenable` & `package:provider` Interoperability (`bloc_signals_flutter`)
-When bridging Flutter `Listenable` / `ChangeNotifier` / `ValueListenable`:
-* **Static Extension Resolution**: Flutter's `Listenable` (`package:flutter/foundation.dart`) and Riverpod's `ProviderListenable` (`package:riverpod`) are separate interfaces in Dart. Extension methods resolve statically based on the target type with zero collisions.
-* **Listener Teardown**: `ListenableBlocSignal.close()` invokes `listenable.removeListener(_onListenableChanged)`. `_BlocSignalValueListenable.dispose()` unsubscribes from `bloc.state.subscribe(...)`.
-
-### 11. Workflow Protocol: Delivery Path Verification & Mandatory Bot Review
-When managing tickets:
-* **Verify Delivery Path Early**: Immediately after ticket selection (Gate 1), clarify whether the change will be delivered via a GitHub Pull Request (PR) or direct commit to `main`.
-* **Mandatory Bot Review (GCA Persona)**: Even when bypassing a GitHub PR for direct commits to `main`, NEVER skip the automated Bot Triage Simulation (GCA Persona). Objective GCA review must always be performed before committing and publishing to catch boundary edge cases (such as missing `onError` exception routing).
-
-### 12. Streamless Event Concurrency & Closure Allocation Optimization
-When designing event concurrency transformers for `BlocSignal`:
-* **Streamless Higher-Order Functions**: Do not depend on Rx Streams or `package:bloc_concurrency`. Use pure Dart higher-order functions (`(event, handler, emit) => ...`) and `Mutex` locks for zero-stream-allocation event coordination on `on<E>(..., transformer: ...)`.
-* **Inlined Closure Guards**: Avoid creating tear-off functions or intermediate closures inside transformer callbacks (such as `restartable`). Inline conditional checks `(state) { if (currentToken == executionToken) emit(state); }` directly to prevent per-event heap allocations during high-frequency event bursts.
-
-### 13. Benchmarking Rigor & Stream Microtask Draining
-When authoring performance benchmarks or execution throughput measurements (`package:benchmark_harness`):
-* **Drained Stream Measurement**: Calling `bloc.add(event)` in classic BLoC only measures microtask queue insertion time. To measure true end-to-end event-to-state execution latency, always await microtask queue draining (`await bloc.stream.take(N).drain()`) to compare fairly against synchronous `BlocSignal` emissions.
-* **Flutter Engine Execution Environment**: Benchmark runners that import `package:flutter` UI bindings cannot run via bare `dart run`. Always provide a `flutter test` test wrapper (`test/benchmark_runner_test.dart`) to run benchmarks under the Flutter engine test environment.
-
-### 14. Custom Equality & `SignalOptions` Delegation
-When adding state container configuration options (such as custom equality comparators) to `BlocSignalBase`:
-* **`SignalOptions` Delegation**: Always delegate directly to `SignalOptions<StateType>(equality: SignalEquality<StateType>.custom((a, b) => this.equals(a, b)))` from `preact_signals`.
-* **Signal Graph Sync**: Passing custom equality directly to the underlying `signal` ensures that both container transition pipelines (`emit`) and downstream `ReadonlySignal` observers (`computed` derivations, `effect` callbacks, and `SignalBuilder` widgets) operate on 100% unified equality rules.
-* **Constructor Parameter vs. Field Naming (`equality:` vs `.equalityCheck`)**: Note that `SignalOptions` uses `equality:` as its constructor parameter name, but exposes the getter field name on `SignalOptions` as `.equalityCheck`.
-* **Equality Evaluation Precedence**: `options?.equalityCheck` takes precedence over the constructor `equals:` parameter or subclass `@override bool equals(StateType previous, StateType current)`.
-
-### 15. Pub.dev Transitive Dependency Enforcement
-When publishing packages to pub.dev:
-* **Explicit Dependency Declaration**: Any package directly imported in `lib/` (even if imported only for a type annotation like `SignalEquality` or re-exported transitively) MUST be explicitly listed under `dependencies:` in `pubspec.yaml`. Otherwise, `flutter pub publish` validation fails with missing dependency errors.
-
-### 16. GitHub Actions Inline Script Syntax Safety
-When writing inline Node.js scripts in `.github/workflows/*.yml` via `actions/github-script`:
-* **Avoid `${...}` Interpolation**: Avoid JS template literal `${variable}` syntax inside YAML block scalars (`script: |`), as GitHub Actions attempts to parse `${...}` as GitHub Actions expressions. Use standard string concatenation (`'hello ' + name`) instead.
-
-### 17. State Persistence & `Object?` Serialization (`bloc_signals_hydrate`)
-When designing state persistence adapters (such as `HydratedCubitSignal` and `HydratedBlocSignal`):
-* **`dynamic` / `Object?` Serialization**: Accept `dynamic` / `Object?` in `fromJson` and `toJson` rather than restricting to `Map<String, dynamic>`. Standard Dart `jsonDecode` returns primitives (`num`, `String`, `bool`, `List`, `Map`). Allowing `dynamic` enables primitive and collection cubits (`int`, `String`, `List<String>`) to hydrate cleanly without forcing artificial map wrappers (`{"value": 42}`).
-* **Synchronous Constructor Hydration**: Hydrate state synchronously during container constructor execution (`initHydratedState`) so initial widget builds render hydrated data on frame 1 without UI flickers.
-* **Super Emission on Clear**: Use `super.emit(initialState)` inside `clear()` to reset state value without re-persisting `initialState` back into storage.
-
-### 18. Universal DevTools Telemetry & Multi-Model Fallbacks (`DevToolsBlocSignalObserver`)
-When implementing developer tools and telemetry observers:
-* **Core Package Placement**: Place `developer.postEvent` observers in core Dart packages using `dart:developer` (standard Dart SDK) rather than restricting to Flutter UI packages. This unlocks DevTools telemetry for all Dart environments (CLI, server, Jaspr web apps, Flutter) with zero Flutter SDK overhead.
-* **Multi-Model API Resilience**: In automated GitHub Action API workflows querying LLMs, iterate across candidate models (`gemini-1.5-flash-002`, `gemini-2.5-flash`) for fallback resilience against model deprecations or endpoint migration changes.
-
-### 19. Pure Dart vs. Flutter Signal Factory Isolation (`signals_core` vs `signals_flutter`)
-When importing signal packages:
-* **Core Dart Import (`signals_core`)**: Core packages (`bloc_signals`, `bloc_signals_riverpod`, `bloc_signals_hydrate`, `bloc_signals_otel`) MUST import `package:signals_core/signals_core.dart` exclusively so signals remain pure Dart primitives without linking to the Flutter SDK.
-* **Flutter Integration Hook (`signals_flutter`)**: Flutter UI packages (`bloc_signals_flutter`) import `package:signals_flutter/signals_flutter.dart`. When included in a Flutter application, `signals_flutter` hooks global signal creation factories (`signal()`, `computed()`) to produce Flutter-bound signals capable of automatically notifying Flutter elements and triggering widget rebuilds.
-
-### 20. `dart_test.yaml` Test Discovery Path Restriction
-When configuring test runners in packages with `_test.dart` entrypoints:
-* **`_test.dart` Entrypoint Discovery Conflict**: Package entrypoint libraries ending in `_test.dart` (such as `package:bloc_signals_test`'s `lib/bloc_signals_test.dart`) match test runner globs when discovered recursively.
-* **Path Restriction Configuration**: To prevent test discovery failures, ensure `dart_test.yaml` is present specifying `paths: [test/]` to restrict test runner path matching strictly to `test/` directories.
-
-### 21. Diagnostic String Representation (`toString()`)
-When working with or debugging state containers:
-* **Baseline Output**: `BlocSignalBase` overrides `toString()` to output `$runtimeType($stateValue)`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses.
-
-### 22. Website Structure, Publications Sync & Deployment Protocol (`blocsignal.dev`)
-When updating or publishing changes to the `blocsignal.dev` website (`website/`):
-* **Page Architecture & Routing**: The Jaspr web application supports `HomePage` (`/`), `ShowcasePage` (`/showcase`), `PortedExamplesPage` (`/ported-examples`), `MinesweeperPage` (`/minesweeper`), and `PublicationsPage` (`/publications`). Routes support both HTML5 history API pathnames and `/#<route>` hash routing.
-* **Automated DEV.to Publications Sync Tool (`website/tool/update_publications.dart`)**:
-  - `website/tool/update_publications.dart` queries the DEV.to public API (`https://dev.to/api/articles?username=randalschwartz&per_page=50`), extracts canonical article URLs, titles, descriptions, reading times, publish dates, and tags, and automatically regenerates `website/lib/src/pages/publications_page.dart`.
-  - **Execution Command**: Run `cd website && dart run tool/update_publications.dart` whenever new DEV.to articles or media are published.
-* **Version Alignment**: `website/lib/src/components/package_catalog.dart` MUST be updated with newly published package version numbers.
-* **Hero Snippet Alignment**: `website/lib/src/components/hero.dart` code snippets MUST reflect published pubspec dependency constraints.
-* **Re-compile & Deploy Protocol**:
-  1. Compile static bundle and generate route fallback index files for static servers (`dhttpd` and Firebase Hosting):
-     ```bash
-     dart run website/tool/build_static.dart
-     ```
-  2. **Local Preview Server in AGY IDE**: The user runs `(cd website/build/www && dhttpd -p 0)` in their AGY IDE terminal window to serve `website/build/www/` on a random port for live visual testing without interfering with agent test runners. Always run `dart run website/tool/build_static.dart` after updating website code so the user's IDE preview window reflects the latest build.
-  3. Deploy to Firebase Hosting: `npx -y firebase-tools deploy --only hosting`.
-
-### 23. Replay State History Architecture (`bloc_signals_replay`)
-When implementing state history and undo/redo capabilities:
-* **`ReplayCubit` & `ReplayCubitMixin`**: Wrap `CubitSignal` to provide undo and redo history queues (`_ChangeStack`).
-* **`ReplayBloc` & `ReplayBlocMixin`**: Wrap `BlocSignal` to provide undo/redo history. Synthetic `_Undo` and `_Redo` events subclass `ReplayEvent`.
-* **Covariant Event Routing**: `ReplayBlocMixin` overrides `onTransition` and `onEvent` using `covariant ReplayEvent` to route synthetic events to `BlocSignalObserver` without requiring `_Undo` / `_Redo` to subclass user event types.
-* **Super Method Forwarding in `onEvent`**: `onEvent` overrides must call `super.onEvent(event)` for user events to route them to registered `on<E>` handlers.
-
-### 24. Pub.dev Package Publishing Requirement
-When publishing packages to pub.dev:
-* **Mandatory `LICENSE` File**: Every published package root directory MUST contain a `LICENSE` file in addition to `pubspec.yaml`, `README.md`, and `CHANGELOG.md`.
-
-### 25. Jaspr Web Component Reactivity & Element Hierarchy (`bloc_signals_jaspr`)
-When implementing or working with Jaspr web component bindings:
-* **Component Instance Getter**: In Jaspr `State<T extends StatefulComponent>`, the target component instance getter is `.component` (unlike Flutter's `.widget`).
-* **Component Lifecycle Updates**: Component updates use `didUpdateComponent(T oldComponent)` (unlike Flutter's `didUpdateWidget(T oldWidget)`).
-* **Element Mount Check**: In Jaspr `Element`, element mounting state is checked via `element.binding != null` or `context.binding != null`.
-* **Text Node Declarations**: Text nodes in Jaspr `package:jaspr/dom.dart` are declared via `Component.text('...')` (deprecated top-level `text('...')` should be avoided).
-
-### 26. Provider & Listener Optional Child Composition Ergonomics (`bloc_signals_flutter` & `bloc_signals_jaspr`)
-When designing or using UI provider and listener components (`BlocSignalProvider`, `BlocSignalListener`, `MultiBlocSignalProvider`, `MultiBlocSignalListener`):
-* **Optional Child Defaulting**: The `child` parameter is optional and defaults to `const SizedBox.shrink()` in `bloc_signals_flutter` (and `const _NullComponent()` in `bloc_signals_jaspr`).
-* **Clean Array Syntax in Multi-Providers/Listeners**: Individual provider and listener elements in `MultiBlocSignalProvider.providers` or `MultiBlocSignalListener.listeners` do not require dummy `child:` arguments (such as `child: const SizedBox.shrink()`), as `copyWith` or linear composition overrides the default child automatically.
-* **O(1) Context Lookups**: Unlistened context lookups (`listen: false`) use `getElementForInheritedWidgetOfExactType` (in Flutter) or `getElementForInheritedComponentOfExactType` (in Jaspr) for O(1) time resolution.
-
-### 27. Pub.dev 160 Pub Points Scoring & Documentation Requirements
-When publishing packages to pub.dev to satisfy all 160/160 pub points quality scoring metrics:
-* **Explicit Constructors for Dartdoc Analysis**: Implicit default constructors on classes without explicit constructors (e.g. `abstract class BlocSignalObserver` or `class Mutex`) are treated as un-documented symbols by `dartdoc` analysis when re-exported. Always declare explicit documented constructors (e.g. `const BlocSignalObserver();` and `Mutex();`).
-* **Package Example Requirement**: Every published pub.dev package MUST include a runnable `example/example.dart` top-level file under `example/` in the package root to satisfy the 10/10 points "Package has an example" score checklist rule.
-
-### 28. Monorepo README Package Catalog Consistency
-When standardizing or updating package documentation across the monorepo:
-* **Uniform Package Catalog Table**: Ensure all 10 workspace package README files feature the exact same uniform 10-package ecosystem catalog table with pub version badges and descriptions.
-
-### 29. `context.select` Generic Type Signature Ergonomics
-When using `context.select` in `bloc_signals_flutter`:
-* **2 Generic Type Parameters**: Pass exactly **2** generic type parameters: `<B, R>` where `B` is the `BlocSignalBase` container type (for example, `UserCubit`) and `R` is the selected value type (for example, `bool`).
-* **Callback Receives Container**: The selector callback receives the **`bloc` container instance** as its single parameter (`(bloc) => bloc.stateValue.property`), not the state object directly. This allows selecting computed properties, signals, or state fields cleanly.
-
-### 30. Phrasing & Style Standard (No "e.g." or "i.e.")
-When authoring code, documentation, comments, pull requests, or article content:
-* **No `e.g.`**: Never use the abbreviation `e.g.`. Always write out **"for example"**.
-* **No `i.e.`**: Never use the abbreviation `i.e.`. Always write out **"that is"**.
-
-### 31. Constructor Parameter and State Access Differences from Felix BLoC (`package:bloc`)
-When migrating code or authoring state containers:
-* **Named Constructor Parameter**: `BlocSignal` and `CubitSignal` constructors use named parameter `initialState:` (for example, `: super(initialState: 0)`), NOT positional `: super(0)`.
-* **`stateValue` vs `state`**: `state` exposes `ReadonlySignal<StateType>` for signals reactivity. To access the current raw state value inside methods or event handlers, use `stateValue` (for example, `emit(stateValue + 1)`). Writing `emit(state + 1)` causes a type compilation error.
-
-### 32. DEV.to Article Frontmatter & Series Protocol
-When generating or updating DEV.to draft articles:
-* **Series Frontmatter**: Always include `series: "BlocSignal Architecture & Practice"` (or the designated series title) as the **very first line** inside the YAML frontmatter right under `---`. Placing `series:` at the top of frontmatter ensures DEV.to's API & background parser index the article into the correct series automatically.
-* **Frontmatter Standards**: Always set `published: true`, `title:`, `description:`, and `tags:`.
-* **Body Subhead**: Always start the article body text (immediately after the closing `---` of frontmatter) with a Level 2 subhead (`## ...`).
-
-### 33. Multi-Provider List Literal Generic Preservation & Stateful `buildWhen` Reactivity
-When designing multi-provider container widgets (`MultiBlocSignalProvider`, `MultiBlocSignalListener`) and stateful UI builders (`BlocSignalBuilder`, `BlocSignalConsumer`):
-* **List Literal Generic Preservation**: Declare `providers` or `listeners` parameter types as `List<dynamic>` and invoke `(provider as dynamic).copyWith(current)`. This prevents Dart list literal element type inference from downcasting elements to `BlocSignalBase<dynamic>` and erasing concrete generic types `T` (`BlocSignalProvider<CounterCubit>`), ensuring descendant `InheritedWidget` lookups (`context.read<T>()`) resolve in O(1) time.
-* **Stateful `buildWhen` Filtering**: In `BlocSignalBuilder`, subscribe to `effectiveBloc.state` inside an `effect()` callback in `_BlocSignalBuilderState`. Evaluate `buildWhen(previous, current)` and invoke `setState()` ONLY when `buildWhen` returns `true` (or is null), preventing redundant widget rebuilds when state changes.
-
-### 34. SDK & Language Versioning Policy (Dart 3.5 Published Libraries vs Dart 3.13 Examples)
-When authoring, refactoring, or reviewing packages and examples across the monorepo:
-* **Published Packages Strict Baseline**: All published library packages (`bloc_signals`, `bloc_signals_flutter`, `bloc_signals_riverpod`, `bloc_signals_test`, `bloc_signals_lint`, `bloc_signals_hydrate`, `bloc_signals_otel`, `bloc_signals_replay`, `bloc_signals_jaspr`, `bloc_signals_devtools`) must conform strictly to Dart 3.5 (`sdk: ^3.5.0`) with no language features newer than Dart 3.5.
-* **Examples & Showcase Flexibility**: Examples, demos, benchmarks, and website packages can conform to Dart 3.5 or Dart 3.13+.
-* **Side-by-Side Presentation**: When demonstrating code in documentation, articles, slides, or tutorials, show Dart 3.5 and Dart 3.13 implementations side-by-side whenever feasible to highlight modern developer ergonomics while preserving baseline reference patterns.
-
-### 35. Modern Dart Web Interop & Wasm Safety (`package:web` vs `dart:html`)
-When authoring web components, clipboard interactions, or browser DOM APIs:
-* **`package:web` as Standard**: Use `import 'package:web/web.dart' as web;`. Do NOT use `dart:html`, `dart:js`, `dart:js_util`, or `package:js`, as they rely on legacy JS runtime boxing and fail under Dart WebAssembly (Wasm) compilation.
-* **String Arguments**: Modern `package:web` APIs (such as `web.window.navigator.clipboard.writeText(str)`) accept standard Dart `String` arguments directly without requiring manual `.toJS` casting.
-* **Defensive Fault-Tolerance**: Always wrap browser APIs in `try-catch` blocks to prevent uncaught exceptions in headless, iframe, or permission-restricted environments.
-
-### 36. Jaspr Component Event Delegation (`onClick:` vs `events: {'click': ...}`)
-When attaching event listeners to Jaspr DOM components:
-* **Interactive Elements (`button`, `a`)**: Provide direct named parameter `onClick: () => ...`.
-* **Generic Elements (`div`, `nav`, `section`, `span`)**: Generic container elements do not expose named `onClick:` parameters. Attach listeners using the `events:` map: `events: {'click': (_) => ...}`.
-
-### 37. CSS `backdrop-filter` Stacking Context & Full-Viewport Overlays
-When designing mobile drawers, modals, or fixed overlay panels nested inside sticky/glassmorphic headers:
-* **Containing Block Trap**: In the CSS specification, any ancestor element with `backdrop-filter` or `transform` creates a new containing block for `position: fixed` children, causing `position: fixed; inset: 0;` to resolve relative to the ancestor's box rather than the viewport.
-* **Full-Viewport Protection**: To prevent fixed overlays from getting constrained to navbar heights, explicitly specify `width: 100vw; height: 100vh; height: 100dvh;` on `.nav-drawer-backdrop` and `.nav-drawer-panel` with high z-indices (`10001+`).
-
-### 38. High-Frequency Micro-Benchmarks & UI Re-render Decoupling
-When building in-browser or UI benchmark runners (e.g. 1,000 synchronous event loops):
-* **Decouple Event Loops from Per-Event `setState`**: In synchronous reactive architectures (`BlocSignal`), firing `add(event)` in a loop executes immediately in the current frame. Avoid attaching raw `.subscribe((_) => setState())` handlers that trigger framework component rebuilds on every individual iteration.
-* **Batch Update Pattern**: Allow the loop to execute cleanly in memory under `Stopwatch` timing, then invoke a single `setState()` at the conclusion of the batch to update metrics, logs, and derived view states without browser UI thrashing.
-
-### 39. `bloc_signals_jaspr` Component Tree Dogfooding & Dart 3.13 Primary Constructor Fields
-When integrating `bloc_signals_jaspr` into Jaspr web applications:
-* **Declarative Consumer Integration**: Use `BlocSignalProvider<T>` at the root (or feature scope) with `BlocSignalBuilder<T, S>`, `BlocSignalSelector<T, S, R>`, `BlocSignalListener<T, S>`, and `context.select<T, R>()` / `context.read<T>()`. This completely eliminates manual `StatefulComponent` subscription loops (`_cubit.state.subscribe(...)`) and manual `close()` in `dispose()`, as `BlocSignalProvider` automatically manages lifecycle and unmount disposal.
-* **Dart 3.13 Primary Constructor Parameter Disambiguation**: When using Dart 3.13 primary constructor syntax on components (`class const Navbar({final String? currentPath, super.key}) extends StatefulComponent`), do NOT re-declare `final String? currentPath;` inside the class body—the constructor parameter list already establishes the field declaration, and body redeclaration causes `duplicate_definition` analyzer errors.
-* **Private Component Parameter Hygiene**: Omit unused `super.key` parameters from private helper components (e.g. `class const _AppRouter() extends StatelessComponent`) to prevent `unused_element_parameter` lints.
-
-### 40. Mandatory Public API Doc-Comments
-When modifying or adding public-facing classes, methods, getters, constructors, or extension members across any package in the monorepo:
-* **Complete Docstring Coverage**: Always write clear, comprehensive Dart doc-comments (`///`) with descriptive summaries, parameter explanations, and runnable code examples.
-* **No Undocumented Members**: No public member or re-exported symbol should ever be committed or published without complete docstrings.
-
-### 41. Agent Skills Synchronization & Push Protocol
-When framework architecture, state primitives, builders, providers, or testing conventions change:
-* **Skill Bundle Maintenance**: You MUST update the corresponding skill file(s) under `plugins/bloc-signals/skills/bloc-signals/` (and `.agents/skills/`).
-* **Validation**: Run `dart run tool/validate_agent_plugin.dart` to verify skill bundle integrity.
-* **Push to Remote**: Commit and push skill updates to GitHub so the whole agent ecosystem and other developers operate on up-to-date knowledge.
-
-### 42. Website Documentation Review & Deployment Protocol (`blocsignal.dev/docs`)
-After every code or architectural change across the monorepo:
-* **Documentation Review**: Review whether the standalone website documentation hub (`website/` at `blocsignal.dev/docs`) needs to be updated to reflect the new feature, migration path, or API change.
-* **Update Chapters**: Update the matching documentation chapter(s) in `website/lib/src/components/docs/pages/`.
-* **Re-compile & Deploy Proposal**: Run `dart run website/tool/build_static.dart` to compile the static bundle for local IDE preview, and propose deploying live to Firebase Hosting (`npx -y firebase-tools deploy --only hosting`) after user review and approval.
-
-### 43. SPA Navigation Semantic Architecture (Button Navigation vs Link Navigation)
-In Single Page Applications (SPAs) with 0ms synchronous DOM swapping:
-* **Semantic `<button>` Elements for Internal Navigation**: Sidebar navigation items, category links, and footer pagination cards MUST use semantic `<button>` elements (with CSS resets) rather than `<a>` tags for internal state-driven route switching.
-* **Double-Bounce Prevention**: This eliminates trailing native browser navigation conflicts and `preventDefault` JS interop errors on extension types during 0ms synchronous DOM swaps, while maintaining full keyboard accessibility and clean HTML5 history integration.
-
-### 44. Jaspr Component Reactivity & `BlocSignalBuilder`
-When building reactive Jaspr web applications:
-* **Declarative Builders**: `StatelessComponent.build()` executes during initial rendering but will NOT automatically re-render when a state container (`DocsCubit` or `BlocSignal`) emits new state unless the component is wrapped in `BlocSignalBuilder<B, S>` (or uses `SignalBuilder` / `Observer`).
-* **State Wrapping**: Always wrap dynamic article viewers or state-dependent components in `BlocSignalBuilder` to ensure state updates trigger immediate UI rebuilds.
-
-### 45. Dual Dart Syntax Documentation Standard (`selectedDartVersion`)
-When authoring code snippets and documentation:
-* **Dual Presentation**: Maintain the dual Dart 3.13+ (modern primary constructors, parameter shorthands, `this` bodies) vs Dart 3.5 (baseline) presentation in docs and snippets whenever feasible.
-* **Global Preference with Local Overrides**: Connect `DocsCodeBlock` to `DocsCubit.selectedDartVersion` via the global sidebar toggle (`3.13+ Modern` vs `3.5 Baseline`), while allowing readers to override individual code blocks via inline tabs.
-
-### 46. Documentation Hub API Symbol Registry Synchronization (`PubApiRegistry` & `DocSymbol`)
-When publishing new packages or adding new public classes, mixins, extensions, or major methods across the monorepo:
-* **Registry Alignment**: You MUST update `DocSymbol` in `website/lib/src/models/pub_api_registry.dart` with the canonical pub.dev dartdoc entry (`<package>`, `<symbolName>`, `<htmlFile>`).
-* **Interactive Linking**: Use `apiLink(DocSymbol.<name>)` or `apiLink(DocSymbol.<name>, label: '...')` across documentation pages, matrices, and prose paragraphs so developers can click through directly to official pub.dev API reference pages.
-* **Heading Typography Hygiene**: Section titles and headings (`h2`, `h3`) must remain clean plain text (`h2([Component.text('1. BlocSignalBuilder')])`) rather than wrapped in interactive code badges. Reserve `apiLink` badges exclusively for body prose, table cells, and callout descriptions.
-* **Unit Testing**: Keep `website/test/pub_api_registry_test.dart` updated with test expectations verifying URL formation and symbol presence.
-
+### Internal Maintainer Operations (`doc/internals/`)
+- [website_and_publications.md](doc/internals/website_and_publications.md): `blocsignal.dev` architecture, DEV.to publication sync tool, static compilation, local preview, and Firebase deployment.
+- [publishing_and_scoring.md](doc/internals/publishing_and_scoring.md): 160/160 pub.dev points checklist, explicit constructors for dartdoc, package examples, and README catalog tables.
+- [benchmarks_and_workflow.md](doc/internals/benchmarks_and_workflow.md): Benchmark microtask draining, batch UI updates, GitHub Actions script safety, and maintainer delivery protocols.

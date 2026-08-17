@@ -399,7 +399,7 @@ class const _PlaceholderDoc({
       ]),
       section(classes: 'docs-section', [
         div(classes: 'docs-placeholder-card', [
-          span(classes: 'placeholder-icon', [Component.text('🚧')]),
+          span(classes: 'docs-placeholder-icon', [Component.text('🚧')]),
           h3([Component.text('Coming Soon in $phase')]),
           p([
             Component.text(
@@ -407,7 +407,7 @@ class const _PlaceholderDoc({
               'In the meantime, refer to the Getting Started guides and the official README.',
             ),
           ]),
-          div(classes: 'placeholder-actions', [
+          div(classes: 'docs-placeholder-actions', [
             a(href: '/docs/quickstart', classes: 'btn-primary-sm', [
               Component.text('Go to Quickstart Guide ➔'),
             ]),

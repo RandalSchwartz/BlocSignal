@@ -81,13 +81,13 @@ class const DocsSidebar({super.key}) extends StatelessComponent {
                           'docs-category-header ${isExpanded ? "expanded" : ""}',
                       onClick: () => cubit.toggleCategory(cat.title),
                       [
-                        span(classes: 'category-icon', [
+                        span(classes: 'docs-category-icon', [
                           Component.text(cat.icon),
                         ]),
-                        span(classes: 'category-title', [
+                        span(classes: 'docs-category-title', [
                           Component.text(cat.title),
                         ]),
-                        span(classes: 'category-chevron', [
+                        span(classes: 'docs-category-chevron', [
                           Component.text(isExpanded ? '▾' : '▸'),
                         ]),
                       ],
@@ -102,11 +102,11 @@ class const DocsSidebar({super.key}) extends StatelessComponent {
                                   'docs-section-link ${state.activeSectionId == sec.id ? "active" : ""}',
                               onClick: () => cubit.selectSection(sec.id),
                               [
-                                span(classes: 'section-title', [
+                                span(classes: 'docs-nav-link-title', [
                                   Component.text(sec.title),
                                 ]),
                                 if (sec.badge != null)
-                                  span(classes: 'section-badge', [
+                                  span(classes: 'docs-nav-link-badge', [
                                     Component.text(sec.badge!),
                                   ]),
                               ],

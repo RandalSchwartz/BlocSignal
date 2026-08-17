@@ -2744,16 +2744,16 @@ code, pre, .font-mono {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.category-icon {
+.docs-category-icon {
   margin-right: 8px;
   font-size: 1rem;
 }
 
-.category-title {
+.docs-category-title {
   flex: 1;
 }
 
-.category-chevron {
+.docs-category-chevron {
   font-size: 0.8rem;
   color: var(--text-muted);
   transition: transform var(--transition-fast);
@@ -2793,7 +2793,17 @@ code, pre, .font-mono {
   border-left: 2px solid var(--accent-cyan);
 }
 
-.section-badge {
+.docs-nav-link-title {
+  font-size: 0.86rem;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+  letter-spacing: normal;
+  margin-bottom: 0;
+  color: inherit;
+}
+
+.docs-nav-link-badge {
   font-size: 0.68rem;
   font-weight: 700;
   padding: 2px 6px;
@@ -3170,7 +3180,7 @@ code, pre, .font-mono {
   border: 1px solid var(--border-color);
 }
 
-.arch-step {
+.docs-arch-step {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -3178,19 +3188,19 @@ code, pre, .font-mono {
   min-width: 140px;
 }
 
-.arch-badge {
+.docs-arch-badge {
   font-size: 0.8rem;
   font-weight: 700;
   color: var(--accent-cyan);
 }
 
-.arch-desc {
+.docs-arch-desc {
   font-size: 0.84rem;
   color: var(--text-secondary);
   line-height: 1.4;
 }
 
-.arch-arrow {
+.docs-arch-arrow {
   color: var(--accent-purple-light);
   font-size: 1.2rem;
   font-weight: bold;
@@ -3308,14 +3318,14 @@ code, pre, .font-mono {
   transform: translateY(-1px);
 }
 
-.pager-direction {
+.docs-pager-direction {
   font-size: 0.74rem;
   font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
 }
 
-.pager-title {
+.docs-pager-title {
   font-size: 0.94rem;
   font-weight: 600;
   color: var(--accent-cyan);
@@ -3336,7 +3346,7 @@ code, pre, .font-mono {
   border: 1px dashed var(--border-glass);
 }
 
-.placeholder-icon {
+.docs-placeholder-icon {
   font-size: 2.5rem;
 }
 
@@ -3351,7 +3361,7 @@ code, pre, .font-mono {
   color: var(--text-secondary);
 }
 
-.placeholder-actions {
+.docs-placeholder-actions {
   margin-top: 12px;
 }
 
@@ -3455,7 +3465,7 @@ code, pre, .font-mono {
     max-width: 60%;
   }
 
-  .crumb-title {
+  .docs-crumb-title {
     color: var(--text-primary);
     font-weight: 600;
   }

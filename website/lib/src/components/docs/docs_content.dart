@@ -36,16 +36,16 @@ class const DocsContent({super.key}) extends StatelessComponent {
               onClick: () => cubit.toggleMobileDrawer(),
               attributes: {'aria-label': 'Open documentation menu'},
               [
-                span(classes: 'mobile-menu-icon', [Component.text('☰')]),
-                span(classes: 'mobile-menu-text', [Component.text('Menu')]),
+                span(classes: 'docs-mobile-menu-icon', [Component.text('☰')]),
+                span(classes: 'docs-mobile-menu-text', [Component.text('Menu')]),
               ],
             ),
             div(classes: 'docs-mobile-breadcrumbs', [
-              span(classes: 'crumb-category', [
+              span(classes: 'docs-crumb-category', [
                 Component.text(currentSection.category),
               ]),
-              span(classes: 'crumb-separator', [Component.text(' / ')]),
-              span(classes: 'crumb-title', [
+              span(classes: 'docs-crumb-separator', [Component.text(' / ')]),
+              span(classes: 'docs-crumb-title', [
                 Component.text(currentSection.title),
               ]),
             ]),
@@ -63,10 +63,10 @@ class const DocsContent({super.key}) extends StatelessComponent {
                   classes: 'docs-pager-btn prev',
                   onClick: () => cubit.selectSection(prevSection.id),
                   [
-                    span(classes: 'pager-direction', [
+                    span(classes: 'docs-pager-direction', [
                       Component.text('← Previous'),
                     ]),
-                    span(classes: 'pager-title', [
+                    span(classes: 'docs-pager-title', [
                       Component.text(prevSection.title),
                     ]),
                   ],
@@ -80,10 +80,10 @@ class const DocsContent({super.key}) extends StatelessComponent {
                   classes: 'docs-pager-btn next',
                   onClick: () => cubit.selectSection(nextSection.id),
                   [
-                    span(classes: 'pager-direction', [
+                    span(classes: 'docs-pager-direction', [
                       Component.text('Next →'),
                     ]),
-                    span(classes: 'pager-title', [
+                    span(classes: 'docs-pager-title', [
                       Component.text(nextSection.title),
                     ]),
                   ],

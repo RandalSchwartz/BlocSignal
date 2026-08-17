@@ -224,36 +224,36 @@ void main() {
           ),
         ]),
         div(classes: 'docs-architecture-card', [
-          div(classes: 'arch-step', [
-            span(classes: 'arch-badge', [Component.text('1. Events')]),
-            span(classes: 'arch-desc', [
+          div(classes: 'docs-arch-step', [
+            span(classes: 'docs-arch-badge', [Component.text('1. Events')]),
+            span(classes: 'docs-arch-desc', [
               Component.text('UI dispatches typed events to BlocSignal.'),
             ]),
           ]),
-          div(classes: 'arch-arrow', [Component.text('➔')]),
-          div(classes: 'arch-step', [
-            span(classes: 'arch-badge', [
+          div(classes: 'docs-arch-arrow', [Component.text('➔')]),
+          div(classes: 'docs-arch-step', [
+            span(classes: 'docs-arch-badge', [
               Component.text('2. Concurrency Transformer'),
             ]),
-            span(classes: 'arch-desc', [
+            span(classes: 'docs-arch-desc', [
               Component.text(
                 'Handlers coordinate execution (droppable, mutex).',
               ),
             ]),
           ]),
-          div(classes: 'arch-arrow', [Component.text('➔')]),
-          div(classes: 'arch-step', [
-            span(classes: 'arch-badge', [
+          div(classes: 'docs-arch-arrow', [Component.text('➔')]),
+          div(classes: 'docs-arch-step', [
+            span(classes: 'docs-arch-badge', [
               Component.text('3. Synchronous Emit'),
             ]),
-            span(classes: 'arch-desc', [
+            span(classes: 'docs-arch-desc', [
               Component.text('emit(newState) updates underlying signal.'),
             ]),
           ]),
-          div(classes: 'arch-arrow', [Component.text('➔')]),
-          div(classes: 'arch-step', [
-            span(classes: 'arch-badge', [Component.text('4. UI & Observers')]),
-            span(classes: 'arch-desc', [
+          div(classes: 'docs-arch-arrow', [Component.text('➔')]),
+          div(classes: 'docs-arch-step', [
+            span(classes: 'docs-arch-badge', [Component.text('4. UI & Observers')]),
+            span(classes: 'docs-arch-desc', [
               Component.text('Widgets and telemetry receive instant updates.'),
             ]),
           ]),

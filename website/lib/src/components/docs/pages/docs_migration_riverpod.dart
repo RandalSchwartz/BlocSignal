@@ -1,0 +1,201 @@
+import 'package:jaspr/dom.dart';
+import 'package:jaspr/jaspr.dart';
+
+import '../docs_code_block.dart';
+import '../docs_toc.dart';
+
+/// Documentation page covering migration from flutter_riverpod.
+class const DocsMigrationRiverpodPage({super.key}) extends StatelessComponent {
+  static const List<TocHeading> headings = [
+    TocHeading(title: 'Overview & Mental Model Shift', anchor: 'mental-model'),
+    TocHeading(
+      title: 'Concept Translation Matrix',
+      anchor: 'translation-matrix',
+    ),
+    TocHeading(
+      title: 'StateNotifier to CubitSignal',
+      anchor: 'notifier-to-cubit',
+    ),
+    TocHeading(title: 'Widget Refactoring', anchor: 'widget-refactoring'),
+    TocHeading(title: 'Derived State with computed()', anchor: 'derived-state'),
+  ];
+
+  @override
+  Component build(BuildContext context) {
+    return article(classes: 'docs-article', [
+      header(classes: 'docs-article-header', [
+        div(classes: 'docs-badge', [Component.text('🔄 Migration Guides')]),
+        h1([Component.text('Migrating from Riverpod')]),
+        p(classes: 'docs-lead', [
+          Component.text(
+            'Understand the architectural shift from global provider graphs to scoped reactive containers, with side-by-side widget and state translation patterns.',
+          ),
+        ]),
+      ]),
+
+      // 1. Overview & Mental Model Shift
+      section(id: 'mental-model', classes: 'docs-section', [
+        h2([Component.text('Overview & Mental Model Shift')]),
+        p([
+          Component.text(
+            'Riverpod organizes state as a global declarative dependency graph accessed via WidgetRef. '
+            'BlocSignal organizes state into scoped, self-contained containers provided through the Flutter Element tree '
+            'using standard BuildContext lookups and 0ms synchronous Preact signals.',
+          ),
+        ]),
+      ]),
+
+      // 2. Concept Translation Matrix
+      section(id: 'translation-matrix', classes: 'docs-section', [
+        h2([Component.text('Concept Translation Matrix')]),
+        table(classes: 'docs-table', [
+          thead([
+            tr([
+              th([Component.text('Riverpod 2 / 3')]),
+              th([Component.text('BlocSignal / Flutter')]),
+            ]),
+          ]),
+          tbody([
+            tr([
+              td([Component.text('StateNotifier<State> / Notifier<State>')]),
+              td([Component.text('CubitSignal<State>')]),
+            ]),
+            tr([
+              td([Component.text('ProviderScope')]),
+              td([
+                Component.text('BlocSignalProvider / MultiBlocSignalProvider'),
+              ]),
+            ]),
+            tr([
+              td([Component.text('ref.watch(provider)')]),
+              td([Component.text('context.watch<B>() or BlocSignalBuilder')]),
+            ]),
+            tr([
+              td([Component.text('ref.read(provider.notifier)')]),
+              td([Component.text('context.read<B>()')]),
+            ]),
+            tr([
+              td([Component.text('ref.listen(provider, ...)')]),
+              td([Component.text('BlocSignalListener')]),
+            ]),
+            tr([
+              td([Component.text('ref.watch(provider.select(...))')]),
+              td([
+                Component.text(
+                  'context.select<B, S, R>() or BlocSignalSelector',
+                ),
+              ]),
+            ]),
+          ]),
+        ]),
+      ]),
+
+      // 3. StateNotifier to CubitSignal
+      section(id: 'notifier-to-cubit', classes: 'docs-section', [
+        h2([Component.text('StateNotifier / Notifier to CubitSignal')]),
+        const DocsCodeBlock(
+          title: 'Side-by-Side: Notifier vs Cubit',
+          language: 'dart',
+          code: '''
+// --- BEFORE: Riverpod Notifier ---
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+class CounterNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void increment() => state++;
+}
+
+final counterProvider = NotifierProvider<CounterNotifier, int>(
+  CounterNotifier.new,
+);
+
+// --- AFTER: CubitSignal ---
+import 'package:bloc_signals/bloc_signals.dart';
+
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
+}''',
+        ),
+      ]),
+
+      // 4. Widget Refactoring
+      section(id: 'widget-refactoring', classes: 'docs-section', [
+        h2([Component.text('Widget Refactoring')]),
+        p([
+          Component.text(
+            'Replace ConsumerWidget and ConsumerStatefulWidget with standard StatelessWidget and StatefulWidget, '
+            'accessing state directly through BuildContext extensions:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          title: 'Side-by-Side: Widget Consumption',
+          language: 'dart',
+          code: '''
+// --- BEFORE: Riverpod ConsumerWidget ---
+class CounterScreen extends ConsumerWidget {
+  const CounterScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(counterProvider);
+    return Scaffold(
+      body: Center(child: Text('\$count')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => ref.read(counterProvider.notifier).increment(),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}
+
+// --- AFTER: BlocSignal with context.watch and context.read ---
+class CounterScreen extends StatelessWidget {
+  const CounterScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final count = context.watch<CounterCubit>().stateValue;
+    return Scaffold(
+      body: Center(child: Text('\$count')),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => context.read<CounterCubit>().increment(),
+        child: const Icon(Icons.add),
+      ),
+    );
+  }
+}''',
+        ),
+      ]),
+
+      // 5. Derived State with computed()
+      section(id: 'derived-state', classes: 'docs-section', [
+        h2([Component.text('Derived State with computed()')]),
+        p([
+          Component.text(
+            'In Riverpod, derived state is declared using dependent functional providers. '
+            'In BlocSignal, derived state is declared inside or alongside Cubits using computed() signals:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          title: 'Side-by-Side: Derived Computations',
+          language: 'dart',
+          code: '''
+// --- BEFORE: Riverpod Functional Provider ---
+final isEvenProvider = Provider<bool>((ref) {
+  final count = ref.watch(counterProvider);
+  return count.isEven;
+});
+
+// --- AFTER: BlocSignal computed() Signal ---
+extension CounterDerived on CounterCubit {
+  ReadonlySignal<bool> get isEven => computed(() => state.value.isEven);
+}''',
+        ),
+      ]),
+    ]);
+  }
+}

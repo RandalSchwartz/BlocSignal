@@ -1,8 +1,11 @@
 import 'dart:async';
 
+import 'package:bloc_signals_jaspr/bloc_signals_jaspr.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:web/web.dart' as web;
+
+import '../../cubits/docs_cubit.dart';
 
 /// A code block component with syntax header, copy button, and optional side-by-side tabs.
 class const DocsCodeBlock({
@@ -23,19 +26,19 @@ class const DocsCodeBlock({
 class _DocsCodeBlockState() extends State<DocsCodeBlock> {
   bool _copied = false;
   Timer? _copyTimer;
-  String _activeTab = '3.13'; // '3.13' or '3.5'
+  String? _overrideTab;
 
-  String get _currentCode {
+  String _currentCode(String effectiveVersion) {
     if (component.code != null) return component.code!;
-    if (_activeTab == '3.13' && component.dart313Code != null) {
+    if (effectiveVersion == '3.13' && component.dart313Code != null) {
       return component.dart313Code!;
     }
     return component.dart35Code ?? component.dart313Code ?? '';
   }
 
-  void _copyToClipboard() {
+  void _copyToClipboard(String codeToCopy) {
     try {
-      web.window.navigator.clipboard.writeText(_currentCode);
+      web.window.navigator.clipboard.writeText(codeToCopy);
       setState(() {
         _copied = true;
       });
@@ -61,6 +64,13 @@ class _DocsCodeBlockState() extends State<DocsCodeBlock> {
     final hasDualVersions =
         component.dart35Code != null && component.dart313Code != null;
 
+    String globalVersion = '3.13';
+    try {
+      globalVersion = context.read<DocsCubit>().stateValue.selectedDartVersion;
+    } catch (_) {}
+    final activeTab = _overrideTab ?? globalVersion;
+    final activeCode = _currentCode(activeTab);
+
     return div(classes: 'docs-code-container', [
       div(classes: 'docs-code-header', [
         div(classes: 'docs-code-title-group', [
@@ -80,20 +90,20 @@ class _DocsCodeBlockState() extends State<DocsCodeBlock> {
             div(classes: 'docs-version-tabs', [
               button(
                 classes:
-                    'docs-version-tab ${_activeTab == "3.13" ? "active" : ""}',
+                    'docs-version-tab ${activeTab == "3.13" ? "active" : ""}',
                 onClick: () {
                   setState(() {
-                    _activeTab = '3.13';
+                    _overrideTab = '3.13';
                   });
                 },
                 [Component.text('Dart 3.13+ (Modern)')],
               ),
               button(
                 classes:
-                    'docs-version-tab ${_activeTab == "3.5" ? "active" : ""}',
+                    'docs-version-tab ${activeTab == "3.5" ? "active" : ""}',
                 onClick: () {
                   setState(() {
-                    _activeTab = '3.5';
+                    _overrideTab = '3.5';
                   });
                 },
                 [Component.text('Dart 3.5 (Baseline)')],
@@ -102,7 +112,7 @@ class _DocsCodeBlockState() extends State<DocsCodeBlock> {
           ],
           button(
             classes: 'docs-copy-btn ${_copied ? "copied" : ""}',
-            onClick: _copyToClipboard,
+            onClick: () => _copyToClipboard(activeCode),
             attributes: {'aria-label': 'Copy code to clipboard'},
             [
               span(classes: 'docs-copy-icon', [
@@ -117,7 +127,7 @@ class _DocsCodeBlockState() extends State<DocsCodeBlock> {
       ]),
       pre(classes: 'docs-code-body', [
         code(classes: 'language-${component.language}', [
-          Component.text(_currentCode),
+          Component.text(activeCode),
         ]),
       ]),
     ]);

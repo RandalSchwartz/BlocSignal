@@ -1,6 +1,3 @@
-import 'package:jaspr/dom.dart';
-import 'package:jaspr/jaspr.dart';
-
 import '../components/docs/pages/docs_cubit_vs_bloc.dart';
 import '../components/docs/pages/docs_event_transformers.dart';
 import '../components/docs/pages/docs_events_and_handlers.dart';
@@ -9,8 +6,19 @@ import '../components/docs/pages/docs_flutter_providers.dart';
 import '../components/docs/pages/docs_flutter_widgets.dart';
 import '../components/docs/pages/docs_installation.dart';
 import '../components/docs/pages/docs_lifecycle_and_observers.dart';
+import '../components/docs/pages/docs_migration_bloc.dart';
+import '../components/docs/pages/docs_migration_riverpod.dart';
 import '../components/docs/pages/docs_overview.dart';
+import '../components/docs/pages/docs_pkg_devtools.dart';
+import '../components/docs/pages/docs_pkg_hydrate.dart';
+import '../components/docs/pages/docs_pkg_otel.dart';
+import '../components/docs/pages/docs_pkg_replay.dart';
+import '../components/docs/pages/docs_pkg_riverpod.dart';
 import '../components/docs/pages/docs_quickstart.dart';
+import '../components/docs/pages/docs_recipe_caching.dart';
+import '../components/docs/pages/docs_recipe_controllers.dart';
+import '../components/docs/pages/docs_recipe_form_validation.dart';
+import '../components/docs/pages/docs_recipe_one_shot.dart';
 import '../components/docs/pages/docs_signals_reactivity.dart';
 import '../components/docs/pages/docs_state_modeling.dart';
 import '../components/docs/pages/docs_testing_guide.dart';
@@ -80,10 +88,10 @@ class const DocsRegistry() {
         ),
         DocSectionItem(
           id: 'event-transformers',
-          title: 'Event Transformers',
+          title: 'Event Transformers & Concurrency',
           path: '/docs/event-transformers',
           category: 'Core Concepts',
-          description: 'Streamless event transformers (droppable, sequential, restartable) and custom debounce/mutex locks.',
+          description: 'droppable(), sequential(), restartable(), and custom streamless event Transformers.',
           builder: DocsEventTransformersPage.new,
         ),
         DocSectionItem(
@@ -91,7 +99,7 @@ class const DocsRegistry() {
           title: 'Lifecycle & Observers',
           path: '/docs/lifecycle-and-observers',
           category: 'Core Concepts',
-          description: 'BlocSignalObserver, Change, Transition, and OpenTelemetry identity span tracking.',
+          description: 'State container lifecycles, isClosed guarantees, and global observability with BlocSignalObserver.',
           builder: DocsLifecycleAndObserversPage.new,
         ),
         DocSectionItem(
@@ -99,21 +107,21 @@ class const DocsRegistry() {
           title: 'Signals Graph Reactivity',
           path: '/docs/signals-reactivity',
           category: 'Core Concepts',
-          description: 'Understanding stateValue vs state, computed() derivations, and managed effect() reactions.',
+          description: 'Preact signals v7 integration, 0ms synchronous propagation, computed signals, and effects.',
           builder: DocsSignalsReactivityPage.new,
         ),
       ],
     ),
-    DocCategory(
+    const DocCategory(
       title: 'Flutter Integration',
-      icon: '📱',
+      icon: '💙',
       sections: [
         DocSectionItem(
           id: 'flutter-providers',
-          title: 'BlocSignalProvider & Lookup',
+          title: 'Providers & Dependency Injection',
           path: '/docs/flutter-providers',
           category: 'Flutter Integration',
-          description: 'Dependency injection with BlocSignalProvider, MultiBlocSignalProvider, and O(1) lookups.',
+          description: 'BlocSignalProvider scoping, lazy loading, and O(1) InheritedElement resolution.',
           builder: DocsFlutterProvidersPage.new,
         ),
         DocSectionItem(
@@ -148,7 +156,7 @@ class const DocsRegistry() {
         ),
       ],
     ),
-    DocCategory(
+    const DocCategory(
       title: 'Satellite Packages',
       icon: '📦',
       sections: [
@@ -158,12 +166,7 @@ class const DocsRegistry() {
           path: '/docs/pkg-hydrate',
           category: 'Satellite Packages',
           description: 'Synchronous frame 1 state persistence across restarts.',
-          badge: 'Phase 4',
-          builder: () => _PlaceholderDoc(
-            title: 'bloc_signals_hydrate',
-            phase: 'Phase 4',
-            description: 'State persistence with zero-boilerplate primitive and collection storage.',
-          ),
+          builder: DocsPkgHydratePage.new,
         ),
         DocSectionItem(
           id: 'pkg-replay',
@@ -171,13 +174,7 @@ class const DocsRegistry() {
           path: '/docs/pkg-replay',
           category: 'Satellite Packages',
           description: 'Undo and redo history management with ReplayCubit and ReplayBloc.',
-          badge: 'Phase 4',
-          builder: () => _PlaceholderDoc(
-            title: 'bloc_signals_replay',
-            phase: 'Phase 4',
-            description:
-                'Time-travel and undo/redo stacks for state containers.',
-          ),
+          builder: DocsPkgReplayPage.new,
         ),
         DocSectionItem(
           id: 'pkg-riverpod',
@@ -186,13 +183,7 @@ class const DocsRegistry() {
           category: 'Satellite Packages',
           description:
               'Bidirectional Riverpod 2 & 3 interoperability adapters.',
-          badge: 'Phase 4',
-          builder: () => _PlaceholderDoc(
-            title: 'bloc_signals_riverpod',
-            phase: 'Phase 4',
-            description:
-                'Bridging Riverpod providers into BlocSignal and vice-versa.',
-          ),
+          builder: DocsPkgRiverpodPage.new,
         ),
         DocSectionItem(
           id: 'pkg-otel',
@@ -201,12 +192,7 @@ class const DocsRegistry() {
           category: 'Satellite Packages',
           description:
               'OpenTelemetry distributed tracing and observability spans.',
-          badge: 'Phase 4',
-          builder: () => _PlaceholderDoc(
-            title: 'bloc_signals_otel',
-            phase: 'Phase 4',
-            description: 'Distributed tracing and OpenTelemetry metrics for transitions and errors.',
-          ),
+          builder: DocsPkgOtelPage.new,
         ),
         DocSectionItem(
           id: 'pkg-devtools',
@@ -214,16 +200,11 @@ class const DocsRegistry() {
           path: '/docs/pkg-devtools',
           category: 'Satellite Packages',
           description: 'DevTools timeline inspection and leak detector badge.',
-          badge: 'Phase 4',
-          builder: () => _PlaceholderDoc(
-            title: 'bloc_signals_devtools',
-            phase: 'Phase 4',
-            description: 'Custom DevTools extension for timeline debugging and state inspection.',
-          ),
+          builder: DocsPkgDevtoolsPage.new,
         ),
       ],
     ),
-    DocCategory(
+    const DocCategory(
       title: 'Architecture & Recipes',
       icon: '💡',
       sections: [
@@ -233,13 +214,7 @@ class const DocsRegistry() {
           path: '/docs/recipe-one-shot',
           category: 'Architecture & Recipes',
           description: 'Handling snackbars, dialogs, and navigation without polluting domain state.',
-          badge: 'Phase 4',
-          builder: () => _PlaceholderDoc(
-            title: 'One-Shot UI Side Effects',
-            phase: 'Phase 4',
-            description:
-                'Recipes for transient side-effects without state corruption.',
-          ),
+          builder: DocsRecipeOneShotPage.new,
         ),
         DocSectionItem(
           id: 'recipe-form-validation',
@@ -247,12 +222,7 @@ class const DocsRegistry() {
           path: '/docs/recipe-form-validation',
           category: 'Architecture & Recipes',
           description: 'Primary input signals paired with computed() derived validation states.',
-          badge: 'Phase 4',
-          builder: () => _PlaceholderDoc(
-            title: 'Form Validation',
-            phase: 'Phase 4',
-            description: 'Building performant, boilerplate-free forms with computed signals.',
-          ),
+          builder: DocsRecipeFormValidationPage.new,
         ),
         DocSectionItem(
           id: 'recipe-controllers',
@@ -260,12 +230,7 @@ class const DocsRegistry() {
           path: '/docs/recipe-controllers',
           category: 'Architecture & Recipes',
           description: 'Bidirectional syncing of TextEditingControllers without build-phase mutation loops.',
-          badge: 'Phase 4',
-          builder: () => _PlaceholderDoc(
-            title: 'Coordinating Controllers',
-            phase: 'Phase 4',
-            description: 'How to coordinate Flutter controllers with reactive state containers safely.',
-          ),
+          builder: DocsRecipeControllersPage.new,
         ),
         DocSectionItem(
           id: 'recipe-caching',
@@ -273,16 +238,11 @@ class const DocsRegistry() {
           path: '/docs/recipe-caching',
           category: 'Architecture & Recipes',
           description: 'Managing asynchronous server data with automatic cache invalidation.',
-          badge: 'Phase 4',
-          builder: () => _PlaceholderDoc(
-            title: 'API Caching & TTL Expiration',
-            phase: 'Phase 4',
-            description: 'Implementing resilient API caching with time-to-live expiration.',
-          ),
+          builder: DocsRecipeCachingPage.new,
         ),
       ],
     ),
-    DocCategory(
+    const DocCategory(
       title: 'Migration Guides',
       icon: '🔄',
       sections: [
@@ -292,12 +252,7 @@ class const DocsRegistry() {
           path: '/docs/migration-bloc',
           category: 'Migration Guides',
           description: 'Step-by-step migration guide from classic BLoC / flutter_bloc to BlocSignal.',
-          badge: 'Phase 4',
-          builder: () => _PlaceholderDoc(
-            title: 'Migrating from package:bloc',
-            phase: 'Phase 4',
-            description: 'Comprehensive guide and code comparisons for migrating from Flutter BLoC.',
-          ),
+          builder: DocsMigrationBlocPage.new,
         ),
         DocSectionItem(
           id: 'migration-riverpod',
@@ -305,12 +260,7 @@ class const DocsRegistry() {
           path: '/docs/migration-riverpod',
           category: 'Migration Guides',
           description: 'Step-by-step migration guide from Riverpod providers to BlocSignal.',
-          badge: 'Phase 4',
-          builder: () => _PlaceholderDoc(
-            title: 'Migrating from Riverpod',
-            phase: 'Phase 4',
-            description: 'Comparing concepts and converting Riverpod state notifiers to BlocSignal.',
-          ),
+          builder: DocsMigrationRiverpodPage.new,
         ),
       ],
     ),
@@ -361,39 +311,5 @@ class const DocsRegistry() {
     final prev = index > 0 ? allSections[index - 1] : null;
     final next = index < allSections.length - 1 ? allSections[index + 1] : null;
     return (prev, next);
-  }
-}
-
-class const _PlaceholderDoc({
-  required final String title,
-  required final String phase,
-  required final String description,
-}) extends StatelessComponent {
-  @override
-  Component build(BuildContext context) {
-    return article(classes: 'docs-article', [
-      header(classes: 'docs-article-header', [
-        div(classes: 'docs-badge', [Component.text('⏳ In Progress ($phase)')]),
-        h1([Component.text(title)]),
-        p(classes: 'docs-lead', [Component.text(description)]),
-      ]),
-      section(classes: 'docs-section', [
-        div(classes: 'docs-placeholder-card', [
-          span(classes: 'docs-placeholder-icon', [Component.text('🚧')]),
-          h3([Component.text('Coming Soon in $phase')]),
-          p([
-            Component.text(
-              'This documentation chapter is currently being drafted as part of $phase of the BlocSignal Documentation Hub rollout. '
-              'In the meantime, refer to the Getting Started guides and the official README.',
-            ),
-          ]),
-          div(classes: 'docs-placeholder-actions', [
-            a(href: '/docs/quickstart', classes: 'btn-primary-sm', [
-              Component.text('Go to Quickstart Guide ➔'),
-            ]),
-          ]),
-        ]),
-      ]),
-    ]);
   }
 }

@@ -14,8 +14,19 @@ import 'pages/docs_flutter_providers.dart';
 import 'pages/docs_flutter_widgets.dart';
 import 'pages/docs_installation.dart';
 import 'pages/docs_lifecycle_and_observers.dart';
+import 'pages/docs_migration_bloc.dart';
+import 'pages/docs_migration_riverpod.dart';
 import 'pages/docs_overview.dart';
+import 'pages/docs_pkg_devtools.dart';
+import 'pages/docs_pkg_hydrate.dart';
+import 'pages/docs_pkg_otel.dart';
+import 'pages/docs_pkg_replay.dart';
+import 'pages/docs_pkg_riverpod.dart';
 import 'pages/docs_quickstart.dart';
+import 'pages/docs_recipe_caching.dart';
+import 'pages/docs_recipe_controllers.dart';
+import 'pages/docs_recipe_form_validation.dart';
+import 'pages/docs_recipe_one_shot.dart';
 import 'pages/docs_signals_reactivity.dart';
 import 'pages/docs_state_modeling.dart';
 import 'pages/docs_testing_guide.dart';
@@ -34,70 +45,71 @@ class const DocsContent({super.key}) extends StatelessComponent {
         );
         final cubit = context.read<DocsCubit>();
 
-        // Extract TOC headings based on active section
-        final headings = _getHeadingsForSection(state.activeSectionId);
-        final sourcePath = _getSourcePathForSection(state.activeSectionId);
+        final headings = _getHeadingsForSection(currentSection.id);
+        final sourcePath = _getSourcePathForSection(currentSection.id);
 
         return div(classes: 'docs-content-layout', [
-          // Mobile Docs Navigation Bar
-          div(classes: 'docs-mobile-bar', [
-            button(
-              classes: 'docs-mobile-menu-btn',
-              onClick: () => cubit.toggleMobileDrawer(),
-              attributes: {'aria-label': 'Open documentation menu'},
-              [
-                span(classes: 'docs-mobile-menu-icon', [Component.text('☰')]),
-                span(classes: 'docs-mobile-menu-text', [
-                  Component.text('Menu'),
+          div(classes: 'docs-main-wrapper', [
+            // Mobile Docs Navigation Bar
+            div(classes: 'docs-mobile-bar', [
+              button(
+                classes: 'docs-mobile-menu-btn',
+                onClick: () => cubit.toggleMobileDrawer(),
+                attributes: {'aria-label': 'Open documentation menu'},
+                [
+                  span(classes: 'docs-mobile-menu-icon', [Component.text('☰')]),
+                  span(classes: 'docs-mobile-menu-text', [
+                    Component.text('Menu'),
+                  ]),
+                ],
+              ),
+              div(classes: 'docs-mobile-breadcrumbs', [
+                span(classes: 'docs-crumb-category', [
+                  Component.text(currentSection.category),
                 ]),
-              ],
-            ),
-            div(classes: 'docs-mobile-breadcrumbs', [
-              span(classes: 'docs-crumb-category', [
-                Component.text(currentSection.category),
-              ]),
-              span(classes: 'docs-crumb-separator', [Component.text(' / ')]),
-              span(classes: 'docs-crumb-title', [
-                Component.text(currentSection.title),
+                span(classes: 'docs-crumb-separator', [Component.text(' / ')]),
+                span(classes: 'docs-crumb-title', [
+                  Component.text(currentSection.title),
+                ]),
               ]),
             ]),
-          ]),
 
-          // Main Article Container
-          main_(classes: 'docs-main-container', [
-            currentSection.builder(),
+            // Main Documentation Article
+            main_(classes: 'docs-main-container', [
+              currentSection.builder(),
 
-            // Footer Pagination (Previous / Next Article)
-            div(classes: 'docs-pagination', [
-              if (prevSection != null)
-                button(
-                  classes: 'docs-pager-btn prev',
-                  onClick: () => cubit.selectSection(prevSection.id),
-                  [
-                    span(classes: 'docs-pager-direction', [
-                      Component.text('← Previous'),
-                    ]),
-                    span(classes: 'docs-pager-title', [
-                      Component.text(prevSection.title),
-                    ]),
-                  ],
-                )
-              else
-                div(classes: 'docs-pager-spacer', []),
+              // Footer Pagination (Previous / Next Article)
+              div(classes: 'docs-pagination', [
+                if (prevSection != null)
+                  button(
+                    classes: 'docs-pager-btn prev',
+                    onClick: () => cubit.selectSection(prevSection.id),
+                    [
+                      span(classes: 'docs-pager-direction', [
+                        Component.text('← Previous'),
+                      ]),
+                      span(classes: 'docs-pager-title', [
+                        Component.text(prevSection.title),
+                      ]),
+                    ],
+                  )
+                else
+                  div(classes: 'docs-pager-spacer', []),
 
-              if (nextSection != null)
-                button(
-                  classes: 'docs-pager-btn next',
-                  onClick: () => cubit.selectSection(nextSection.id),
-                  [
-                    span(classes: 'docs-pager-direction', [
-                      Component.text('Next →'),
-                    ]),
-                    span(classes: 'docs-pager-title', [
-                      Component.text(nextSection.title),
-                    ]),
-                  ],
-                ),
+                if (nextSection != null)
+                  button(
+                    classes: 'docs-pager-btn next',
+                    onClick: () => cubit.selectSection(nextSection.id),
+                    [
+                      span(classes: 'docs-pager-direction', [
+                        Component.text('Next →'),
+                      ]),
+                      span(classes: 'docs-pager-title', [
+                        Component.text(nextSection.title),
+                      ]),
+                    ],
+                  ),
+              ]),
             ]),
           ]),
 
@@ -138,6 +150,28 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return DocsFlutterContextPage.headings;
       case 'testing-guide':
         return DocsTestingGuidePage.headings;
+      case 'pkg-hydrate':
+        return DocsPkgHydratePage.headings;
+      case 'pkg-replay':
+        return DocsPkgReplayPage.headings;
+      case 'pkg-riverpod':
+        return DocsPkgRiverpodPage.headings;
+      case 'pkg-otel':
+        return DocsPkgOtelPage.headings;
+      case 'pkg-devtools':
+        return DocsPkgDevtoolsPage.headings;
+      case 'recipe-one-shot':
+        return DocsRecipeOneShotPage.headings;
+      case 'recipe-form-validation':
+        return DocsRecipeFormValidationPage.headings;
+      case 'recipe-controllers':
+        return DocsRecipeControllersPage.headings;
+      case 'recipe-caching':
+        return DocsRecipeCachingPage.headings;
+      case 'migration-bloc':
+        return DocsMigrationBlocPage.headings;
+      case 'migration-riverpod':
+        return DocsMigrationRiverpodPage.headings;
       default:
         return const [];
     }
@@ -171,6 +205,28 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return 'website/lib/src/components/docs/pages/docs_flutter_context.dart';
       case 'testing-guide':
         return 'website/lib/src/components/docs/pages/docs_testing_guide.dart';
+      case 'pkg-hydrate':
+        return 'website/lib/src/components/docs/pages/docs_pkg_hydrate.dart';
+      case 'pkg-replay':
+        return 'website/lib/src/components/docs/pages/docs_pkg_replay.dart';
+      case 'pkg-riverpod':
+        return 'website/lib/src/components/docs/pages/docs_pkg_riverpod.dart';
+      case 'pkg-otel':
+        return 'website/lib/src/components/docs/pages/docs_pkg_otel.dart';
+      case 'pkg-devtools':
+        return 'website/lib/src/components/docs/pages/docs_pkg_devtools.dart';
+      case 'recipe-one-shot':
+        return 'website/lib/src/components/docs/pages/docs_recipe_one_shot.dart';
+      case 'recipe-form-validation':
+        return 'website/lib/src/components/docs/pages/docs_recipe_form_validation.dart';
+      case 'recipe-controllers':
+        return 'website/lib/src/components/docs/pages/docs_recipe_controllers.dart';
+      case 'recipe-caching':
+        return 'website/lib/src/components/docs/pages/docs_recipe_caching.dart';
+      case 'migration-bloc':
+        return 'website/lib/src/components/docs/pages/docs_migration_bloc.dart';
+      case 'migration-riverpod':
+        return 'website/lib/src/components/docs/pages/docs_migration_riverpod.dart';
       default:
         return 'website/lib/src/models/docs_registry.dart';
     }

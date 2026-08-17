@@ -2711,6 +2711,22 @@ code, pre, .font-mono {
   color: var(--text-primary);
 }
 
+.docs-syntax-selector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+}
+
+.docs-syntax-label {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 .docs-nav-tree {
   display: flex;
   flex-direction: column;

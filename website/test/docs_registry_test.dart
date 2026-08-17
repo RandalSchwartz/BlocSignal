@@ -71,6 +71,56 @@ void main() {
       expect(testingGuide.id, equals('testing-guide'));
       expect(testingGuide.category, equals('Testing'));
 
+      final pkgHydrate = DocsRegistry.resolveSection('pkg-hydrate');
+      expect(pkgHydrate.id, equals('pkg-hydrate'));
+      expect(pkgHydrate.category, equals('Satellite Packages'));
+
+      final pkgReplay = DocsRegistry.resolveSection('pkg-replay');
+      expect(pkgReplay.id, equals('pkg-replay'));
+      expect(pkgReplay.category, equals('Satellite Packages'));
+
+      final pkgRiverpod = DocsRegistry.resolveSection('pkg-riverpod');
+      expect(pkgRiverpod.id, equals('pkg-riverpod'));
+      expect(pkgRiverpod.category, equals('Satellite Packages'));
+
+      final pkgOtel = DocsRegistry.resolveSection('pkg-otel');
+      expect(pkgOtel.id, equals('pkg-otel'));
+      expect(pkgOtel.category, equals('Satellite Packages'));
+
+      final pkgDevtools = DocsRegistry.resolveSection('pkg-devtools');
+      expect(pkgDevtools.id, equals('pkg-devtools'));
+      expect(pkgDevtools.category, equals('Satellite Packages'));
+
+      final recipeOneShot = DocsRegistry.resolveSection('recipe-one-shot');
+      expect(recipeOneShot.id, equals('recipe-one-shot'));
+      expect(recipeOneShot.category, equals('Architecture & Recipes'));
+
+      final recipeFormValidation = DocsRegistry.resolveSection(
+        'recipe-form-validation',
+      );
+      expect(recipeFormValidation.id, equals('recipe-form-validation'));
+      expect(recipeFormValidation.category, equals('Architecture & Recipes'));
+
+      final recipeControllers = DocsRegistry.resolveSection(
+        'recipe-controllers',
+      );
+      expect(recipeControllers.id, equals('recipe-controllers'));
+      expect(recipeControllers.category, equals('Architecture & Recipes'));
+
+      final recipeCaching = DocsRegistry.resolveSection('recipe-caching');
+      expect(recipeCaching.id, equals('recipe-caching'));
+      expect(recipeCaching.category, equals('Architecture & Recipes'));
+
+      final migrationBloc = DocsRegistry.resolveSection('migration-bloc');
+      expect(migrationBloc.id, equals('migration-bloc'));
+      expect(migrationBloc.category, equals('Migration Guides'));
+
+      final migrationRiverpod = DocsRegistry.resolveSection(
+        'migration-riverpod',
+      );
+      expect(migrationRiverpod.id, equals('migration-riverpod'));
+      expect(migrationRiverpod.category, equals('Migration Guides'));
+
       // Variations with trailing slashes, index.html, and full paths
       expect(
         DocsRegistry.resolveSection('installation/').id,
@@ -87,6 +137,14 @@ void main() {
       expect(
         DocsRegistry.resolveSection('/docs/cubit-vs-bloc').id,
         equals('cubit-vs-bloc'),
+      );
+      expect(
+        DocsRegistry.resolveSection('/docs/pkg-hydrate').id,
+        equals('pkg-hydrate'),
+      );
+      expect(
+        DocsRegistry.resolveSection('/docs/migration-bloc').id,
+        equals('migration-bloc'),
       );
     });
 

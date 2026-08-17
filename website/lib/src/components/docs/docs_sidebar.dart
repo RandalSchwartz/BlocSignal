@@ -58,6 +58,27 @@ class const DocsSidebar({super.key}) extends StatelessComponent {
               ),
           ]),
 
+          // Global Syntax Preference Toggle
+          div(classes: 'docs-syntax-selector', [
+            span(classes: 'docs-syntax-label', [
+              Component.text('Dart Syntax:'),
+            ]),
+            div(classes: 'docs-version-tabs', [
+              button(
+                classes:
+                    'docs-version-tab ${state.selectedDartVersion == "3.13" ? "active" : ""}',
+                onClick: () => cubit.setDartVersion('3.13'),
+                [Component.text('3.13+ Modern')],
+              ),
+              button(
+                classes:
+                    'docs-version-tab ${state.selectedDartVersion == "3.5" ? "active" : ""}',
+                onClick: () => cubit.setDartVersion('3.5'),
+                [Component.text('3.5 Baseline')],
+              ),
+            ]),
+          ]),
+
           // Category Navigation Tree
           nav(classes: 'docs-nav-tree', [
             if (displayedCategories.isEmpty) ...[

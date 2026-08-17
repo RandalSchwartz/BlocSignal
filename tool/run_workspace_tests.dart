@@ -7,12 +7,15 @@ void main(List<String> args) {
     '.', // Root workspace tests
     'bloc_signals',
     'bloc_signals_flutter',
+    'bloc_signals_jaspr',
+    'bloc_signals_replay',
     'bloc_signals_otel',
     'bloc_signals_test',
     'bloc_signals_lint',
     'bloc_signals_riverpod',
     'bloc_signals_hydrate',
     'bloc_signals_devtools',
+    'website',
   ];
 
   print('🧪 Running workspace tests across ${packages.length} targets...\n');

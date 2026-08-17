@@ -371,3 +371,11 @@ When building reactive Jaspr web applications:
 When authoring code snippets and documentation:
 * **Dual Presentation**: Maintain the dual Dart 3.13+ (modern primary constructors, parameter shorthands, `this` bodies) vs Dart 3.5 (baseline) presentation in docs and snippets whenever feasible.
 * **Global Preference with Local Overrides**: Connect `DocsCodeBlock` to `DocsCubit.selectedDartVersion` via the global sidebar toggle (`3.13+ Modern` vs `3.5 Baseline`), while allowing readers to override individual code blocks via inline tabs.
+
+### 46. Documentation Hub API Symbol Registry Synchronization (`PubApiRegistry` & `DocSymbol`)
+When publishing new packages or adding new public classes, mixins, extensions, or major methods across the monorepo:
+* **Registry Alignment**: You MUST update `DocSymbol` in `website/lib/src/models/pub_api_registry.dart` with the canonical pub.dev dartdoc entry (`<package>`, `<symbolName>`, `<htmlFile>`).
+* **Interactive Linking**: Use `apiLink(DocSymbol.<name>)` or `apiLink(DocSymbol.<name>, label: '...')` across documentation pages, matrices, and prose paragraphs so developers can click through directly to official pub.dev API reference pages.
+* **Heading Typography Hygiene**: Section titles and headings (`h2`, `h3`) must remain clean plain text (`h2([Component.text('1. BlocSignalBuilder')])`) rather than wrapped in interactive code badges. Reserve `apiLink` badges exclusively for body prose, table cells, and callout descriptions.
+* **Unit Testing**: Keep `website/test/pub_api_registry_test.dart` updated with test expectations verifying URL formation and symbol presence.
+

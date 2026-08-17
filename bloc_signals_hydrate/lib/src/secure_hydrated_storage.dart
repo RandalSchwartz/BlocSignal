@@ -19,7 +19,8 @@ import 'package:bloc_signals_hydrate/src/hydrated_storage.dart';
 /// void main() async {
 ///   WidgetsFlutterBinding.ensureInitialized();
 ///   final secureStorage = const FlutterSecureStorage();
-///   HydratedStorage.storage = await SecureHydratedStorage.build(secureStorage);
+///   HydratedStorage.storage =
+///       await SecureHydratedStorage.build(secureStorage);
 ///
 ///   runApp(const MyApp());
 /// }
@@ -43,8 +44,10 @@ class SecureHydratedStorage implements HydratedStorage {
   /// returning a fully initialized [SecureHydratedStorage] ready for
   /// synchronous frame 1 state hydration.
   static Future<SecureHydratedStorage> build(dynamic secureStorage) async {
+    // Duck-typing support for flutter_secure_storage FlutterSecureStorage.
+    // ignore: avoid_dynamic_calls
     final dynamic rawAll = await secureStorage.readAll();
-    final Map<String, String> all = Map<String, String>.from(
+    final all = Map<String, String>.from(
       (rawAll as Map).map((k, v) => MapEntry(k.toString(), v.toString())),
     );
     return SecureHydratedStorage._(secureStorage, all);
@@ -56,19 +59,25 @@ class SecureHydratedStorage implements HydratedStorage {
   @override
   FutureOr<void> write(String key, dynamic value) async {
     _cache[key] = value;
-    final String encoded = jsonEncode(value);
+    final encoded = jsonEncode(value);
+    // Duck-typing support for flutter_secure_storage write.
+    // ignore: avoid_dynamic_calls
     await _secureStorage.write(key: key, value: encoded);
   }
 
   @override
   FutureOr<void> delete(String key) async {
     _cache.remove(key);
+    // Duck-typing support for flutter_secure_storage delete.
+    // ignore: avoid_dynamic_calls
     await _secureStorage.delete(key: key);
   }
 
   @override
   FutureOr<void> clear() async {
     _cache.clear();
+    // Duck-typing support for flutter_secure_storage deleteAll.
+    // ignore: avoid_dynamic_calls
     await _secureStorage.deleteAll();
   }
 }

@@ -104,26 +104,26 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
   }
 
   @override
-  void emit(State state) {
+  void emit(State newState) {
     _changeStack.add(
       _Change<State>(
         stateValue,
-        state,
+        newState,
         () {
           final event = _Redo();
-          onEvent(event);
+          unawaited(Future.value(onEvent(event)));
           onTransition(
             Transition<ReplayEvent, State>(
               currentState: stateValue,
               event: event,
-              nextState: state,
+              nextState: newState,
             ),
           );
-          super.emit(state);
+          super.emit(newState);
         },
         (val) {
           final event = _Undo();
-          onEvent(event);
+          unawaited(Future.value(onEvent(event)));
           onTransition(
             Transition<ReplayEvent, State>(
               currentState: stateValue,
@@ -135,7 +135,7 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
         },
       ),
     );
-    super.emit(state);
+    super.emit(newState);
   }
 
   /// Undo the last change.

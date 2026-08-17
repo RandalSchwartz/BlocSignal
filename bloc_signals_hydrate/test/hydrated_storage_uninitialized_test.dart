@@ -8,9 +8,7 @@ class TestUninitializedCubit extends HydratedCubitSignal<int> {
 }
 
 void main() {
-  tearDown(() {
-    HydratedStorage.reset();
-  });
+  tearDown(HydratedStorage.reset);
 
   group('HydratedStorage Uninitialized Fallback & Helpers', () {
     test('isInitialized returns false when storage is uninitialized', () {
@@ -37,7 +35,9 @@ void main() {
       cubit.increment();
       expect(cubit.stateValue, equals(1));
       expect(
-          HydratedStorage.storage!.read('TestUninitializedCubit'), equals(1));
+        HydratedStorage.storage!.read('TestUninitializedCubit'),
+        equals(1),
+      );
     });
 
     test('reset() restores storage to uninitialized state', () {

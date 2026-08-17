@@ -98,8 +98,7 @@ void main() {
         cubit
           ..increment()
           ..increment()
-          ..increment();
-        cubit
+          ..increment()
           ..undo()
           ..undo()
           ..undo();

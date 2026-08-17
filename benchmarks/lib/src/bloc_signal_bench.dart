@@ -4,10 +4,10 @@ import 'package:benchmark_harness/benchmark_harness.dart';
 import 'package:bloc_signals/bloc_signals.dart';
 
 /// Counter event hierarchy for BlocSignal benchmarks.
-sealed class CounterEvent() {}
+sealed class CounterEvent;
 
 /// Increment event.
-final class Increment() extends CounterEvent {}
+final class Increment extends CounterEvent;
 
 /// Counter BlocSignal implementation.
 final class CounterBlocSignal() extends BlocSignal<CounterEvent, int> {

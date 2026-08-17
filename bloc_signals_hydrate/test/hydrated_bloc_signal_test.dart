@@ -82,7 +82,7 @@ class ErrorProneCubit extends HydratedCubitSignal<int> {
 
   @override
   int? fromJson(dynamic json) {
-    throw FormatException('Invalid JSON payload');
+    throw const FormatException('Invalid JSON payload');
   }
 
   @override
@@ -122,8 +122,8 @@ void main() {
     });
 
     test(
-        'uses default fromJson and toJson without overriding for List collections',
-        () {
+        'uses default fromJson and toJson without overriding for '
+        'List collections', () {
       storage.write('ZeroOverrideListCubit', <dynamic>['apple', 'banana']);
 
       final cubit = ZeroOverrideListCubit();
@@ -138,8 +138,8 @@ void main() {
     });
 
     test(
-        'uses default fromJson and toJson without overriding for Map collections',
-        () {
+        'uses default fromJson and toJson without overriding for '
+        'Map collections', () {
       storage.write('ZeroOverrideMapCubit', <dynamic, dynamic>{'Alice': 95});
 
       final cubit = ZeroOverrideMapCubit();
@@ -175,7 +175,7 @@ void main() {
       );
     });
 
-    test('hydrates Map state correctly', () {
+    test('hydrates structured json models via fromJson / toJson', () {
       storage.write('MapUserProfileCubit', {'name': 'Alice'});
 
       final cubit = MapUserProfileCubit();
@@ -186,8 +186,9 @@ void main() {
     });
 
     test('isolates storage keys by instance id', () {
-      storage.write('PrimitiveCounterCubit_user_1', 10);
-      storage.write('PrimitiveCounterCubit_user_2', 20);
+      storage
+        ..write('PrimitiveCounterCubit_user_1', 10)
+        ..write('PrimitiveCounterCubit_user_2', 20);
 
       final cubit1 = PrimitiveCounterCubit(id: 'user_1');
       final cubit2 = PrimitiveCounterCubit(id: 'user_2');
@@ -243,11 +244,18 @@ void main() {
 class _TestObserver extends BlocSignalObserver {
   _TestObserver({this.onErrorCallback});
 
-  final void Function(BlocSignalBase bloc, Object error, StackTrace stackTrace)?
-      onErrorCallback;
+  final void Function(
+    BlocSignalBase<dynamic> bloc,
+    Object error,
+    StackTrace stackTrace,
+  )? onErrorCallback;
 
   @override
-  void onError(BlocSignalBase bloc, Object error, StackTrace stackTrace) {
+  void onError(
+    BlocSignalBase<dynamic> bloc,
+    Object error,
+    StackTrace stackTrace,
+  ) {
     super.onError(bloc, error, stackTrace);
     onErrorCallback?.call(bloc, error, stackTrace);
   }

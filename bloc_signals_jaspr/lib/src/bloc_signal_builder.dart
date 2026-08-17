@@ -29,7 +29,8 @@ class BlocSignalBuilder<T extends BlocSignalBase<S>, S>
   /// The [BlocSignal] to listen to. If null, it is retrieved from the context.
   final T? bloc;
 
-  /// The builder function that creates the component subtree given the current state.
+  /// The builder function that creates the component subtree given the
+  /// current state.
   final Component Function(BuildContext context, S state) builder;
 
   @override

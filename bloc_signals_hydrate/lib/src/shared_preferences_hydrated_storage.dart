@@ -21,7 +21,7 @@ import 'package:bloc_signals_hydrate/src/hydrated_storage.dart';
 /// }
 /// ```
 class SharedPreferencesHydratedStorage implements HydratedStorage {
-  /// Creates a [SharedPreferencesHydratedStorage] adapter wrapping [prefs].
+  /// Creates a [SharedPreferencesHydratedStorage] adapter wrapping `prefs`.
   const SharedPreferencesHydratedStorage(this._prefs);
 
   final dynamic _prefs;
@@ -29,6 +29,8 @@ class SharedPreferencesHydratedStorage implements HydratedStorage {
   @override
   dynamic read(String key) {
     try {
+      // Duck-typing support for shared_preferences getString.
+      // ignore: avoid_dynamic_calls
       final dynamic value = _prefs.getString(key);
       if (value == null || value is! String) return null;
       try {
@@ -43,17 +45,23 @@ class SharedPreferencesHydratedStorage implements HydratedStorage {
 
   @override
   FutureOr<void> write(String key, dynamic value) async {
-    final String encoded = jsonEncode(value);
+    final encoded = jsonEncode(value);
+    // Duck-typing support for shared_preferences setString.
+    // ignore: avoid_dynamic_calls
     await _prefs.setString(key, encoded);
   }
 
   @override
   FutureOr<void> delete(String key) async {
+    // Duck-typing support for shared_preferences remove.
+    // ignore: avoid_dynamic_calls
     await _prefs.remove(key);
   }
 
   @override
   FutureOr<void> clear() async {
+    // Duck-typing support for shared_preferences clear.
+    // ignore: avoid_dynamic_calls
     await _prefs.clear();
   }
 }

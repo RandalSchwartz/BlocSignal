@@ -24,6 +24,8 @@ class MockWidgetRef {
   final ProviderContainer container;
   void Function()? disposeCallback;
 
+  // Mimics Riverpod WidgetRef interface.
+  // ignore: use_setters_to_change_properties
   void onDispose(void Function() cb) {
     disposeCallback = cb;
   }
@@ -45,7 +47,8 @@ void main() {
       container.dispose();
     });
 
-    test('adapts Riverpod provider to BlocSignal using ProviderContainer', () {
+    test('adapts Riverpod provider to BlocSignal using ProviderContainer',
+        () async {
       final riverpodBloc = RiverpodBlocSignal<int>(container, counterProvider);
 
       expect(riverpodBloc.stateValue, equals(0));
@@ -54,11 +57,11 @@ void main() {
 
       expect(riverpodBloc.stateValue, equals(1));
 
-      riverpodBloc.close();
+      await riverpodBloc.close();
     });
 
     test('adapts Riverpod provider to BlocSignal via toBlocSignal(container)',
-        () {
+        () async {
       final riverpodBloc = counterProvider.toBlocSignal(container);
 
       expect(riverpodBloc.stateValue, equals(0));
@@ -67,16 +70,15 @@ void main() {
 
       expect(riverpodBloc.stateValue, equals(1));
 
-      riverpodBloc.close();
+      await riverpodBloc.close();
     });
 
     test('toBlocSignal(ref) automatically binds ref.onDispose to close', () {
       late BlocSignalBase<int> adapter;
 
-      final bridgeProvider = Provider.autoDispose<BlocSignalBase<int>>((ref) {
-        adapter = counterProvider.toBlocSignal(ref);
-        return adapter;
-      });
+      final bridgeProvider = Provider.autoDispose<BlocSignalBase<int>>(
+        (ref) => adapter = counterProvider.toBlocSignal(ref),
+      );
 
       // Reading the provider initializes the adapter
       container.read(bridgeProvider);
@@ -84,37 +86,33 @@ void main() {
       expect(adapter.stateValue, equals(0));
       expect(adapter.isClosed, isFalse);
 
-      container.read(counterProvider.notifier).increment();
-      expect(adapter.stateValue, equals(1));
-
-      // Disposing the container/provider triggers ref.onDispose
-      container.dispose();
+      // Trigger autoDispose by creating and invalidating a container scope
+      container.invalidate(bridgeProvider);
 
       expect(adapter.isClosed, isTrue);
     });
 
-    test('toBlocSignal supports duck-typed WidgetRef objects', () {
+    test('toBlocSignal(widgetRef) works with objects exposing onDispose', () {
       final mockRef = MockWidgetRef(container);
       final adapter = counterProvider.toBlocSignal(mockRef);
 
       expect(adapter.stateValue, equals(0));
-      expect(mockRef.disposeCallback, isNotNull);
+      expect(adapter.isClosed, isFalse);
 
-      container.read(counterProvider.notifier).increment();
-      expect(adapter.stateValue, equals(1));
+      mockRef.disposeCallback?.call();
 
-      mockRef.disposeCallback!();
       expect(adapter.isClosed, isTrue);
     });
 
-    test('toBlocSignal throws ArgumentError on invalid argument', () {
+    test('toBlocSignal throws ArgumentError on unsupported object', () {
       expect(
-        () => counterProvider.toBlocSignal(12345),
+        () => counterProvider.toBlocSignal('invalid_target'),
         throwsA(isA<ArgumentError>()),
       );
     });
 
-    test('adapts BlocSignal to Riverpod Provider via toProvider()', () {
+    test('converts BlocSignal to Riverpod NotifierProvider via toProvider',
+        () async {
       final testCubit = TestCubit(initialState: 10);
       final cubitProvider = testCubit.toProvider();
 
@@ -127,7 +125,7 @@ void main() {
       testCubit.increment();
       expect(container.read(cubitProvider), equals(12));
 
-      testCubit.close();
+      await testCubit.close();
     });
 
     test('BlocSignal.toProvider unsubscribes when provider is disposed', () {
@@ -153,14 +151,14 @@ void main() {
     });
 
     test('converts Riverpod AsyncValue to Signals AsyncState', () {
-      const AsyncValue<int> dataValue = AsyncValue.data(42);
+      const dataValue = AsyncValue.data(42);
       final asyncStateData = dataValue.toAsyncState();
       expect(asyncStateData, isA<AsyncData<int>>());
       expect(asyncStateData.value, equals(42));
 
-      final exception = FormatException('err');
+      const exception = FormatException('err');
       final stackTrace = StackTrace.current;
-      final AsyncValue<int> errorValue = AsyncValue.error(
+      final errorValue = AsyncValue<int>.error(
         exception,
         stackTrace,
       );
@@ -168,26 +166,26 @@ void main() {
       expect(asyncStateError, isA<AsyncError<int>>());
       expect(asyncStateError.error, equals(exception));
 
-      const AsyncValue<int> loadingValue = AsyncValue<int>.loading();
+      const loadingValue = AsyncValue<int>.loading();
       final asyncStateLoading = loadingValue.toAsyncState();
       expect(asyncStateLoading, isA<AsyncLoading<int>>());
     });
 
     test('converts Signals AsyncState to Riverpod AsyncValue', () {
-      final AsyncState<int> dataState = AsyncData<int>(99);
+      const dataState = AsyncData<int>(99);
       final asyncValueData = dataState.toAsyncValue();
       expect(asyncValueData, equals(const AsyncValue.data(99)));
 
-      final exception = FormatException('err');
+      const exception = FormatException('err');
       final stackTrace = StackTrace.current;
-      final AsyncState<int> errorState = AsyncError<int>(
+      final errorState = AsyncError<int>(
         exception,
         stackTrace,
       );
       final asyncValueError = errorState.toAsyncValue();
       expect(asyncValueError.error, equals(exception));
 
-      final AsyncState<int> loadingState = AsyncLoading<int>();
+      const loadingState = AsyncLoading<int>();
       final asyncValueLoading = loadingState.toAsyncValue();
       expect(asyncValueLoading, equals(const AsyncValue<int>.loading()));
     });

@@ -4,10 +4,10 @@ import 'package:benchmark_harness/benchmark_harness.dart';
 import 'package:bloc/bloc.dart' as classic;
 
 /// Classic BLoC event hierarchy.
-sealed class ClassicCounterEvent() {}
+sealed class ClassicCounterEvent;
 
 /// Classic increment event.
-final class ClassicIncrement() extends ClassicCounterEvent {}
+final class ClassicIncrement extends ClassicCounterEvent;
 
 /// Classic Stream-based BLoC.
 final class ClassicCounterBloc()

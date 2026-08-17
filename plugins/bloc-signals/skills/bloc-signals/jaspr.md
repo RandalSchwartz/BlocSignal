@@ -42,7 +42,7 @@
   ```
   Calling `_bloc.state.subscribe(...)` manually inside `initState` causes:
   1. **Double Re-renders**: UI handlers (like `onClick`) calling `setState()` alongside `_bloc.add()` trigger two back-to-back framework rebuild passes on every event.
-  2. **Batch UI Thrashing**: High-frequency loops or benchmarks (e.g. 1,000 events) force 1,000 individual `setState()` calls during the loop.
+  2. **Batch UI Thrashing**: High-frequency loops or benchmarks (for example 1,000 events) force 1,000 individual `setState()` calls during the loop.
   3. **Resource Retain**: The subscription handle returned by `.subscribe()` must be captured and cancelled in `dispose()`.
 
 * **Idiomatic Approach**:

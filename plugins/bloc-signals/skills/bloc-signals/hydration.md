@@ -19,7 +19,7 @@ This guide details state persistence and hydration in `BlocSignal` using `packag
 
 ---
 
-## 1. Primitive State Hydration (e.g. `int`, `String`, `bool`)
+## 1. Primitive State Hydration (such as `int`, `String`, `bool`)
 
 Primitive and collection state containers require **zero method overrides** for `fromJson` or `toJson`. `HydratedMixin` handles serialization and deserialization out-of-the-box!
 
@@ -69,42 +69,24 @@ Persistent keys in storage are determined by the `storageToken` getter on `Hydra
 String get storageToken => '$storagePrefix${id != null ? '_$id' : ''}';
 ```
 
-- **`storagePrefix`**: Defaults to `runtimeType.toString()` (e.g. `'CounterCubit'`).
+- **`storagePrefix`**: Defaults to `runtimeType.toString()` (for example `'CounterCubit'`).
 - **`id`**: An optional instance identifier (defaults to `null`).
 
 ### Singletons vs Multi-Instance Cubits
-- **Global / Singleton Cubits**: Leave `id` as `null` (default). Storage key is simply the class name (e.g. `'CounterCubit'`).
-- **Multi-Instance Cubits**: Pass `id` via constructor to prevent key collisions across instances:
-
-```dart
-// Generated keys: "CounterCubit_user_123" vs "CounterCubit_user_456"
-final user1Cubit = CounterCubit(id: 'user_123');
-final user2Cubit = CounterCubit(id: 'user_456');
-
-// Delete stored key and reset state to initialState
-await user1Cubit.clear();
-```
-
-### Custom Storage Key Overrides
-You can override `storageToken` or `storagePrefix` for custom storage key naming:
-
-```dart
-class CounterCubit extends HydratedCubitSignal<int> {
-  CounterCubit() : super(initialState: 0);
-
-  // Custom key stored in storage
-  @override
-  String get storageToken => 'custom_counter_v1';
-}
-```
-
-### Key Resolution & Storage Inspection
-- **Listing Stored Keys**: The `HydratedStorage` interface (`read`, `write`, `delete`, `clear`) does not include a `listKeys()` method to keep storage contracts backend-agnostic. Query the underlying storage engine directly (e.g., `prefs.getKeys()`).
-- **Instance Lookup**: `HydratedCubitSignal` does not maintain a global static instance registry by key to prevent memory leaks. Manage cubit instances using standard DI (`BlocSignalProvider`) or factory caches.
+- **Global / Singleton Cubits**: Leave `id` as `null` (default). Storage key is simply the class name (for example `'CounterCubit'`).
+- **Multi-Instance / Scoped Cubits**: Pass `id: 'user_123'` or `id: 'tab_home'`. The storage keys will be `'CounterCubit_user_123'` and `'CounterCubit_tab_home'` without collisions.
 
 ---
 
-## 4. Wiring Storage Adapters (`SharedPreferences` & `FlutterSecureStorage`)
+## 4. Troubleshooting & Best Practices
+
+- **Frame 1 Synchronous Hydration**: Because hydration happens during class constructor execution (`initHydratedState`), your initial UI frame always displays restored state directly—no loading spinner or initial state flicker.
+- **Listing Stored Keys**: The `HydratedStorage` interface (`read`, `write`, `delete`, `clear`) does not include a `listKeys()` method to keep storage contracts backend-agnostic. Query the underlying storage engine directly (for example `prefs.getKeys()`).
+- **Test Tear-Down**: Always invoke `HydratedStorage.reset()` inside `tearDown(() => ...)` in tests to prevent cross-test storage leakage.
+
+---
+
+## 5. Wiring Storage Adapters (`SharedPreferences` & `FlutterSecureStorage`)
 
 Use the built-in storage adapters exported directly from sub-libraries in `package:bloc_signals_hydrate`:
 

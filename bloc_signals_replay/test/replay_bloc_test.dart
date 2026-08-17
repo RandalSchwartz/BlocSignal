@@ -129,8 +129,7 @@ void main() {
         bloc
           ..add(const CounterIncrementPressed())
           ..add(const CounterIncrementPressed())
-          ..add(const CounterIncrementPressed());
-        bloc
+          ..add(const CounterIncrementPressed())
           ..undo()
           ..undo()
           ..undo();
@@ -151,8 +150,10 @@ void main() {
         await bloc.close();
         dispose();
         expect(states, [0, 1, 0]);
-        expect(observer.events.map((e) => e.toString()),
-            ['CounterIncrementPressed', 'Undo']);
+        expect(
+          observer.events.map((e) => e.toString()),
+          ['CounterIncrementPressed', 'Undo'],
+        );
       });
 
       test('reverts to previous state with multiple state changes', () async {

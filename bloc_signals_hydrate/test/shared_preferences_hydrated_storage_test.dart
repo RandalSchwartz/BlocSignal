@@ -85,7 +85,7 @@ void main() {
     });
 
     test('integrates seamlessly with HydratedCubitSignal', () async {
-      prefs.setString('TestCounterCubit', '10');
+      await prefs.setString('TestCounterCubit', '10');
 
       final cubit = TestCounterCubit(storage: storage);
       expect(cubit.stateValue, equals(10));

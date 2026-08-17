@@ -340,18 +340,18 @@ packages:
     dependency: transitive
     description:
       name: jaspr
-      sha256: "261e2095f2e158b4fc554273ac70f170c0256f19f5e30ba744f83ec5c620dc9a"
+      sha256: ce9fa2b852a07d538d39c3cf45487184a24a5d329a5c5ec2de47f251995be6aa
       url: "https://pub.dev"
     source: hosted
-    version: "0.23.2"
+    version: "0.23.4"
   jaspr_test:
     dependency: transitive
     description:
       name: jaspr_test
-      sha256: "8afbc623b422aed55b03de3fd7b7579471c96d18ab7eca9a966eac4cf44c9e5d"
+      sha256: "60a5e954039ef4af485bcb51d5613f76c072e94eebb85e28b5921d22214fa1ed"
       url: "https://pub.dev"
     source: hosted
-    version: "0.23.2"
+    version: "0.23.4"
   json_annotation:
     dependency: transitive
     description:
@@ -364,18 +364,18 @@ packages:
     dependency: transitive
     description:
       name: kaisel
-      sha256: c9e1e6e512eafaf82a712169039895906d4b864d93de1c6f1b020639713d5f55
+      sha256: "84c02189e772472539139f9cc9b4df2e7b432cb095117390604e01fa57b75da9"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.0.0+1"
   kaisel_core:
     dependency: transitive
     description:
       name: kaisel_core
-      sha256: "81479723e6cfa29dc5d4bc52e7adf7e2c41193e7f92dd621b00ec4d599ec6f57"
+      sha256: "677cb2a5b2dfd7fbdcdad1869915a603d6510adc7aba53ee9a404d27d5b78bcd"
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.0"
+    version: "1.0.1"
   leak_tracker:
     dependency: transitive
     description:
@@ -408,6 +408,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.0"
+  listen:
+    dependency: transitive
+    description:
+      name: listen
+      sha256: "47501a08016a43fcad79252439d723f50f14f88fa7bfd8a177e0a417e5c9e1f2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.1"
   logging:
     dependency: transitive
     description:
@@ -588,10 +596,10 @@ packages:
     dependency: transitive
     description:
       name: riverpod
-      sha256: "17100416c51db7810c71a7bb2c34d1f881faa0074fd452afb0c4db6f8f126c76"
+      sha256: "84351b3472a447f7b89f961f95c73287009d58c59d8cc1267425d995f78e50f1"
       url: "https://pub.dev"
     source: hosted
-    version: "3.3.2"
+    version: "3.4.2"
   rxdart:
     dependency: transitive
     description:

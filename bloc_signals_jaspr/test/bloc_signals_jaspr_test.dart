@@ -8,14 +8,9 @@ import 'helpers/counter_cubit.dart';
 void main() {
   group('BlocSignalProvider & Jaspr components', () {
     testComponents('provides BlocSignal and renders child', (tester) async {
-      late CounterCubit cubit;
-
       tester.pumpComponent(
         BlocSignalProvider<CounterCubit>(
-          create: (context) {
-            cubit = CounterCubit();
-            return cubit;
-          },
+          create: (context) => CounterCubit(),
           child: Builder(
             builder: (context) {
               final c = context.read<CounterCubit>();
@@ -38,7 +33,7 @@ void main() {
             isCreated = true;
             return CounterCubit();
           },
-          child: div([Component.text('Eager')]),
+          child: const div([Component.text('Eager')]),
         ),
       );
 
@@ -55,7 +50,7 @@ void main() {
               () => context.read<CounterCubit>(),
               throwsA(isA<StateError>()),
             );
-            return div([Component.text('ErrorTest')]);
+            return const div([Component.text('ErrorTest')]);
           },
         ),
       );
@@ -146,7 +141,7 @@ void main() {
               states.add(state);
             },
             listenWhen: (prev, curr) => curr.isEven,
-            child: div([Component.text('Child')]),
+            child: const div([Component.text('Child')]),
           ),
         ),
       );
@@ -273,7 +268,7 @@ void main() {
                 listener: (context, state) => events.add('theme:$state'),
               ),
             ],
-            child: div([Component.text('MultiListenerChild')]),
+            child: const div([Component.text('MultiListenerChild')]),
           ),
         ),
       );

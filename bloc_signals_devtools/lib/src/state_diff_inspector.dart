@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// An interactive object diff inspector comparing previous and next state values.
+/// An interactive object diff inspector comparing previous and next state
+/// values.
 ///
 /// Example:
 /// ```dart

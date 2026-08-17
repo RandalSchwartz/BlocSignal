@@ -7,7 +7,11 @@ import 'package:flutter/material.dart';
 /// ```dart
 /// TimelineTracePanel(
 ///   history: [
-///     {'type': 'transition', 'timestamp': '15:00:00', 'data': {'event': 'Increment()', 'nextState': '1'}},
+///     {
+///       'type': 'transition',
+///       'timestamp': '15:00:00',
+///       'data': {'event': 'Increment()', 'nextState': '1'},
+///     },
 ///   ],
 /// )
 /// ```

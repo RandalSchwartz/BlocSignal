@@ -1,6 +1,6 @@
-/// Jaspr web component integration and state binding for [BlocSignal] state
+/// Jaspr web component integration and state binding for `BlocSignal` state
 /// containers.
-library bloc_signals_jaspr;
+library;
 
 export 'package:bloc_signals/bloc_signals.dart';
 export 'src/bloc_signal_builder.dart';

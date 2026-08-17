@@ -2,10 +2,11 @@ include: package:very_good_analysis/analysis_options.yaml
 
 analyzer:
   exclude:
-    - example/**
-  errors:
-    avoid_print: ignore
-    public_member_api_docs: ignore
+    - "**/*.g.dart"
+    - "**/build/**"
+    - ".dart_tool/**"
+    - "examples/**"
+    - "tool/**"
 
 linter:
   rules:

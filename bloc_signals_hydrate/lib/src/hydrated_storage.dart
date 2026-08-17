@@ -18,21 +18,28 @@ abstract class HydratedStorage {
 
   /// The global default [HydratedStorage] instance used across hydrated blocs.
   ///
-  /// In debug mode (when assertions are enabled), if accessed while uninitialized,
-  /// this getter lazily falls back to a [MemoryHydratedStorage] instance and prints
-  /// a diagnostic warning so unit tests and prototypes work without boilerplate setup.
+  /// In debug mode (when assertions are enabled), if accessed while
+  /// uninitialized, this getter lazily falls back to a [MemoryHydratedStorage]
+  /// instance and prints a diagnostic warning so unit tests and prototypes work
+  /// without boilerplate setup.
   static HydratedStorage? get storage {
     if (_storage == null) {
-      assert(() {
-        _storage = MemoryHydratedStorage();
-        // Print diagnostic guidance for developers
-        print(
-          '[bloc_signals_hydrate] HydratedStorage.storage was accessed before initialization.\n'
-          'Falling back to MemoryHydratedStorage for testing/debugging.\n'
-          'Make sure to set HydratedStorage.storage in main() before running in production.',
-        );
-        return true;
-      }());
+      assert(
+        () {
+          _storage = MemoryHydratedStorage();
+          // Print debug fallback notice.
+          // ignore: avoid_print
+          print(
+            '[bloc_signals_hydrate] HydratedStorage.storage was accessed '
+            'before initialization.\n'
+            'Falling back to MemoryHydratedStorage for testing/debugging.\n'
+            'Make sure to set HydratedStorage.storage in main() before running '
+            'in production.',
+          );
+          return true;
+        }(),
+        'HydratedStorage fallback assertion',
+      );
     }
     return _storage;
   }
@@ -42,10 +49,12 @@ abstract class HydratedStorage {
     _storage = value;
   }
 
-  /// Returns whether a global default [HydratedStorage] instance is currently set.
+  /// Returns whether a global default [HydratedStorage] instance is currently
+  /// set.
   static bool get isInitialized => _storage != null;
 
-  /// Resets global default storage to uninitialized state (useful for test tearDown).
+  /// Resets global default storage to uninitialized state (useful for test
+  /// tearDown).
   static void reset() {
     _storage = null;
   }

@@ -67,8 +67,8 @@ final isSubmitEnabled = context.select<FormCubit, bool>(
 > [!TIP]
 > **Generic Type Signature & Selector Parameter (`context.select<B, R>`)**:
 > In `bloc_signals_flutter`, `context.select` takes **2** generic type parameters:
-> 1. `B`: The `BlocSignalBase` container type (e.g. `FormCubit` or `CounterBloc`).
-> 2. `R`: The selected return value type (e.g. `bool` or `String`).
+> 1. `B`: The `BlocSignalBase` container type (for example `FormCubit` or `CounterBloc`).
+> 2. `R`: The selected return value type (for example `bool` or `String`).
 >
 > Unlike `flutter_riverpod` (which uses 3 generic parameters in some forms) or classic `flutter_bloc` context selection, `bloc_signals_flutter` passes the **`bloc` container instance** to the selector callback (`(bloc) => bloc.stateValue.canSubmit`), allowing direct property access via `bloc.stateValue`.
 
@@ -265,7 +265,7 @@ BlocSignalBuilder<UserDataCubit, UserData>(
 
 **Why this works**:
 - **Zero Build-Phase Mutations**: Eliminates `controller.text` mutations during frame builds.
-- **Automatic Sync on External Changes**: Updating `ValueKey` forces `TextFormField` to re-initialize cleanly with `initialValue` when state changes externally (e.g. state hydration or unit switching).
+- **Automatic Sync on External Changes**: Updating `ValueKey` forces `TextFormField` to re-initialize cleanly with `initialValue` when state changes externally (such as state hydration or unit switching).
 - **Clean Field State**: Allows standard typing and validation while keeping state reactivity declarative.
 
 ## Missing-provider failures

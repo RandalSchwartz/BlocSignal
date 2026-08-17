@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// An alert badge indicating active container count and warning against unclosed memory leaks.
+/// An alert badge indicating active container count and warning against
+/// unclosed memory leaks.
 ///
 /// Example:
 /// ```dart

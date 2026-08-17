@@ -56,16 +56,16 @@ mixin ReplayCubitMixin<State> on BlocSignalBase<State> {
   set limit(int limit) => _changeStack.limit = limit;
 
   @override
-  void emit(State state) {
+  void emit(State newState) {
     _changeStack.add(
       _Change<State>(
         stateValue,
-        state,
-        () => super.emit(state),
+        newState,
+        () => super.emit(newState),
         (val) => super.emit(val),
       ),
     );
-    super.emit(state);
+    super.emit(newState);
   }
 
   /// Undo the last change.

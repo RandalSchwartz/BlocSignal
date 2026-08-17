@@ -7,7 +7,8 @@ import 'package:meta/meta.dart';
 /// A mixin that provides state persistence and hydration capabilities for
 /// [BlocSignalBase] containers.
 mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
-  /// The initial default state for this container when no persisted state exists.
+  /// The initial default state for this container when no persisted state
+  /// exists.
   StateType get initialState;
 
   /// An optional unique identifier for this instance when multiple instances
@@ -18,7 +19,8 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
   /// `runtimeType.toString()`.
   String get storagePrefix => runtimeType.toString();
 
-  /// The unique storage token key derived from [storagePrefix] and optional [id].
+  /// The unique storage token key derived from [storagePrefix] and optional
+  /// [id].
   String get storageToken => '$storagePrefix${id != null ? '_$id' : ''}';
 
   /// An explicit [HydratedStorage] override instance for this container. If
@@ -95,7 +97,8 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
   /// will delete the key from storage. Defaults to returning [state] directly.
   dynamic toJson(StateType state) => state;
 
-  /// Initializes hydration by loading stored state during constructor execution.
+  /// Initializes hydration by loading stored state during constructor
+  /// execution.
   @protected
   StateType initHydratedState(StateType initial) {
     final storage = activeStorage;
@@ -129,7 +132,8 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
     }
   }
 
-  /// Deletes stored state from storage and resets container state to [initialState].
+  /// Deletes stored state from storage and resets container state to
+  /// [initialState].
   Future<void> clear() async {
     final storage = activeStorage;
     if (storage != null) {
@@ -146,7 +150,6 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
 /// ```dart
 /// class CounterCubit extends HydratedCubitSignal<int> {
 ///   CounterCubit() : super(initialState: 0);
-///
 ///   void increment() => emit(stateValue + 1);
 /// }
 /// ```
@@ -183,9 +186,9 @@ abstract class HydratedCubitSignal<StateType> extends CubitSignal<StateType>
   }
 
   @override
-  void emit(StateType state) {
-    super.emit(state);
-    persist(state);
+  void emit(StateType newState) {
+    super.emit(newState);
+    persist(newState);
   }
 }
 
@@ -233,8 +236,8 @@ abstract class HydratedBlocSignal<Event, StateType>
   }
 
   @override
-  void emit(StateType state) {
-    super.emit(state);
-    persist(state);
+  void emit(StateType newState) {
+    super.emit(newState);
+    persist(newState);
   }
 }

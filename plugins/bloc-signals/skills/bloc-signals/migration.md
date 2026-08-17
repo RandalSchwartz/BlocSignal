@@ -189,11 +189,11 @@ class AlwaysEmitBloc extends BlocSignal<CounterEvent, CounterState> {
 >
 > 1. **Constructor Initial State (`initialState:` named argument)**:
 >    - **Felix BLoC**: Uses positional argument `: super(0)` or `: super(initialState)`.
->    - **`BlocSignal` / `CubitSignal`**: Uses required named parameter `: super(initialState: 0)`. Passing a positional argument (e.g. `: super(0)`) is a compile-time syntax error.
+>    - **`BlocSignal` / `CubitSignal`**: Uses required named parameter `: super(initialState: 0)`. Passing a positional argument (for example `: super(0)`) is a compile-time syntax error.
 >
 > 2. **State Value Access (`stateValue` vs `state`)**:
 >    - **Felix BLoC**: `state` returns the raw `StateType` value directly (`emit(state + 1)`).
->    - **`BlocSignal` / `CubitSignal`**: `state` returns `ReadonlySignal<StateType>` for reactive signal observers. To read the raw value in state methods or event handlers, use `stateValue` (or `state.value`), e.g., `emit(stateValue + 1)`. Writing `emit(state + 1)` triggers a compilation error because arithmetic operators like `+` are not defined on `ReadonlySignal`.
+>    - **`BlocSignal` / `CubitSignal`**: `state` returns `ReadonlySignal<StateType>` for reactive signal observers. To read the raw value in state methods or event handlers, use `stateValue` (or `state.value`), specifically `emit(stateValue + 1)`. Writing `emit(state + 1)` triggers a compilation error because arithmetic operators like `+` are not defined on `ReadonlySignal`.
 
 ---
 
@@ -238,7 +238,7 @@ With `BlocSignal`, extend `CubitSignal<StateType>` and define direct methods on 
 > [!NOTE]
 > Pay close attention to the syntax differences when converting a `Cubit` to `CubitSignal`:
 > - Use `: super(initialState: 0)` with the named `initialState:` parameter (classic Cubit uses positional `: super(0)`).
-> - Use `stateValue` to read the raw state value in method logic, e.g. `emit(stateValue + 1)` (classic Cubit uses `state`, whereas `CubitSignal.state` returns a `ReadonlySignal<int>`).
+> - Use `stateValue` to read the raw state value in method logic, such as `emit(stateValue + 1)` (classic Cubit uses `state`, whereas `CubitSignal.state` returns a `ReadonlySignal<int>`).
 
 #### Before (Classic Cubit)
 ```dart

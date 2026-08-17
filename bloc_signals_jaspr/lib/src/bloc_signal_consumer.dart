@@ -4,8 +4,8 @@ import 'package:bloc_signals_jaspr/src/bloc_signal_listener.dart';
 import 'package:bloc_signals_jaspr/src/bloc_signal_provider.dart';
 import 'package:jaspr/jaspr.dart';
 
-/// A Jaspr component that combines a [BlocSignalBuilder] and [BlocSignalListener]
-/// into one.
+/// A Jaspr component that combines a [BlocSignalBuilder] and
+/// [BlocSignalListener] into one.
 ///
 /// Example:
 /// ```dart

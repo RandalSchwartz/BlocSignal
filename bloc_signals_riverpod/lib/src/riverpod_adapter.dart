@@ -25,7 +25,7 @@ class RiverpodBlocSignal<T> extends CubitSignal<T> {
 
   /// Creates a [RiverpodBlocSignal] using a Riverpod [Ref].
   ///
-  /// Automatically registers [ref.onDispose] to close this [RiverpodBlocSignal]
+  /// Automatically registers `ref.onDispose` to close this [RiverpodBlocSignal]
   /// when the [ref]'s scope is disposed.
   factory RiverpodBlocSignal.fromRef(
     Ref ref,
@@ -54,12 +54,13 @@ class RiverpodBlocSignal<T> extends CubitSignal<T> {
 
 /// Extension methods on [ProviderListenable] for [BlocSignalBase] conversion.
 extension ProviderListenableBlocSignalX<T> on ProviderListenable<T> {
-  /// Adapts this Riverpod [ProviderListenable] into a [BlocSignalBase] container.
+  /// Adapts this Riverpod [ProviderListenable] into a [BlocSignalBase]
+  /// container.
   ///
-  /// The [refOrContainer] parameter must be either a [Ref], WidgetRef, or a
-  /// [ProviderContainer]. If a [Ref] or object exposing `onDispose` is provided,
-  /// `onDispose` is automatically registered to close the container when the
-  /// provider/widget is disposed.
+  /// The [refOrContainer] parameter must be either a [Ref], `WidgetRef`, or a
+  /// [ProviderContainer]. If a [Ref] or object exposing `onDispose` is
+  /// provided, `onDispose` is automatically registered to close the container
+  /// when the provider/widget is disposed.
   BlocSignalBase<T> toBlocSignal(
     Object refOrContainer, {
     bool Function(T previous, T current)? equals,
@@ -82,6 +83,8 @@ extension ProviderListenableBlocSignalX<T> on ProviderListenable<T> {
     } else {
       try {
         final dynamic obj = refOrContainer;
+        // Duck-typing support for flutter_riverpod WidgetRef container.
+        // ignore: avoid_dynamic_calls
         final container = obj.container as ProviderContainer;
         final bloc = RiverpodBlocSignal<T>(
           container,
@@ -90,13 +93,15 @@ extension ProviderListenableBlocSignalX<T> on ProviderListenable<T> {
           options: options,
         );
         try {
+          // Duck-typing support for flutter_riverpod WidgetRef onDispose.
+          // ignore: avoid_dynamic_calls
           obj.onDispose(bloc.close);
-        } catch (_) {}
+        } on Object catch (_) {}
         return bloc;
-      } catch (_) {
+      } on Object catch (_) {
         throw ArgumentError(
-          'refOrContainer must be a Ref, WidgetRef, or ProviderContainer, but was '
-          '${refOrContainer.runtimeType}.',
+          'refOrContainer must be a Ref, WidgetRef, or ProviderContainer, '
+          'but was ${refOrContainer.runtimeType}.',
         );
       }
     }
@@ -121,8 +126,8 @@ class _BlocSignalNotifier<T> extends Notifier<T> {
 extension BlocSignalRiverpodX<T> on BlocSignalBase<T> {
   /// Converts this [BlocSignalBase] into a Riverpod [NotifierProvider].
   ///
-  /// Subscribes to [state] updates and automatically unbinds the subscription
-  /// when the Riverpod provider is disposed via [ref.onDispose].
+  /// Subscribes to `state` updates and automatically unbinds the subscription
+  /// when the Riverpod provider is disposed via `ref.onDispose`.
   NotifierProvider<Notifier<T>, T> toProvider() {
     return NotifierProvider<Notifier<T>, T>(
       () => _BlocSignalNotifier<T>(this),
@@ -130,7 +135,8 @@ extension BlocSignalRiverpodX<T> on BlocSignalBase<T> {
   }
 }
 
-/// Extension methods on Riverpod [AsyncValue] for Signals [AsyncState] conversion.
+/// Extension methods on Riverpod [AsyncValue] for Signals [AsyncState]
+/// conversion.
 extension AsyncValueToAsyncStateX<T> on AsyncValue<T> {
   /// Converts this Riverpod [AsyncValue] into a Signals [AsyncState].
   AsyncState<T> toAsyncState() {
@@ -144,7 +150,8 @@ extension AsyncValueToAsyncStateX<T> on AsyncValue<T> {
   }
 }
 
-/// Extension methods on Signals [AsyncState] for Riverpod [AsyncValue] conversion.
+/// Extension methods on Signals [AsyncState] for Riverpod [AsyncValue]
+/// conversion.
 extension AsyncStateToAsyncValueX<T> on AsyncState<T> {
   /// Converts this Signals [AsyncState] into a Riverpod [AsyncValue].
   AsyncValue<T> toAsyncValue() {

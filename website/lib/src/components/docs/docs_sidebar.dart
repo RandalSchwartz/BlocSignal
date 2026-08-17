@@ -96,18 +96,10 @@ class const DocsSidebar({super.key}) extends StatelessComponent {
                       ul(classes: 'docs-section-list', [
                         for (final sec in cat.sections)
                           li(classes: 'docs-section-item', [
-                            a(
-                              href: sec.path,
+                            button(
                               classes:
                                   'docs-section-link ${state.activeSectionId == sec.id ? "active" : ""}',
-                              events: {
-                                'click': (dynamic event) {
-                                  try {
-                                    (event as dynamic).preventDefault();
-                                  } catch (_) {}
-                                  cubit.selectSection(sec.id);
-                                },
-                              },
+                              onClick: () => cubit.selectSection(sec.id),
                               [
                                 span(classes: 'docs-nav-link-title', [
                                   Component.text(sec.title),

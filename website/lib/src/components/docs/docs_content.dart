@@ -9,12 +9,16 @@ import 'docs_toc.dart';
 import 'pages/docs_cubit_vs_bloc.dart';
 import 'pages/docs_event_transformers.dart';
 import 'pages/docs_events_and_handlers.dart';
+import 'pages/docs_flutter_context.dart';
+import 'pages/docs_flutter_providers.dart';
+import 'pages/docs_flutter_widgets.dart';
 import 'pages/docs_installation.dart';
 import 'pages/docs_lifecycle_and_observers.dart';
 import 'pages/docs_overview.dart';
 import 'pages/docs_quickstart.dart';
 import 'pages/docs_signals_reactivity.dart';
 import 'pages/docs_state_modeling.dart';
+import 'pages/docs_testing_guide.dart';
 
 /// The central content viewer for the documentation hub.
 class const DocsContent({super.key}) extends StatelessComponent {
@@ -66,17 +70,9 @@ class const DocsContent({super.key}) extends StatelessComponent {
             // Footer Pagination (Previous / Next Article)
             div(classes: 'docs-pagination', [
               if (prevSection != null)
-                a(
-                  href: prevSection.path,
+                button(
                   classes: 'docs-pager-btn prev',
-                  events: {
-                    'click': (dynamic event) {
-                      try {
-                        (event as dynamic).preventDefault();
-                      } catch (_) {}
-                      cubit.selectSection(prevSection.id);
-                    },
-                  },
+                  onClick: () => cubit.selectSection(prevSection.id),
                   [
                     span(classes: 'docs-pager-direction', [
                       Component.text('← Previous'),
@@ -90,17 +86,9 @@ class const DocsContent({super.key}) extends StatelessComponent {
                 div(classes: 'docs-pager-spacer', []),
 
               if (nextSection != null)
-                a(
-                  href: nextSection.path,
+                button(
                   classes: 'docs-pager-btn next',
-                  events: {
-                    'click': (dynamic event) {
-                      try {
-                        (event as dynamic).preventDefault();
-                      } catch (_) {}
-                      cubit.selectSection(nextSection.id);
-                    },
-                  },
+                  onClick: () => cubit.selectSection(nextSection.id),
                   [
                     span(classes: 'docs-pager-direction', [
                       Component.text('Next →'),
@@ -142,6 +130,14 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return DocsLifecycleAndObserversPage.headings;
       case 'signals-reactivity':
         return DocsSignalsReactivityPage.headings;
+      case 'flutter-providers':
+        return DocsFlutterProvidersPage.headings;
+      case 'flutter-widgets':
+        return DocsFlutterWidgetsPage.headings;
+      case 'flutter-context':
+        return DocsFlutterContextPage.headings;
+      case 'testing-guide':
+        return DocsTestingGuidePage.headings;
       default:
         return const [];
     }
@@ -167,6 +163,14 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return 'website/lib/src/components/docs/pages/docs_lifecycle_and_observers.dart';
       case 'signals-reactivity':
         return 'website/lib/src/components/docs/pages/docs_signals_reactivity.dart';
+      case 'flutter-providers':
+        return 'website/lib/src/components/docs/pages/docs_flutter_providers.dart';
+      case 'flutter-widgets':
+        return 'website/lib/src/components/docs/pages/docs_flutter_widgets.dart';
+      case 'flutter-context':
+        return 'website/lib/src/components/docs/pages/docs_flutter_context.dart';
+      case 'testing-guide':
+        return 'website/lib/src/components/docs/pages/docs_testing_guide.dart';
       default:
         return 'website/lib/src/models/docs_registry.dart';
     }

@@ -2773,11 +2773,17 @@ code, pre, .font-mono {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
   padding: 6px 12px;
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 0.86rem;
+  font-family: inherit;
   border-radius: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
   transition: color var(--transition-fast), background var(--transition-fast);
 }
 
@@ -3303,6 +3309,9 @@ code, pre, .font-mono {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   text-decoration: none;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
   transition: all var(--transition-fast);
   max-width: 48%;
 }

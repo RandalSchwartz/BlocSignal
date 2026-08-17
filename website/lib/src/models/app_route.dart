@@ -1,5 +1,6 @@
 import 'package:jaspr/jaspr.dart';
 
+import '../pages/docs_page.dart';
 import '../pages/home_page.dart';
 import '../pages/minesweeper_page.dart';
 import '../pages/ported_examples_page.dart';
@@ -13,6 +14,7 @@ enum AppRoute(
   final Component Function() builder,
 ) {
   home('/', 'Home', HomePage.new),
+  docs('/docs', 'Docs', DocsPage.new),
   showcase('/showcase', 'Showcase', ShowcasePage.new),
   portedExamples('/ported-examples', 'Ported Examples', PortedExamplesPage.new),
   minesweeper('/minesweeper', '🎮 Minesweeper', MinesweeperPage.new),
@@ -23,7 +25,9 @@ enum AppRoute(
     final p = path ?? '';
     final h = (hash ?? '').toLowerCase();
 
-    if (p == '/showcase' ||
+    if (p == '/docs' || p.startsWith('/docs/') || h.contains('docs')) {
+      return docs;
+    } else if (p == '/showcase' ||
         p.startsWith('/showcase') ||
         h.contains('showcase')) {
       return showcase;

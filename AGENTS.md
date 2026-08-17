@@ -243,9 +243,10 @@ When updating or publishing changes to the `blocsignal.dev` website (`website/`)
 * **Re-compile & Deploy Protocol**:
   1. Compile static bundle and generate route fallback index files for static servers (`dhttpd` and Firebase Hosting):
      ```bash
-     cd website && dart run tool/update_publications.dart && mkdir -p build/www && dart compile js lib/main.dart -o build/www/main.dart.js && cp -r web/* build/www/ && cp build/www/index.html build/www/publications/index.html && cp build/www/index.html build/www/showcase/index.html && cp build/www/index.html build/www/ported-examples/index.html && cp build/www/index.html build/www/minesweeper/index.html
+     dart run website/tool/build_static.dart
      ```
-  2. Deploy to Firebase Hosting: `npx -y firebase-tools deploy --only hosting`.
+  2. **Local Preview Server in AGY IDE**: The user runs `(cd website/build/www && dhttpd -p 0)` in their AGY IDE terminal window to serve `website/build/www/` on a random port for live visual testing without interfering with agent test runners. Always run `dart run website/tool/build_static.dart` after updating website code so the user's IDE preview window reflects the latest build.
+  3. Deploy to Firebase Hosting: `npx -y firebase-tools deploy --only hosting`.
 
 ### 23. Replay State History Architecture (`bloc_signals_replay`)
 When implementing state history and undo/redo capabilities:

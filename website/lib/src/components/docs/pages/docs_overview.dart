@@ -252,7 +252,9 @@ void main() {
           ]),
           div(classes: 'docs-arch-arrow', [Component.text('➔')]),
           div(classes: 'docs-arch-step', [
-            span(classes: 'docs-arch-badge', [Component.text('4. UI & Observers')]),
+            span(classes: 'docs-arch-badge', [
+              Component.text('4. UI & Observers'),
+            ]),
             span(classes: 'docs-arch-desc', [
               Component.text('Widgets and telemetry receive instant updates.'),
             ]),

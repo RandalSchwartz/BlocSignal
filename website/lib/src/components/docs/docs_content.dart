@@ -6,9 +6,15 @@ import '../../cubits/docs_cubit.dart';
 import '../../models/docs_models.dart';
 import '../../models/docs_registry.dart';
 import 'docs_toc.dart';
+import 'pages/docs_cubit_vs_bloc.dart';
+import 'pages/docs_event_transformers.dart';
+import 'pages/docs_events_and_handlers.dart';
 import 'pages/docs_installation.dart';
+import 'pages/docs_lifecycle_and_observers.dart';
 import 'pages/docs_overview.dart';
 import 'pages/docs_quickstart.dart';
+import 'pages/docs_signals_reactivity.dart';
+import 'pages/docs_state_modeling.dart';
 
 /// The central content viewer for the documentation hub.
 class const DocsContent({super.key}) extends StatelessComponent {
@@ -37,7 +43,9 @@ class const DocsContent({super.key}) extends StatelessComponent {
               attributes: {'aria-label': 'Open documentation menu'},
               [
                 span(classes: 'docs-mobile-menu-icon', [Component.text('☰')]),
-                span(classes: 'docs-mobile-menu-text', [Component.text('Menu')]),
+                span(classes: 'docs-mobile-menu-text', [
+                  Component.text('Menu'),
+                ]),
               ],
             ),
             div(classes: 'docs-mobile-breadcrumbs', [
@@ -61,7 +69,14 @@ class const DocsContent({super.key}) extends StatelessComponent {
                 a(
                   href: prevSection.path,
                   classes: 'docs-pager-btn prev',
-                  onClick: () => cubit.selectSection(prevSection.id),
+                  events: {
+                    'click': (dynamic event) {
+                      try {
+                        (event as dynamic).preventDefault();
+                      } catch (_) {}
+                      cubit.selectSection(prevSection.id);
+                    },
+                  },
                   [
                     span(classes: 'docs-pager-direction', [
                       Component.text('← Previous'),
@@ -78,7 +93,14 @@ class const DocsContent({super.key}) extends StatelessComponent {
                 a(
                   href: nextSection.path,
                   classes: 'docs-pager-btn next',
-                  onClick: () => cubit.selectSection(nextSection.id),
+                  events: {
+                    'click': (dynamic event) {
+                      try {
+                        (event as dynamic).preventDefault();
+                      } catch (_) {}
+                      cubit.selectSection(nextSection.id);
+                    },
+                  },
                   [
                     span(classes: 'docs-pager-direction', [
                       Component.text('Next →'),
@@ -108,6 +130,18 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return DocsInstallationPage.headings;
       case 'quickstart':
         return DocsQuickstartPage.headings;
+      case 'cubit-vs-bloc':
+        return DocsCubitVsBlocPage.headings;
+      case 'state-modeling':
+        return DocsStateModelingPage.headings;
+      case 'events-and-handlers':
+        return DocsEventsAndHandlersPage.headings;
+      case 'event-transformers':
+        return DocsEventTransformersPage.headings;
+      case 'lifecycle-and-observers':
+        return DocsLifecycleAndObserversPage.headings;
+      case 'signals-reactivity':
+        return DocsSignalsReactivityPage.headings;
       default:
         return const [];
     }
@@ -121,6 +155,18 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return 'website/lib/src/components/docs/pages/docs_installation.dart';
       case 'quickstart':
         return 'website/lib/src/components/docs/pages/docs_quickstart.dart';
+      case 'cubit-vs-bloc':
+        return 'website/lib/src/components/docs/pages/docs_cubit_vs_bloc.dart';
+      case 'state-modeling':
+        return 'website/lib/src/components/docs/pages/docs_state_modeling.dart';
+      case 'events-and-handlers':
+        return 'website/lib/src/components/docs/pages/docs_events_and_handlers.dart';
+      case 'event-transformers':
+        return 'website/lib/src/components/docs/pages/docs_event_transformers.dart';
+      case 'lifecycle-and-observers':
+        return 'website/lib/src/components/docs/pages/docs_lifecycle_and_observers.dart';
+      case 'signals-reactivity':
+        return 'website/lib/src/components/docs/pages/docs_signals_reactivity.dart';
       default:
         return 'website/lib/src/models/docs_registry.dart';
     }

@@ -49,22 +49,35 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
       final path = web.window.location.pathname;
       final hash = web.window.location.hash;
 
-      // Check if path is e.g. /docs/installation
-      if (path.startsWith('/docs/')) {
-        final slug = path.replaceFirst('/docs/', '').trim();
-        if (slug.isNotEmpty) return slug;
+      final pathSlug = _cleanSlug(path);
+      if (pathSlug.isNotEmpty && pathSlug != 'docs') {
+        return DocsRegistry.resolveSection(pathSlug).id;
       }
 
-      // Check if hash is e.g. #docs/installation or #installation
-      final cleanHash = hash
-          .replaceFirst('#', '')
-          .replaceFirst('docs/', '')
-          .trim();
-      if (cleanHash.isNotEmpty) {
-        return cleanHash;
+      final hashSlug = _cleanSlug(hash.replaceFirst('#', ''));
+      if (hashSlug.isNotEmpty && hashSlug != 'docs') {
+        return DocsRegistry.resolveSection(hashSlug).id;
       }
     } catch (_) {}
     return 'overview';
+  }
+
+  static String _cleanSlug(String raw) {
+    var s = raw.trim();
+    if (s.startsWith('/')) s = s.substring(1);
+    if (s.endsWith('/')) s = s.substring(0, s.length - 1);
+    if (s.endsWith('/index.html')) {
+      s = s.substring(0, s.length - '/index.html'.length);
+    } else if (s.endsWith('index.html')) {
+      s = s.substring(0, s.length - 'index.html'.length);
+    }
+    if (s.startsWith('docs/')) {
+      s = s.substring('docs/'.length);
+    } else if (s == 'docs') {
+      s = '';
+    }
+    if (s.endsWith('/')) s = s.substring(0, s.length - 1);
+    return s.trim();
   }
 
   void _syncFromBrowser() {
@@ -77,14 +90,14 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
 
   /// Selects a new active documentation section.
   void selectSection(String sectionId, {bool pushHistory = true}) {
-    if (stateValue.activeSectionId == sectionId) {
+    final targetSection = DocsRegistry.resolveSection(sectionId);
+
+    if (stateValue.activeSectionId == targetSection.id) {
       if (stateValue.isMobileDrawerOpen) {
         closeMobileDrawer();
       }
       return;
     }
-
-    final targetSection = DocsRegistry.resolveSection(sectionId);
 
     if (pushHistory) {
       try {
@@ -98,13 +111,13 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
 
     emit(
       stateValue.copyWith(
-        activeSectionId: sectionId,
+        activeSectionId: targetSection.id,
         expandedCategories: updatedCategories,
         isMobileDrawerOpen: false,
       ),
     );
 
-    _trackDocsPageView(sectionId);
+    _trackDocsPageView(targetSection.id);
 
     // Scroll to top of article
     try {

@@ -7,12 +7,15 @@ import 'package:web/web.dart' as web;
 /// A code block component with syntax header, copy button, and optional side-by-side tabs.
 class const DocsCodeBlock({
   final String? title,
+  final String? filename,
   final String? code,
   final String? dart35Code,
   final String? dart313Code,
   final String language = 'dart',
   super.key,
 }) extends StatefulComponent {
+  String? get displayTitle => title ?? filename;
+
   @override
   State<DocsCodeBlock> createState() => _DocsCodeBlockState();
 }
@@ -61,10 +64,10 @@ class _DocsCodeBlockState() extends State<DocsCodeBlock> {
     return div(classes: 'docs-code-container', [
       div(classes: 'docs-code-header', [
         div(classes: 'docs-code-title-group', [
-          if (component.title != null) ...[
+          if (component.displayTitle != null) ...[
             span(classes: 'docs-code-file-icon', [Component.text('📄')]),
             span(classes: 'docs-code-filename', [
-              Component.text(component.title!),
+              Component.text(component.displayTitle!),
             ]),
           ] else ...[
             span(classes: 'docs-code-lang-badge', [

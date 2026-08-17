@@ -34,6 +34,44 @@ void main() {
       final quickstart = DocsRegistry.resolveSection('quickstart');
       expect(quickstart.id, equals('quickstart'));
       expect(quickstart.path, equals('/docs/quickstart'));
+
+      final cubitVsBloc = DocsRegistry.resolveSection('cubit-vs-bloc');
+      expect(cubitVsBloc.id, equals('cubit-vs-bloc'));
+      expect(cubitVsBloc.category, equals('Core Concepts'));
+
+      final stateModeling = DocsRegistry.resolveSection('state-modeling');
+      expect(stateModeling.id, equals('state-modeling'));
+      expect(stateModeling.category, equals('Core Concepts'));
+
+      final events = DocsRegistry.resolveSection('events-and-handlers');
+      expect(events.id, equals('events-and-handlers'));
+
+      final transformers = DocsRegistry.resolveSection('event-transformers');
+      expect(transformers.id, equals('event-transformers'));
+
+      final lifecycle = DocsRegistry.resolveSection('lifecycle-and-observers');
+      expect(lifecycle.id, equals('lifecycle-and-observers'));
+
+      final reactivity = DocsRegistry.resolveSection('signals-reactivity');
+      expect(reactivity.id, equals('signals-reactivity'));
+
+      // Variations with trailing slashes, index.html, and full paths
+      expect(
+        DocsRegistry.resolveSection('installation/').id,
+        equals('installation'),
+      );
+      expect(
+        DocsRegistry.resolveSection('/docs/installation/').id,
+        equals('installation'),
+      );
+      expect(
+        DocsRegistry.resolveSection('/docs/quickstart/index.html').id,
+        equals('quickstart'),
+      );
+      expect(
+        DocsRegistry.resolveSection('/docs/cubit-vs-bloc').id,
+        equals('cubit-vs-bloc'),
+      );
     });
 
     test('resolveSection falls back to first section on unknown id', () {
@@ -43,17 +81,23 @@ void main() {
 
     test('getAdjacentSections returns correct prev and next sections', () {
       // First section has no previous
-      final (firstPrev, firstNext) = DocsRegistry.getAdjacentSections('overview');
+      final (firstPrev, firstNext) = DocsRegistry.getAdjacentSections(
+        'overview',
+      );
       expect(firstPrev, isNull);
       expect(firstNext?.id, equals('installation'));
 
       // Middle section has both prev and next
-      final (midPrev, midNext) = DocsRegistry.getAdjacentSections('installation');
+      final (midPrev, midNext) = DocsRegistry.getAdjacentSections(
+        'installation',
+      );
       expect(midPrev?.id, equals('overview'));
       expect(midNext?.id, equals('quickstart'));
 
       // Unknown section returns (null, null)
-      final (nonePrev, noneNext) = DocsRegistry.getAdjacentSections('nonexistent');
+      final (nonePrev, noneNext) = DocsRegistry.getAdjacentSections(
+        'nonexistent',
+      );
       expect(nonePrev, isNull);
       expect(noneNext, isNull);
     });
@@ -91,7 +135,10 @@ void main() {
 
     test('fromLocation resolves other routes correctly', () {
       expect(AppRoute.fromLocation(path: '/'), equals(AppRoute.home));
-      expect(AppRoute.fromLocation(path: '/showcase'), equals(AppRoute.showcase));
+      expect(
+        AppRoute.fromLocation(path: '/showcase'),
+        equals(AppRoute.showcase),
+      );
       expect(
         AppRoute.fromLocation(path: '/ported-examples'),
         equals(AppRoute.portedExamples),

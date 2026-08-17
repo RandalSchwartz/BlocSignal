@@ -119,9 +119,13 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
 
     _trackDocsPageView(targetSection.id);
 
-    // Scroll to top of article
+    // Scroll to top of article on next animation frame to prevent click hijacking
     try {
-      web.window.scrollTo(web.ScrollToOptions(top: 0, left: 0));
+      web.window.requestAnimationFrame(
+        ((JSNumber _) {
+          web.window.scrollTo(web.ScrollToOptions(top: 0, left: 0));
+        }).toJS,
+      );
     } catch (_) {}
   }
 

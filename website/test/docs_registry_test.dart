@@ -55,6 +55,22 @@ void main() {
       final reactivity = DocsRegistry.resolveSection('signals-reactivity');
       expect(reactivity.id, equals('signals-reactivity'));
 
+      final flutterProviders = DocsRegistry.resolveSection('flutter-providers');
+      expect(flutterProviders.id, equals('flutter-providers'));
+      expect(flutterProviders.category, equals('Flutter Integration'));
+
+      final flutterWidgets = DocsRegistry.resolveSection('flutter-widgets');
+      expect(flutterWidgets.id, equals('flutter-widgets'));
+      expect(flutterWidgets.category, equals('Flutter Integration'));
+
+      final flutterContext = DocsRegistry.resolveSection('flutter-context');
+      expect(flutterContext.id, equals('flutter-context'));
+      expect(flutterContext.category, equals('Flutter Integration'));
+
+      final testingGuide = DocsRegistry.resolveSection('testing-guide');
+      expect(testingGuide.id, equals('testing-guide'));
+      expect(testingGuide.category, equals('Testing'));
+
       // Variations with trailing slashes, index.html, and full paths
       expect(
         DocsRegistry.resolveSection('installation/').id,

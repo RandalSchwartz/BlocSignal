@@ -4,12 +4,16 @@ import 'package:jaspr/jaspr.dart';
 import '../components/docs/pages/docs_cubit_vs_bloc.dart';
 import '../components/docs/pages/docs_event_transformers.dart';
 import '../components/docs/pages/docs_events_and_handlers.dart';
+import '../components/docs/pages/docs_flutter_context.dart';
+import '../components/docs/pages/docs_flutter_providers.dart';
+import '../components/docs/pages/docs_flutter_widgets.dart';
 import '../components/docs/pages/docs_installation.dart';
 import '../components/docs/pages/docs_lifecycle_and_observers.dart';
 import '../components/docs/pages/docs_overview.dart';
 import '../components/docs/pages/docs_quickstart.dart';
 import '../components/docs/pages/docs_signals_reactivity.dart';
 import '../components/docs/pages/docs_state_modeling.dart';
+import '../components/docs/pages/docs_testing_guide.dart';
 import 'docs_models.dart';
 
 /// Central registry of all documentation topics and categories across all phases.
@@ -110,12 +114,7 @@ class const DocsRegistry() {
           path: '/docs/flutter-providers',
           category: 'Flutter Integration',
           description: 'Dependency injection with BlocSignalProvider, MultiBlocSignalProvider, and O(1) lookups.',
-          badge: 'Phase 3',
-          builder: () => _PlaceholderDoc(
-            title: 'BlocSignalProvider & Lookup',
-            phase: 'Phase 3',
-            description: 'Scoped state provision, lazy initialization, and O(1) InheritedElement resolution.',
-          ),
+          builder: DocsFlutterProvidersPage.new,
         ),
         DocSectionItem(
           id: 'flutter-widgets',
@@ -123,12 +122,7 @@ class const DocsRegistry() {
           path: '/docs/flutter-widgets',
           category: 'Flutter Integration',
           description: 'BlocSignalBuilder, BlocSignalListener, BlocSignalConsumer, and fine-grained BlocSignalSelector.',
-          badge: 'Phase 3',
-          builder: () => _PlaceholderDoc(
-            title: 'Builders, Listeners & Selectors',
-            phase: 'Phase 3',
-            description: 'UI binding widgets, side-effect listeners, and selector performance optimizations.',
-          ),
+          builder: DocsFlutterWidgetsPage.new,
         ),
         DocSectionItem(
           id: 'flutter-context',
@@ -136,16 +130,11 @@ class const DocsRegistry() {
           path: '/docs/flutter-context',
           category: 'Flutter Integration',
           description: 'context.read<T>(), context.watch<T>(), and two-type-parameter context.select<B, R>().',
-          badge: 'Phase 3',
-          builder: () => _PlaceholderDoc(
-            title: 'Context Extensions',
-            phase: 'Phase 3',
-            description: 'Type-safe BuildContext extensions for concise UI state access.',
-          ),
+          builder: DocsFlutterContextPage.new,
         ),
       ],
     ),
-    DocCategory(
+    const DocCategory(
       title: 'Testing',
       icon: '🧪',
       sections: [
@@ -155,12 +144,7 @@ class const DocsRegistry() {
           path: '/docs/testing-guide',
           category: 'Testing',
           description: 'Declarative unit testing, observer scoping, lifecycle verification, and async frame expectations.',
-          badge: 'Phase 3',
-          builder: () => _PlaceholderDoc(
-            title: 'Declarative Testing with blocSignalTest',
-            phase: 'Phase 3',
-            description: 'How to test BlocSignal and CubitSignal state machines declaratively using bloc_signals_test.',
-          ),
+          builder: DocsTestingGuidePage.new,
         ),
       ],
     ),
@@ -336,7 +320,8 @@ class const DocsRegistry() {
   static DocSectionItem resolveSection(String id) {
     var cleanId = id.trim();
     if (cleanId.startsWith('/')) cleanId = cleanId.substring(1);
-    if (cleanId.endsWith('/')) cleanId = cleanId.substring(0, cleanId.length - 1);
+    if (cleanId.endsWith('/'))
+      cleanId = cleanId.substring(0, cleanId.length - 1);
     if (cleanId.endsWith('/index.html')) {
       cleanId = cleanId.substring(0, cleanId.length - '/index.html'.length);
     } else if (cleanId.endsWith('index.html')) {

@@ -52,7 +52,7 @@ class _NavbarState() extends State<Navbar> {
             height: 36,
           ),
           span(classes: 'brand-title', [Component.text('BlocSignal')]),
-          span(classes: 'brand-badge', [Component.text('v1.0.0')]),
+          span(classes: 'brand-badge', [Component.text('v1.0.1')]),
         ]),
 
         // Desktop Navigation Links
@@ -61,6 +61,11 @@ class _NavbarState() extends State<Navbar> {
             href: AppRoute.home.path,
             classes: activeRoute == AppRoute.home ? 'nav-active' : '',
             [Component.text('Home')],
+          ),
+          a(
+            href: AppRoute.docs.path,
+            classes: activeRoute == AppRoute.docs ? 'nav-active' : '',
+            [Component.text('Docs 📖')],
           ),
           a(href: '/#architecture', [Component.text('Architecture')]),
           a(
@@ -141,6 +146,16 @@ class _NavbarState() extends State<Navbar> {
                 [
                   span(classes: 'drawer-link-icon', [Component.text('🏠')]),
                   span(classes: 'drawer-link-label', [Component.text('Home')]),
+                ],
+              ),
+              a(
+                href: AppRoute.docs.path,
+                classes:
+                    'drawer-link ${activeRoute == AppRoute.docs ? "active" : ""}',
+                onClick: _closeDrawer,
+                [
+                  span(classes: 'drawer-link-icon', [Component.text('📖')]),
+                  span(classes: 'drawer-link-label', [Component.text('Docs')]),
                 ],
               ),
               a(

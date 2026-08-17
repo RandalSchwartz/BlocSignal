@@ -26,7 +26,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_flutter',
-    version: '1.1.0',
+    version: '1.2.0',
     desc: 'Flutter UI bindings, InheritedWidget providers, builders, listeners, selectors, and Listenable interop.',
     icon: '💙',
     category: 'Core & UI',

@@ -1,3 +1,9 @@
+## 1.0.1
+
+- Document the streamless `EventTransformer` higher-order model and architecture.
+- Add recipes and documentation for custom transformers (`debounce`, `filterEvents`).
+- Expand doc comments for `droppable()`, `sequential()`, `restartable()`, and `on<E>()`.
+
 ## 1.0.0+1
 
 - Re-trigger pub.dev Pana static analysis.

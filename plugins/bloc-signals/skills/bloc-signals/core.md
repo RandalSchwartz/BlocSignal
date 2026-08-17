@@ -95,6 +95,15 @@ handlers run in registry order. Returned futures are joined with `Future.wait` i
 
 ### Event Concurrency & Transformers
 
+In `BlocSignal`, event transformers are **streamless higher-order functions** with the signature:
+```dart
+typedef EventTransformer<E, StateType> = FutureOr<void> Function(
+  E event,
+  EventHandler<E, StateType> handler,
+  void Function(StateType state) emit,
+);
+```
+
 You can pass an optional `transformer` to `on<E>` to control async event execution:
 
 ```dart
@@ -106,9 +115,38 @@ on<SearchQuery>(
 
 Available built-in transformers & concurrency utilities:
 - `droppable()`: Drops incoming events if a handler for that event type is currently executing.
-- `sequential()`: Queues incoming events in FIFO order using a [Mutex] lock.
+- `sequential()`: Queues incoming events in FIFO order using a `Mutex` lock.
 - `restartable()`: Allows new incoming events to supersede previous in-flight handler executions.
 - `Mutex`: A zero-dependency async lock (`protect(() => ...)`) for custom synchronization.
+
+#### Writing Custom Event Transformers
+
+Custom transformers wrap `handler(event, emit)` using standard Dart primitives without Rx stream pipelines:
+
+```dart
+/// Debounces event handling by [duration] using a Timer.
+EventTransformer<E, S> debounce<E, S>(Duration duration) {
+  Timer? timer;
+  return (event, handler, emit) {
+    timer?.cancel();
+    timer = Timer(duration, () {
+      final result = handler(event, emit);
+      if (result is Future) {
+        unawaited(result);
+      }
+    });
+  };
+}
+
+/// Guards handler execution with a boolean predicate.
+EventTransformer<E, S> filterEvents<E, S>(bool Function(E) predicate) {
+  return (event, handler, emit) {
+    if (predicate(event)) {
+      return handler(event, emit);
+    }
+  };
+}
+```
 
 
 Override `onEvent` with an exhaustive switch when a sealed event hierarchy needs compile-time

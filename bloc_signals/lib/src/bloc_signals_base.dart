@@ -345,10 +345,24 @@ abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType> {
 
   /// Registers an event handler for events of type [E].
   ///
+  /// By default, handlers are invoked immediately when an event of type [E]
+  /// is added. If [transformer] is provided, it intercepts each incoming event
+  /// to control concurrency (such as dropping, queuing, or debouncing).
+  ///
   /// ```dart
   /// class CounterBloc extends BlocSignal<CounterEvent, int> {
   ///   CounterBloc() : super(initialState: 0) {
+  ///     // Basic handler:
   ///     on<Increment>((event, emit) => emit(stateValue + 1));
+  ///
+  ///     // Handler with concurrency transformer:
+  ///     on<IncrementAsync>(
+  ///       (event, emit) async {
+  ///         await Future<void>.delayed(const Duration(milliseconds: 100));
+  ///         emit(stateValue + 1);
+  ///       },
+  ///       transformer: restartable(),
+  ///     );
   ///   }
   /// }
   /// ```

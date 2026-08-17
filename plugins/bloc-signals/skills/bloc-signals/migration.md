@@ -54,7 +54,14 @@ In contrast, `BlocSignal` relies on reactive signals. State propagation is immed
 
 ### Event Concurrency & Transformers
 
-`BlocSignal` natively supports event concurrency transformers on `on<E>` handlers (similar to `package:bloc_concurrency`):
+In classic BLoC, transformers manipulate `Stream<Event>` pipelines using `package:stream_transform` or Rx operators. In `BlocSignal`, event transformers are **streamless higher-order functions** that intercept each event and wrap its handler call directly without stream allocations:
+
+| Concept | Classic `package:bloc` (`bloc_concurrency`) | `BlocSignal` (`bloc_signals`) |
+| :--- | :--- | :--- |
+| **Model** | Reactive Stream Pipelines (`Stream<Event>`) | Streamless Higher-Order Function (`FutureOr<void>`) |
+| **Signature** | `Stream<void> Function(Stream<Event>, EventMapper<Event>)` | `FutureOr<void> Function(E event, EventHandler<E, S> handler, void Function(S) emit)` |
+| **Concurrency Tools** | `stream_transform` (`asyncExpand`, `switchMap`, `exhaustMap`) | Pure Dart primitives: `Mutex`, `Timer`, boolean flags, tokens |
+| **Dependencies** | Requires `package:bloc_concurrency` and `stream_transform` | Zero dependencies (built into core `package:bloc_signals`) |
 
 ```dart
 on<FetchPage>(
@@ -72,7 +79,32 @@ Available built-in transformers & concurrency utilities:
 - **`restartable()`**: Allows new incoming events to supersede previous in-flight handler executions.
 - **`Mutex`**: A zero-dependency async lock (`protect(() => ...)`) for custom synchronization.
 
-In `BlocSignal`, track the active operation (e.g. using `CancelableOperation` from `package:async`) and cancel it synchronously when a new event is handled:
+#### Migrating Custom Stream Transformers (Debounce Example)
+
+**Classic BLoC (`package:bloc` + `package:stream_transform`):**
+```dart
+EventTransformer<Event> debounce<Event>(Duration duration) {
+  return (events, mapper) => events.debounce(duration).switchMap(mapper);
+}
+```
+
+**`BlocSignal` (Pure Dart `Timer`):**
+```dart
+EventTransformer<E, S> debounce<E, S>(Duration duration) {
+  Timer? timer;
+  return (event, handler, emit) {
+    timer?.cancel();
+    timer = Timer(duration, () {
+      final result = handler(event, emit);
+      if (result is Future) {
+        unawaited(result);
+      }
+    });
+  };
+}
+```
+
+In `BlocSignal`, track the active operation (for example using `CancelableOperation` from `package:async`) and cancel it synchronously when a new event is handled:
 ```dart
 import 'package:async/async.dart';
 

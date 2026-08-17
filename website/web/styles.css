@@ -2968,6 +2968,47 @@ code, pre, .font-mono {
 }
 
 /* --------------------------------------------------------------------------
+   Interactive API Symbol Links (pub.dev Dartdoc)
+   -------------------------------------------------------------------------- */
+.docs-api-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  color: var(--accent-cyan);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+}
+
+.docs-api-link code {
+  color: var(--accent-cyan);
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 5px;
+  padding: 2px 5px;
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  transition: all var(--transition-fast);
+}
+
+.docs-api-link-ext {
+  font-size: 0.72em;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+.docs-api-link:hover code {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+}
+
+.docs-api-link:hover .docs-api-link-ext {
+  opacity: 1;
+  transform: translate(1px, -1px);
+}
+
+/* --------------------------------------------------------------------------
    Docs Callouts (Alerts)
    -------------------------------------------------------------------------- */
 .docs-callout {

@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -55,9 +56,15 @@ class const DocsPkgRiverpodPage({super.key}) extends StatelessComponent {
       section(id: 'riverpod-to-bloc', classes: 'docs-section', [
         h2([Component.text('Riverpod to BlocSignal (.toBlocSignal)')]),
         p([
+          Component.text('Convert any Riverpod ProviderListenable into a '),
+          apiLink(DocSymbol.blocSignalBase),
+          Component.text(' state container using the '),
+          apiLink(
+            DocSymbol.providerListenableBlocSignalX,
+            label: '.toBlocSignal(ref)',
+          ),
           Component.text(
-            'Convert any Riverpod ProviderListenable into a BlocSignalBase state container using the .toBlocSignal(ref) extension. '
-            'State updates from the Riverpod container propagate into the BlocSignal synchronously:',
+            ' extension. State updates from the Riverpod container propagate into the BlocSignal synchronously:',
           ),
         ]),
         const DocsCodeBlock(
@@ -92,9 +99,13 @@ class UserHeaderWidget extends ConsumerWidget {
       section(id: 'bloc-to-riverpod', classes: 'docs-section', [
         h2([Component.text('BlocSignal to Riverpod (.toProvider)')]),
         p([
-          Component.text(
-            'Expose an existing CubitSignal or BlocSignal as a Riverpod provider using the .toProvider() extension:',
-          ),
+          Component.text('Expose an existing '),
+          apiLink(DocSymbol.cubitSignal),
+          Component.text(' or '),
+          apiLink(DocSymbol.blocSignal),
+          Component.text(' as a Riverpod provider using the '),
+          apiLink(DocSymbol.blocSignalRiverpodX, label: '.toProvider()'),
+          Component.text(' extension:'),
         ]),
         const DocsCodeBlock(
           title: 'lib/counter_provider.dart',

@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -48,22 +49,22 @@ class const DocsPkgHydratePage({super.key}) extends StatelessComponent {
           ),
         ]),
         const DocsCodeBlock(
-          title: 'terminal',
-          language: 'bash',
-          code: 'flutter pub add bloc_signals_hydrate bloc_signals',
+          title: 'pubspec.yaml',
+          language: 'yaml',
+          code: '''
+dependencies:
+  bloc_signals_hydrate: ^1.0.0
+''',
         ),
         p([
           Component.text(
-            'Initialize the global storage delegate in your application entry point before running runApp:',
+            'Initialize your storage adapter in main() before launching the application:',
           ),
         ]),
         const DocsCodeBlock(
-          title: 'lib/main.dart',
+          title: 'main.dart',
           language: 'dart',
           code: '''
-import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
-import 'package:flutter/widgets.dart';
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -79,8 +80,10 @@ void main() async {
       section(id: 'hydrated-cubit', classes: 'docs-section', [
         h2([Component.text('HydratedCubitSignal')]),
         p([
+          Component.text('Extend '),
+          apiLink(DocSymbol.hydratedCubitSignal),
           Component.text(
-            'Extend HydratedCubitSignal instead of CubitSignal to gain automatic persistence. '
+            ' instead of CubitSignal to gain automatic persistence. '
             'Every time emit() produces a new distinct state, the updated value is serialized and written to storage automatically.',
           ),
         ]),
@@ -146,9 +149,10 @@ class ThemeCubit() extends HydratedCubitSignal<AppTheme> {
       section(id: 'hydrated-bloc', classes: 'docs-section', [
         h2([Component.text('HydratedBlocSignal')]),
         p([
+          Component.text('For event-driven state containers, extend '),
+          apiLink(DocSymbol.hydratedBlocSignal),
           Component.text(
-            'For event-driven state containers, extend HydratedBlocSignal. '
-            'State transitions triggered by incoming events persist automatically.',
+            '. State transitions triggered by incoming events persist automatically.',
           ),
         ]),
         const DocsCodeBlock(
@@ -264,13 +268,13 @@ class UserProfileCubit extends HydratedCubitSignal<UserProfile?> {
         ]),
         ul([
           li([
-            strong([Component.text('SharedPreferencesHydratedStorage')]),
+            apiLink(DocSymbol.sharedPreferencesHydratedStorage),
             Component.text(
               ': Standard, lightweight local key-value persistence for mobile and web.',
             ),
           ]),
           li([
-            strong([Component.text('SecureHydratedStorage')]),
+            apiLink(DocSymbol.secureHydratedStorage),
             Component.text(
               ': AES-encrypted storage powered by platform keychain and keystore services for sensitive auth tokens and credentials.',
             ),

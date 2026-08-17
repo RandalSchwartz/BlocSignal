@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -45,8 +46,12 @@ class const DocsStateModelingPage({super.key}) extends StatelessComponent {
       section(id: 'immutability-fundamentals', classes: 'docs-section', [
         h2([Component.text('Immutability Fundamentals')]),
         p([
+          Component.text('State in '),
+          apiLink(DocSymbol.blocSignal),
+          Component.text(' and '),
+          apiLink(DocSymbol.cubitSignal),
           Component.text(
-            'State in BlocSignal must always be immutable. Because signals perform automatic de-duplication using equality checks (==), '
+            ' must always be immutable. Because signals perform automatic de-duplication using equality checks (==), '
             'in-place mutation of mutable objects (such as calling list.add() on a standard List) will not trigger signal recalculations or widget rebuilds.',
           ),
         ]),
@@ -75,22 +80,13 @@ class const DocsStateModelingPage({super.key}) extends StatelessComponent {
         const DocsCodeBlock(
           filename: 'user_profile_state.dart',
           dart313Code: '''
-sealed class ProfileState {
-  const ProfileState();
-}
+sealed class ProfileState;
 
-final class ProfileLoading extends ProfileState {
-  const ProfileLoading();
-}
+final class ProfileLoading extends ProfileState;
 
-final class ProfileLoaded(this.user, this.posts) extends ProfileState {
-  final User user;
-  final List<Post> posts;
-}
+final class ProfileLoaded(final User user, final List<Post> posts) extends ProfileState;
 
-final class ProfileError(this.message) extends ProfileState {
-  final String message;
-}
+final class ProfileError(final String message) extends ProfileState;
 
 // In your UI component:
 Widget buildProfile(BuildContext context, ProfileState state) {
@@ -144,10 +140,10 @@ Widget buildProfile(BuildContext context, ProfileState state) {
           dart313Code: '''
 typedef PaginationState = ({int page, int pageSize, bool hasMore});
 
-class PaginationCubit extends CubitSignal<PaginationState> {
-  PaginationCubit()
-      : super(initialState: (page: 1, pageSize: 20, hasMore: true));
-
+class PaginationCubit()
+    extends CubitSignal<PaginationState>(
+      initialState: (page: 1, pageSize: 20, hasMore: true),
+    ) {
   void nextPage() {
     emit((
       page: stateValue.page + 1,
@@ -188,16 +184,10 @@ class PaginationCubit extends CubitSignal<PaginationState> {
           dart313Code: '''
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 
-class TodoCubit extends CubitSignal<IList<String>> {
-  TodoCubit() : super(initialState: const <String>[].lock);
-
-  void addTodo(String item) {
-    emit(stateValue.add(item));
-  }
-
-  void removeTodo(int index) {
-    emit(stateValue.removeAt(index));
-  }
+class TodoCubit()
+    extends CubitSignal<IList<String>>(initialState: const <String>[].lock) {
+  void addTodo(String item) => emit(stateValue.add(item));
+  void removeTodo(int index) => emit(stateValue.removeAt(index));
 }''',
           dart35Code: '''
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
@@ -239,13 +229,11 @@ class TodoCubit extends CubitSignal<IList<String>> {
         const DocsCodeBlock(
           filename: 'custom_comparator_cubit.dart',
           dart313Code: '''
-class CaseInsensitiveCubit extends CubitSignal<String> {
-  CaseInsensitiveCubit()
-      : super(
-          initialState: '',
-          equals: (a, b) => a.toLowerCase() == b.toLowerCase(),
-        );
-
+class CaseInsensitiveCubit()
+    extends CubitSignal<String>(
+      initialState: '',
+      equals: (a, b) => a.toLowerCase() == b.toLowerCase(),
+    ) {
   void updateText(String text) => emit(text);
 }
 

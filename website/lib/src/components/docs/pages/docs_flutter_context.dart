@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -24,8 +25,11 @@ class const DocsFlutterContextPage({super.key}) extends StatelessComponent {
         h1([Component.text('BuildContext Extensions')]),
         p(classes: 'docs-lead', [
           Component.text(
-            'Master context.read, context.watch, and context.select for clean, '
-            'expressive state access throughout your Flutter widget tree.',
+            'Master context.read, context.watch, and context.select on ',
+          ),
+          apiLink(DocSymbol.blocSignalProviderExtension, label: 'BuildContext'),
+          Component.text(
+            ' for clean, expressive state access throughout your Flutter widget tree.',
           ),
         ]),
       ]),
@@ -37,7 +41,10 @@ class const DocsFlutterContextPage({super.key}) extends StatelessComponent {
             'Retrieves the nearest ancestor state container without registering a rebuild dependency. '
             'Always use ',
           ),
-          code([Component.text('context.read<B>()')]),
+          apiLink(
+            DocSymbol.blocSignalProviderExtension,
+            label: 'context.read<B>()',
+          ),
           Component.text(
             ' inside event handlers, callback closures, button presses, and gestures '
             'where you want to dispatch an action or read a one-off value without causing the enclosing '

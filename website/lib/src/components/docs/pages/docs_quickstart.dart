@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -46,8 +47,10 @@ class const DocsQuickstartPage({super.key}) extends StatelessComponent {
       section(id: 'step-1-cubitsignal', classes: 'docs-section', [
         h2([Component.text('Step 1: Create a CubitSignal')]),
         p([
+          Component.text('A '),
+          apiLink(DocSymbol.cubitSignal),
           Component.text(
-            'A CubitSignal is the simplest state container in BlocSignal. It exposes direct public methods that invoke emit(newState) synchronously.',
+            ' is the simplest state container in BlocSignal. It exposes direct public methods that invoke emit(newState) synchronously.',
           ),
         ]),
         const DocsCallout(
@@ -89,8 +92,10 @@ class CounterCubit extends CubitSignal<int> {
         h2([Component.text('Step 2: Create a BlocSignal')]),
         p([
           Component.text(
-            'When your domain logic benefits from event traceability, concurrency transformers, or complex state machine transitions, use BlocSignal.',
+            'When your domain logic benefits from event traceability, concurrency transformers, or complex state machine transitions, use ',
           ),
+          apiLink(DocSymbol.blocSignal),
+          Component.text('.'),
         ]),
         const DocsCodeBlock(
           title: 'counter_bloc.dart',
@@ -130,7 +135,11 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
         h2([Component.text('Step 3: Provide to the Widget Tree')]),
         p([
           Component.text(
-            'Provide your state container to downstream widgets using BlocSignalProvider. It performs lazy instantiation and O(1) element lookups.',
+            'Provide your state container to downstream widgets using ',
+          ),
+          apiLink(DocSymbol.blocSignalProvider),
+          Component.text(
+            '. It performs lazy instantiation and O(1) element lookups.',
           ),
         ]),
         const DocsCodeBlock(
@@ -184,8 +193,10 @@ class MyApp extends StatelessWidget {
       section(id: 'step-4-reactive-ui', classes: 'docs-section', [
         h2([Component.text('Step 4: Build Reactive UI')]),
         p([
+          Component.text('Use '),
+          apiLink(DocSymbol.blocSignalBuilder),
           Component.text(
-            'Use BlocSignalBuilder to rebuild widgets in 0ms when state changes, and context.read in callbacks.',
+            ' to rebuild widgets in 0ms when state changes, and context.read in callbacks.',
           ),
         ]),
         const DocsCodeBlock(
@@ -251,9 +262,9 @@ class CounterView extends StatelessWidget {
       section(id: 'step-5-unit-testing', classes: 'docs-section', [
         h2([Component.text('Step 5: Test with blocSignalTest')]),
         p([
-          Component.text(
-            'Write declarative unit tests with blocSignalTest from package:bloc_signals_test:',
-          ),
+          Component.text('Write declarative unit tests with '),
+          apiLink(DocSymbol.blocSignalTest),
+          Component.text(' from package:bloc_signals_test:'),
         ]),
         const DocsCodeBlock(
           title: 'counter_cubit_test.dart',

@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -51,7 +52,7 @@ class const DocsTestingGuidePage({super.key}) extends StatelessComponent {
           ),
           code([Component.text('package:bloc_signals_test')]),
           Component.text(' provides the '),
-          code([Component.text('blocSignalTest')]),
+          apiLink(DocSymbol.blocSignalTest),
           Component.text(
             ' helper function to write expressive, deterministic tests with zero boilerplate.',
           ),

@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -52,8 +53,10 @@ class const DocsPkgReplayPage({super.key}) extends StatelessComponent {
       section(id: 'replay-cubit', classes: 'docs-section', [
         h2([Component.text('ReplayCubit')]),
         p([
+          Component.text('Extend '),
+          apiLink(DocSymbol.replayCubit),
           Component.text(
-            'Extend ReplayCubit<State> to automatically record emitted states in an undo history stack:',
+            ' to automatically record emitted states in an undo history stack:',
           ),
         ]),
         const DocsCodeBlock(
@@ -130,9 +133,10 @@ class CanvasToolbar extends StatelessWidget {
       section(id: 'replay-bloc', classes: 'docs-section', [
         h2([Component.text('ReplayBloc')]),
         p([
+          Component.text('For event-driven architectures, extend '),
+          apiLink(DocSymbol.replayBloc),
           Component.text(
-            'For event-driven architectures, extend ReplayBloc<Event, State>. '
-            'ReplayBloc routes undo and redo commands through synthetic ReplayEvents, ensuring that '
+            '. ReplayBloc routes undo and redo commands through synthetic ReplayEvents, ensuring that '
             'BlocSignalObservers observe complete lifecycle transitions during time-travel operations.',
           ),
         ]),

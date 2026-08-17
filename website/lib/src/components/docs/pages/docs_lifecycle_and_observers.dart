@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -5,7 +6,7 @@ import '../docs_callout.dart';
 import '../docs_code_block.dart';
 import '../docs_toc.dart';
 
-/// Documentation page covering BlocSignalObserver, lifecycle hooks, Change, Transition, and telemetry.
+/// Documentation page covering lifecycle hooks and global observers in BlocSignal.
 class const DocsLifecycleAndObserversPage({super.key})
     extends StatelessComponent {
   static const List<TocHeading> headings = [
@@ -18,14 +19,8 @@ class const DocsLifecycleAndObserversPage({super.key})
       anchor: 'lifecycle-hook-reference',
     ),
     TocHeading(title: 'Change vs. Transition', anchor: 'change-vs-transition'),
-    TocHeading(
-      title: 'OpenTelemetry & DevTools',
-      anchor: 'opentelemetry-devtools',
-    ),
-    TocHeading(
-      title: 'Memory Leak Prevention in Observers',
-      anchor: 'memory-leak-prevention',
-    ),
+    TocHeading(title: 'OpenTelemetry Spans', anchor: 'opentelemetry-tracing'),
+    TocHeading(title: 'DevTools Integration', anchor: 'devtools-integration'),
   ];
 
   @override
@@ -36,8 +31,10 @@ class const DocsLifecycleAndObserversPage({super.key})
         h1([Component.text('Lifecycle & Observers')]),
         p(classes: 'docs-lead', [
           Component.text(
-            'Monitor, trace, and instrument state containers across your application using BlocSignalObserver, OpenTelemetry spans, and DevTools hooks.',
+            'Monitor, trace, and instrument state containers across your application using ',
           ),
+          apiLink(DocSymbol.blocSignalObserver),
+          Component.text(', OpenTelemetry spans, and DevTools hooks.'),
         ]),
       ]),
 
@@ -45,8 +42,9 @@ class const DocsLifecycleAndObserversPage({super.key})
       section(id: 'observer-contract', classes: 'docs-section', [
         h2([Component.text('BlocSignalObserver Contract')]),
         p([
+          apiLink(DocSymbol.blocSignalObserver),
           Component.text(
-            'BlocSignalObserver provides a global inspection interface to observe container creation, event dispatching, '
+            ' provides a global inspection interface to observe container creation, event dispatching, '
             'state changes, transitions, errors, and disposal across the entire application lifecycle.',
           ),
         ]),
@@ -217,27 +215,25 @@ class AppBlocObserver extends BlocSignalObserver {
       section(id: 'change-vs-transition', classes: 'docs-section', [
         h2([Component.text('Change vs. Transition')]),
         p([
+          Component.text('Both '),
+          apiLink(DocSymbol.change, label: 'Change<State>'),
+          Component.text(' and '),
+          apiLink(DocSymbol.transition, label: 'Transition<Event, State>'),
           Component.text(
-            'Both Change<State> and Transition<Event, State> represent state mutations, but provide different levels of context:',
+            ' represent state mutations, but provide different levels of context:',
           ),
         ]),
         ul(classes: 'docs-list', [
           li([
-            strong([
-              Component.text('Change<State>(currentState, nextState): '),
-            ]),
+            apiLink(DocSymbol.change, label: 'Change<State>'),
             Component.text(
-              'Fires for all state containers (both Cubits and Blocs). Contains before and after states.',
+              ': Fires for all state containers (both Cubits and Blocs). Contains currentState and nextState.',
             ),
           ]),
           li([
-            strong([
-              Component.text(
-                'Transition<Event, State>(currentState, event, nextState): ',
-              ),
-            ]),
+            apiLink(DocSymbol.transition, label: 'Transition<Event, State>'),
             Component.text(
-              'Fires exclusively for BlocSignal. Enriches the Change with the causal event that triggered the mutation.',
+              ': Fires exclusively for BlocSignal. Enriches the Change with the causal event that triggered the mutation.',
             ),
           ]),
         ]),
@@ -247,9 +243,14 @@ class AppBlocObserver extends BlocSignalObserver {
       section(id: 'opentelemetry-devtools', classes: 'docs-section', [
         h2([Component.text('OpenTelemetry & DevTools Integration')]),
         p([
+          Component.text('The satellite package bloc_signals_otel provides '),
+          apiLink(DocSymbol.otelBlocSignalObserver),
           Component.text(
-            'The satellite package bloc_signals_otel provides OtelBlocSignalObserver, instrumenting events and transitions '
-            'into distributed OpenTelemetry trace spans. In addition, DevToolsBlocSignalObserver posts diagnostic events via dart:developer for Flutter DevTools.',
+            ', instrumenting events and transitions into distributed OpenTelemetry trace spans. In addition, ',
+          ),
+          apiLink(DocSymbol.devToolsBlocSignalObserver),
+          Component.text(
+            ' posts diagnostic events via dart:developer for Flutter DevTools.',
           ),
         ]),
       ]),

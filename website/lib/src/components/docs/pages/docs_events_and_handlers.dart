@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -37,8 +38,10 @@ class const DocsEventsAndHandlersPage({super.key}) extends StatelessComponent {
         div(classes: 'docs-badge', [Component.text('🧠 Core Concepts')]),
         h1([Component.text('Events & Handlers')]),
         p(classes: 'docs-lead', [
+          Component.text('Master event-driven state pipelines in '),
+          apiLink(DocSymbol.blocSignal),
           Component.text(
-            'Master event-driven state pipelines in BlocSignal: handler registration, asynchronous coordination, error routing, and zone-based event tracing.',
+            ': handler registration, asynchronous coordination, error routing, and zone-based event tracing.',
           ),
         ]),
       ]),
@@ -47,27 +50,29 @@ class const DocsEventsAndHandlersPage({super.key}) extends StatelessComponent {
       section(id: 'event-registration', classes: 'docs-section', [
         h2([Component.text('Event Registration with on<E>')]),
         p([
+          Component.text('In '),
+          apiLink(DocSymbol.blocSignal),
           Component.text(
-            'In BlocSignal, event handlers are registered inside constructor bodies using the on<E>((event, emit) => ...) registry. '
-            'Handlers receive the strongly-typed event payload and an emit function to transition state.',
+            ', event handlers are registered inside constructor bodies using the ',
           ),
+          apiLink(DocSymbol.blocSignalOn, label: 'on<E>((event, emit) => ...)'),
+          Component.text(
+            ' registry. Handlers receive the strongly-typed event payload and an ',
+          ),
+          apiLink(DocSymbol.blocSignalEmit, label: 'emit'),
+          Component.text(' function to transition state.'),
         ]),
         const DocsCodeBlock(
           filename: 'counter_bloc.dart',
           dart313Code: '''
-sealed class CounterEvent {}
-final class IncrementPressed extends CounterEvent {}
-final class DecrementPressed extends CounterEvent {}
+sealed class CounterEvent;
+final class IncrementPressed extends CounterEvent;
+final class DecrementPressed extends CounterEvent;
 
-class CounterBloc extends BlocSignal<CounterEvent, int> {
-  CounterBloc() : super(initialState: 0) {
-    on<IncrementPressed>((event, emit) {
-      emit(stateValue + 1);
-    });
-
-    on<DecrementPressed>((event, emit) {
-      emit(stateValue - 1);
-    });
+class CounterBloc() extends BlocSignal<CounterEvent, int>(initialState: 0) {
+  this {
+    on<IncrementPressed>((event, emit) => emit(stateValue + 1));
+    on<DecrementPressed>((event, emit) => emit(stateValue - 1));
   }
 }''',
           dart35Code: '''
@@ -99,16 +104,22 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
         p([
           Component.text(
             'Each event type E can be registered at most once in a given BlocSignal. '
-            'Attempting to register on<E>() for the exact same event type twice will immediately throw a StateError during initialization.',
+            'Attempting to register ',
+          ),
+          apiLink(DocSymbol.blocSignalOn, label: 'on<E>()'),
+          Component.text(
+            ' for the exact same event type twice will immediately throw a StateError during initialization.',
           ),
         ]),
-        const DocsCallout(
+        DocsCallout(
           type: CalloutType.warning,
           title: 'Duplicate Registration Detection',
           children: [
             p([
+              Component.text('Registering '),
+              apiLink(DocSymbol.blocSignalOn, label: 'on<MyEvent>'),
               Component.text(
-                'Registering on<MyEvent> multiple times is disallowed to eliminate ambiguous execution order. '
+                ' multiple times is disallowed to eliminate ambiguous execution order. '
                 'Use polymorphic subclasses or consolidated handler functions instead.',
               ),
             ]),
@@ -128,9 +139,11 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
         const DocsCodeBlock(
           filename: 'async_event_handling.dart',
           dart313Code: '''
-class SearchBloc(SearchService service)
-    extends BlocSignal<SearchEvent, SearchState>(initialState: const SearchInitial()) {
-  init {
+class SearchBloc(final SearchService service)
+    extends BlocSignal<SearchEvent, SearchState>(
+      initialState: const SearchInitial(),
+    ) {
+  this {
     on<SearchQuerySubmitted>((event, emit) async {
       emit(const SearchLoading());
       try {

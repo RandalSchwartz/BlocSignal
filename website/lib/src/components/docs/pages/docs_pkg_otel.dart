@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -52,8 +53,10 @@ class const DocsPkgOtelPage({super.key}) extends StatelessComponent {
       section(id: 'otel-observer', classes: 'docs-section', [
         h2([Component.text('OtelBlocSignalObserver Setup')]),
         p([
+          Component.text('Attach '),
+          apiLink(DocSymbol.otelBlocSignalObserver),
           Component.text(
-            'Attach the observer to the global BlocSignalObserver delegate during app bootstrap:',
+            ' to the global BlocSignalObserver delegate during app bootstrap:',
           ),
         ]),
         const DocsCodeBlock(

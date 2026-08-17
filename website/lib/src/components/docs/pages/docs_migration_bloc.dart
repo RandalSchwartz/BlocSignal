@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -18,7 +19,7 @@ class const DocsMigrationBlocPage({super.key}) extends StatelessComponent {
     TocHeading(title: 'Cubit Migration', anchor: 'cubit-migration'),
     TocHeading(title: 'Bloc & Event Migration', anchor: 'bloc-migration'),
     TocHeading(title: 'Flutter UI Migration', anchor: 'ui-migration'),
-    TocHeading(title: 'Unit Test Migration', anchor: 'testing-migration'),
+    TocHeading(title: 'Testing Migration', anchor: 'testing-migration'),
   ];
 
   @override
@@ -26,10 +27,10 @@ class const DocsMigrationBlocPage({super.key}) extends StatelessComponent {
     return article(classes: 'docs-article', [
       header(classes: 'docs-article-header', [
         div(classes: 'docs-badge', [Component.text('🔄 Migration Guides')]),
-        h1([Component.text('Migrating from package:bloc & flutter_bloc')]),
+        h1([Component.text('Migrating from package:bloc')]),
         p(classes: 'docs-lead', [
           Component.text(
-            'Step-by-step guide and side-by-side conversion patterns for transitioning from classic BLoC / flutter_bloc to BlocSignal.',
+            'A comprehensive side-by-side guide for migrating applications from classic BLoC and flutter_bloc to BlocSignal.',
           ),
         ]),
       ]),
@@ -77,38 +78,86 @@ class const DocsMigrationBlocPage({super.key}) extends StatelessComponent {
           ]),
           tbody([
             tr([
-              td([Component.text('Cubit<State>')]),
-              td([Component.text('CubitSignal<State>')]),
-            ]),
-            tr([
-              td([Component.text('Bloc<Event, State>')]),
-              td([Component.text('BlocSignal<Event, State>')]),
-            ]),
-            tr([
-              td([Component.text('BlocProvider<B>')]),
-              td([Component.text('BlocSignalProvider<B>')]),
-            ]),
-            tr([
-              td([Component.text('BlocBuilder<B, S>')]),
-              td([Component.text('BlocSignalBuilder<B, S>')]),
-            ]),
-            tr([
-              td([Component.text('BlocListener<B, S>')]),
-              td([Component.text('BlocSignalListener<B, S>')]),
-            ]),
-            tr([
-              td([Component.text('BlocConsumer<B, S>')]),
-              td([Component.text('BlocSignalConsumer<B, S>')]),
-            ]),
-            tr([
-              td([Component.text('BlocSelector<B, S, T>')]),
-              td([Component.text('BlocSignalSelector<B, S, T>')]),
-            ]),
-            tr([
-              td([Component.text('blocTest<B, S>(seed: ...)')]),
               td([
-                Component.text(
-                  'blocSignalTest<B, S>(build: () => B(initialState: ...))',
+                code([Component.text('Cubit<State>')]),
+              ]),
+              td([apiLink(DocSymbol.cubitSignal, label: 'CubitSignal<State>')]),
+            ]),
+            tr([
+              td([
+                code([Component.text('Bloc<Event, State>')]),
+              ]),
+              td([
+                apiLink(
+                  DocSymbol.blocSignal,
+                  label: 'BlocSignal<Event, State>',
+                ),
+              ]),
+            ]),
+            tr([
+              td([
+                code([Component.text('BlocProvider<B>')]),
+              ]),
+              td([
+                apiLink(
+                  DocSymbol.blocSignalProvider,
+                  label: 'BlocSignalProvider<B>',
+                ),
+              ]),
+            ]),
+            tr([
+              td([
+                code([Component.text('BlocBuilder<B, S>')]),
+              ]),
+              td([
+                apiLink(
+                  DocSymbol.blocSignalBuilder,
+                  label: 'BlocSignalBuilder<B, S>',
+                ),
+              ]),
+            ]),
+            tr([
+              td([
+                code([Component.text('BlocListener<B, S>')]),
+              ]),
+              td([
+                apiLink(
+                  DocSymbol.blocSignalListener,
+                  label: 'BlocSignalListener<B, S>',
+                ),
+              ]),
+            ]),
+            tr([
+              td([
+                code([Component.text('BlocConsumer<B, S>')]),
+              ]),
+              td([
+                apiLink(
+                  DocSymbol.blocSignalConsumer,
+                  label: 'BlocSignalConsumer<B, S>',
+                ),
+              ]),
+            ]),
+            tr([
+              td([
+                code([Component.text('BlocSelector<B, S, T>')]),
+              ]),
+              td([
+                apiLink(
+                  DocSymbol.blocSignalSelector,
+                  label: 'BlocSignalSelector<B, S, T>',
+                ),
+              ]),
+            ]),
+            tr([
+              td([
+                code([Component.text('blocTest<B, S>(seed: ...)')]),
+              ]),
+              td([
+                apiLink(
+                  DocSymbol.blocSignalTest,
+                  label:
+                      'blocSignalTest<B, S>(build: () => B(initialState: ...))',
                 ),
               ]),
             ]),

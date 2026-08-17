@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -5,7 +6,7 @@ import '../docs_callout.dart';
 import '../docs_code_block.dart';
 import '../docs_toc.dart';
 
-/// Documentation page covering streamless event concurrency transformers in BlocSignal.
+/// Documentation page covering event concurrency transformers in BlocSignal.
 class const DocsEventTransformersPage({super.key}) extends StatelessComponent {
   static const List<TocHeading> headings = [
     TocHeading(
@@ -25,8 +26,8 @@ class const DocsEventTransformersPage({super.key}) extends StatelessComponent {
   Component build(BuildContext context) {
     return article(classes: 'docs-article', [
       header(classes: 'docs-article-header', [
-        div(classes: 'docs-badge', [Component.text('🧠 Core Concepts')]),
-        h1([Component.text('Event Transformers')]),
+        div(classes: 'docs-badge', [Component.text('⚡ Core Concepts')]),
+        h1([Component.text('Event Concurrency Transformers')]),
         p(classes: 'docs-lead', [
           Component.text(
             'Control asynchronous event execution with zero Rx Stream overhead using pure Dart higher-order functions and Mutex coordination.',
@@ -61,8 +62,9 @@ class const DocsEventTransformersPage({super.key}) extends StatelessComponent {
       section(id: 'droppable-transformer', classes: 'docs-section', [
         h2([Component.text('droppable()')]),
         p([
+          apiLink(DocSymbol.droppable),
           Component.text(
-            'Ignores and drops any incoming events while the current event handler is actively processing an asynchronous Future. '
+            ' ignores and drops any incoming events while the current event handler is actively processing an asynchronous Future. '
             'Ideal for submit buttons, login actions, and checkout forms to prevent duplicate requests.',
           ),
         ]),
@@ -89,8 +91,9 @@ on<SubmitFormPressed>((event, emit) async {
       section(id: 'sequential-transformer', classes: 'docs-section', [
         h2([Component.text('sequential()')]),
         p([
+          apiLink(DocSymbol.sequential),
           Component.text(
-            'Queues and processes incoming events strictly in the order they were dispatched using an internal Mutex lock. '
+            ' queues and processes incoming events strictly in the order they were dispatched using an internal Mutex lock. '
             'Guarantees FIFO order without dropping events.',
           ),
         ]),
@@ -115,8 +118,9 @@ on<SyncDatabaseRecord>((event, emit) async {
       section(id: 'restartable-transformer', classes: 'docs-section', [
         h2([Component.text('restartable()')]),
         p([
+          apiLink(DocSymbol.restartable),
           Component.text(
-            'Abandons prior in-flight emissions when a newer event of the same type arrives. '
+            ' abandons prior in-flight emissions when a newer event of the same type arrives. '
             'Ideal for search typeaheads and autocomplete fields where only the latest query result matters.',
           ),
         ]),

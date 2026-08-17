@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -36,20 +37,32 @@ class const DocsCubitVsBlocPage({super.key}) extends StatelessComponent {
       section(id: 'overview-philosophy', classes: 'docs-section', [
         h2([Component.text('Overview & Philosophy')]),
         p([
+          Component.text('Both '),
+          apiLink(DocSymbol.cubitSignal),
+          Component.text(' and '),
+          apiLink(DocSymbol.blocSignal),
+          Component.text(' extend the same underlying state container, '),
+          apiLink(DocSymbol.blocSignalBase),
           Component.text(
-            'Both CubitSignal and BlocSignal extend the same underlying state container, BlocSignalBase. '
-            'They share identical reactive signal graph integration, 0ms synchronous state propagation, and observer traceability. '
+            '. They share identical reactive signal graph integration, 0ms synchronous state propagation, and observer traceability. '
             'The key distinction lies entirely in how mutations are initiated.',
           ),
         ]),
-        const DocsCallout(
+        DocsCallout(
           type: CalloutType.tip,
           title: 'Shared Signal Foundation',
           children: [
             p([
+              Component.text('Because both classes extend '),
+              apiLink(DocSymbol.blocSignalBase),
+              Component.text(', UI widgets ('),
+              apiLink(DocSymbol.blocSignalBuilder),
+              Component.text(', '),
+              apiLink(DocSymbol.blocSignalListener),
+              Component.text(', '),
+              code([Component.text('context.select')]),
               Component.text(
-                'Because both classes extend BlocSignalBase, UI widgets (BlocSignalBuilder, BlocSignalListener, context.select) '
-                'interact with both Cubits and Blocs interchangeably. You can even migrate from CubitSignal to BlocSignal without changing a single line of widget code.',
+                ') interact with both Cubits and Blocs interchangeably. You can even migrate from CubitSignal to BlocSignal without changing a single line of widget code.',
               ),
             ]),
           ],
@@ -212,20 +225,11 @@ class const DocsCubitVsBlocPage({super.key}) extends StatelessComponent {
         const DocsCodeBlock(
           filename: 'auth_cubit.dart',
           dart313Code: '''
-sealed class AuthState {
-  const AuthState();
-}
+sealed class AuthState;
+final class AuthInitial extends AuthState;
+final class AuthAuthenticated(final String username) extends AuthState;
 
-final class AuthInitial extends AuthState {
-  const AuthInitial();
-}
-
-final class AuthAuthenticated extends AuthState {
-  const AuthAuthenticated(this.username);
-  final String username;
-}
-
-class AuthCubit(AuthRepository repository)
+class AuthCubit(final AuthRepository repository)
     extends CubitSignal<AuthState>(initialState: const AuthInitial()) {
   Future<void> login(String username, String password) async {
     final success = await repository.authenticate(username, password);
@@ -269,16 +273,14 @@ class AuthCubit extends CubitSignal<AuthState> {
         const DocsCodeBlock(
           filename: 'auth_bloc.dart',
           dart313Code: '''
-sealed class AuthEvent {}
-final class AuthLoginRequested(this.username, this.password) extends AuthEvent {
-  final String username;
-  final String password;
-}
-final class AuthLogoutRequested extends AuthEvent {}
+sealed class AuthEvent;
+final class AuthLoginRequested(final String username, final String password)
+    extends AuthEvent;
+final class AuthLogoutRequested extends AuthEvent;
 
-class AuthBloc(AuthRepository repository)
+class AuthBloc(final AuthRepository repository)
     extends BlocSignal<AuthEvent, AuthState>(initialState: const AuthInitial()) {
-  init {
+  this {
     on<AuthLoginRequested>((event, emit) async {
       final success = await repository.authenticate(event.username, event.password);
       if (success) {
@@ -286,9 +288,7 @@ class AuthBloc(AuthRepository repository)
       }
     }, transformer: droppable());
 
-    on<AuthLogoutRequested>((event, emit) {
-      emit(const AuthInitial());
-    });
+    on<AuthLogoutRequested>((event, emit) => emit(const AuthInitial()));
   }
 }''',
           dart35Code: '''
@@ -311,9 +311,7 @@ class AuthBloc extends BlocSignal<AuthEvent, AuthState> {
       }
     }, transformer: droppable());
 
-    on<AuthLogoutRequested>((event, emit) {
-      emit(const AuthInitial());
-    });
+    on<AuthLogoutRequested>((event, emit) => emit(const AuthInitial()));
   }
 
   final AuthRepository _repository;

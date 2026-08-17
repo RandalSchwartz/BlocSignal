@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -55,9 +56,9 @@ class const DocsPkgDevtoolsPage({super.key}) extends StatelessComponent {
       section(id: 'devtools-observer', classes: 'docs-section', [
         h2([Component.text('DevToolsBlocSignalObserver')]),
         p([
-          Component.text(
-            'Enable DevTools telemetry by attaching DevToolsBlocSignalObserver in debug mode:',
-          ),
+          Component.text('Enable DevTools telemetry by attaching '),
+          apiLink(DocSymbol.devToolsBlocSignalObserver),
+          Component.text(' in debug mode:'),
         ]),
         const DocsCodeBlock(
           title: 'lib/main.dart',

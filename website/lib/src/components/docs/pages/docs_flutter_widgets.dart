@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -22,17 +23,22 @@ class const DocsFlutterWidgetsPage({super.key}) extends StatelessComponent {
         div(classes: 'docs-badge', [Component.text('Flutter Bindings & UI')]),
         h1([Component.text('Flutter Reactive Widgets')]),
         p(classes: 'docs-lead', [
-          Component.text(
-            'Discover BlocSignalBuilder, BlocSignalListener, BlocSignalConsumer, '
-            'and BlocSignalSelector for efficient, surgical Flutter UI rebuilding.',
-          ),
+          Component.text('Discover '),
+          apiLink(DocSymbol.blocSignalBuilder),
+          Component.text(', '),
+          apiLink(DocSymbol.blocSignalListener),
+          Component.text(', '),
+          apiLink(DocSymbol.blocSignalConsumer),
+          Component.text(', and '),
+          apiLink(DocSymbol.blocSignalSelector),
+          Component.text(' for efficient, surgical Flutter UI rebuilding.'),
         ]),
       ]),
 
       section(id: 'builder', classes: 'docs-section', [
         h2([Component.text('1. BlocSignalBuilder')]),
         p([
-          code([Component.text('BlocSignalBuilder<B, S>')]),
+          apiLink(DocSymbol.blocSignalBuilder),
           Component.text(
             ' subscribes to a BlocSignal or CubitSignal and rebuilds its child subtree '
             'whenever the container emits a new state value. By default, duplicate states '
@@ -105,7 +111,7 @@ BlocSignalBuilder<CounterCubit, int>(
       section(id: 'listener', classes: 'docs-section', [
         h2([Component.text('2. BlocSignalListener')]),
         p([
-          code([Component.text('BlocSignalListener<B, S>')]),
+          apiLink(DocSymbol.blocSignalListener),
           Component.text(
             ' is designed exclusively for executing one-off side effects in response '
             'to state changes, such as showing SnackBars, pushing routes, popping sheets, '
@@ -180,7 +186,7 @@ class LoginScreen extends StatelessWidget {
             'When a widget needs both to rebuild UI and to trigger side-effect actions '
             '(such as showing a loading spinner while listening for errors), ',
           ),
-          code([Component.text('BlocSignalConsumer<B, S>')]),
+          apiLink(DocSymbol.blocSignalConsumer),
           Component.text(
             ' combines builder and listener into a single widget without nesting.',
           ),
@@ -224,7 +230,7 @@ BlocSignalConsumer<CartBloc, CartState>(
           Component.text(
             'For complex, large state objects where only a small property is displayed, ',
           ),
-          code([Component.text('BlocSignalSelector<B, S, T>')]),
+          apiLink(DocSymbol.blocSignalSelector),
           Component.text(
             ' extracts a derived value via a selector function. The widget rebuilds ',
           ),

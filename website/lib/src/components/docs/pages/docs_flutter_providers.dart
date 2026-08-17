@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -47,13 +48,13 @@ class const DocsFlutterProvidersPage({super.key}) extends StatelessComponent {
             'how they are accessed by descendant widgets, and when they are disposed '
             'is critical to preventing memory leaks. ',
           ),
-          code([Component.text('BlocSignalProvider')]),
+          apiLink(DocSymbol.blocSignalProvider),
           Component.text(
             ' acts as a dependency injection bridge that binds a ',
           ),
-          code([Component.text('BlocSignal')]),
+          apiLink(DocSymbol.blocSignal),
           Component.text(' or '),
-          code([Component.text('CubitSignal')]),
+          apiLink(DocSymbol.cubitSignal),
           Component.text(
             ' to the Flutter widget hierarchy through an InheritedWidget.',
           ),
@@ -231,7 +232,7 @@ void openDetails(BuildContext context) {
             'Nesting several individual providers causes excessive horizontal code indentation '
             '(the pyramid of doom). ',
           ),
-          code([Component.text('MultiBlocSignalProvider')]),
+          apiLink(DocSymbol.multiBlocSignalProvider),
           Component.text(
             ' flattens multiple providers into a single clean list.',
           ),

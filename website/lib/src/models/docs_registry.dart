@@ -1,9 +1,15 @@
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
+import '../components/docs/pages/docs_cubit_vs_bloc.dart';
+import '../components/docs/pages/docs_event_transformers.dart';
+import '../components/docs/pages/docs_events_and_handlers.dart';
 import '../components/docs/pages/docs_installation.dart';
+import '../components/docs/pages/docs_lifecycle_and_observers.dart';
 import '../components/docs/pages/docs_overview.dart';
 import '../components/docs/pages/docs_quickstart.dart';
+import '../components/docs/pages/docs_signals_reactivity.dart';
+import '../components/docs/pages/docs_state_modeling.dart';
 import 'docs_models.dart';
 
 /// Central registry of all documentation topics and categories across all phases.
@@ -40,7 +46,7 @@ class const DocsRegistry() {
         ),
       ],
     ),
-    DocCategory(
+    const DocCategory(
       title: 'Core Concepts',
       icon: '🧠',
       sections: [
@@ -50,12 +56,7 @@ class const DocsRegistry() {
           path: '/docs/cubit-vs-bloc',
           category: 'Core Concepts',
           description: 'Choosing between direct method invocation and event-driven architectures.',
-          badge: 'Phase 2',
-          builder: () => _PlaceholderDoc(
-            title: 'CubitSignal vs. BlocSignal',
-            phase: 'Phase 2',
-            description: 'In-depth architectural comparison, philosophy, and decision matrix between CubitSignal and BlocSignal.',
-          ),
+          builder: DocsCubitVsBlocPage.new,
         ),
         DocSectionItem(
           id: 'state-modeling',
@@ -63,12 +64,7 @@ class const DocsRegistry() {
           path: '/docs/state-modeling',
           category: 'Core Concepts',
           description: 'Immutable data models, Dart Records, Fast Immutable Collections (FIC), and custom equality comparators.',
-          badge: 'Phase 2',
-          builder: () => _PlaceholderDoc(
-            title: 'State Modeling & Immutability',
-            phase: 'Phase 2',
-            description: 'Best practices for state modeling, immutability, Record states, and SignalOptions custom equals.',
-          ),
+          builder: DocsStateModelingPage.new,
         ),
         DocSectionItem(
           id: 'events-and-handlers',
@@ -76,12 +72,7 @@ class const DocsRegistry() {
           path: '/docs/events-and-handlers',
           category: 'Core Concepts',
           description: 'Registering typed event handlers with on<E>(), concurrency coordination, and error tracking.',
-          badge: 'Phase 2',
-          builder: () => _PlaceholderDoc(
-            title: 'Events & Handlers',
-            phase: 'Phase 2',
-            description: 'How on<E> handlers work, synchronous event dispatching, and Future.wait concurrency.',
-          ),
+          builder: DocsEventsAndHandlersPage.new,
         ),
         DocSectionItem(
           id: 'event-transformers',
@@ -89,12 +80,7 @@ class const DocsRegistry() {
           path: '/docs/event-transformers',
           category: 'Core Concepts',
           description: 'Streamless event transformers (droppable, sequential, restartable) and custom debounce/mutex locks.',
-          badge: 'Phase 2',
-          builder: () => _PlaceholderDoc(
-            title: 'Event Transformers',
-            phase: 'Phase 2',
-            description: 'Streamless higher-order function concurrency transformers and Mutex locks.',
-          ),
+          builder: DocsEventTransformersPage.new,
         ),
         DocSectionItem(
           id: 'lifecycle-and-observers',
@@ -102,12 +88,7 @@ class const DocsRegistry() {
           path: '/docs/lifecycle-and-observers',
           category: 'Core Concepts',
           description: 'BlocSignalObserver, Change, Transition, and OpenTelemetry identity span tracking.',
-          badge: 'Phase 2',
-          builder: () => _PlaceholderDoc(
-            title: 'Lifecycle & Observers',
-            phase: 'Phase 2',
-            description: 'Global and local observer lifecycles, Change/Transition logging, and DevTools hooks.',
-          ),
+          builder: DocsLifecycleAndObserversPage.new,
         ),
         DocSectionItem(
           id: 'signals-reactivity',
@@ -115,12 +96,7 @@ class const DocsRegistry() {
           path: '/docs/signals-reactivity',
           category: 'Core Concepts',
           description: 'Understanding stateValue vs state, computed() derivations, and managed effect() reactions.',
-          badge: 'Phase 2',
-          builder: () => _PlaceholderDoc(
-            title: 'Signals Graph Reactivity',
-            phase: 'Phase 2',
-            description: 'How ReadonlySignal powers automatic de-duplication, fine-grained reactivity, and 0ms updates.',
-          ),
+          builder: DocsSignalsReactivityPage.new,
         ),
       ],
     ),
@@ -358,9 +334,28 @@ class const DocsRegistry() {
 
   /// Resolves a section by its ID or returns the default overview.
   static DocSectionItem resolveSection(String id) {
+    var cleanId = id.trim();
+    if (cleanId.startsWith('/')) cleanId = cleanId.substring(1);
+    if (cleanId.endsWith('/')) cleanId = cleanId.substring(0, cleanId.length - 1);
+    if (cleanId.endsWith('/index.html')) {
+      cleanId = cleanId.substring(0, cleanId.length - '/index.html'.length);
+    } else if (cleanId.endsWith('index.html')) {
+      cleanId = cleanId.substring(0, cleanId.length - 'index.html'.length);
+    }
+    if (cleanId.startsWith('docs/')) {
+      cleanId = cleanId.substring('docs/'.length);
+    }
+
     for (final category in categories) {
       for (final section in category.sections) {
-        if (section.id == id) return section;
+        if (section.id == id ||
+            section.id == cleanId ||
+            section.path == id ||
+            section.path == '/$id' ||
+            section.path == '/docs/$cleanId' ||
+            section.path == '/$cleanId') {
+          return section;
+        }
       }
     }
     return categories.first.sections.first;

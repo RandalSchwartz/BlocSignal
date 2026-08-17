@@ -28,13 +28,16 @@ void main() {
       );
     });
 
-    test('selectSection updates activeSectionId and expands target category', () {
-      cubit.selectSection('testing-guide', pushHistory: false);
+    test(
+      'selectSection updates activeSectionId and expands target category',
+      () {
+        cubit.selectSection('testing-guide', pushHistory: false);
 
-      expect(cubit.stateValue.activeSectionId, equals('testing-guide'));
-      expect(cubit.stateValue.expandedCategories, contains('Testing'));
-      expect(cubit.stateValue.isMobileDrawerOpen, isFalse);
-    });
+        expect(cubit.stateValue.activeSectionId, equals('testing-guide'));
+        expect(cubit.stateValue.expandedCategories, contains('Testing'));
+        expect(cubit.stateValue.isMobileDrawerOpen, isFalse);
+      },
+    );
 
     test('selectSection ignores selecting the already active section', () {
       final initialState = cubit.stateValue;

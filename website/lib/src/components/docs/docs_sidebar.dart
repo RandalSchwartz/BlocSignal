@@ -100,7 +100,14 @@ class const DocsSidebar({super.key}) extends StatelessComponent {
                               href: sec.path,
                               classes:
                                   'docs-section-link ${state.activeSectionId == sec.id ? "active" : ""}',
-                              onClick: () => cubit.selectSection(sec.id),
+                              events: {
+                                'click': (dynamic event) {
+                                  try {
+                                    (event as dynamic).preventDefault();
+                                  } catch (_) {}
+                                  cubit.selectSection(sec.id);
+                                },
+                              },
                               [
                                 span(classes: 'docs-nav-link-title', [
                                   Component.text(sec.title),

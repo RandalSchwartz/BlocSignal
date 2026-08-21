@@ -125,29 +125,49 @@ class IncrementButton extends StatelessWidget {
             ]),
           ],
         ),
+        h3([Component.text('Primary Use Cases for context.watch<B>()')]),
+        ul([
+          li([
+            strong([Component.text('Dynamic Instance Swapping: ')]),
+            Component.text(
+              'When a parent widget dynamically injects different container instances via ',
+            ),
+            code([Component.text('BlocSignalProvider.value')]),
+            Component.text(
+              ' (for example, switching the active chat room, document, or workspace in a master-detail view).',
+            ),
+          ]),
+          li([
+            strong([Component.text('Passing Instance to Child Delegates: ')]),
+            Component.text(
+              'When a widget extracts the container in build() to pass into child component constructors or delegates, '
+              'ensuring children stay synchronized if the parent replaces the container.',
+            ),
+          ]),
+        ]),
         const DocsCodeBlock(
-          title: 'context.watch for Provider Instance Listening',
+          title: 'context.watch for Dynamic Instance Swapping',
           dart313Code: '''
-class DynamicProviderConsumer extends StatelessWidget {
-  const DynamicProviderConsumer({super.key});
+class ActiveRoomHeader extends StatelessWidget {
+  const ActiveRoomHeader({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Rebuilds if the parent widget tree replaces the AuthCubit instance
-    final authCubit = context.watch<AuthCubit>();
-    return Text('Provider attached: \${authCubit.hashCode}');
+    // Rebuilds whenever the parent provider swaps the RoomBloc instance
+    final roomBloc = context.watch<RoomBloc>();
+    return Text('Active Room: \${roomBloc.roomId}');
   }
 }
 ''',
           dart35Code: '''
-class DynamicProviderConsumer extends StatelessWidget {
-  const DynamicProviderConsumer({Key? key}) : super(key: key);
+class ActiveRoomHeader extends StatelessWidget {
+  const ActiveRoomHeader({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Rebuilds if the parent widget tree replaces the AuthCubit instance
-    final AuthCubit authCubit = context.watch<AuthCubit>();
-    return Text('Provider attached: \${authCubit.hashCode}');
+    // Rebuilds whenever the parent provider swaps the RoomBloc instance
+    final RoomBloc roomBloc = context.watch<RoomBloc>();
+    return Text('Active Room: \${roomBloc.roomId}');
   }
 }
 ''',

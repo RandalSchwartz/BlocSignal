@@ -7,7 +7,7 @@ A reactive countdown timer application demonstrating periodic ticker stream inge
 - **Countdown State Machine**: Sealed states (`TimerInitial`, `TimerRunInProgress`, `TimerRunPause`, `TimerRunComplete`) representing distinct lifecycle phases.
 - **Resource Lifecycle Management**: Automatically manages and cancels periodic `StreamSubscription` ticker subscriptions inside `close()`.
 - **Granular Rebuilds via `context.select`**: `TimerText` listens only to `stateValue.duration`, preventing unnecessary rebuilds of action buttons or surrounding scaffolds.
-- **Reactive Dynamic Background**: Dynamic animated background reflecting active timer status with `context.watch`.
+- **Reactive Dynamic Background**: Dynamic animated background reflecting active timer status with `context.select`.
 
 ## 🔗 Upstream Reference
 

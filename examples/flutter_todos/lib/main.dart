@@ -381,14 +381,15 @@ class TodosListView extends StatelessWidget {
 
 /// Educational Widget: [FilterSegmentedControl]
 ///
-/// Uses `context.watch<TodosBlocSignal>().stateValue.filter` to drive SegmentedButton UI.
+/// Uses `context.select<TodosBlocSignal, TodosFilter>` to drive SegmentedButton UI.
 class FilterSegmentedControl extends StatelessWidget {
   const FilterSegmentedControl({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final bloc = context.watch<TodosBlocSignal>();
-    final currentFilter = bloc.stateValue.filter;
+    final currentFilter = context.select<TodosBlocSignal, TodosFilter>(
+      (bloc) => bloc.stateValue.filter,
+    );
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: SegmentedButton<TodosFilter>(
@@ -400,7 +401,9 @@ class FilterSegmentedControl extends StatelessWidget {
         ],
         selected: {currentFilter},
         onSelectionChanged: (selection) {
-          bloc.add(TodosFilterChanged(filter: selection.first));
+          context
+              .read<TodosBlocSignal>()
+              .add(TodosFilterChanged(filter: selection.first));
         },
       ),
     );

@@ -292,13 +292,15 @@ class TimerActions extends StatelessWidget {
 
 /// Educational Widget: [BackgroundGradient]
 ///
-/// Uses `context.watch<TimerBlocSignal>().stateValue` to reactively update background colors.
+/// Uses `context.select<TimerBlocSignal, TimerState>` to reactively update background colors.
 class BackgroundGradient extends StatelessWidget {
   const BackgroundGradient({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<TimerBlocSignal>().stateValue;
+    final state = context.select<TimerBlocSignal, TimerState>(
+      (bloc) => bloc.stateValue,
+    );
     final color = switch (state) {
       TimerInitial() => Colors.deepOrange.shade100,
       TimerRunInProgress() => Colors.blue.shade100,

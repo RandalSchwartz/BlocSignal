@@ -2,6 +2,7 @@ import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
+import '../docs_callout.dart';
 import '../docs_code_block.dart';
 import '../docs_toc.dart';
 
@@ -151,6 +152,43 @@ class const DocsMigrationBlocPage({super.key}) extends StatelessComponent {
             ]),
             tr([
               td([
+                code([Component.text('context.read<B>()')]),
+              ]),
+              td([apiLink(DocSymbol.contextRead, label: 'context.read<B>()')]),
+            ]),
+            tr([
+              td([
+                code([Component.text('context.select<B, T>((b) => ...)')]),
+              ]),
+              td([
+                apiLink(
+                  DocSymbol.contextSelect,
+                  label: 'context.select<B, R>((b) => ...)',
+                ),
+              ]),
+            ]),
+            tr([
+              td([
+                code([Component.text('context.watch<B>().state')]),
+              ]),
+              td([
+                Component.text('Use '),
+                apiLink(
+                  DocSymbol.contextSelect,
+                  label: 'context.select<B, R>()',
+                ),
+                Component.text(' or '),
+                apiLink(
+                  DocSymbol.blocSignalBuilder,
+                  label: 'BlocSignalBuilder<B, S>',
+                ),
+                Component.text(
+                  ' (context.watch in BlocSignal tracks provider instance only)',
+                ),
+              ]),
+            ]),
+            tr([
+              td([
                 code([Component.text('blocTest<B, S>(seed: ...)')]),
               ]),
               td([
@@ -227,24 +265,45 @@ class SearchBloc extends BlocSignal<SearchEvent, SearchState> {
       // 5. Flutter UI Migration
       section(id: 'ui-migration', classes: 'docs-section', [
         h2([Component.text('Flutter UI Migration')]),
+        const DocsCallout(
+          type: CalloutType.warning,
+          title: 'Migration Trap: context.watch vs State Changes',
+          children: [
+            p([
+              Component.text(
+                'In classic flutter_bloc, context.watch<B>().state rebuilt widgets on every state emission. '
+                'In BlocSignal, context.watch only tracks provider instance replacement. '
+                'To rebuild widgets on state changes, use context.select<B, R>((b) => ...) or BlocSignalBuilder<B, S>.',
+              ),
+            ]),
+          ],
+        ),
         const DocsCodeBlock(
-          title: 'Side-by-Side: Flutter Widgets',
+          title: 'Side-by-Side: Flutter Widgets & Context Extensions',
           language: 'dart',
           code: '''
 // --- BEFORE: flutter_bloc ---
-BlocProvider(
-  create: (context) => CounterCubit(),
-  child: BlocBuilder<CounterCubit, int>(
-    builder: (context, count) => Text('\$count'),
-  ),
+// 1. Reading actions
+context.read<CounterBloc>().add(Increment());
+
+// 2. Watching state in build()
+final count = context.watch<CounterBloc>().state;
+
+// 3. Declarative builder
+BlocBuilder<CounterCubit, int>(
+  builder: (context, count) => Text('\$count'),
 );
 
 // --- AFTER: bloc_signals_flutter ---
-BlocSignalProvider(
-  create: (context) => CounterCubit(),
-  child: BlocSignalBuilder<CounterCubit, int>(
-    builder: (context, count) => Text('\$count'),
-  ),
+// 1. Reading actions
+context.read<CounterBloc>().add(Increment());
+
+// 2. Selecting state in build()
+final count = context.select<CounterBloc, int>((b) => b.stateValue);
+
+// 3. Declarative builder
+BlocSignalBuilder<CounterCubit, int>(
+  builder: (context, count) => Text('\$count'),
 );''',
         ),
       ]),

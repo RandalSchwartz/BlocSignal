@@ -55,7 +55,7 @@ class const DocsFlutterContextPage({super.key}) extends StatelessComponent {
             p([
               Component.text(
                 'Calling context.read() inside a widget build() method is an anti-pattern because '
-                'the widget will not update when state mutates. Use context.watch() or BlocSignalBuilder instead.',
+                'the widget will not update when state mutates. Use context.select() or BlocSignalBuilder instead.',
               ),
             ]),
           ],
@@ -102,41 +102,52 @@ class IncrementButton extends StatelessWidget {
           apiLink(DocSymbol.contextWatch, label: 'context.watch<B>()'),
           Component.text(
             ' resolves the container and registers the current widget’s Element '
-            'as a listener on the InheritedWidget. Whenever the container emits a new state, '
-            'the widget marks itself dirty and rebuilds on the next frame.',
+            'as a listener on the InheritedWidget provider. It triggers a rebuild '
+            'if the provided container instance itself is replaced in the widget tree.',
           ),
         ]),
+        DocsCallout(
+          type: CalloutType.warning,
+          title: 'context.watch Tracks Provider Instance, Not State',
+          children: [
+            p([
+              Component.text(
+                'Unlike classic flutter_bloc, context.watch in BlocSignal does NOT rebuild on state changes. '
+                'To reactively rebuild when state values mutate, use ',
+              ),
+              apiLink(DocSymbol.contextSelect, label: 'context.select<B, R>()'),
+              Component.text(' or '),
+              apiLink(
+                DocSymbol.blocSignalBuilder,
+                label: 'BlocSignalBuilder<B, S>',
+              ),
+              Component.text('.'),
+            ]),
+          ],
+        ),
         const DocsCodeBlock(
-          title: 'context.watch in Widget Build Methods',
+          title: 'context.watch for Provider Instance Listening',
           dart313Code: '''
-class ThemeIconHeader extends StatelessWidget {
-  const ThemeIconHeader({super.key});
+class DynamicProviderConsumer extends StatelessWidget {
+  const DynamicProviderConsumer({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final themeCubit = context.watch<ThemeCubit>();
-    final isDark = themeCubit.stateValue.isDarkMode;
-
-    return Icon(
-      isDark ? Icons.dark_mode : Icons.light_mode,
-      color: isDark ? Colors.amber : Colors.blue,
-    );
+    // Rebuilds if the parent widget tree replaces the AuthCubit instance
+    final authCubit = context.watch<AuthCubit>();
+    return Text('Provider attached: \${authCubit.hashCode}');
   }
 }
 ''',
           dart35Code: '''
-class ThemeIconHeader extends StatelessWidget {
-  const ThemeIconHeader({Key? key}) : super(key: key);
+class DynamicProviderConsumer extends StatelessWidget {
+  const DynamicProviderConsumer({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final ThemeCubit themeCubit = context.watch<ThemeCubit>();
-    final bool isDark = themeCubit.stateValue.isDarkMode;
-
-    return Icon(
-      isDark ? Icons.dark_mode : Icons.light_mode,
-      color: isDark ? Colors.amber : Colors.blue,
-    );
+    // Rebuilds if the parent widget tree replaces the AuthCubit instance
+    final AuthCubit authCubit = context.watch<AuthCubit>();
+    return Text('Provider attached: \${authCubit.hashCode}');
   }
 }
 ''',

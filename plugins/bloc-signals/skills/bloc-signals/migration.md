@@ -397,7 +397,7 @@ BlocSignalSelector<CounterBloc, int, bool>(
 
 ---
 
-## 4. Reading and Watching Blocs
+## 4. Reading, Selecting, and Watching Blocs
 
 ### Before (Classic `context.read` / `context.watch`)
 ```dart
@@ -408,14 +408,32 @@ context.read<CounterBloc>().add(Increment());
 final count = context.watch<CounterBloc>().state;
 ```
 
-### After (BlocSignal context extensions)
+### After (BlocSignal: `context.read`, `context.select`, and `BlocSignalBuilder`)
+
+> [!WARNING]
+> **Migration Trap: `context.watch` vs State Changes**
+> In classic `flutter_bloc`, `context.watch<B>().state` subscribed to state emissions via `InheritedWidget.setState()`.
+> In `bloc_signals_flutter`, `context.watch<B>()` **only listens to provider instance replacement**, avoiding coarse inherited widget rebuild cascades. It does **not** rebuild widgets when the bloc emits new states.
+>
+> To rebuild UI on state changes in BlocSignal, use:
+> 1. `context.select<B, R>` for fine-grained property-level rebuilds.
+> 2. `BlocSignalBuilder<B, S>` for declarative subtree rebuilds.
+> 3. `Watch` or `SignalBuilder` on `bloc.state`.
+
 ```dart
-// Reading a bloc to dispatch events (no rebuild dependency)
+// 1. Reading a bloc to dispatch events (no rebuild dependency)
 context.read<CounterBloc>().add(Increment());
 
-// Watching a bloc (registers rebuild dependency on state changes)
+// 2. Fine-grained rebuild on specific state value (rebuilds when isEven changes)
+final isEven = context.select<CounterBloc, bool>((bloc) => bloc.stateValue.isEven);
+
+// 3. Declarative subtree rebuild on state changes
+BlocSignalBuilder<CounterBloc, int>(
+  builder: (context, count) => Text('$count'),
+);
+
+// 4. Watching provider instance replacement ONLY (rebuilds if provider replaces instance)
 final bloc = context.watch<CounterBloc>();
-final count = bloc.stateValue;
 ```
 
 ### Context Select (Selecting sub-state slices)
@@ -427,6 +445,7 @@ final isEven = context.select<CounterBloc, bool>((bloc) => bloc.state.isEven);
 
 #### After (BlocSignal `context.select`)
 ```dart
+// Note: BlocSignal takes 2 type parameters <Bloc, ReturnType> and passes the bloc instance to the callback
 final isEven = context.select<CounterBloc, bool>((bloc) => bloc.stateValue.isEven);
 ```
 

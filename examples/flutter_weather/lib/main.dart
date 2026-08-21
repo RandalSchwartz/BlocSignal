@@ -234,7 +234,9 @@ class WeatherAppView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeColor = context.watch<ThemeCubitSignal>().stateValue;
+    final themeColor = context.select<ThemeCubitSignal, Color>(
+      (cubit) => cubit.stateValue,
+    );
     return MaterialApp(
       title: 'BlocSignal Weather',
       theme: ThemeData(

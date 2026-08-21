@@ -70,7 +70,10 @@ class const DocsMigrationRiverpodPage({super.key}) extends StatelessComponent {
             tr([
               td([Component.text('ref.watch(provider)')]),
               td([
-                apiLink(DocSymbol.contextWatch, label: 'context.watch<B>()'),
+                apiLink(
+                  DocSymbol.contextSelect,
+                  label: 'context.select<B, R>()',
+                ),
                 Component.text(' or '),
                 apiLink(DocSymbol.blocSignalBuilder),
               ]),
@@ -84,44 +87,34 @@ class const DocsMigrationRiverpodPage({super.key}) extends StatelessComponent {
               td([apiLink(DocSymbol.blocSignalListener)]),
             ]),
             tr([
-              td([Component.text('ref.watch(provider.select(...))')]),
+              td([Component.text('ProviderContainer / Overrides')]),
               td([
-                apiLink(
-                  DocSymbol.contextSelect,
-                  label: 'context.select<B, R>()',
+                Component.text(
+                  'Constructor injection / BlocSignalProvider.value',
                 ),
-                Component.text(' or '),
-                apiLink(DocSymbol.blocSignalSelector),
               ]),
             ]),
           ]),
         ]),
       ]),
 
-      // 3. StateNotifier to CubitSignal
+      // 3. Provider Definition Refactoring
       section(id: 'notifier-to-cubit', classes: 'docs-section', [
-        h2([Component.text('StateNotifier / Notifier to CubitSignal')]),
+        h2([Component.text('Provider Definition Refactoring')]),
         const DocsCodeBlock(
-          title: 'Side-by-Side: Notifier vs Cubit',
+          title: 'Side-by-Side: StateNotifier / Notifier to CubitSignal',
           language: 'dart',
           code: '''
 // --- BEFORE: Riverpod Notifier ---
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-class CounterNotifier extends Notifier<int> {
+@riverpod
+class CounterNotifier extends _\$CounterNotifier {
   @override
   int build() => 0;
 
   void increment() => state++;
 }
 
-final counterProvider = NotifierProvider<CounterNotifier, int>(
-  CounterNotifier.new,
-);
-
-// --- AFTER: CubitSignal ---
-import 'package:bloc_signals/bloc_signals.dart';
-
+// --- AFTER: Pure Dart CubitSignal ---
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -160,13 +153,13 @@ class CounterScreen extends ConsumerWidget {
   }
 }
 
-// --- AFTER: BlocSignal with context.watch and context.read ---
+// --- AFTER: BlocSignal with context.select and context.read ---
 class CounterScreen extends StatelessWidget {
   const CounterScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final count = context.watch<CounterCubit>().stateValue;
+    final count = context.select<CounterCubit, int>((c) => c.stateValue);
     return Scaffold(
       body: Center(child: Text('\$count')),
       floatingActionButton: FloatingActionButton(

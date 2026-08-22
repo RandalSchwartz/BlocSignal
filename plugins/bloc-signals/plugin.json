@@ -1,0 +1,5 @@
+{
+  "name": "bloc-signals",
+  "version": "0.1.0",
+  "description": "Package-specific guidance for implementing, testing, reviewing, and migrating Dart and Flutter applications that use BlocSignal."
+}

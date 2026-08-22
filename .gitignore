@@ -9,4 +9,6 @@ build/
 **/build/
 .firebase/
 .flutter-plugins*
+.agents/
+.config/
 scratch/

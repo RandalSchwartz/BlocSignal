@@ -74,5 +74,7 @@ Future<void> main() async {
   }
 
   client.close();
-  print('🎉 Successfully downloaded $downloadedCount articles into doc/articles/');
+  print(
+    '🎉 Successfully downloaded $downloadedCount articles into doc/articles/',
+  );
 }

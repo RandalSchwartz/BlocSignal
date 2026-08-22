@@ -1,0 +1,36 @@
+name: 📚 Documentation Improvement
+description: Suggest improvements, clarifications, or missing recipes in BlocSignal documentation.
+title: "docs: "
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve BlocSignal documentation!
+
+  - type: input
+    id: page_url
+    attributes:
+      label: Documentation Page or File
+      description: Provide the URL on blocsignal.dev or the file path in the repository.
+      placeholder: "for example: website/lib/src/components/docs/pages/docs_core.dart or https://blocsignal.dev"
+    validations:
+      required: true
+
+  - type: textarea
+    id: issue_description
+    attributes:
+      label: What is unclear or missing?
+      description: Describe the issue, confusion, outdated information, or missing recipe.
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested_change
+    attributes:
+      label: Suggested Content or Code Example
+      description: Provide the suggested explanation or code snippet.
+      placeholder: |
+        ```dart
+        // Suggested code example or phrasing
+        ```

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 GitHub Discussions & Q&A
+    url: https://github.com/RandalSchwartz/BlocSignal/discussions
+    about: Ask architectural questions, discuss design patterns, or get community help with BlocSignal.
+  - name: 📖 Official Website & Guides
+    url: https://blocsignal.dev
+    about: Explore tutorials, architecture documentation, and interactive examples.

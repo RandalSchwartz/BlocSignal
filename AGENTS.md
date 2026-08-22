@@ -63,6 +63,7 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 
 ### Public Framework Skills (`plugins/bloc-signals/skills/bloc-signals/`)
 - [SKILL.md](plugins/bloc-signals/skills/bloc-signals/SKILL.md): Plugin skill entrypoint and router.
+- [decision_matrix.md](plugins/bloc-signals/skills/bloc-signals/decision_matrix.md): State modeling decision rubric, container comparison matrix, and heuristics.
 - [core.md](plugins/bloc-signals/skills/bloc-signals/core.md): Core event dispatch, equality, `@mustCallSuper`, error handling, and reactive ownership.
 - [flutter.md](plugins/bloc-signals/skills/bloc-signals/flutter.md): Providers, listeners, builders, consumers, `context.select<B, R>`, and widget rebuild optimizations.
 - [testing.md](plugins/bloc-signals/skills/bloc-signals/testing.md): Declarative unit testing (`blocSignalTest`), observer scoping, and test runners.

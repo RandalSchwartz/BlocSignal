@@ -35,6 +35,11 @@ void main() {
       expect(quickstart.id, equals('quickstart'));
       expect(quickstart.path, equals('/docs/quickstart'));
 
+      final decisionMatrix = DocsRegistry.resolveSection('decision-matrix');
+      expect(decisionMatrix.id, equals('decision-matrix'));
+      expect(decisionMatrix.path, equals('/docs/decision-matrix'));
+      expect(decisionMatrix.category, equals('Getting Started'));
+
       final cubitVsBloc = DocsRegistry.resolveSection('cubit-vs-bloc');
       expect(cubitVsBloc.id, equals('cubit-vs-bloc'));
       expect(cubitVsBloc.category, equals('Core Concepts'));

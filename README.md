@@ -71,6 +71,7 @@ The `BlocSignal` monorepo consists of 10 modular packages:
 
 ## 📚 Documentation
 
+- **[Architectural Decision Matrix](./plugins/bloc-signals/skills/bloc-signals/decision_matrix.md)**: State modeling rubric comparing raw Signals, `CubitSignal`, `BlocSignal`, and mixins.
 - **[Migration Guide](./plugins/bloc-signals/skills/bloc-signals/migration.md)**: Moving from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
 - **[Riverpod Interop & Migration](./plugins/bloc-signals/skills/bloc-signals/riverpod_migration.md)**: Converting between Riverpod providers and `BlocSignal`.
 - **[Universal Interoperability Guide](./plugins/bloc-signals/skills/bloc-signals/interoperability.md)**: State bridge across BLoC, Riverpod, and Provider.

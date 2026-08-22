@@ -1,4 +1,5 @@
 import '../components/docs/pages/docs_cubit_vs_bloc.dart';
+import '../components/docs/pages/docs_decision_matrix.dart';
 import '../components/docs/pages/docs_event_transformers.dart';
 import '../components/docs/pages/docs_events_and_handlers.dart';
 import '../components/docs/pages/docs_flutter_context.dart';
@@ -55,6 +56,14 @@ class const DocsRegistry() {
           category: 'Getting Started',
           description: '5-minute tutorial covering Cubit, Bloc, Flutter UI, and testing.',
           builder: DocsQuickstartPage.new,
+        ),
+        DocSectionItem(
+          id: 'decision-matrix',
+          title: 'Architectural Decision Matrix',
+          path: '/docs/decision-matrix',
+          category: 'Getting Started',
+          description: 'Interactive selector and decision guide: Signal vs. CubitSignal vs. BlocSignal vs. Hydrate.',
+          builder: DocsDecisionMatrixPage.new,
         ),
       ],
     ),

@@ -4,8 +4,6 @@ title: "When to Use Bloc vs. Cubit vs. Signal: An Architectural Decision Guide"
 published: true
 description: "Stop guessing how to structure your Flutter state. Here is a definitive, 4-tier decision rubric comparing raw Signals, CubitSignal, BlocSignal, and persistence mixins."
 tags: "flutter, dart, architecture, webdev"
-cover_image: "https://raw.githubusercontent.com/RandalSchwartz/BlocSignal/main/assets/banner.png"
-canonical_url: "https://blocsignal.dev/#/docs/decision-matrix"
 ---
 
 ## The Flutter State Dilemma

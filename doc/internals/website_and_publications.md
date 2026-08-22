@@ -67,7 +67,7 @@ When authoring code snippets and documentation in the website:
 ### DEV.to Article Frontmatter & Series Protocol
 When generating or updating DEV.to draft articles:
 1. **Series Frontmatter**: Always include `series: "BlocSignal Architecture & Practice"` (or the designated series title) as the **very first line** inside the YAML frontmatter right under `---`. Placing `series:` at the top of frontmatter ensures DEV.to's API & background parser index the article into the correct series automatically.
-2. **Frontmatter Standards**: Always set `published: true`, `title:`, `description:`, and `tags:`.
+2. **Frontmatter Standards**: Always set `published: true`, `title:`, `description:`, and `tags:`. Do NOT include `cover_image:` or `canonical_url:` because DEV.to is the canonical publisher and host.
 3. **Body Subhead**: Always start the article body text (immediately after the closing `---` of frontmatter) with a Level 2 subhead (`## ...`).
 
 ---

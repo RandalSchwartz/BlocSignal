@@ -1,0 +1,77 @@
+name: 🐛 Bug Report
+description: Report a reproducible bug or unexpected behavior in BlocSignal.
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please fill out the sections below so we can investigate and resolve it quickly.
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected Package
+      description: Select the BlocSignal member package where the issue occurs.
+      options:
+        - bloc_signals (Core pure Dart)
+        - bloc_signals_flutter (Flutter bindings)
+        - bloc_signals_jaspr (Jaspr web)
+        - bloc_signals_riverpod (Riverpod interop)
+        - bloc_signals_hydrate (State persistence)
+        - bloc_signals_replay (Undo/Redo history)
+        - bloc_signals_otel (OpenTelemetry)
+        - bloc_signals_devtools (DevTools extension)
+        - bloc_signals_test (Testing utilities)
+        - bloc_signals_lint (Analyzer lints)
+        - website / benchmarks / examples
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe the unexpected behavior or failure mode...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce & Minimal Code Sample
+      description: |
+        Provide minimal Dart/Flutter code or step-by-step instructions to reproduce the issue.
+      placeholder: |
+        ```dart
+        // Minimal reproducible code snippet
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment & SDK Details
+      description: Please provide your Dart and Flutter environment versions.
+      placeholder: |
+        - Flutter version: 3.24.x
+        - Dart SDK version: 3.5.x / 3.13.x
+        - Target platform: iOS / Android / Web / macOS / Linux / Windows
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: Additional Context
+      description: Add any other context, stack traces, or screenshots about the problem here.

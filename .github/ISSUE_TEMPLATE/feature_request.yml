@@ -1,0 +1,56 @@
+name: ✨ Feature Request
+description: Propose a new feature, API enhancement, or architectural capability for BlocSignal.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new idea for BlocSignal! Please describe your proposal below.
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Target Package / Area
+      description: Select the package or component this feature request targets.
+      options:
+        - bloc_signals (Core pure Dart)
+        - bloc_signals_flutter (Flutter bindings)
+        - bloc_signals_jaspr (Jaspr web)
+        - bloc_signals_riverpod (Riverpod interop)
+        - bloc_signals_hydrate (State persistence)
+        - bloc_signals_replay (Undo/Redo history)
+        - bloc_signals_otel (OpenTelemetry)
+        - bloc_signals_devtools (DevTools extension)
+        - bloc_signals_test (Testing utilities)
+        - bloc_signals_lint (Analyzer lints)
+        - website / tooling / examples
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Motivation / Use Case
+      description: What problem or limitation does this feature solve?
+      placeholder: Describe the motivation or challenge in your application...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution & API Design
+      description: Describe the proposed API, signatures, or behavior.
+      placeholder: |
+        ```dart
+        // Proposed API or usage example
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternative Solutions Considered
+      description: Describe any alternative approaches or workarounds you have considered.

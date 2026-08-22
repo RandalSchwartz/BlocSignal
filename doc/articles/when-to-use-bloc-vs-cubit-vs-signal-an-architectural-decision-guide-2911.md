@@ -26,7 +26,7 @@ Here is the definitive rubric for picking the exact right container for your sta
 
 Rather than forcing every piece of state into the same mold, view your application as a 4-tier hierarchy:
 
-```
+```plaintext
 [Raw Signal / computed()]        --> Local widget micro-state & derived calculations
        │
 [CubitSignal<State>]             --> Feature domain logic & CRUD with direct method calls
@@ -100,7 +100,7 @@ Use `BlocSignal<Event, State>` when your feature requires **advanced event coord
   * `droppable()`: Discarding rapid duplicate button taps while a checkout payment transaction is in progress.
   * `sequential()`: Processing incoming chat messages or write operations in strict FIFO sequence.
 * **Multi-Step Wizards & Funnels**: Checkout pipelines, onboarding flows, and multi-step transaction wizards.
-* **OpenTelemetry & Compliance Tracing**: When every state transition must explicitly record the user action event that caused it (`onEvent` $\rightarrow$ `onTransition`).
+* **OpenTelemetry & Compliance Tracing**: When every state transition must explicitly record the user action event that caused it (`onEvent` → `onTransition`).
 
 ```dart
 sealed class SearchEvent {

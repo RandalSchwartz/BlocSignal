@@ -74,6 +74,7 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 - [devtools.md](plugins/bloc-signals/skills/bloc-signals/devtools.md), [lint.md](plugins/bloc-signals/skills/bloc-signals/lint.md), [otel.md](plugins/bloc-signals/skills/bloc-signals/otel.md): DevTools extensions, custom linter rules, and OpenTelemetry.
 
 ### Internal Maintainer Operations (`doc/internals/`)
-- [website_and_publications.md](doc/internals/website_and_publications.md): `blocsignal.dev` architecture, DEV.to publication sync tool, static compilation, local preview, and Firebase deployment.
+- [website_and_publications.md](doc/internals/website_and_publications.md): `blocsignal.dev` architecture, DEV.to publication sync tools, static compilation, local preview, and Firebase deployment.
 - [publishing_and_scoring.md](doc/internals/publishing_and_scoring.md): 160/160 pub.dev points checklist, explicit constructors for dartdoc, package examples, and README catalog tables.
 - [benchmarks_and_workflow.md](doc/internals/benchmarks_and_workflow.md): Benchmark microtask draining, batch UI updates, GitHub Actions script safety, and maintainer delivery protocols.
+- **Article Archive Maintenance (`doc/articles/`)**: Always maintain the local markdown archive in `doc/articles/` with every newly published DEV.to article by running `dart run tool/sync_all_articles.dart` to provide rich contextual knowledge for developers and AI agents.

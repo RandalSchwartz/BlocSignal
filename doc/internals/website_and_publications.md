@@ -55,14 +55,14 @@ When authoring code snippets and documentation in the website:
 
 ## 📰 3. DEV.to Articles & Publications Sync
 
-### Automated DEV.to Publications Sync Tool
-- **Script**: `website/tool/update_publications.dart`
-- **Function**: Queries the DEV.to public API (`https://dev.to/api/articles?username=randalschwartz&per_page=50`), extracts canonical article URLs, titles, descriptions, reading times, publish dates, and tags, and automatically regenerates `website/lib/src/pages/publications_page.dart`.
-- **Execution Command**:
-  ```bash
-  cd website && dart run tool/update_publications.dart
-  ```
-  Run this whenever new DEV.to articles or media are published.
+### Automated DEV.to Publications Sync Tools
+- **Publications Directory Sync**: `website/tool/update_publications.dart`
+  - Function: Queries the DEV.to public API (`https://dev.to/api/articles?username=randalschwartz&per_page=50`), extracts canonical article URLs, titles, descriptions, reading times, publish dates, and tags, and automatically regenerates `website/lib/src/pages/publications_page.dart`.
+  - Command: `cd website && dart run tool/update_publications.dart`
+- **Markdown Article Archive Sync**: `tool/sync_all_articles.dart`
+  - Function: Downloads and refreshes the full markdown bodies of all published DEV.to articles into `doc/articles/` to maintain a local repository knowledge base.
+  - Command: `dart run tool/sync_all_articles.dart`
+  Run these tools whenever new DEV.to articles or media are published.
 
 ### DEV.to Article Frontmatter & Series Protocol
 When generating or updating DEV.to draft articles:

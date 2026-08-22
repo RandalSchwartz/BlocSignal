@@ -18,6 +18,16 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title: 'When to Use Bloc vs. Cubit vs. Signal: An Architectural Decision Guide',
+    description: 'Stop guessing how to structure your Flutter state. Here is a definitive, 4-tier decision rubric comparing raw Signals, CubitSignal, BlocSignal, and persistence mixins.',
+    url: 'https://dev.to/gde/when-to-use-bloc-vs-cubit-vs-signal-an-architectural-decision-guide-2911',
+    date: 'Aug 22',
+    readTime: '4 min read',
+    category: 'State Machines',
+    type: 'Article',
+    tags: ["flutter", "dart", "architecture", "webdev"],
+  ),
+  PublicationItem(
     title: 'What I Get to Forget About Riverpod Now That I Have BlocSignal',
     description: 'The greatest upgrade in developer experience isn\'t what you have to learn—it\'s the mental gymnastics you get to unlearn. A respectful, deep-dive comparison into why shedding Riverpod\'s cognitive overhead brings joy back to Flutter architecture.',
     url: 'https://dev.to/gde/what-i-get-to-forget-about-riverpod-now-that-i-have-blocsignal-1be5',

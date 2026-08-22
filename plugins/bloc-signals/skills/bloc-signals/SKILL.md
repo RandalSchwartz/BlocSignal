@@ -32,6 +32,7 @@ installed Signals source before changing code.
 
 ## Route the task
 
+- Read [decision_matrix.md](decision_matrix.md) for the architectural decision rubric comparing raw Signals, CubitSignal, BlocSignal, Hydrate, and Replay.
 - Read [core.md](core.md) for event dispatch, equality, errors, closure, observers, and reactive
   ownership.
 - Read [flutter.md](flutter.md) for providers, builders, listeners, multi-listeners, consumers,

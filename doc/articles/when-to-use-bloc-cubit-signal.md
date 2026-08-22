@@ -100,7 +100,7 @@ Use `BlocSignal<Event, State>` when your feature requires **advanced event coord
   * `droppable()`: Discarding rapid duplicate button taps while a checkout payment transaction is in progress.
   * `sequential()`: Processing incoming chat messages or write operations in strict FIFO sequence.
 * **Multi-Step Wizards & Funnels**: Checkout pipelines, onboarding flows, and multi-step transaction wizards.
-* **OpenTelemetry & Compliance Tracing**: When every state transition must explicitly record the user action event that caused it (`onEvent` $\rightarrow$ `onTransition`).
+* **OpenTelemetry & Compliance Tracing**: When every state transition must explicitly record the user action event that caused it (`onEvent` → `onTransition`).
 
 ```dart
 sealed class SearchEvent {

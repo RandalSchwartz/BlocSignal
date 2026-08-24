@@ -140,10 +140,9 @@ Widget buildProfile(BuildContext context, ProfileState state) {
           dart313Code: '''
 typedef PaginationState = ({int page, int pageSize, bool hasMore});
 
-class PaginationCubit()
-    extends CubitSignal<PaginationState>(
-      initialState: (page: 1, pageSize: 20, hasMore: true),
-    ) {
+class PaginationCubit() extends CubitSignal<PaginationState> {
+  this : super(initialState: (page: 1, pageSize: 20, hasMore: true));
+
   void nextPage() {
     emit((
       page: stateValue.page + 1,
@@ -184,8 +183,9 @@ class PaginationCubit extends CubitSignal<PaginationState> {
           dart313Code: '''
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 
-class TodoCubit()
-    extends CubitSignal<IList<String>>(initialState: const <String>[].lock) {
+class TodoCubit() extends CubitSignal<IList<String>> {
+  this : super(initialState: const <String>[].lock);
+
   void addTodo(String item) => emit(stateValue.add(item));
   void removeTodo(int index) => emit(stateValue.removeAt(index));
 }''',
@@ -229,11 +229,12 @@ class TodoCubit extends CubitSignal<IList<String>> {
         const DocsCodeBlock(
           filename: 'custom_comparator_cubit.dart',
           dart313Code: '''
-class CaseInsensitiveCubit()
-    extends CubitSignal<String>(
-      initialState: '',
-      equals: (a, b) => a.toLowerCase() == b.toLowerCase(),
-    ) {
+class CaseInsensitiveCubit() extends CubitSignal<String> {
+  this : super(
+    initialState: '',
+    equals: (a, b) => a.toLowerCase() == b.toLowerCase(),
+  );
+
   void updateText(String text) => emit(text);
 }
 

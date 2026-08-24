@@ -109,8 +109,8 @@ final counter = 0.$;
 void increment() => counter.value++;
 
 // 2. CubitSignal with direct method
-class CounterCubit extends CubitSignal<int> {
-  CounterCubit() : super(initialState: 0);
+class CounterCubit() extends CubitSignal<int> {
+  this : super(initialState: 0);
 
   void increment() => emit(stateValue + 1);
 }
@@ -119,8 +119,8 @@ class CounterCubit extends CubitSignal<int> {
 sealed class const CounterEvent();
 final class const IncrementRequested() extends CounterEvent;
 
-class CounterBloc extends BlocSignal<CounterEvent, int> {
-  CounterBloc() : super(initialState: 0) {
+class CounterBloc() extends BlocSignal<CounterEvent, int> {
+  this : super(initialState: 0) {
     on<IncrementRequested>((event, emit) => emit(stateValue + 1));
   }
 }

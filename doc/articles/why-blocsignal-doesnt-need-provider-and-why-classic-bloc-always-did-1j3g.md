@@ -238,15 +238,16 @@ class Counter extends _$Counter {
 #### In Dart 3.5 (Baseline Syntax):
 ```dart
 class CounterCubit extends CubitSignal<int> {
-  CounterCubit([int initial = 0]) : super(initial);
-  void increment() => emit(state.value + 1); // ⚡ Synchronous, zero code-gen
+  CounterCubit([int initial = 0]) : super(initialState: initial);
+  void increment() => emit(stateValue + 1); // ⚡ Synchronous, zero code-gen
 }
 ```
 
 #### In Dart 3.13 (Modern Primary Constructor):
 ```dart
-class CounterCubit([int initial = 0]) extends CubitSignal<int>(initial) {
-  void increment() => emit(state.value + 1);
+class CounterCubit([int initial = 0]) extends CubitSignal<int> {
+  this : super(initialState: initial);
+  void increment() => emit(stateValue + 1);
 }
 ```
 

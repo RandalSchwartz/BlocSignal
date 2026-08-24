@@ -230,7 +230,9 @@ final class AuthInitial extends AuthState;
 final class AuthAuthenticated(final String username) extends AuthState;
 
 class AuthCubit(final AuthRepository repository)
-    extends CubitSignal<AuthState>(initialState: const AuthInitial()) {
+    extends CubitSignal<AuthState> {
+  this : super(initialState: const AuthInitial());
+
   Future<void> login(String username, String password) async {
     final success = await repository.authenticate(username, password);
     if (success) {
@@ -279,8 +281,8 @@ final class AuthLoginRequested(final String username, final String password)
 final class AuthLogoutRequested extends AuthEvent;
 
 class AuthBloc(final AuthRepository repository)
-    extends BlocSignal<AuthEvent, AuthState>(initialState: const AuthInitial()) {
-  this {
+    extends BlocSignal<AuthEvent, AuthState> {
+  this : super(initialState: const AuthInitial()) {
     on<AuthLoginRequested>((event, emit) async {
       final success = await repository.authenticate(event.username, event.password);
       if (success) {

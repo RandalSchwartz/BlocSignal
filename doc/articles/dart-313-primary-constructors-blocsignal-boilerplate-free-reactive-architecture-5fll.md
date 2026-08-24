@@ -93,7 +93,8 @@ class UserCubit(
   final UserRepository repository,
   final AnalyticsService analytics, {
   final UserState initial = const UserInitial(),
-}) extends CubitSignal<UserState>(initialState: initial) {
+}) extends CubitSignal<UserState> {
+  this : super(initialState: initial);
 
   Future<void> loadUser(String id) async {
     emit(const UserLoading());
@@ -121,10 +122,9 @@ One of the most powerful features in Dart 3.13 is the **`this` constructor body 
 class SearchBloc(
   final SearchRepository repository, {
   final SearchState initial = const SearchInitial(),
-}) extends BlocSignal<SearchEvent, SearchState>(initialState: initial) {
-
-  // Dart 3.13 primary constructor body
-  this {
+}) extends BlocSignal<SearchEvent, SearchState> {
+  // Dart 3.13 primary constructor body with super-initializer
+  this : super(initialState: initial) {
     on<SearchQueryChanged>(
       (event, emit) async {
         if (event.query.trim().isEmpty) return emit(const SearchEmpty());
@@ -149,9 +149,8 @@ The header cleanly declares the class contract, and the `this` block sets up the
 
 ```dart
 class CartSummaryCubit(final CartBloc cartBloc)
-    extends CubitSignal<CartSummary>(initialState: const CartSummary.zero()) {
-
-  this {
+    extends CubitSignal<CartSummary> {
+  this : super(initialState: const CartSummary.zero()) {
     // Automatically reacts to cartBloc.state signals synchronously:
     createEffect(() {
       final items = cartBloc.state.value.items;
@@ -169,13 +168,15 @@ class CartSummaryCubit(final CartBloc cartBloc)
 Dart 3.13 also introduces constructor shorthands, allowing you to define secondary named constructors using `new name()` without repeating the class name:
 
 ```dart
-class CounterCubit(var int count) extends CubitSignal<int>(initialState: count) {
+class CounterCubit(int count) extends CubitSignal<int> {
+  this : super(initialState: count);
+
   // Named constructor shorthands:
   new zero() : this(0);
   new seeded(int initial) : this(initial);
 
-  void increment() => emit(state + 1);
-  void decrement() => emit(state - 1);
+  void increment() => emit(stateValue + 1);
+  void decrement() => emit(stateValue - 1);
 }
 ```
 

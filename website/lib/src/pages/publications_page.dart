@@ -18,6 +18,16 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title: 'Bridging the AI Cutoff: Teaching Coding Agents Every Dart Feature from 1.0 to 3.14',
+    description: 'How to eliminate LLM training cutoff gaps in Dart and Flutter, modernize legacy codebases, and install open agent skills with a single command.',
+    url: 'https://dev.to/gde/bridging-the-ai-cutoff-teaching-coding-agents-every-dart-feature-from-10-to-314-3752',
+    date: 'Aug 22',
+    readTime: '2 min read',
+    category: 'Architecture',
+    type: 'Article',
+    tags: ["dart", "flutter", "ai", "programming"],
+  ),
+  PublicationItem(
     title: 'When to Use Bloc vs. Cubit vs. Signal: An Architectural Decision Guide',
     description: 'Stop guessing how to structure your Flutter state. Here is a definitive, 4-tier decision rubric comparing raw Signals, CubitSignal, BlocSignal, and persistence mixins.',
     url: 'https://dev.to/gde/when-to-use-bloc-vs-cubit-vs-signal-an-architectural-decision-guide-2911',

@@ -78,3 +78,12 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 - [publishing_and_scoring.md](doc/internals/publishing_and_scoring.md): 160/160 pub.dev points checklist, explicit constructors for dartdoc, package examples, and README catalog tables.
 - [benchmarks_and_workflow.md](doc/internals/benchmarks_and_workflow.md): Benchmark microtask draining, batch UI updates, GitHub Actions script safety, and maintainer delivery protocols.
 - **Article Archive Maintenance (`doc/articles/`)**: Always maintain the local markdown archive in `doc/articles/` with every newly published DEV.to article by running `dart run tool/sync_all_articles.dart` to provide rich contextual knowledge for developers and AI agents.
+
+---
+
+## 🩹 Repository Scars & Crash Defenses
+
+### 🩹 Scar: Dart 3.13 Primary Constructor Super-Invocation Trap
+- **The Wound**: Documentation code samples placed constructor invocations directly in `extends` clauses (such as `extends CubitSignal<int>(initialState: 0)`) or wrote `this() : super(...)`, resulting in syntax errors for developers copying documentation samples.
+- **The Trap / Suboptimal Local Minimum**: Writing code samples as unvalidated string literals in documentation components without automated compiler or AST/regex validation.
+- **The Permanent Reflex**: In Dart 3.13, an `extends` clause only accepts a type name; super-initialization must use in-body `this : super(...)` or header `super.param`. All documentation code blocks must be protected by automated component-scanning unit tests in CI (`website/test/docs_code_snippets_syntax_test.dart`).

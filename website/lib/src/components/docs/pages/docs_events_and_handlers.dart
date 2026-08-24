@@ -69,8 +69,8 @@ sealed class CounterEvent;
 final class IncrementPressed extends CounterEvent;
 final class DecrementPressed extends CounterEvent;
 
-class CounterBloc() extends BlocSignal<CounterEvent, int>(initialState: 0) {
-  this {
+class CounterBloc() extends BlocSignal<CounterEvent, int> {
+  this : super(initialState: 0) {
     on<IncrementPressed>((event, emit) => emit(stateValue + 1));
     on<DecrementPressed>((event, emit) => emit(stateValue - 1));
   }
@@ -140,10 +140,8 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
           filename: 'async_event_handling.dart',
           dart313Code: '''
 class SearchBloc(final SearchService service)
-    extends BlocSignal<SearchEvent, SearchState>(
-      initialState: const SearchInitial(),
-    ) {
-  this {
+    extends BlocSignal<SearchEvent, SearchState> {
+  this : super(initialState: const SearchInitial()) {
     on<SearchQuerySubmitted>((event, emit) async {
       emit(const SearchLoading());
       try {

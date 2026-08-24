@@ -86,7 +86,7 @@ class CanvasState {
 }
 
 class DrawingCubit() extends ReplayCubit<CanvasState> {
-  this() : super(initialState: const CanvasState(paths: []));
+  this : super(initialState: const CanvasState(paths: []));
 
   void addPath(String path) {
     emit(CanvasState(paths: [...stateValue.paths, path]));

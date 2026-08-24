@@ -69,7 +69,9 @@ class const DocsQuickstartPage({super.key}) extends StatelessComponent {
           dart313Code: '''
 import 'package:bloc_signals/bloc_signals.dart';
 
-class CounterCubit() extends CubitSignal<int>(initialState: 0) {
+class CounterCubit() extends CubitSignal<int> {
+  this : super(initialState: 0);
+
   void increment() => emit(stateValue + 1);
   void decrement() => emit(stateValue - 1);
 }
@@ -106,8 +108,8 @@ sealed class CounterEvent;
 final class Increment extends CounterEvent;
 final class Decrement extends CounterEvent;
 
-class CounterBloc() extends BlocSignal<CounterEvent, int>(initialState: 0) {
-  this {
+class CounterBloc() extends BlocSignal<CounterEvent, int> {
+  this : super(initialState: 0) {
     on<Increment>((event, emit) => emit(stateValue + 1));
     on<Decrement>((event, emit) => emit(stateValue - 1));
   }

@@ -122,7 +122,7 @@ import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
 enum AppTheme { light, dark, system }
 
 class ThemeCubit() extends HydratedCubitSignal<AppTheme> {
-  this() : super(initialState: AppTheme.system);
+  this : super(initialState: AppTheme.system);
 
   void toggleTheme() {
     emit(stateValue == AppTheme.dark ? AppTheme.light : AppTheme.dark);

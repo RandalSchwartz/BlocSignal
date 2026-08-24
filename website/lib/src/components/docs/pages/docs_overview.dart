@@ -99,7 +99,9 @@ class const DocsOverviewPage({super.key}) extends StatelessComponent {
           dart313Code: '''
 import 'package:bloc_signals/bloc_signals.dart';
 
-class CounterCubit() extends CubitSignal<int>(initialState: 0) {
+class CounterCubit() extends CubitSignal<int> {
+  this : super(initialState: 0);
+
   void increment() => emit(stateValue + 1);
 }
 

@@ -87,3 +87,8 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 - **The Wound**: Documentation code samples placed constructor invocations directly in `extends` clauses (such as `extends CubitSignal<int>(initialState: 0)`) or wrote `this() : super(...)`, resulting in syntax errors for developers copying documentation samples.
 - **The Trap / Suboptimal Local Minimum**: Writing code samples as unvalidated string literals in documentation components without automated compiler or AST/regex validation.
 - **The Permanent Reflex**: In Dart 3.13, an `extends` clause only accepts a type name; super-initialization must use in-body `this : super(...)` or header `super.param`. All documentation code blocks must be protected by automated component-scanning unit tests in CI (`website/test/docs_code_snippets_syntax_test.dart`).
+
+### 🩹 Scar: context.watch vs State-Driven UI Rebuilds in Documentation Samples
+- **The Wound**: Documentation code samples or recipes used `final cubit = context.watch<T>()` to read state or signal values in `StatelessWidget.build()`. In `bloc_signals_flutter`, `context.watch` tracks provider container instance swapping only, not state emissions, resulting in forms and views failing to rebuild when state changes.
+- **The Trap / Suboptimal Local Minimum**: Conflating `context.watch` in BlocSignal with classic `flutter_bloc`'s stream-backed inherited widget rebuilds.
+- **The Permanent Reflex**: In documentation snippets and client UI, always retrieve state containers via `context.read<T>()` and bind reactive UI rebuilds via `BlocSignalBuilder<B, S>` or `context.select<B, R>((bloc) => ...)`. Guarded continuously by automated CI component-scanning unit tests in `website/test/docs_code_snippets_syntax_test.dart`.

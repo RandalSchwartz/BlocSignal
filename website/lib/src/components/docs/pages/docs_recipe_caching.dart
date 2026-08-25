@@ -164,31 +164,65 @@ extension NewsFeedDerived on NewsFeedCubit {
         ]),
         const DocsCodeBlock(
           title: 'lib/news_feed_view.dart',
-          language: 'dart',
-          code: '''
+          dart313Code: '''
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:flutter/material.dart';
+import 'news_feed_cubit.dart';
 
 class NewsFeedView extends StatelessWidget {
   const NewsFeedView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.watch<NewsFeedCubit>();
-    final cache = cubit.stateValue;
+    final cubit = context.read<NewsFeedCubit>();
 
-    if (cache == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    return BlocSignalBuilder<NewsFeedCubit, CachedData<List<String>>?>(
+      builder: (context, cache) {
+        if (cache == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return RefreshIndicator(
-      onRefresh: () => cubit.loadFeed(forceRefresh: true),
-      child: ListView.builder(
-        itemCount: cache.data.length,
-        itemBuilder: (context, index) => ListTile(
-          title: Text(cache.data[index]),
-        ),
-      ),
+        return RefreshIndicator(
+          onRefresh: () => cubit.loadFeed(forceRefresh: true),
+          child: ListView.builder(
+            itemCount: cache.data.length,
+            itemBuilder: (context, index) => ListTile(
+              title: Text(cache.data[index]),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}''',
+          dart35Code: '''
+import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
+import 'package:flutter/material.dart';
+import 'news_feed_cubit.dart';
+
+class NewsFeedView extends StatelessWidget {
+  const NewsFeedView({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<NewsFeedCubit>();
+
+    return BlocSignalBuilder<NewsFeedCubit, CachedData<List<String>>?>(
+      builder: (context, cache) {
+        if (cache == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return RefreshIndicator(
+          onRefresh: () => cubit.loadFeed(forceRefresh: true),
+          child: ListView.builder(
+            itemCount: cache.data.length,
+            itemBuilder: (context, index) => ListTile(
+              title: Text(cache.data[index]),
+            ),
+          ),
+        );
+      },
     );
   }
 }''',

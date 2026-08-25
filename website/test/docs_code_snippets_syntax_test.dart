@@ -112,5 +112,61 @@ void main() {
             '${violations.join('\n')}',
       );
     });
+
+    test('no recipe or package documentation page incorrectly uses context.watch to read state/signals in UI views', () {
+      final blocks = <DocsCodeBlock>[];
+      for (final category in DocsRegistry.categories) {
+        for (final section in category.sections) {
+          final pageComponent = section.builder();
+          _collectCodeBlocks(pageComponent, blocks);
+        }
+      }
+
+      final invalidWatchUsageRegex = RegExp(
+        r'context\.watch<[A-Za-z0-9_]+>\(\)(?:\.stateValue|\.state|\.canUndo|\.canRedo|\.emailError|\.passwordError|\.isValid)?',
+      );
+
+      final violations = <String>[];
+
+      for (final block in blocks) {
+        final title = block.displayTitle ?? 'Untitled';
+        // Skip docs_flutter_context and docs_migration_bloc which explicitly document context.watch mechanics and comparison
+        if (title.contains('context_watch') ||
+            title.contains('context.watch') ||
+            title.contains('room_view') ||
+            title.contains('Migration')) {
+          continue;
+        }
+
+        for (final (label, snippet) in [
+          ('dart313Code', block.dart313Code),
+          ('dart35Code', block.dart35Code),
+          ('code', block.code),
+        ]) {
+          if (snippet == null) continue;
+          final lines = snippet.split('\n');
+          for (var i = 0; i < lines.length; i++) {
+            final line = lines[i];
+            if (invalidWatchUsageRegex.hasMatch(line) &&
+                (title.contains('Recipe') ||
+                    title.contains('form') ||
+                    title.contains('caching') ||
+                    title.contains('toolbar') ||
+                    title.contains('view') ||
+                    title.contains('Replay'))) {
+              violations.add('$title [$label line ${i + 1}]: $line');
+            }
+          }
+        }
+      }
+
+      expect(
+        violations,
+        isEmpty,
+        reason:
+            'Found incorrect context.watch usage in documentation recipe/feature snippets:\n'
+            '${violations.join('\n')}',
+      );
+    });
   });
 }

@@ -100,27 +100,57 @@ class DrawingCubit() extends ReplayCubit<CanvasState> {
         ]),
         const DocsCodeBlock(
           title: 'lib/canvas_toolbar.dart',
-          language: 'dart',
-          code: '''
+          dart313Code: '''
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:flutter/material.dart';
+import 'drawing_cubit.dart';
 
 class CanvasToolbar extends StatelessWidget {
   const CanvasToolbar({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final cubit = context.watch<DrawingCubit>();
+    final cubit = context.read<DrawingCubit>();
+    final canUndo = context.select<DrawingCubit, bool>((c) => c.canUndo);
+    final canRedo = context.select<DrawingCubit, bool>((c) => c.canRedo);
 
     return Row(
       children: [
         IconButton(
           icon: const Icon(Icons.undo),
-          onPressed: cubit.canUndo ? cubit.undo : null,
+          onPressed: canUndo ? cubit.undo : null,
         ),
         IconButton(
           icon: const Icon(Icons.redo),
-          onPressed: cubit.canRedo ? cubit.redo : null,
+          onPressed: canRedo ? cubit.redo : null,
+        ),
+      ],
+    );
+  }
+}''',
+          dart35Code: '''
+import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
+import 'package:flutter/material.dart';
+import 'drawing_cubit.dart';
+
+class CanvasToolbar extends StatelessWidget {
+  const CanvasToolbar({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final cubit = context.read<DrawingCubit>();
+    final canUndo = context.select<DrawingCubit, bool>((c) => c.canUndo);
+    final canRedo = context.select<DrawingCubit, bool>((c) => c.canRedo);
+
+    return Row(
+      children: [
+        IconButton(
+          icon: const Icon(Icons.undo),
+          onPressed: canUndo ? cubit.undo : null,
+        ),
+        IconButton(
+          icon: const Icon(Icons.redo),
+          onPressed: canRedo ? cubit.redo : null,
         ),
       ],
     );

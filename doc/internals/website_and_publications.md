@@ -85,5 +85,5 @@ When generating or updating DEV.to draft articles:
    The user runs `(cd website/build/www && dhttpd -p 0)` in their AGY IDE terminal window to serve `website/build/www/` on a random port for live visual testing without interfering with agent test runners. Always run `dart run website/tool/build_static.dart` after updating website code so the user's IDE preview window reflects the latest build.
 5. **Deploy to Firebase Hosting**:
    ```bash
-   npx -y firebase-tools deploy --only hosting
+   firebase deploy --only hosting
    ```

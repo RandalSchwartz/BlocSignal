@@ -87,7 +87,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals')],
                   ),
                 ]),
-                td([Component.text('^1.0.1')]),
+                td([Component.text('^1.1.0')]),
                 td([
                   Component.text(
                     'Core Pure Dart state containers (BlocSignal, CubitSignal, Transformers, Observers).',

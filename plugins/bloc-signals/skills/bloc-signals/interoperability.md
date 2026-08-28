@@ -10,9 +10,9 @@ Interoperability allows features built with different state management tools to 
 
 | Ecosystem / Primitive | From Target ➔ `BlocSignal` | From `BlocSignal` ➔ Target | Package |
 | :--- | :--- | :--- | :--- |
-| **Dart Future (Raw Value $T$)** | `future.toBlocSignal(initialState: ...)` | `blocSignal.stream.first` | `bloc_signals` |
+| **Dart Future (Raw Value `T`)** | `future.toBlocSignal(initialState: ...)` | `blocSignal.stream.first` | `bloc_signals` |
 | **Dart Future (AsyncState)** | `future.toAsyncBlocSignal()` | `blocSignal.stream.first` | `bloc_signals` |
-| **Dart Stream (Raw Value $T$)** | `stream.toBlocSignal(initialState: ...)` | `blocSignal.toStream()` / `blocSignal.stream` | `bloc_signals` |
+| **Dart Stream (Raw Value `T`)** | `stream.toBlocSignal(initialState: ...)` | `blocSignal.toStream()` / `blocSignal.stream` | `bloc_signals` |
 | **Dart Stream (AsyncState)** | `stream.toAsyncBlocSignal()` | `blocSignal.toStream()` / `blocSignal.stream` | `bloc_signals` |
 | **Signals Primitives** | `signal.toBlocSignal()` / `value.$.toBlocSignal()` | Direct `blocSignal.state` signal | `bloc_signals` |
 | **Signals Computed** | `computedSignal.toBlocSignal()` | Direct `blocSignal.state` signal | `bloc_signals` |

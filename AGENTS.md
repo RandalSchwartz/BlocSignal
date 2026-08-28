@@ -92,3 +92,14 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 - **The Wound**: Documentation code samples or recipes used `final cubit = context.watch<T>()` to read state or signal values in `StatelessWidget.build()`. In `bloc_signals_flutter`, `context.watch` tracks provider container instance swapping only, not state emissions, resulting in forms and views failing to rebuild when state changes.
 - **The Trap / Suboptimal Local Minimum**: Conflating `context.watch` in BlocSignal with classic `flutter_bloc`'s stream-backed inherited widget rebuilds.
 - **The Permanent Reflex**: In documentation snippets and client UI, always retrieve state containers via `context.read<T>()` and bind reactive UI rebuilds via `BlocSignalBuilder<B, S>` or `context.select<B, R>((bloc) => ...)`. Guarded continuously by automated CI component-scanning unit tests in `website/test/docs_code_snippets_syntax_test.dart`.
+
+### 🩹 Scar: Flutter Pub vs Dart Pub in Monorepo Workspace Publishing
+- **The Wound**: Running `dart pub publish` or `dart pub publish --dry-run` in member packages within a Dart workspace that contains Flutter packages (such as `riverpod_marvel_example` or `bloc_signals_flutter`) fails with `Because riverpod_marvel_example requires the Flutter SDK, version solving failed. Flutter users should use flutter pub instead of dart pub.`
+- **The Trap / Suboptimal Local Minimum**: Assuming pure Dart member packages can be validated or published via `dart pub` when part of a mixed Dart/Flutter workspace.
+- **The Permanent Reflex**: In Dart workspaces containing Flutter packages or examples, always execute `flutter pub publish [--dry-run]` rather than `dart pub publish` across all member packages.
+
+### 🩹 Scar: Symmetrical Dual-Track Async Adapters & AsyncState Projection
+- **The Wound**: Asymmetric conversion APIs where `Stream` supported raw `.toBlocSignal(initialState:)` while `Future` only supported `futureSignal`, causing confusion between raw values (`T`) and sealed state wrappers (`AsyncState<T>`), leading to messy widget-level `FutureBuilder`/`StreamBuilder` workarounds.
+- **The Trap / Suboptimal Local Minimum**: Squeezing async types into a single rigid return type rather than providing clear, symmetric dual tracks for raw domain values vs. loading/error states.
+- **The Permanent Reflex**: Enforce the dual-track invariant across all asynchronous sources: `.toBlocSignal(required initialState:)` strictly yields `BlocSignalBase<T>` (raw domain values), while `.toAsyncBlocSignal()` strictly yields `BlocSignalBase<AsyncState<T>>` (sealed async states starting with `AsyncLoading`).
+

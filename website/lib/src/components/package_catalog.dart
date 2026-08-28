@@ -17,7 +17,7 @@ class const PackageItem({
 const List<PackageItem> _allPackages = [
   PackageItem(
     name: 'bloc_signals',
-    version: '1.0.1',
+    version: '1.1.0',
     desc: 'Core pure Dart reactive state container bridging BLoC semantics with Preact Signals v7 primitives.',
     icon: '⚡',
     category: 'Core & UI',

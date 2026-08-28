@@ -21,6 +21,14 @@ When publishing packages to pub.dev:
 ### D. Explicit Transitive Dependency Declaration
 - Any package directly imported in `lib/` (even if imported only for a type annotation like `SignalEquality` or re-exported transitively) MUST be explicitly listed under `dependencies:` in `pubspec.yaml`. Otherwise, `flutter pub publish` validation fails with missing dependency errors.
 
+### E. Mandatory `flutter pub publish` over `dart pub publish`
+- **Flutter SDK Workspace Context**: In monorepo workspaces containing Flutter member packages (for example `bloc_signals_flutter`, `bloc_signals_devtools`) or Flutter example packages (for example `riverpod_marvel_example`), running `dart pub publish` or `dart pub publish --dry-run` fails during dependency version solving with:
+  ```
+  Because riverpod_marvel_example requires the Flutter SDK, version solving failed.
+  Flutter users should use `flutter pub` instead of `dart pub`.
+  ```
+- **Universal Publishing Rule**: Always invoke `flutter pub publish [--dry-run]` across all workspace packages, including pure Dart packages (`bloc_signals`, `bloc_signals_hydrate`, etc.).
+
 ---
 
 ## 📋 2. Monorepo Documentation Consistency
@@ -46,8 +54,8 @@ Ensure all 10 workspace package `README.md` files feature the exact same uniform
 
 ## 🚀 3. Pre-Publishing Checklist
 
-Before running `flutter pub publish` or `dart pub publish` on any member package:
+Before running `flutter pub publish` on any member package:
 1. **Workspace Tests**: Run `dart run tool/run_workspace_tests.dart` (must pass 100%).
 2. **Coverage**: Ensure 100% line coverage across modified packages.
 3. **Format**: Run `dart format .`.
-4. **Dry Run**: Run `dart pub publish --dry-run` in the package root to check for any scoring or packaging warnings.
+4. **Dry Run**: Run `flutter pub publish --dry-run` in the package root to check for any scoring or packaging warnings.

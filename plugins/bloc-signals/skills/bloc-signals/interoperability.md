@@ -6,39 +6,84 @@ Interoperability allows features built with different state management tools to 
 
 ---
 
-## 🏗️ The Interoperability Matrix
+## 🏗️ The Universal Interoperability Matrix
 
-| Ecosystem | From Target ➔ `BlocSignal` | From `BlocSignal` ➔ Target | Package |
+| Ecosystem / Primitive | From Target ➔ `BlocSignal` | From `BlocSignal` ➔ Target | Package |
 | :--- | :--- | :--- | :--- |
-| **BLoC** (Stream) | `StreamBlocSignal(stream)` | `blocSignal.toStream()` | `bloc_signals` |
-| **Redux** | `StreamBlocSignal(store.onChange, initialState: store.state)` | `blocSignal.toStream()` | `bloc_signals` |
+| **Dart Future (Raw Value $T$)** | `future.toBlocSignal(initialState: ...)` | `blocSignal.stream.first` | `bloc_signals` |
+| **Dart Future (AsyncState)** | `future.toAsyncBlocSignal()` | `blocSignal.stream.first` | `bloc_signals` |
+| **Dart Stream (Raw Value $T$)** | `stream.toBlocSignal(initialState: ...)` | `blocSignal.toStream()` / `blocSignal.stream` | `bloc_signals` |
+| **Dart Stream (AsyncState)** | `stream.toAsyncBlocSignal()` | `blocSignal.toStream()` / `blocSignal.stream` | `bloc_signals` |
+| **Signals Primitives** | `signal.toBlocSignal()` / `value.$.toBlocSignal()` | Direct `blocSignal.state` signal | `bloc_signals` |
+| **Signals Computed** | `computedSignal.toBlocSignal()` | Direct `blocSignal.state` signal | `bloc_signals` |
+| **Signals Async / StreamSignal** | `streamSignal.toBlocSignal()` | Direct `blocSignal.state` signal | `bloc_signals` |
+| **BLoC / Redux (Stream)** | `StreamBlocSignal(stream, initialState: ...)` | `blocSignal.toStream()` | `bloc_signals` |
 | **Riverpod** | `provider.toBlocSignal(ref)` | `blocSignal.toProvider()` | `bloc_signals_riverpod` |
-| **Provider** (Listenable) | `listenable.toBlocSignal()` | `blocSignal.toValueListenable()` | `bloc_signals_flutter` |
+| **Provider (Listenable)** | `listenable.toBlocSignal()` | `blocSignal.toValueListenable()` | `bloc_signals_flutter` |
 | **Riverpod Async** | `asyncValue.toAsyncState()` | `asyncState.toAsyncValue()` | `bloc_signals_riverpod` |
 | **Flutter Hooks** | `useSignal(initial)` / `useSignalValue(signal)` | Direct `blocSignal.state` consumption | `signals_hooks` |
 
 
 > [!TIP]
 > **Custom Equality Support Across All Bridges**:
-> All `.toBlocSignal()` extensions and adapter constructors (`StreamBlocSignal`, `ListenableBlocSignal`, `RiverpodBlocSignal`) accept an optional `equals: (prev, next) => ...` comparator parameter so you can customize state de-duplication rules (such as identity comparison `identical(prev, next)`) when bridging external state containers into `BlocSignal`.
+> All `.toBlocSignal()` and `.toAsyncBlocSignal()` extensions and adapter constructors (`SignalBlocSignal`, `FutureBlocSignal`, `StreamBlocSignal`, `ListenableBlocSignal`, `RiverpodBlocSignal`) accept an optional `equals: (prev, next) => ...` comparator parameter so you can customize state de-duplication rules (such as identity comparison `identical(prev, next)`) when bridging external state containers into `BlocSignal`.
 
 ---
 
-## 1. BLoC, Redux & Stream Interoperability (`package:bloc_signals`)
+## 1. Signals & Future Interoperability (`package:bloc_signals`)
 
-Bridge classic stream-based BLoC components, Redux stores, RxDart observables, or `StreamBuilder` widgets:
+Adapt raw signals, computed expressions, and asynchronous futures directly into synchronous `BlocSignalBase` containers:
+
+### Signal & Computed ➔ `BlocSignal`
+```dart
+// 1. Raw Signal -> BlocSignal
+final countSignal = signal<int>(0);
+final countBloc = countSignal.toBlocSignal();
+
+// 2. Computed Signal -> BlocSignal
+final firstName = signal('Grace');
+final lastName = signal('Hopper');
+final fullNameBloc = computed(() => '${firstName()} ${lastName()}').toBlocSignal();
+
+// 3. Lifted Primitive (.$) -> BlocSignal
+final priceBloc = 49.99.$.toBlocSignal();
+```
+
+### Future ➔ `BlocSignal` (Pushing Async to the Boundary)
+```dart
+// 1. Raw State: Converts Future<T> to BlocSignalBase<T> with required initialState
+final userBloc = api.fetchUser(id).toBlocSignal(initialState: User.anonymous());
+
+// 2. Async State: Converts Future<T> to BlocSignalBase<AsyncState<T>>
+final userProfileBloc = api.fetchUserProfile(userId).toAsyncBlocSignal();
+
+// UI consumes the synchronous state transitions via BlocSignalBuilder:
+BlocSignalBuilder(
+  bloc: userProfileBloc,
+  builder: (context, state) => switch (state) {
+    AsyncData(:final value) => ProfileView(user: value),
+    AsyncLoading() => const ShimmerLoading(),
+    AsyncError(:final error) => ErrorCard(error: error),
+  },
+);
+```
+
+---
+
+## 2. BLoC, Redux & Stream Interoperability (`package:bloc_signals`)
+
+Bridge classic stream-based BLoC components, Redux stores, RxDart observables, or Stream architectures:
 
 ### Stream / Redux ➔ `BlocSignal`
 ```dart
-// Standard Stream / RxDart -> BlocSignal
-final streamBlocSignal = StreamBlocSignal<int>(
-  stream: legacyStream,
-  initialState: 0,
-);
+// 1. Raw State: Standard Stream / RxDart -> BlocSignalBase<T>
+final streamBlocSignal = stream.toBlocSignal(initialState: 0);
 
-// Redux Store -> BlocSignal
-final reduxBlocSignal = StreamBlocSignal<AppState>(
-  store.onChange,
+// 2. Async State: Stream -> BlocSignalBase<AsyncState<T>>
+final asyncStreamBloc = stream.toAsyncBlocSignal();
+
+// 3. Redux Store -> BlocSignal
+final reduxBlocSignal = store.onChange.toBlocSignal(
   initialState: store.state,
 );
 ```
@@ -130,4 +175,79 @@ final riverpodProvider = cubit.toProvider();
 ```dart
 final cubit = riverpodProvider.toBlocSignal(ref);
 final ValueListenable<int> listenable = cubit.toValueListenable();
+```
+
+---
+
+## 🛡️ Migrating Away from FutureBuilder & StreamBuilder (Quarantining Async at the Perimeter)
+
+Embedding `FutureBuilder` or `StreamBuilder` directly inside widget `build()` methods introduces raw execution time, socket lifecycle, and accidental network refetches on every rebuild frame into the presentation layer.
+
+With `BlocSignal`, asynchronous operations are quarantined at the architectural perimeter:
+
+### 1. Migrating `FutureBuilder<T>` ➔ `Future.toAsyncBlocSignal()`
+
+```dart
+// ❌ ANTI-PATTERN: Raw Future instantiated inside Flutter build()
+class LegacyProfilePage extends StatelessWidget {
+  const LegacyProfilePage({super.key, required this.userId});
+  final String userId;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<UserProfile>(
+      future: api.fetchUserProfile(userId), // ⚠️ DANGER: Re-invoked on every rebuild
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const CircularProgressIndicator();
+        }
+        if (snapshot.hasError) {
+          return Text('Error: ${snapshot.error}');
+        }
+        return ProfileContent(profile: snapshot.data!);
+      },
+    );
+  }
+}
+
+// ✅ BLOCSIGNAL PATTERN: Synchronous projection of asynchronous state
+class ModernProfilePage extends StatelessWidget {
+  const ModernProfilePage({super.key, required this.userId});
+  final String userId;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => api.fetchUserProfile(userId).toAsyncBlocSignal(),
+      child: BlocSignalBuilder<BlocSignalBase<AsyncState<UserProfile>>, AsyncState<UserProfile>>(
+        builder: (context, state) => switch (state) {
+          AsyncData(:final value) => ProfileContent(profile: value),
+          AsyncLoading() => const CircularProgressIndicator(),
+          AsyncError(:final error) => Text('Error: $error'),
+        },
+      ),
+    );
+  }
+}
+```
+
+### 2. Migrating `StreamBuilder<T>` ➔ `Stream.toBlocSignal()`
+
+```dart
+// ❌ ANTI-PATTERN: Stream subscription lifecycle entangled with widget tree
+StreamBuilder<int>(
+  stream: sensorService.temperatureStream,
+  builder: (context, snapshot) {
+    if (!snapshot.hasData) return const CircularProgressIndicator();
+    return Text('${snapshot.data}°C');
+  },
+);
+
+// ✅ BLOCSIGNAL PATTERN: Clean synchronous container with automatic de-duplication
+final tempBloc = sensorService.temperatureStream.toBlocSignal(initialState: 0);
+
+BlocSignalBuilder(
+  bloc: tempBloc,
+  builder: (context, temp) => Text('$temp°C'),
+);
 ```

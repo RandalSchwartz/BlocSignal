@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_signals/bloc_signals.dart';
+import 'package:signals_core/signals_core.dart';
 import 'package:test/test.dart';
 
 class _TestCubit extends CubitSignal<int> {
@@ -135,6 +136,66 @@ void main() {
       await blocSignal.close();
       expect(isCancelled, isTrue);
 
+      await controller.close();
+    });
+  });
+
+  group('StreamBlocSignalExtension (.toAsyncBlocSignal())', () {
+    test(
+      'initializes in AsyncLoading and emits AsyncData upon stream emission',
+      () async {
+        final controller = StreamController<int>();
+        final blocSignal = controller.stream.toAsyncBlocSignal();
+
+        expect(blocSignal.stateValue, isA<AsyncLoading<int>>());
+
+        controller.add(42);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(blocSignal.stateValue, isA<AsyncData<int>>());
+        expect((blocSignal.stateValue as AsyncData<int>).value, equals(42));
+
+        controller.add(99);
+        await Future<void>.delayed(Duration.zero);
+        expect((blocSignal.stateValue as AsyncData<int>).value, equals(99));
+
+        await blocSignal.close();
+        await controller.close();
+      },
+    );
+
+    test('transitions to AsyncError upon stream error', () async {
+      final controller = StreamController<String>();
+      final blocSignal = controller.stream.toAsyncBlocSignal();
+
+      expect(blocSignal.stateValue, isA<AsyncLoading<String>>());
+
+      final exception = Exception('Stream failure');
+      controller.addError(exception);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(blocSignal.stateValue, isA<AsyncError<String>>());
+      expect(
+        (blocSignal.stateValue as AsyncError<String>).error,
+        equals(exception),
+      );
+
+      await blocSignal.close();
+      await controller.close();
+    });
+
+    test('supports initialValue parameter', () async {
+      final controller = StreamController<int>();
+      final blocSignal = controller.stream.toAsyncBlocSignal(initialValue: 10);
+
+      expect(blocSignal.stateValue, isA<AsyncData<int>>());
+      expect((blocSignal.stateValue as AsyncData<int>).value, equals(10));
+
+      controller.add(20);
+      await Future<void>.delayed(Duration.zero);
+      expect((blocSignal.stateValue as AsyncData<int>).value, equals(20));
+
+      await blocSignal.close();
       await controller.close();
     });
   });

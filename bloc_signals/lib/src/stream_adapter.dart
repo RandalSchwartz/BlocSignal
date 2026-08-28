@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_signals/src/bloc_signals_base.dart';
+import 'package:bloc_signals/src/signal_adapter.dart';
 import 'package:signals_core/signals_core.dart';
 
 /// Extension methods on [BlocSignalBase] to convert reactive state emissions
@@ -20,7 +21,7 @@ extension BlocSignalStreamExtension<StateType> on BlocSignalBase<StateType> {
 }
 
 /// A reactive state container wrapper that adapts an underlying Dart [Stream]
-/// (e.g. legacy BLoC, Cubit, or RxDart stream) into a [BlocSignalBase].
+/// (for example, legacy BLoC, Cubit, or RxDart stream) into a [BlocSignalBase].
 ///
 /// Example:
 /// ```dart
@@ -63,7 +64,7 @@ class StreamBlocSignal<StateType> extends CubitSignal<StateType> {
 /// Extension methods on [Stream] to create [BlocSignalBase] containers.
 extension StreamBlocSignalExtension<StateType> on Stream<StateType> {
   /// Adapts this Dart [Stream] into a [BlocSignalBase] state container
-  /// with [initialState].
+  /// holding raw state values with [initialState].
   ///
   /// Example:
   /// ```dart
@@ -77,6 +78,41 @@ extension StreamBlocSignalExtension<StateType> on Stream<StateType> {
     return StreamBlocSignal<StateType>(
       this,
       initialState: initialState,
+      equals: equals,
+      options: options,
+    );
+  }
+
+  /// Adapts this Dart [Stream] into a [SignalBlocSignal<AsyncState<StateType>>]
+  /// container using an underlying [StreamSignal].
+  ///
+  /// The returned container's state starts as [AsyncLoading] (or
+  /// [AsyncData] if [initialValue] is supplied), and transitions to
+  /// [AsyncData] or [AsyncError] as stream events arrive.
+  ///
+  /// Example:
+  /// ```dart
+  /// final sensorBloc = sensorStream.toAsyncBlocSignal();
+  /// ```
+  SignalBlocSignal<AsyncState<StateType>> toAsyncBlocSignal({
+    StateType? initialValue,
+    bool cancelOnError = false,
+    bool lazy = true,
+    List<ReadonlySignal<dynamic>> dependencies = const [],
+    AsyncSignalOptions<StateType>? asyncSignalOptions,
+    bool Function(
+      AsyncState<StateType> previous,
+      AsyncState<StateType> current,
+    )? equals,
+    SignalOptions<AsyncState<StateType>>? options,
+  }) {
+    return toStreamSignal(
+      initialValue: initialValue,
+      cancelOnError: cancelOnError,
+      lazy: lazy,
+      dependencies: dependencies,
+      options: asyncSignalOptions,
+    ).toBlocSignal(
       equals: equals,
       options: options,
     );

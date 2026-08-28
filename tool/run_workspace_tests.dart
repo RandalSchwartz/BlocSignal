@@ -23,10 +23,11 @@ void main(List<String> args) {
   var failed = false;
 
   for (final pkg in packages) {
-    final isFlutter =
-        pkg == 'bloc_signals_flutter' || pkg == 'bloc_signals_devtools';
-    final executable = isFlutter ? 'flutter' : 'dart';
-    final commandArgs = ['test', ...args];
+    final isWebsite = pkg == 'website';
+    final executable = 'flutter';
+    final commandArgs = isWebsite
+        ? ['pub', 'run', 'test', '-p', 'chrome', ...args]
+        : ['test', ...args];
 
     print('➡️ Running tests in $pkg ($executable test ${args.join(' ')})');
 

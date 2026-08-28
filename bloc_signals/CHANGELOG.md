@@ -1,3 +1,11 @@
+## 1.1.0
+
+- Add `SignalBlocSignal` reactive adapter container wrapping any `ReadonlySignal` into a `BlocSignalBase`.
+- Add `ReadonlySignalBlocSignalExtension` on `ReadonlySignal<T>` (`.toBlocSignal()`).
+- Add `FutureBlocSignal` container and `FutureBlocSignalExtension` on `Future<T>` (`.toBlocSignal(required initialState:)` and `.toAsyncBlocSignal()`).
+- Add `StreamBlocSignalExtension.toAsyncBlocSignal()` on `Stream<T>` adapting streams to `BlocSignalBase<AsyncState<T>>`.
+- Support converting `Signal`, `Computed`, `FutureSignal`, `StreamSignal`, and lifted primitives (`value.$`) into `BlocSignalBase`.
+
 ## 1.0.1
 
 - Document the streamless `EventTransformer` higher-order model and architecture.

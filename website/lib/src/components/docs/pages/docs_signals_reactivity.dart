@@ -22,6 +22,10 @@ class const DocsSignalsReactivityPage({super.key}) extends StatelessComponent {
       title: '0ms Synchronous Frame Propagation',
       anchor: 'synchronous-propagation',
     ),
+    TocHeading(
+      title: 'Adapting Signals & Futures to BlocSignal',
+      anchor: 'adapters',
+    ),
   ];
 
   @override
@@ -173,6 +177,72 @@ final disposeEffect = effect(() {
               ),
             ]),
           ],
+        ),
+      ]),
+
+      // 6. Adapting Signals, Futures & Streams to BlocSignal
+      section(id: 'adapters', classes: 'docs-section', [
+        h2([
+          Component.text('Adapting Signals, Futures & Streams to BlocSignal'),
+        ]),
+        p([
+          Component.text(
+            'You can seamlessly convert any ReadonlySignal (including raw signals, computed values, stream signals, and lifted primitives), '
+            'asynchronous Future, or Stream into a BlocSignalBase state container using the .toBlocSignal() and .toAsyncBlocSignal() extensions:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          filename: 'adapters_example.dart',
+          dart313Code: '''
+// 1. Convert any ReadonlySignal (or lifted primitive) to a BlocSignalBase<T>
+final countSignal = signal(0);
+final countBloc = countSignal.toBlocSignal();
+final priceBloc = 49.99.\$.toBlocSignal();
+
+// 2. Convert a Future<T> to a raw BlocSignalBase<T> with required initialState
+final userBloc = api.fetchUser(id).toBlocSignal(initialState: User.anonymous());
+
+// 3. Convert a Future<T> or Stream<T> to a BlocSignalBase<AsyncState<T>>
+final userProfileBloc = api.fetchUserProfile(userId).toAsyncBlocSignal();
+final sensorBloc = sensorStream.toAsyncBlocSignal();
+
+// UI consumes the synchronous state transitions via BlocSignalBuilder:
+BlocSignalBuilder(
+  bloc: userProfileBloc,
+  builder: (context, state) => switch (state) {
+    AsyncData(:final value) => ProfileView(user: value),
+    AsyncLoading() => const CircularProgressIndicator(),
+    AsyncError(:final error) => Text('Error: \$error'),
+  },
+);
+''',
+          dart35Code: '''
+// 1. Convert any ReadonlySignal (or lifted primitive) to a BlocSignalBase<T>
+final countSignal = signal(0);
+final countBloc = countSignal.toBlocSignal();
+final priceBloc = 49.99.\$.toBlocSignal();
+
+// 2. Convert a Future<T> to a raw BlocSignalBase<T> with required initialState
+final userBloc = api.fetchUser(id).toBlocSignal(initialState: User.anonymous());
+
+// 3. Convert a Future<T> or Stream<T> to a BlocSignalBase<AsyncState<T>>
+final userProfileBloc = api.fetchUserProfile(userId).toAsyncBlocSignal();
+final sensorBloc = sensorStream.toAsyncBlocSignal();
+
+// UI consumes the synchronous state transitions via BlocSignalBuilder:
+BlocSignalBuilder(
+  bloc: userProfileBloc,
+  builder: (context, state) {
+    if (state case AsyncData(:final value)) {
+      return ProfileView(user: value);
+    }
+    if (state case AsyncError(:final error)) {
+      return Text('Error: \$error');
+    }
+    return const CircularProgressIndicator();
+  },
+);
+''',
         ),
       ]),
     ]);

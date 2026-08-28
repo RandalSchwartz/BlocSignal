@@ -153,8 +153,25 @@ class UserBloc extends CubitSignal<UserModel> {
 // Convert any BlocSignal into a Dart Stream
 final Stream<int> stream = counterBloc.toStream();
 
-// Convert any Dart Stream into a StreamBlocSignal
+// Convert a Stream into a BlocSignalBase<T> holding raw domain values
 final streamBloc = stream.toBlocSignal(initialState: 0);
+
+// Convert a Stream into a BlocSignalBase<AsyncState<T>> tracking loading/data/error
+final asyncStreamBloc = stream.toAsyncBlocSignal();
+```
+
+### 6. Signal & Future Interop Extensions
+
+```dart
+// Convert any ReadonlySignal (Signal, Computed, AsyncSignal) to BlocSignalBase<T>
+final countSignal = signal(0);
+final countBloc = countSignal.toBlocSignal();
+
+// Convert a Future<T> into a BlocSignalBase<T> with a required initialState
+final userBloc = api.fetchUser(id).toBlocSignal(initialState: User.anonymous());
+
+// Convert a Future<T> into a BlocSignalBase<AsyncState<T>> tracking loading/data/error
+final asyncUserBloc = api.fetchUser(id).toAsyncBlocSignal();
 ```
 
 ---
@@ -165,7 +182,7 @@ All `BlocSignalBase` containers (`CubitSignal`, `BlocSignal`), side-effect handl
 
 ### 1. Automatic & Custom Debug Names
 By default, state signals and internal effects are assigned rich diagnostic names in VM Service / DevTools telemetry:
-- State Signal: `'$runtimeType.state'` (e.g. `'CounterCubit.state'`)
+- State Signal: `'$runtimeType.state'` (for example `'CounterCubit.state'`)
 - Lifecycle Effect: `'$runtimeType.lifecycleEffect'`
 - Custom Effects: `'$runtimeType.effect#1'`, `'$runtimeType.effect#2'`
 

@@ -20,6 +20,10 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 | `isClosed` | Reports whether `close()` has run. |
 | `close()` | Returns `Future<void>`, disposes registered effects and the internal `SignalModel`, and is idempotent. |
 | `toString()` | Overridden by `BlocSignalBase` to output `'$runtimeType($stateValue)'`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses. |
+| `signal.toBlocSignal()` | Adapts any `ReadonlySignal<T>` (including `Signal`, `Computed`, `StreamSignal`, and `value.$`) into a `SignalBlocSignal<T>`. |
+| `future.toBlocSignal(required initialState:)` | Adapts any `Future<T>` into a `FutureBlocSignal<T>` holding raw values with an initial state. |
+| `future.toAsyncBlocSignal()` | Adapts any `Future<T>` into a `SignalBlocSignal<AsyncState<T>>` container backed by a `FutureSignal`. |
+| `stream.toAsyncBlocSignal()` | Adapts any `Stream<T>` into a `SignalBlocSignal<AsyncState<T>>` container backed by a `StreamSignal`. |
 
 The state remains readable after closure. `add` silently drops new events. `emit` has a debug
 assertion and then returns without changing state when assertions are disabled.

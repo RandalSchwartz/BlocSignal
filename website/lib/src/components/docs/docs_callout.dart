@@ -10,7 +10,7 @@ enum CalloutType(
   tip('💡', 'Tip', 'callout-tip'),
   important('⚡', 'Important', 'callout-important'),
   warning('⚠️', 'Warning', 'callout-warning'),
-  caution('🛑', 'Caution', 'callout-caution');
+  caution('🛑', 'Caution', 'callout-caution'),
 }
 
 /// A styled GitHub-like callout box for documentation.

@@ -26,14 +26,14 @@ enum Difficulty({
 }) {
   beginner(rows: 9, cols: 9, mines: 10, name: 'Beginner'),
   intermediate(rows: 12, cols: 12, mines: 20, name: 'Intermediate'),
-  expert(rows: 16, cols: 16, mines: 40, name: 'Expert');
+  expert(rows: 16, cols: 16, mines: 40, name: 'Expert'),
 }
 
 enum GameStatus() {
   initial,
   playing,
   won,
-  lost
+  lost,
 }
 
 class const MinesweeperCell({

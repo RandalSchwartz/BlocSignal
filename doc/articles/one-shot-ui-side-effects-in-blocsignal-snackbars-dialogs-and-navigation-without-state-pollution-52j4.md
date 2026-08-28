@@ -3,6 +3,7 @@ title: "One-Shot UI Side Effects in BlocSignal: Snackbars, Dialogs, and Navigati
 published: true
 description: "Why persistent domain state is the wrong place for transient dialogs and snackbars, how classic BLoC solved it with bloc_presentation, and how to handle one-shot side effects in BlocSignal with zero dependencies."
 tags: flutter, dart, statemanagement, webdev
+series: BlocSignal Architecture & Practice
 ---
 
 Every Flutter developer has run into the **Sticky State Dilemma**.

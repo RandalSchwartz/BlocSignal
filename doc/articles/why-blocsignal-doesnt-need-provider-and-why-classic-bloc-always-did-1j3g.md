@@ -2,6 +2,7 @@
 title: Why BlocSignal Doesn't Need Provider (And Why Classic BLoC Always Did)
 description: How shedding package:provider eliminates dependency hell, fixes Flutter's lingering ghost rebuild bug, and delivers fine-grained synchronous reactivity in 2026.
 tags: flutter, dart, statemanagement, webdev
+series: BlocSignal Architecture & Practice
 ---
 
 ## How shedding package:provider eliminates dependency hell, fixes Flutter's lingering ghost rebuild bug, and delivers fine-grained synchronous reactivity in 2026.

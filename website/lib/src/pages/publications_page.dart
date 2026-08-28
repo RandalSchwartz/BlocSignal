@@ -80,7 +80,7 @@ const List<PublicationItem> _publications = [
   PublicationItem(
     title: 'I’ve Been a Flutter GDE for 8 Years. Here’s the Ground Truth on “Flutter is Dying”',
     description: 'The insider story on Google\'s commitment to Flutter, the enterprise hiring paradox, and why Flutter is kicking tail on every measurable scale.',
-    url: 'https://medium.com/@realmerlyn/ive-been-a-flutter-gde-for-8-years-here-s-the-ground-truth-on-flutter-is-dying-6ffc50ca4088',
+    url: 'https://dev.to/gde/ive-been-a-flutter-gde-for-8-years-heres-the-ground-truth-on-flutter-is-dying-23pp',
     date: 'Aug 18',
     readTime: '4 min read',
     category: 'Flutter & Jaspr',
@@ -130,7 +130,7 @@ const List<PublicationItem> _publications = [
   PublicationItem(
     title: 'Riverpod to BlocSignal: Incremental Migration and Zero-Codegen Signals for Flutter',
     description: 'Learn how to trial or incrementally migrate from Riverpod to BlocSignal with zero code generation, fine-grained signal graph reactivity, and bidirectional interop.',
-    url: 'https://blocsignal.dev',
+    url: 'https://dev.to/gde/riverpod-to-blocsignal-incremental-migration-and-zero-codegen-signals-for-flutter-1gdp',
     date: 'Aug 12',
     readTime: '5 min read',
     category: 'Flutter & Jaspr',
@@ -190,7 +190,7 @@ const List<PublicationItem> _publications = [
   PublicationItem(
     title: 'Layered Architecture in Flutter with BlocSignal: Bringing BLoC Discipline and Signals Speed to CodeWithAndrea’s Pattern',
     description: 'Learn how to adapt CodeWithAndrea\'s classic 4-layer Flutter architecture (Domain, Data, Application, Presentation) using BlocSignal for synchronous reactivity, instant hydration, and clean code.',
-    url: 'https://blocsignal.dev/articles/layered-architecture-in-flutter-with-blocsignal',
+    url: 'https://dev.to/gde/layered-architecture-in-flutter-with-blocsignal-bringing-bloc-discipline-and-signals-speed-to-2c25',
     date: 'Jul 31',
     readTime: '8 min read',
     category: 'Flutter & Jaspr',
@@ -262,7 +262,7 @@ const List<PublicationItem> _publications = [
     title:
         'How We Achieved Full BLoC API & Protocol Parity in BlocSignal 0.2.0',
     description: 'A deep dive into bridging the classic BLoC/Cubit pattern with the synchronous, reactive power of signals in Flutter & Dart.',
-    url: 'https://dev.to/randalschwartz/how-we-achieved-full-bloc-api-protocol-parity-in-blocsignal-020',
+    url: 'https://dev.to/gde/how-we-achieved-full-bloc-api-protocol-parity-in-blocsignal-020-mdp',
     date: 'Jul 21',
     readTime: '5 min read',
     category: 'State Machines',

@@ -26,7 +26,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_flutter',
-    version: '1.2.0',
+    version: '1.2.1',
     desc: 'Flutter UI bindings, InheritedWidget providers, builders, listeners, selectors, and Listenable interop.',
     icon: '💙',
     category: 'Core & UI',
@@ -34,8 +34,17 @@ const List<PackageItem> _allPackages = [
     installCmd: 'flutter pub add bloc_signals_flutter',
   ),
   PackageItem(
+    name: 'bloc_signals_bloc',
+    version: '1.0.0',
+    desc: 'Bidirectional classic BLoC (package:bloc 8 & 9) interop adapters and event bridges.',
+    icon: '🔄',
+    category: 'State & Interop',
+    pubUrl: 'https://pub.dev/packages/bloc_signals_bloc',
+    installCmd: 'dart pub add bloc_signals_bloc',
+  ),
+  PackageItem(
     name: 'bloc_signals_jaspr',
-    version: '1.0.0+1',
+    version: '1.0.1',
     desc: 'Jaspr web component integration, InheritedComponent providers, builders, listeners, and selectors.',
     icon: '🌐',
     category: 'Core & UI',

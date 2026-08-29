@@ -88,6 +88,10 @@ void main() {
       expect(pkgRiverpod.id, equals('pkg-riverpod'));
       expect(pkgRiverpod.category, equals('Satellite Packages'));
 
+      final pkgBloc = DocsRegistry.resolveSection('pkg-bloc');
+      expect(pkgBloc.id, equals('pkg-bloc'));
+      expect(pkgBloc.category, equals('Satellite Packages'));
+
       final pkgOtel = DocsRegistry.resolveSection('pkg-otel');
       expect(pkgOtel.id, equals('pkg-otel'));
       expect(pkgOtel.category, equals('Satellite Packages'));
@@ -146,6 +150,10 @@ void main() {
       expect(
         DocsRegistry.resolveSection('/docs/pkg-hydrate').id,
         equals('pkg-hydrate'),
+      );
+      expect(
+        DocsRegistry.resolveSection('/docs/pkg-bloc').id,
+        equals('pkg-bloc'),
       );
       expect(
         DocsRegistry.resolveSection('/docs/migration-bloc').id,

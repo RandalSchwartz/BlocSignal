@@ -10,6 +10,7 @@ import '../components/docs/pages/docs_lifecycle_and_observers.dart';
 import '../components/docs/pages/docs_migration_bloc.dart';
 import '../components/docs/pages/docs_migration_riverpod.dart';
 import '../components/docs/pages/docs_overview.dart';
+import '../components/docs/pages/docs_pkg_bloc.dart';
 import '../components/docs/pages/docs_pkg_devtools.dart';
 import '../components/docs/pages/docs_pkg_hydrate.dart';
 import '../components/docs/pages/docs_pkg_otel.dart';
@@ -193,6 +194,15 @@ class const DocsRegistry() {
           description:
               'Bidirectional Riverpod 2 & 3 interoperability adapters.',
           builder: DocsPkgRiverpodPage.new,
+        ),
+        DocSectionItem(
+          id: 'pkg-bloc',
+          title: 'bloc_signals_bloc',
+          path: '/docs/pkg-bloc',
+          category: 'Satellite Packages',
+          description:
+              'Bidirectional classic BLoC 8 & 9 interoperability adapters.',
+          builder: DocsPkgBlocPage.new,
         ),
         DocSectionItem(
           id: 'pkg-otel',

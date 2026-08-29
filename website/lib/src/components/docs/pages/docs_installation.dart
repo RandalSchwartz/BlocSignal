@@ -217,6 +217,23 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
               tr([
                 td([
                   a(
+                    href: 'https://pub.dev/packages/bloc_signals_bloc',
+                    target: Target.blank,
+                    classes: 'docs-table-link',
+                    [Component.text('bloc_signals_bloc')],
+                  ),
+                ]),
+                td([Component.text('^1.0.0')]),
+                td([
+                  Component.text(
+                    'Bidirectional classic BLoC 8 & 9 interoperability adapters and event bridges.',
+                  ),
+                ]),
+                td([Component.text('Dart / Flutter')]),
+              ]),
+              tr([
+                td([
+                  a(
                     href: 'https://pub.dev/packages/bloc_signals_otel',
                     target: Target.blank,
                     classes: 'docs-table-link',

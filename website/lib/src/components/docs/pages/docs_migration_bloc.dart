@@ -65,6 +65,23 @@ class const DocsMigrationBlocPage({super.key}) extends StatelessComponent {
             ),
           ]),
         ]),
+        const DocsCallout(
+          type: CalloutType.tip,
+          title: 'Incremental Migration with bloc_signals_bloc',
+          children: [
+            p([
+              Component.text(
+                'Migrating a large codebase? You do not need to rewrite everything at once. Use the ',
+              ),
+              a(href: '/docs/pkg-bloc', classes: 'docs-link', [
+                Component.text('bloc_signals_bloc'),
+              ]),
+              Component.text(
+                ' bridge package to adapt classic Blocs/Cubits into BlocSignals (.toBlocSignal()) or modern BlocSignals into classic Blocs (.toClassicBloc()) for a seamless 3-phase Strangler Fig migration.',
+              ),
+            ]),
+          ],
+        ),
       ]),
 
       // 2. Concept Translation Matrix

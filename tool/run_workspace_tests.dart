@@ -7,6 +7,7 @@ void main(List<String> args) {
     '.', // Root workspace tests
     'bloc_signals',
     'bloc_signals_flutter',
+    'bloc_signals_bloc',
     'bloc_signals_jaspr',
     'bloc_signals_replay',
     'bloc_signals_otel',

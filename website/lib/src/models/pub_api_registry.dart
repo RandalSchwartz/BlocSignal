@@ -173,6 +173,48 @@ enum DocSymbol(
     'DevToolsBlocSignalObserver',
     'bloc_signals_devtools',
     'DevToolsBlocSignalObserver-class.html',
+  ),
+
+  // Classic BLoC (bloc_signals_bloc)
+  classicBlocSignal(
+    'ClassicBlocSignal',
+    'bloc_signals_bloc',
+    'ClassicBlocSignal-class.html',
+  ),
+  classicCubitSignal(
+    'ClassicCubitSignal',
+    'bloc_signals_bloc',
+    'ClassicCubitSignal-class.html',
+  ),
+  blocSignalToClassicBloc(
+    'BlocSignalToClassicBloc',
+    'bloc_signals_bloc',
+    'BlocSignalToClassicBloc-class.html',
+  ),
+  blocSignalToClassicCubit(
+    'BlocSignalToClassicCubit',
+    'bloc_signals_bloc',
+    'BlocSignalToClassicCubit-class.html',
+  ),
+  classicBlocToBlocSignalX(
+    'ClassicBlocToBlocSignalX',
+    'bloc_signals_bloc',
+    'ClassicBlocToBlocSignalX.html',
+  ),
+  classicCubitToBlocSignalX(
+    'ClassicCubitToBlocSignalX',
+    'bloc_signals_bloc',
+    'ClassicCubitToBlocSignalX.html',
+  ),
+  blocSignalToClassicBlocX(
+    'BlocSignalToClassicBlocX',
+    'bloc_signals_bloc',
+    'BlocSignalToClassicBlocX.html',
+  ),
+  blocSignalToClassicCubitX(
+    'BlocSignalToClassicCubitX',
+    'bloc_signals_bloc',
+    'BlocSignalToClassicCubitX.html',
   );
 
   /// Canonical URL on pub.dev documentation.

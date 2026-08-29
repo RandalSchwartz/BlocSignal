@@ -22,7 +22,7 @@
 
 - **`context.read<T>()`**: Reads container instance without registering a component rebuild dependency.
 - **`context.watch<T>()`**: Listens to provider updates and rebuilds component on container reference swap.
-- **`context.select<T, R>(selector)`**: Subscribes to a computed state derivation and marks component dirty only when selection changes.
+- **`context.select<T, R>(selector)`**: Subscribes to a computed state derivation and marks component dirty only when selection changes. Registers an inherited dependency (`listen: true`) so provider container swaps automatically rebind the subscription even above `const` component subtrees.
 
 ---
 

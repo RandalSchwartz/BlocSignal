@@ -1,3 +1,7 @@
+## 1.2.1
+
+- Fix `context.select` subscription transfer when provider container instance is swapped above `const` subtrees (#204).
+
 ## 1.2.0
 
 - Fix generic type erasure in `MultiBlocSignalProvider` when passed list literals (#136).

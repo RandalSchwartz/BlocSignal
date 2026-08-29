@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- Fix `context.select` subscription transfer when provider container instance is swapped above `const` subtrees (#204).
+
 ## 1.0.0+1
 
 - Maintenance patch release for pub.dev package score re-analysis.

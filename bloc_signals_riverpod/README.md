@@ -39,9 +39,9 @@ The `BlocSignal` monorepo consists of 10 modular packages:
 
 ## ⚡ Key Features
 
-- 🔄 **`ProviderListenable.toBlocSignal(refOrContainer)`**: Convert any Riverpod `ProviderListenable` (`Notifier`, `Provider`, `.select()`) into a `BlocSignalBase`.
-- 🔒 **Automatic `ref.onDispose` Registration**: Passing `ref` into `toBlocSignal(ref)` automatically binds `ref.onDispose(bloc.close)` for zero-boilerplate lifecycle management.
-- 🔀 **`BlocSignalBase.toProvider()`**: Expose any `BlocSignal` or `CubitSignal` as a standard Riverpod `Provider<T>`.
+- 🔄 **Bidirectional `toBlocSignal(refOrContainer)`**: Convert any Riverpod `NotifierProvider`, `AsyncNotifierProvider`, `StateNotifierProvider`, `StateProvider`, or `StreamNotifierProvider` into a `RiverpodNotifierBlocSignal` exposing the typed `.notifier` to trigger mutations directly from BlocSignal consumers.
+- 🔀 **Bidirectional `BlocSignalBase.toProvider()`**: Expose any `BlocSignal` or `CubitSignal` as a Riverpod `NotifierProvider`, giving Riverpod widgets direct read access and typed `.notifier.cubit` / `.notifier.bloc` mutation handles.
+- 🔒 **Automatic `ref.onDispose` Registration**: Passing `ref` or Flutter Riverpod `WidgetRef` into `toBlocSignal(ref)` automatically binds `ref.onDispose(bloc.close)` for zero-boilerplate lifecycle management.
 - ⚡ **Universal Riverpod Support**: Built for `riverpod: ">=2.5.0 <4.0.0"`, supporting Riverpod 2.x and Riverpod 3.x seamlessly.
 
 ---
@@ -61,52 +61,72 @@ dependencies:
 
 ## 💡 Quick Examples
 
-### 1. Riverpod → `BlocSignal` (Inside Provider)
+### 1. Riverpod → `BlocSignal` (Bidirectional Read & Mutate)
 
-Adapt any Riverpod provider into a `BlocSignalBase` inside a Riverpod provider using `ref`:
+Adapt any Riverpod notifier provider into a `RiverpodNotifierBlocSignal` inside a Riverpod provider using `ref`:
 
 ```dart
 import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
 import 'package:riverpod/riverpod.dart';
 
-final userNotifierProvider = NotifierProvider<UserNotifier, User>(UserNotifier.new);
+final counterProvider = NotifierProvider<CounterNotifier, int>(
+  CounterNotifier.new,
+);
 
 // Convert Riverpod provider to BlocSignal container with automatic ref.onDispose binding
-final userBlocProvider = Provider.autoDispose<BlocSignalBase<User>>((ref) {
-  return userNotifierProvider.toBlocSignal(ref);
+final counterBlocProvider = Provider.autoDispose<
+    RiverpodNotifierBlocSignal<CounterNotifier, int>>((ref) {
+  return counterProvider.toBlocSignal(ref);
 });
+
+// In your BlocSignal consumer or widget:
+final bloc = ref.watch(counterBlocProvider);
+
+// Read reactive state:
+print(bloc.stateValue);
+
+// Mutate upstream Riverpod notifier directly:
+bloc.notifier.increment();
 ```
 
-### 2. Riverpod → `BlocSignal` (Container)
+### 2. Riverpod → `BlocSignal` (ProviderContainer)
 
 Using a standalone `ProviderContainer`:
 
 ```dart
 final container = ProviderContainer();
-final riverpodBloc = userNotifierProvider.toBlocSignal(container);
+final riverpodBloc = counterProvider.toBlocSignal(container);
 
 // State is synchronously in sync with Riverpod!
 print(riverpodBloc.stateValue);
 
+// Mutate Riverpod notifier:
+riverpodBloc.notifier.increment();
+
 // Clean up subscription when finished:
-riverpodBloc.close();
+await riverpodBloc.close();
 ```
 
-### 3. `BlocSignal` → Riverpod
+### 3. `BlocSignal` → Riverpod (Bidirectional Read & Mutate)
 
-Expose a `BlocSignalBase` state container as a standard Riverpod `Provider`:
+Expose a `BlocSignalBase` state container as a standard Riverpod `NotifierProvider`:
 
 ```dart
 import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
 import 'package:riverpod/riverpod.dart';
 
-final counterCubit = CounterCubit();
+final counterCubit = CounterCubit(initialState: 0);
 
-// Convert to Riverpod Provider
+// Convert to Riverpod NotifierProvider
 final counterProvider = counterCubit.toProvider();
 
-// Watch in Riverpod context:
+// Watch state in Riverpod context:
 final count = ref.watch(counterProvider);
+
+// Mutate cubit/bloc directly via Riverpod notifier handle:
+ref.read(counterProvider.notifier).cubit.increment();
+// Or for event-based blocs:
+// ref.read(counterProvider.notifier).bloc.add(const IncrementEvent());
 ```
 
 ---

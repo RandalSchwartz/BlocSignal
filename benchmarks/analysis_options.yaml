@@ -6,10 +6,3 @@ analyzer:
   errors:
     avoid_print: ignore
     public_member_api_docs: ignore
-
-linter:
-  rules:
-    - async_return_with_no_await
-    - empty_container_bodies
-    - initialize_in_field_declaration
-    - unnecessary_const_in_enum_constructor

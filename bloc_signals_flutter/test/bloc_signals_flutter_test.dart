@@ -775,5 +775,48 @@ void main() {
         await bloc.close();
       },
     );
+
+    testWidgets(
+      'context.select transfers subscription when provider bloc instance '
+      'is swapped above const subtree',
+      (tester) async {
+        final bloc1 = CounterBloc();
+        final bloc2 = CounterBloc();
+
+        Widget buildTree(CounterBloc bloc) {
+          return MaterialApp(
+            home: BlocSignalProvider<CounterBloc>.value(
+              value: bloc,
+              child: const _ConstSelectorChild(),
+            ),
+          );
+        }
+
+        await tester.pumpWidget(buildTree(bloc1));
+        expect(find.text('Count: 0'), findsOneWidget);
+
+        // Swap provider value to bloc2
+        await tester.pumpWidget(buildTree(bloc2));
+        expect(find.text('Count: 0'), findsOneWidget);
+
+        // State changes on new bloc should trigger rebuild
+        bloc2.add(Increment());
+        await tester.pump();
+        expect(find.text('Count: 1'), findsOneWidget);
+
+        await bloc1.close();
+        await bloc2.close();
+      },
+    );
   });
+}
+
+class _ConstSelectorChild extends StatelessWidget {
+  const _ConstSelectorChild();
+
+  @override
+  Widget build(BuildContext context) {
+    final count = context.select<CounterBloc, int>((b) => b.stateValue);
+    return Text('Count: $count');
+  }
 }

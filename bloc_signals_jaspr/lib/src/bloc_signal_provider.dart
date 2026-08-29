@@ -192,7 +192,7 @@ extension BlocSignalProviderExtension on BuildContext {
     R Function(T bloc) selector,
   ) {
     final element = this as Element;
-    final bloc = BlocSignalProvider.of<T>(this);
+    final bloc = BlocSignalProvider.of<T>(this, listen: true);
 
     final selectorState = _elementSelectors[element] ??= _SelectorState();
     final currentIndex = selectorState.index;

@@ -73,9 +73,10 @@ final isSubmitEnabled = context.select<FormCubit, bool>(
 > Unlike `flutter_riverpod` (which uses 3 generic parameters in some forms) or classic `flutter_bloc` context selection, `bloc_signals_flutter` passes the **`bloc` container instance** to the selector callback (`(bloc) => bloc.stateValue.canSubmit`), allowing direct property access via `bloc.stateValue`.
 
 It rebuilds the element when the selected value changes by `!=`. Keep each element's select calls
-unconditional and in a stable order because 0.2.0 caches subscriptions by call index. The lookup
-does not register an inherited-provider dependency, so a provider instance swap is not observed
-until another rebuild updates the subscription.
+unconditional and in a stable order because 0.2.0 caches subscriptions by call index. The provider
+lookup registers an inherited dependency (`listen: true`), so if an ancestor provider swaps its
+container instance, `context.select` automatically rebinds to the new container and continues
+observing state updates seamlessly.
 
 ## Listeners, consumers, and selectors
 

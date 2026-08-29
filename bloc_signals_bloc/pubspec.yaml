@@ -1,0 +1,25 @@
+name: bloc_signals_bloc
+resolution: workspace
+description: Classic BLoC (package:bloc) interoperability adapters for BlocSignal state containers.
+version: 1.0.0
+repository: https://github.com/RandalSchwartz/BlocSignal
+issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
+
+topics:
+  - bloc
+  - signals
+  - interop
+  - migration
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  bloc: ">=8.0.0 <10.0.0"
+  bloc_signals: ^1.0.0
+  meta: ">=1.11.0 <2.0.0"
+  signals_core: ^7.0.0
+
+dev_dependencies:
+  test: ^1.25.6
+  very_good_analysis: ">=10.3.0 <12.0.0"

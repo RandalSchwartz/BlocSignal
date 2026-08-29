@@ -11,6 +11,7 @@ We use a native Dart workspace (supported in Dart 3.5+) instead of Melos.
 - **Member Packages**:
   - `bloc_signals` (Core pure Dart package)
   - `bloc_signals_flutter` (Flutter bindings & Listenable interop)
+  - `bloc_signals_bloc` (Classic BLoC 8/9 interop adapters)
   - `bloc_signals_riverpod` (Bidirectional Riverpod interop adapters)
   - `bloc_signals_test` (Declarative unit testing utilities)
   - `bloc_signals_lint` (Static analysis lints & IDE diagnostics)

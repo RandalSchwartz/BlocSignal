@@ -10,6 +10,7 @@ Interoperability allows features built with different state management tools to 
 
 | Ecosystem / Primitive | From Target ➔ `BlocSignal` | From `BlocSignal` ➔ Target | Package |
 | :--- | :--- | :--- | :--- |
+| **Classic BLoC (`package:bloc`)** | `classicBloc.toBlocSignal()` / `classicCubit.toBlocSignal()` | `blocSignal.toClassicBloc()` / `cubitSignal.toClassicCubit()` | `bloc_signals_bloc` |
 | **Dart Future (Raw Value `T`)** | `future.toBlocSignal(initialState: ...)` | `blocSignal.stream.first` | `bloc_signals` |
 | **Dart Future (AsyncState)** | `future.toAsyncBlocSignal()` | `blocSignal.stream.first` | `bloc_signals` |
 | **Dart Stream (Raw Value `T`)** | `stream.toBlocSignal(initialState: ...)` | `blocSignal.toStream()` / `blocSignal.stream` | `bloc_signals` |
@@ -17,7 +18,7 @@ Interoperability allows features built with different state management tools to 
 | **Signals Primitives** | `signal.toBlocSignal()` / `value.$.toBlocSignal()` | Direct `blocSignal.state` signal | `bloc_signals` |
 | **Signals Computed** | `computedSignal.toBlocSignal()` | Direct `blocSignal.state` signal | `bloc_signals` |
 | **Signals Async / StreamSignal** | `streamSignal.toBlocSignal()` | Direct `blocSignal.state` signal | `bloc_signals` |
-| **BLoC / Redux (Stream)** | `StreamBlocSignal(stream, initialState: ...)` | `blocSignal.toStream()` | `bloc_signals` |
+| **Generic Stream / Redux** | `StreamBlocSignal(stream, initialState: ...)` | `blocSignal.toStream()` | `bloc_signals` |
 | **Riverpod** | `provider.toBlocSignal(ref)` | `blocSignal.toProvider()` | `bloc_signals_riverpod` |
 | **Provider (Listenable)** | `listenable.toBlocSignal()` | `blocSignal.toValueListenable()` | `bloc_signals_flutter` |
 | **Riverpod Async** | `asyncValue.toAsyncState()` | `asyncState.toAsyncValue()` | `bloc_signals_riverpod` |
@@ -70,9 +71,61 @@ BlocSignalBuilder(
 
 ---
 
-## 2. BLoC, Redux & Stream Interoperability (`package:bloc_signals`)
+## 2. Classic BLoC 8/9 Interoperability (`package:bloc_signals_bloc`)
 
-Bridge classic stream-based BLoC components, Redux stores, RxDart observables, or Stream architectures:
+The dedicated `bloc_signals_bloc` package provides full bidirectional read-and-mutate bridges between classic `package:bloc` components (`Bloc`, `Cubit`, `BlocBase`) and modern `BlocSignal` containers:
+
+### Classic BLoC ➔ `BlocSignal` (Bidirectional Read & Mutate)
+```dart
+import 'package:bloc_signals_bloc/bloc_signals_bloc.dart';
+
+final classicBloc = CounterBloc();
+
+// 1. Convert classic Bloc into a synchronous BlocSignal:
+final blocSignal = classicBloc.toBlocSignal();
+
+// Synchronous reactive read:
+print(blocSignal.stateValue);
+
+// Direct event dispatch forwarded to underlying classic Bloc:
+blocSignal.add(const IncrementEvent());
+```
+
+### Classic Cubit ➔ `CubitSignal` (Bidirectional Read & Mutate)
+```dart
+final classicCubit = CounterCubit();
+
+// 1. Convert classic Cubit into a synchronous CubitSignal:
+final cubitSignal = classicCubit.toBlocSignal();
+
+// Synchronous reactive read:
+print(cubitSignal.stateValue);
+
+// Direct typed method invocation on underlying Cubit:
+cubitSignal.cubit.increment();
+```
+
+### Modern `BlocSignal` ➔ Classic BLoC (Legacy UI Compatibility)
+Drop modern streamless `BlocSignal` or `CubitSignal` containers directly into legacy `flutter_bloc` UI widgets without rewriting existing presentation trees:
+
+```dart
+final modernBloc = ModernCounterBloc();
+
+// Adapt into a classic Bloc instance:
+final classicAdapter = modernBloc.toClassicBloc();
+
+// Consumed directly by legacy flutter_bloc widgets:
+BlocBuilder<BlocSignalToClassicBloc<CounterEvent, int>, int>(
+  bloc: classicAdapter,
+  builder: (context, state) => Text('$state'),
+);
+```
+
+---
+
+## 3. Generic Stream & Redux Interoperability (`package:bloc_signals`)
+
+Bridge raw streams, Redux stores, RxDart observables, or generic stream architectures:
 
 ### Stream / Redux ➔ `BlocSignal`
 ```dart
@@ -95,7 +148,7 @@ final Stream<int> stream = myBlocSignal.toStream();
 
 ---
 
-## 3. Riverpod Interoperability (`package:bloc_signals_riverpod`)
+## 4. Riverpod Interoperability (`package:bloc_signals_riverpod`)
 
 Bridge Riverpod providers, Notifiers, `ProviderContainer`, and `WidgetRef` instances with full bidirectional read-and-mutate support:
 
@@ -141,7 +194,7 @@ final AsyncValue<T> riverpodValue = signalsAsyncState.toAsyncValue();
 
 ---
 
-## 4. Flutter `Listenable` & `package:provider` Interoperability (`package:bloc_signals_flutter`)
+## 5. Flutter `Listenable` & `package:provider` Interoperability (`package:bloc_signals_flutter`)
 
 Bridge Flutter's native `ChangeNotifier`, `ValueNotifier`, `AnimationController`, and `package:provider`:
 

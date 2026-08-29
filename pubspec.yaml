@@ -16,6 +16,7 @@ workspace:
   - bloc_signals_devtools
   - bloc_signals_replay
   - bloc_signals_jaspr
+  - bloc_signals_bloc
   - benchmarks
   - examples/shopping_cart
   - examples/auth_flow

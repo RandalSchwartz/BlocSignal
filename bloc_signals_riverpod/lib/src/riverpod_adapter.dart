@@ -52,6 +52,208 @@ class RiverpodBlocSignal<T> extends CubitSignal<T> {
   }
 }
 
+/// A [RiverpodBlocSignal] that provides typed access to the underlying
+/// Riverpod [notifier].
+///
+/// ```dart
+/// final counterCubit = counterProvider.toBlocSignal(ref);
+/// print(counterCubit.stateValue); // 0
+/// counterCubit.notifier.increment();
+/// ```
+class RiverpodNotifierBlocSignal<NotifierT, T> extends RiverpodBlocSignal<T> {
+  /// Creates a [RiverpodNotifierBlocSignal] wrapping a Riverpod provider with
+  /// its [notifier] and [container].
+  RiverpodNotifierBlocSignal(
+    this.notifier,
+    super.container,
+    super.listenable, {
+    super.equals,
+    super.options,
+  });
+
+  /// Creates a [RiverpodNotifierBlocSignal] using a Riverpod [Ref].
+  ///
+  /// Automatically registers `ref.onDispose` to close this
+  /// [RiverpodNotifierBlocSignal] when the [ref]'s scope is disposed.
+  factory RiverpodNotifierBlocSignal.fromRef(
+    NotifierT notifier,
+    Ref ref,
+    ProviderListenable<T> listenable, {
+    bool Function(T previous, T current)? equals,
+    SignalOptions<T>? options,
+  }) {
+    final bloc = RiverpodNotifierBlocSignal<NotifierT, T>(
+      notifier,
+      ref.container,
+      listenable,
+      equals: equals,
+      options: options,
+    );
+    ref.onDispose(bloc.close);
+    return bloc;
+  }
+
+  /// The underlying Riverpod notifier for dispatching mutations and actions.
+  final NotifierT notifier;
+}
+
+ProviderContainer _resolveContainer(Object refOrContainer) {
+  if (refOrContainer is Ref) {
+    return refOrContainer.container;
+  } else if (refOrContainer is ProviderContainer) {
+    return refOrContainer;
+  } else {
+    try {
+      final dynamic obj = refOrContainer;
+      // Duck-typing support for flutter_riverpod WidgetRef container.
+      // ignore: avoid_dynamic_calls
+      return obj.container as ProviderContainer;
+    } on Object catch (_) {
+      throw ArgumentError(
+        'refOrContainer must be a Ref, WidgetRef, or ProviderContainer, '
+        'but was ${refOrContainer.runtimeType}.',
+      );
+    }
+  }
+}
+
+void _bindDispose(Object refOrContainer, void Function() dispose) {
+  if (refOrContainer is Ref) {
+    refOrContainer.onDispose(dispose);
+  } else if (refOrContainer is! ProviderContainer) {
+    try {
+      final dynamic obj = refOrContainer;
+      // Duck-typing support for flutter_riverpod WidgetRef onDispose.
+      // ignore: avoid_dynamic_calls
+      obj.onDispose(dispose);
+    } on Object catch (_) {}
+  }
+}
+
+/// Extension methods on [NotifierProvider] for typed notifier access.
+extension NotifierProviderBlocSignalX<NotifierT extends Notifier<T>, T>
+    on NotifierProvider<NotifierT, T> {
+  /// Adapts this [NotifierProvider] into a [RiverpodNotifierBlocSignal]
+  /// providing both reactive signal state consumption and typed access to
+  /// [notifier].
+  RiverpodNotifierBlocSignal<NotifierT, T> toBlocSignal(
+    Object refOrContainer, {
+    bool Function(T previous, T current)? equals,
+    SignalOptions<T>? options,
+  }) {
+    final container = _resolveContainer(refOrContainer);
+    final notifier = container.read(this.notifier);
+    final bloc = RiverpodNotifierBlocSignal<NotifierT, T>(
+      notifier,
+      container,
+      this,
+      equals: equals,
+      options: options,
+    );
+    _bindDispose(refOrContainer, bloc.close);
+    return bloc;
+  }
+}
+
+/// Extension methods on [AsyncNotifierProvider] for typed notifier access.
+extension AsyncNotifierProviderBlocSignalX<NotifierT extends AsyncNotifier<T>,
+    T> on AsyncNotifierProvider<NotifierT, T> {
+  /// Adapts this [AsyncNotifierProvider] into a [RiverpodNotifierBlocSignal]
+  /// providing both reactive signal state consumption and typed access to
+  /// [notifier].
+  RiverpodNotifierBlocSignal<NotifierT, AsyncValue<T>> toBlocSignal(
+    Object refOrContainer, {
+    bool Function(AsyncValue<T> previous, AsyncValue<T> current)? equals,
+    SignalOptions<AsyncValue<T>>? options,
+  }) {
+    final container = _resolveContainer(refOrContainer);
+    final notifier = container.read(this.notifier);
+    final bloc = RiverpodNotifierBlocSignal<NotifierT, AsyncValue<T>>(
+      notifier,
+      container,
+      this,
+      equals: equals,
+      options: options,
+    );
+    _bindDispose(refOrContainer, bloc.close);
+    return bloc;
+  }
+}
+
+/// Extension methods on [StateNotifierProvider] for typed notifier access.
+extension StateNotifierProviderBlocSignalX<NotifierT extends StateNotifier<T>,
+    T> on StateNotifierProvider<NotifierT, T> {
+  /// Adapts this [StateNotifierProvider] into a [RiverpodNotifierBlocSignal]
+  /// providing both reactive signal state consumption and typed access to
+  /// [notifier].
+  RiverpodNotifierBlocSignal<NotifierT, T> toBlocSignal(
+    Object refOrContainer, {
+    bool Function(T previous, T current)? equals,
+    SignalOptions<T>? options,
+  }) {
+    final container = _resolveContainer(refOrContainer);
+    final notifier = container.read(this.notifier);
+    final bloc = RiverpodNotifierBlocSignal<NotifierT, T>(
+      notifier,
+      container,
+      this,
+      equals: equals,
+      options: options,
+    );
+    _bindDispose(refOrContainer, bloc.close);
+    return bloc;
+  }
+}
+
+/// Extension methods on [StateProvider] for typed notifier access.
+extension StateProviderBlocSignalX<T> on StateProvider<T> {
+  /// Adapts this [StateProvider] into a [RiverpodNotifierBlocSignal]
+  /// providing both reactive signal state consumption and typed access to
+  /// [StateController].
+  RiverpodNotifierBlocSignal<StateController<T>, T> toBlocSignal(
+    Object refOrContainer, {
+    bool Function(T previous, T current)? equals,
+    SignalOptions<T>? options,
+  }) {
+    final container = _resolveContainer(refOrContainer);
+    final notifier = container.read(this.notifier);
+    final bloc = RiverpodNotifierBlocSignal<StateController<T>, T>(
+      notifier,
+      container,
+      this,
+      equals: equals,
+      options: options,
+    );
+    _bindDispose(refOrContainer, bloc.close);
+    return bloc;
+  }
+}
+
+/// Extension methods on [StreamNotifierProvider] for typed notifier access.
+extension StreamNotifierProviderBlocSignalX<NotifierT extends StreamNotifier<T>,
+    T> on StreamNotifierProvider<NotifierT, T> {
+  /// Adapts this [StreamNotifierProvider] into a [RiverpodNotifierBlocSignal]
+  /// providing both reactive signal state consumption and typed access to
+  /// [notifier].
+  RiverpodNotifierBlocSignal<NotifierT, AsyncValue<T>> toBlocSignal(
+    Object refOrContainer, {
+    bool Function(AsyncValue<T> previous, AsyncValue<T> current)? equals,
+    SignalOptions<AsyncValue<T>>? options,
+  }) {
+    final container = _resolveContainer(refOrContainer);
+    final notifier = container.read(this.notifier);
+    final bloc = RiverpodNotifierBlocSignal<NotifierT, AsyncValue<T>>(
+      notifier,
+      container,
+      this,
+      equals: equals,
+      options: options,
+    );
+    _bindDispose(refOrContainer, bloc.close);
+    return bloc;
+  }
+}
+
 /// Extension methods on [ProviderListenable] for [BlocSignalBase] conversion.
 extension ProviderListenableBlocSignalX<T> on ProviderListenable<T> {
   /// Adapts this Riverpod [ProviderListenable] into a [BlocSignalBase]
@@ -108,9 +310,17 @@ extension ProviderListenableBlocSignalX<T> on ProviderListenable<T> {
   }
 }
 
-class _BlocSignalNotifier<T> extends Notifier<T> {
-  _BlocSignalNotifier(this.bloc);
-  final BlocSignalBase<T> bloc;
+/// A Riverpod [Notifier] that wraps an underlying [BlocSignalBase] and exposes
+/// it via [bloc] (and [cubit]).
+class BlocSignalNotifier<B extends BlocSignalBase<T>, T> extends Notifier<T> {
+  /// Creates a [BlocSignalNotifier] wrapping [bloc].
+  BlocSignalNotifier(this.bloc);
+
+  /// The underlying [BlocSignalBase] instance.
+  final B bloc;
+
+  /// Alias for [bloc] when wrapping a cubit container.
+  B get cubit => bloc;
 
   @override
   T build() {
@@ -123,14 +333,17 @@ class _BlocSignalNotifier<T> extends Notifier<T> {
 }
 
 /// Extension methods on [BlocSignalBase] for Riverpod provider conversion.
-extension BlocSignalRiverpodX<T> on BlocSignalBase<T> {
+extension BlocSignalRiverpodX<B extends BlocSignalBase<T>, T> on B {
   /// Converts this [BlocSignalBase] into a Riverpod [NotifierProvider].
   ///
   /// Subscribes to `state` updates and automatically unbinds the subscription
   /// when the Riverpod provider is disposed via `ref.onDispose`.
-  NotifierProvider<Notifier<T>, T> toProvider() {
-    return NotifierProvider<Notifier<T>, T>(
-      () => _BlocSignalNotifier<T>(this),
+  ///
+  /// The resulting provider's notifier exposes typed access to the underlying
+  /// [BlocSignalNotifier.bloc] (and [BlocSignalNotifier.cubit]).
+  NotifierProvider<BlocSignalNotifier<B, T>, T> toProvider() {
+    return NotifierProvider<BlocSignalNotifier<B, T>, T>(
+      () => BlocSignalNotifier<B, T>(this),
     );
   }
 }

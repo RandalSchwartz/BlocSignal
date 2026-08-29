@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.0
+
+- Add bidirectional read-and-mutate interoperability (#207):
+  - Introduce `RiverpodNotifierBlocSignal<NotifierT, T>` exposing typed `.notifier` on mutable Riverpod providers (`NotifierProvider`, `AsyncNotifierProvider`, `StateNotifierProvider`, `StateProvider`, and `StreamNotifierProvider`).
+  - Introduce `BlocSignalNotifier<B, T>` exposing typed `.cubit` and `.bloc` getter aliases on `ref.read(provider.notifier)`.
+  - Add typed `toBlocSignal(...)` provider extension methods.
+
 ## 1.0.0+1
 
 - Maintenance patch release for pub.dev package score re-analysis.

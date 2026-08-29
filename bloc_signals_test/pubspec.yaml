@@ -21,4 +21,4 @@ dependencies:
 
 dev_dependencies:
   coverage: ^1.11.0
-  very_good_analysis: ^10.3.0
+  very_good_analysis: ">=10.3.0 <12.0.0"

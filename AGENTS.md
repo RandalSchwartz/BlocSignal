@@ -103,3 +103,9 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 - **The Trap / Suboptimal Local Minimum**: Squeezing async types into a single rigid return type rather than providing clear, symmetric dual tracks for raw domain values vs. loading/error states.
 - **The Permanent Reflex**: Enforce the dual-track invariant across all asynchronous sources: `.toBlocSignal(required initialState:)` strictly yields `BlocSignalBase<T>` (raw domain values), while `.toAsyncBlocSignal()` strictly yields `BlocSignalBase<AsyncState<T>>` (sealed async states starting with `AsyncLoading`).
 
+### 🩹 Scar: context.select Zombie Subscriptions on Provider Container Swap
+- **The Wound**: Calling `context.select<B, R>()` in widgets within a subtree that does not otherwise rebuild (such as `const` child subtrees) failed to rebind its signal subscription when an ancestor `BlocSignalProvider` (or `.value()` provider) swapped its container instance. The widget held a zombie subscription listening to the discarded old container.
+- **The Trap / Suboptimal Local Minimum**: Calling `BlocSignalProvider.of<T>(context)` without `listen: true` under the assumption that `context.select` only needs signal effects and shouldn't observe inherited changes.
+- **The Permanent Reflex**: Always use `BlocSignalProvider.of<T>(this, listen: true)` in `context.select`. Because `_BlocSignalProviderInherited.updateShouldNotify` returns `bloc != oldWidget.bloc`, `listen: true` has zero overhead during normal state emissions while guaranteeing that provider container swaps trigger a rebind of the underlying signal effect across all subtrees. Guarded by dedicated widget and component tests in Flutter and Jaspr.
+
+

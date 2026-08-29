@@ -279,5 +279,84 @@ void main() {
 
       expect(events, containsAll(['counter:1', 'theme:dark']));
     });
+
+    testComponents(
+      'context.select transfers subscription when provider bloc instance '
+      'is swapped above const subtree',
+      (tester) async {
+        final cubit1 = CounterCubit();
+        final cubit2 = CounterCubit();
+        late _JasprSwapProviderState swapState;
+
+        tester.pumpComponent(
+          _JasprSwapProvider(
+            initialCubit: cubit1,
+            onCreated: (state) => swapState = state,
+          ),
+        );
+        expect(find.text('Count: 0'), findsOneComponent);
+
+        // Swap provider to cubit2 via stateful component
+        swapState.setCubit(cubit2);
+        await tester.pump();
+        expect(find.text('Count: 0'), findsOneComponent);
+
+        // State changes on cubit2 should trigger rebuild
+        cubit2.increment();
+        await tester.pump();
+        expect(find.text('Count: 1'), findsOneComponent);
+
+        await cubit1.close();
+        await cubit2.close();
+      },
+    );
   });
+}
+
+class _JasprSwapProvider extends StatefulComponent {
+  const _JasprSwapProvider({
+    required this.initialCubit,
+    required this.onCreated,
+  });
+
+  final CounterCubit initialCubit;
+  final void Function(_JasprSwapProviderState state) onCreated;
+
+  @override
+  State<_JasprSwapProvider> createState() => _JasprSwapProviderState();
+}
+
+class _JasprSwapProviderState extends State<_JasprSwapProvider> {
+  late CounterCubit _cubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _cubit = component.initialCubit;
+    component.onCreated(this);
+  }
+
+  void setCubit(CounterCubit newCubit) {
+    setState(() {
+      _cubit = newCubit;
+    });
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalProvider<CounterCubit>.value(
+      value: _cubit,
+      child: const _ConstSelectComponent(),
+    );
+  }
+}
+
+class _ConstSelectComponent extends StatelessComponent {
+  const _ConstSelectComponent();
+
+  @override
+  Component build(BuildContext context) {
+    final count = context.select<CounterCubit, int>((c) => c.stateValue);
+    return div([Component.text('Count: $count')]);
+  }
 }

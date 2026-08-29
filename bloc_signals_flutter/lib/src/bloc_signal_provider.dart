@@ -179,8 +179,8 @@ extension BlocSignalProviderExtension on BuildContext {
   /// Unlike Riverpod's 3-parameter `context.select` or `package:flutter_bloc`,
   /// `BlocSignal`'s `context.select` takes **2** generic type parameters:
   /// 1. `T`: The [BlocSignalBase] container type
-  ///    (e.g., `CounterBloc` or `UserCubit`).
-  /// 2. `R`: The selected return value type (e.g., `int` or `String`).
+  ///    (for example `CounterBloc` or `UserCubit`).
+  /// 2. `R`: The selected return value type (for example `int` or `String`).
   ///
   /// The selector callback receives the **`bloc` instance** directly:
   /// `(bloc) => bloc.stateValue.property`.
@@ -195,7 +195,7 @@ extension BlocSignalProviderExtension on BuildContext {
     R Function(T bloc) selector,
   ) {
     final element = this as Element;
-    final bloc = BlocSignalProvider.of<T>(this);
+    final bloc = BlocSignalProvider.of<T>(this, listen: true);
 
     final selectorState = _elementSelectors[element] ??= _SelectorState();
     final currentIndex = selectorState.index;

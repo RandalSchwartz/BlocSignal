@@ -140,6 +140,16 @@ enum DocSymbol(
     'bloc_signals_riverpod',
     'RiverpodBlocSignal-class.html',
   ),
+  riverpodNotifierBlocSignal(
+    'RiverpodNotifierBlocSignal',
+    'bloc_signals_riverpod',
+    'RiverpodNotifierBlocSignal-class.html',
+  ),
+  blocSignalNotifier(
+    'BlocSignalNotifier',
+    'bloc_signals_riverpod',
+    'BlocSignalNotifier-class.html',
+  ),
   providerListenableBlocSignalX(
     'ProviderListenableBlocSignalX',
     'bloc_signals_riverpod',

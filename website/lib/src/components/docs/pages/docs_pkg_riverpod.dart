@@ -54,7 +54,11 @@ class const DocsPkgRiverpodPage({super.key}) extends StatelessComponent {
 
       // 2. Riverpod to BlocSignal
       section(id: 'riverpod-to-bloc', classes: 'docs-section', [
-        h2([Component.text('Riverpod to BlocSignal (.toBlocSignal)')]),
+        h2([
+          Component.text(
+            'Riverpod to BlocSignal (.toBlocSignal & Typed Notifier Access)',
+          ),
+        ]),
         p([
           Component.text('Convert any Riverpod ProviderListenable into a '),
           apiLink(DocSymbol.blocSignalBase),
@@ -64,8 +68,15 @@ class const DocsPkgRiverpodPage({super.key}) extends StatelessComponent {
             label: '.toBlocSignal(ref)',
           ),
           Component.text(
-            ' extension. State updates from the Riverpod container propagate into the BlocSignal synchronously:',
+            ' extension. When adapting NotifierProvider, AsyncNotifierProvider, StateNotifierProvider, or StateProvider, ',
           ),
+          Component.text('the returned '),
+          apiLink(DocSymbol.riverpodNotifierBlocSignal),
+          Component.text(
+            ' provides direct typed access to the underlying Riverpod notifier via the ',
+          ),
+          code([Component.text('.notifier')]),
+          Component.text(' property for seamless state mutations:'),
         ]),
         const DocsCodeBlock(
           title: 'lib/riverpod_bridge.dart',
@@ -76,19 +87,35 @@ import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final authUserProvider = StateProvider<String?>((ref) => 'Randal');
+final counterProvider = NotifierProvider<CounterNotifier, int>(CounterNotifier.new);
 
-class UserHeaderWidget extends ConsumerWidget {
-  const UserHeaderWidget({super.key});
+class CounterNotifier extends Notifier<int> {
+  @override
+  int build() => 0;
+  void increment() => state++;
+}
+
+class CounterWidget extends ConsumerWidget {
+  const CounterWidget({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Adapt the Riverpod provider to a BlocSignal instance bound to this widget's lifecycle
-    final userBloc = authUserProvider.toBlocSignal(ref);
+    // 1. Adapt Riverpod provider to RiverpodNotifierBlocSignal<CounterNotifier, int>
+    final counterBloc = counterProvider.toBlocSignal(ref);
 
-    return BlocSignalBuilder<BlocSignalBase<String?>, String?>(
-      bloc: userBloc,
-      builder: (context, user) => Text('Welcome, \${user ?? "Guest"}'),
+    return Column(
+      children: [
+        // Read state reactively as a BlocSignal:
+        BlocSignalBuilder<BlocSignalBase<int>, int>(
+          bloc: counterBloc,
+          builder: (context, count) => Text('Count: \$count'),
+        ),
+        // Mutate the Riverpod notifier directly via typed .notifier:
+        ElevatedButton(
+          onPressed: () => counterBloc.notifier.increment(),
+          child: const Text('Increment'),
+        ),
+      ],
     );
   }
 }''',
@@ -103,9 +130,13 @@ class UserHeaderWidget extends ConsumerWidget {
           apiLink(DocSymbol.cubitSignal),
           Component.text(' or '),
           apiLink(DocSymbol.blocSignal),
-          Component.text(' as a Riverpod provider using the '),
+          Component.text(' as a Riverpod NotifierProvider using the '),
           apiLink(DocSymbol.blocSignalRiverpodX, label: '.toProvider()'),
-          Component.text(' extension:'),
+          Component.text(' extension. The generated '),
+          apiLink(DocSymbol.blocSignalNotifier),
+          Component.text(
+            ' exposes typed .cubit and .bloc getters on the notifier, allowing Riverpod widgets to trigger mutations with zero boilerplate:',
+          ),
         ]),
         const DocsCodeBlock(
           title: 'lib/counter_provider.dart',

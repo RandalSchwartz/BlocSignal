@@ -206,10 +206,10 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_riverpod')],
                   ),
                 ]),
-                td([Component.text('^1.0.0+1')]),
+                td([Component.text('^1.1.0')]),
                 td([
                   Component.text(
-                    'Bidirectional Riverpod 2 & 3 interoperability adapters.',
+                    'Bidirectional read-and-mutate Riverpod 2 & 3 interoperability adapters.',
                   ),
                 ]),
                 td([Component.text('Dart / Flutter')]),

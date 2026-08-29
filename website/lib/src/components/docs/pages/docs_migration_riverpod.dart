@@ -19,6 +19,10 @@ class const DocsMigrationRiverpodPage({super.key}) extends StatelessComponent {
     ),
     TocHeading(title: 'Widget Refactoring', anchor: 'widget-refactoring'),
     TocHeading(title: 'Derived State with computed()', anchor: 'derived-state'),
+    TocHeading(
+      title: 'Incremental Migration & Bidirectional State Bridging',
+      anchor: 'bidirectional-bridging',
+    ),
   ];
 
   @override
@@ -194,6 +198,59 @@ final isEvenProvider = Provider<bool>((ref) {
 // --- AFTER: BlocSignal computed() Signal ---
 extension CounterDerived on CounterCubit {
   ReadonlySignal<bool> get isEven => computed(() => state.value.isEven);
+}''',
+        ),
+      ]),
+
+      // 6. Incremental Migration & Bidirectional State Bridging
+      section(id: 'bidirectional-bridging', classes: 'docs-section', [
+        h2([
+          Component.text(
+            'Incremental Migration & Bidirectional State Bridging',
+          ),
+        ]),
+        p([
+          Component.text(
+            'You do not need to rewrite entire applications overnight. Using ',
+          ),
+          code([Component.text('bloc_signals_riverpod')]),
+          Component.text(
+            ', Riverpod notifiers and BlocSignal containers can coexist and mutate each other across architectural boundaries:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          title: 'lib/incremental_bridge.dart',
+          language: 'dart',
+          code: '''
+import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
+import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+// 1. Consume and mutate Riverpod notifiers inside BlocSignal features
+void consumeRiverpodInsideBloc(WidgetRef ref) {
+  final counterBloc = counterProvider.toBlocSignal(ref);
+  print(counterBloc.stateValue); // Read state synchronously
+  counterBloc.notifier.increment(); // Mutate Riverpod notifier directly!
+}
+
+// 2. Expose and mutate BlocSignal containers inside Riverpod ConsumerWidgets
+final countCubit = CounterCubit();
+final counterNotifierProvider = countCubit.toProvider();
+
+class HybridRiverpodWidget extends ConsumerWidget {
+  const HybridRiverpodWidget({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(counterNotifierProvider);
+
+    return ElevatedButton(
+      // Mutate the underlying Cubit/Bloc directly via typed .cubit alias:
+      onPressed: () => ref.read(counterNotifierProvider.notifier).cubit.increment(),
+      child: Text('Count: \$count'),
+    );
+  }
 }''',
         ),
       ]),

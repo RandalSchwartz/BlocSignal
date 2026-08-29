@@ -95,22 +95,45 @@ final Stream<int> stream = myBlocSignal.toStream();
 
 ---
 
-## 2. Riverpod Interoperability (`package:bloc_signals_riverpod`)
+## 3. Riverpod Interoperability (`package:bloc_signals_riverpod`)
 
-Bridge Riverpod providers, Notifiers, `ProviderContainer`, and `WidgetRef` instances:
+Bridge Riverpod providers, Notifiers, `ProviderContainer`, and `WidgetRef` instances with full bidirectional read-and-mutate support:
 
-### Riverpod Provider ➔ `BlocSignal`
+### Riverpod Provider ➔ `BlocSignal` (Read & Mutate)
 ```dart
-// Auto-registers ref.onDispose(bloc.close)
-final blocSignal = riverpodProvider.toBlocSignal(ref);
+// 1. Adapts Riverpod NotifierProvider to RiverpodNotifierBlocSignal<Notifier, State>
+final counterBloc = counterProvider.toBlocSignal(ref);
+
+// Synchronous reactive state access:
+print(counterBloc.stateValue); // 0
+
+// Direct mutation via typed .notifier getter:
+counterBloc.notifier.increment();
+
+// Auto-disposal binds to ref lifecycle:
+// ref.onDispose(counterBloc.close); is automatically registered!
 ```
 
-### `BlocSignal` ➔ Riverpod `NotifierProvider`
+### `BlocSignal` ➔ Riverpod `NotifierProvider` (Read & Mutate)
 ```dart
-final NotifierProvider<Notifier<int>, int> riverpodProvider = myBlocSignal.toProvider();
+// 1. Adapts Cubit/Bloc to Riverpod NotifierProvider
+final countCubit = CounterCubit();
+final counterProvider = countCubit.toProvider();
+
+// In Riverpod UI / Widget:
+Widget build(BuildContext context, WidgetRef ref) {
+  // Read state reactively:
+  final count = ref.watch(counterProvider);
+  
+  // Mutate via typed .cubit or .bloc notifier aliases:
+  return ElevatedButton(
+    onPressed: () => ref.read(counterProvider.notifier).cubit.increment(),
+    child: Text('Count: $count'),
+  );
+}
 ```
 
-### `AsyncValue` (Riverpod 3 Sealed Class) ↔ `AsyncState` (Signals)
+### `AsyncValue` (Riverpod Sealed Class) ↔ `AsyncState` (Signals)
 ```dart
 final AsyncState<T> signalsState = riverpodAsyncValue.toAsyncState();
 final AsyncValue<T> riverpodValue = signalsAsyncState.toAsyncValue();
@@ -118,7 +141,7 @@ final AsyncValue<T> riverpodValue = signalsAsyncState.toAsyncValue();
 
 ---
 
-## 3. Flutter `Listenable` & `package:provider` Interoperability (`package:bloc_signals_flutter`)
+## 4. Flutter `Listenable` & `package:provider` Interoperability (`package:bloc_signals_flutter`)
 
 Bridge Flutter's native `ChangeNotifier`, `ValueNotifier`, `AnimationController`, and `package:provider`:
 

@@ -296,6 +296,40 @@ subscriptions stop after disposal.
 Stop at an unsupported boundary instead of hiding it behind a global cache, timer, or unowned
 reaction.
 
+## Bidirectional State Bridging (`package:bloc_signals_riverpod`)
+
+When incrementally migrating large applications, you do not need to rewrite entire modules at once. `package:bloc_signals_riverpod` allows Riverpod notifiers and `BlocSignal` containers to coexist with bidirectional read-and-mutate capabilities:
+
+### 1. Consuming & Mutating Riverpod Providers inside BlocSignal Features
+```dart
+// Adapt any Riverpod NotifierProvider to RiverpodNotifierBlocSignal
+final counterBloc = counterProvider.toBlocSignal(ref);
+
+// Read state synchronously:
+final currentCount = counterBloc.stateValue;
+
+// Mutate Riverpod notifier directly from BlocSignal code:
+counterBloc.notifier.increment();
+```
+
+### 2. Exposing & Mutating BlocSignal Containers inside Riverpod Widgets
+```dart
+// Expose CubitSignal or BlocSignal as a Riverpod NotifierProvider
+final countCubit = CounterCubit();
+final counterProvider = countCubit.toProvider();
+
+// In a Riverpod ConsumerWidget:
+Widget build(BuildContext context, WidgetRef ref) {
+  final count = ref.watch(counterProvider);
+
+  return ElevatedButton(
+    // Access typed .cubit / .bloc aliases on the notifier:
+    onPressed: () => ref.read(counterProvider.notifier).cubit.increment(),
+    child: Text('Count: $count'),
+  );
+}
+```
+
 ## Reference Benchmark Ports (from rrousselGit/riverpod)
 
 The repository provides three canonical standalone Flutter benchmark ports translated directly from [`rrousselGit/riverpod/examples`](https://github.com/rrousselGit/riverpod/tree/master/examples):

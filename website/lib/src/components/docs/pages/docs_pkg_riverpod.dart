@@ -113,6 +113,7 @@ class UserHeaderWidget extends ConsumerWidget {
           code: '''
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class CounterCubit extends CubitSignal<int> {
@@ -120,12 +121,25 @@ class CounterCubit extends CubitSignal<int> {
   void increment() => emit(stateValue + 1);
 }
 
-// Create a Riverpod provider backed by CounterCubit
-final counterProvider = Provider<int>((ref) {
-  final cubit = CounterCubit();
-  ref.onDispose(cubit.close);
-  return ref.watchBlocSignal(cubit);
-});''',
+// 1. Expose the CubitSignal as a Riverpod NotifierProvider
+final cubit = CounterCubit();
+final counterProvider = cubit.toProvider();
+
+// 2. Consume and mutate inside Riverpod widgets
+class CounterView extends ConsumerWidget {
+  const CounterView({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(counterProvider);
+
+    return ElevatedButton(
+      // Access typed .cubit or .bloc on the notifier for direct mutations:
+      onPressed: () => ref.read(counterProvider.notifier).cubit.increment(),
+      child: Text('Count: \$count'),
+    );
+  }
+}''',
         ),
       ]),
 

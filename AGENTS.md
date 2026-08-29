@@ -108,4 +108,10 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 - **The Antigen / Vulnerability Vector**: Calling `BlocSignalProvider.of<T>(context)` without `listen: true` under the assumption that `context.select` only needs signal effects and shouldn't observe inherited changes, leaving subscriptions attached to stale provider instances when the provider rebuilds with a new instance.
 - **The Antibody / Permanent Reflex**: Always use `BlocSignalProvider.of<T>(this, listen: true)` in `context.select`. Because `_BlocSignalProviderInherited.updateShouldNotify` returns `bloc != oldWidget.bloc`, `listen: true` has zero overhead during normal state emissions while guaranteeing that provider container swaps trigger a rebind of the underlying signal effect across all subtrees. Guarded by dedicated widget and component tests in Flutter and Jaspr.
 
+### 🩹 Scar: Riverpod 3 Provider Subtyping & Dart Extension Member Ambiguity
+- **The Pathogen / Wound**: Defining separate Dart extension methods on both Riverpod base provider types (for example, `NotifierProvider`) and their autoDispose subtypes (for example, `AutoDisposeNotifierProvider`) causes the Dart analyzer to fail with `ambiguous_extension_member_access` errors when invoking `.toBlocSignal()` on autoDispose provider instances.
+- **The Trap / Suboptimal Local Minimum**: Writing duplicate or specialized extensions for both standard and autoDispose provider classes under the assumption that autoDispose variants require distinct extension dispatch.
+- **The Permanent Reflex**: Target canonical base provider types (`NotifierProvider`, `AsyncNotifierProvider`, `StateNotifierProvider`, `StateProvider`, `StreamNotifierProvider`) in extensions. Because they extend `ProviderListenable`, Dart extension resolution prioritizes specific provider extensions over generic fallback extensions seamlessly across both standard and autoDispose providers without ambiguity.
+
+
 

@@ -18,6 +18,10 @@ class const DocsCubitVsBlocPage({super.key}) extends StatelessComponent {
     TocHeading(title: 'When to Use BlocSignal', anchor: 'when-to-use-bloc'),
     TocHeading(title: 'Decision Matrix', anchor: 'decision-matrix'),
     TocHeading(title: 'Side-by-Side Example', anchor: 'side-by-side-example'),
+    TocHeading(
+      title: 'Composable Mixins (Single Inheritance)',
+      anchor: 'composable-mixins',
+    ),
   ];
 
   @override
@@ -319,6 +323,168 @@ class AuthBloc extends BlocSignal<AuthEvent, AuthState> {
   final AuthRepository _repository;
 }''',
         ),
+      ]),
+
+      // 7. Composable Mixins (Overcoming Single Inheritance)
+      section(id: 'composable-mixins', classes: 'docs-section', [
+        h2([
+          Component.text('Composable Mixins (Overcoming Single Inheritance)'),
+        ]),
+        p([
+          Component.text(
+            'In Dart, a class can only extend a single superclass. In production applications, classes frequently inherit from an existing base class (such as Flutter’s ',
+          ),
+          code([Component.text('ChangeNotifier')]),
+          Component.text(', '),
+          code([Component.text('TextEditingController')]),
+          Component.text(', '),
+          code([Component.text('AnimationController')]),
+          Component.text(', or a third-party/domain '),
+          code([Component.text('BaseRepository')]),
+          Component.text(
+            '). Rather than writing wrapper boilerplate or refactoring your inheritance tree, use ',
+          ),
+          apiLink(DocSymbol.cubitSignalMixin),
+          Component.text(' and '),
+          apiLink(DocSymbol.blocSignalMixin),
+          Component.text(
+            ' to turn any class into a full reactive state container.',
+          ),
+        ]),
+        DocsCallout(
+          type: CalloutType.important,
+          title: 'Full Ecosystem Polymorphism',
+          children: [
+            p([
+              Component.text('Because '),
+              apiLink(DocSymbol.cubitSignalMixin),
+              Component.text(' implements '),
+              apiLink(DocSymbol.blocSignalBase),
+              Component.text(
+                ', any class mixing it in is 100% compatible with ',
+              ),
+              apiLink(DocSymbol.blocSignalProvider),
+              Component.text(', '),
+              apiLink(DocSymbol.contextSelect, label: 'context.select'),
+              Component.text(', and '),
+              apiLink(DocSymbol.blocSignalTest),
+              Component.text(' out of the box with zero glue code.'),
+            ]),
+          ],
+        ),
+        h3([
+          Component.text('1. Mixing Cubit Capabilities into an Existing Class'),
+        ]),
+        p([
+          Component.text(
+            'Mix in CubitSignalMixin<State> and call initCubitSignal(initialState: ...) inside your constructor:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          filename: 'user_repository.dart',
+          dart313Code: '''
+sealed class UserState;
+final class UserInitial extends UserState;
+final class UserLoading extends UserState;
+final class UserLoaded(final User user) extends UserState;
+
+class UserRepository(final ApiClient api) extends BaseRepository
+    with CubitSignalMixin<UserState> {
+  this {
+    initCubitSignal(initialState: const UserInitial());
+  }
+
+  Future<void> fetchUser(String id) async {
+    emit(const UserLoading());
+    final user = await api.getUser(id);
+    emit(UserLoaded(user));
+  }
+}''',
+          dart35Code: '''
+sealed class UserState {
+  const UserState();
+}
+
+final class UserInitial extends UserState {
+  const UserInitial();
+}
+
+final class UserLoading extends UserState {
+  const UserLoading();
+}
+
+final class UserLoaded extends UserState {
+  const UserLoaded(this.user);
+  final User user;
+}
+
+class UserRepository extends BaseRepository
+    with CubitSignalMixin<UserState> {
+  UserRepository(this._api) {
+    initCubitSignal(initialState: const UserInitial());
+  }
+
+  final ApiClient _api;
+
+  Future<void> fetchUser(String id) async {
+    emit(const UserLoading());
+    final user = await _api.getUser(id);
+    emit(UserLoaded(user));
+  }
+}''',
+        ),
+        h3([Component.text('2. Mixing BLoC Event Handling Capabilities')]),
+        p([
+          Component.text(
+            'To add structured event handling with concurrency transformers, mix in both CubitSignalMixin and BlocSignalMixin:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          filename: 'auth_service.dart',
+          dart313Code: '''
+class AuthService(final AuthApiClient authApi) extends BaseService
+    with
+        CubitSignalMixin<AuthState>,
+        BlocSignalMixin<AuthEvent, AuthState> {
+  this {
+    initCubitSignal(initialState: const AuthInitial());
+
+    on<AuthLoginRequested>((event, emit) async {
+      emit(const AuthLoading());
+      final user = await authApi.login(event.username, event.password);
+      emit(AuthAuthenticated(user.name));
+    }, transformer: droppable());
+
+    on<AuthLogoutRequested>((event, emit) => emit(const AuthInitial()));
+  }
+}''',
+          dart35Code: '''
+class AuthService extends BaseService
+    with
+        CubitSignalMixin<AuthState>,
+        BlocSignalMixin<AuthEvent, AuthState> {
+  AuthService(this._authApi) {
+    initCubitSignal(initialState: const AuthInitial());
+
+    on<AuthLoginRequested>((event, emit) async {
+      emit(const AuthLoading());
+      final user = await _authApi.login(event.username, event.password);
+      emit(AuthAuthenticated(user.name));
+    }, transformer: droppable());
+
+    on<AuthLogoutRequested>((event, emit) => emit(const AuthInitial()));
+  }
+
+  final AuthApiClient _authApi;
+}''',
+        ),
+        h3([Component.text('3. DRY Core Architecture')]),
+        p([
+          Component.text(
+            'Under the hood, CubitSignal and BlocSignal themselves compose CubitSignalMixin and BlocSignalMixin as their single source of truth. '
+            'Whether extending the standard base classes or mixing them into existing superclasses, the performance, signal graphs, and event lifecycles are identical.',
+          ),
+        ]),
       ]),
     ]);
   }

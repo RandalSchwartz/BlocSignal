@@ -10,6 +10,16 @@ enum DocSymbol(
   // Core (bloc_signals)
   cubitSignal('CubitSignal', 'bloc_signals', 'CubitSignal-class.html'),
   blocSignal('BlocSignal', 'bloc_signals', 'BlocSignal-class.html'),
+  cubitSignalMixin(
+    'CubitSignalMixin',
+    'bloc_signals',
+    'CubitSignalMixin-mixin.html',
+  ),
+  blocSignalMixin(
+    'BlocSignalMixin',
+    'bloc_signals',
+    'BlocSignalMixin-mixin.html',
+  ),
   blocSignalBase('BlocSignalBase', 'bloc_signals', 'BlocSignalBase-class.html'),
   blocSignalObserver(
     'BlocSignalObserver',

@@ -43,6 +43,11 @@ class _StateDecisionWizardState() extends State<StateDecisionWizard> {
           desc: 'Debounced search, droppable submit, multi-step wizard',
         ),
         _buildOptionChip(
+          id: 'mixin',
+          label: '🧬 Composable Mixins',
+          desc: 'Existing base class (ChangeNotifier, BaseRepository, Controller)',
+        ),
+        _buildOptionChip(
           id: 'hydrate',
           label: '💾 Persistent Storage',
           desc: 'User preferences, auth session, offline caching',
@@ -129,6 +134,23 @@ class SearchBloc extends BlocSignal<SearchEvent, SearchState> {
   }
 }''',
       ),
+      'mixin' => const _Recommendation(
+        badge: 'CubitSignalMixin / BlocSignalMixin',
+        title: 'Composable Mixins (Single Inheritance Bypass)',
+        rationale: 'When your domain repository or UI controller already extends a base class, CubitSignalMixin and BlocSignalMixin turn it into a first-class BlocSignalBase container without consuming its single inheritance slot.',
+        codeSnippet: '''// Composable mixin with existing superclass
+class UserRepository extends BaseRepository with CubitSignalMixin<UserState> {
+  UserRepository() {
+    initCubitSignal(initialState: const UserInitial());
+  }
+
+  Future<void> fetchUser(String id) async {
+    emit(const UserLoading());
+    final user = await api.getUser(id);
+    emit(UserLoaded(user));
+  }
+}''',
+      ),
       'hydrate' => const _Recommendation(
         badge: 'HydratedCubitSignal<State>',
         title: 'HydratedCubitSignal (Synchronous Persistence)',
@@ -192,6 +214,10 @@ class const DocsDecisionMatrixPage({super.key}) extends StatelessComponent {
     TocHeading(
       title: 'Persistence & Replay Mixins',
       anchor: 'specialized-mixins',
+    ),
+    TocHeading(
+      title: 'When to Use Composable Mixins',
+      anchor: 'when-to-use-mixins',
     ),
     TocHeading(title: 'Side-by-Side Code Recipes', anchor: 'code-recipes'),
   ];
@@ -266,6 +292,30 @@ class const DocsDecisionMatrixPage({super.key}) extends StatelessComponent {
                   strong([apiLink(DocSymbol.blocSignal)]),
                 ]),
                 td([Component.text('Reified events (bloc.add(Event()))')]),
+                td([
+                  Component.text(
+                    'Built-in (droppable, restartable, sequential)',
+                  ),
+                ]),
+                td([Component.text('Full onEvent, onTransition, OTel')]),
+                td([Component.text('Via HydratedMixin')]),
+                td([Component.text('Via ReplayMixin')]),
+              ]),
+              tr([
+                td([
+                  strong([apiLink(DocSymbol.cubitSignalMixin)]),
+                ]),
+                td([Component.text('Direct methods (emit(newState))')]),
+                td([Component.text('Synchronous Mutex locks')]),
+                td([Component.text('Full onChange & OTel spans')]),
+                td([Component.text('Via HydratedMixin')]),
+                td([Component.text('Via ReplayMixin')]),
+              ]),
+              tr([
+                td([
+                  strong([apiLink(DocSymbol.blocSignalMixin)]),
+                ]),
+                td([Component.text('Reified events (add(Event()))')]),
                 td([
                   Component.text(
                     'Built-in (droppable, restartable, sequential)',
@@ -424,6 +474,40 @@ class const DocsDecisionMatrixPage({super.key}) extends StatelessComponent {
             strong([Component.text('ReplayMixin (Undo / Redo): ')]),
             Component.text(
               'Maintains a bounded historical change stack, enabling instant undo and redo operations.',
+            ),
+          ]),
+        ]),
+      ]),
+
+      // 7. When to Use Composable Mixins
+      section(id: 'when-to-use-mixins', classes: 'docs-section', [
+        h2([Component.text('5. When to Use Composable Mixins')]),
+        p([
+          Component.text('Use '),
+          apiLink(DocSymbol.cubitSignalMixin),
+          Component.text(' or '),
+          apiLink(DocSymbol.blocSignalMixin),
+          Component.text(
+            ' when your class already extends an existing framework or third-party superclass:',
+          ),
+        ]),
+        ul([
+          li([
+            strong([Component.text('Existing Superclasses: ')]),
+            Component.text(
+              'Classes already extending ChangeNotifier, TextEditingController, AnimationController, or BaseRepository.',
+            ),
+          ]),
+          li([
+            strong([Component.text('Zero Namespace Pollution: ')]),
+            Component.text(
+              'Lean, disciplined API surface with zero collision on domain class methods.',
+            ),
+          ]),
+          li([
+            strong([Component.text('Full Ecosystem Interoperability: ')]),
+            Component.text(
+              'Mixed-in classes satisfy BlocSignalBase and work directly with BlocSignalProvider, context.select, and blocSignalTest.',
             ),
           ]),
         ]),

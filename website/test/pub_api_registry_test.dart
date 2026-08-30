@@ -43,6 +43,8 @@ void main() {
 
       expect(names, contains('CubitSignal'));
       expect(names, contains('BlocSignal'));
+      expect(names, contains('CubitSignalMixin'));
+      expect(names, contains('BlocSignalMixin'));
       expect(names, contains('BlocSignalObserver'));
       expect(names, contains('droppable'));
       expect(names, contains('restartable'));

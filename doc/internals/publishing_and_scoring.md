@@ -29,6 +29,11 @@ When publishing packages to pub.dev:
   ```
 - **Universal Publishing Rule**: Always invoke `flutter pub publish [--dry-run]` across all workspace packages, including pure Dart packages (`bloc_signals`, `bloc_signals_hydrate`, etc.).
 
+### F. Multi-Major Dependency Lower Bounds (`dart pub downgrade` Scoring Check)
+- **Pub.dev Lower Bounds Requirement**: Pub.dev awards 20 points under "Compatible with dependency constraint lower bounds" by running `dart pub downgrade` followed by `dart analyze`.
+- **Dual Entrypoint Strategy**: If bridging across multiple major versions of a dependency (for example `riverpod: ">=2.5.0 <4.0.0"`) where export locations changed across versions, import both library entrypoints (`package:foo/foo.dart` and `package:foo/src/internals.dart`) with `hide` clauses for ambiguous classes, and suppress `unnecessary_import: ignore` in `analysis_options.yaml`.
+- **Pre-Publishing Validation**: Always run `dart pub global run pana <pkg>` or test `flutter pub downgrade && dart analyze` to ensure 0 errors on lower bounds before publishing.
+
 ---
 
 ## 📋 2. Monorepo Documentation Consistency

@@ -333,9 +333,13 @@ class _PublicationsPageState() extends State<PublicationsPage> {
 }''',
   );
 
-  final targetFile = File('lib/src/pages/publications_page.dart');
+  final websiteDir = Directory.current.path.endsWith('/website')
+      ? Directory.current
+      : Directory('website');
+  final targetFile =
+      File('${websiteDir.path}/lib/src/pages/publications_page.dart');
   await targetFile.writeAsString(buffer.toString());
-  print('💾 Updated lib/src/pages/publications_page.dart');
+  print('💾 Updated ${targetFile.path}');
 
   // Format code
   final fmtResult = Process.runSync('dart', ['format', targetFile.path]);

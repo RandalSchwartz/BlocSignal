@@ -18,6 +18,16 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title: 'Overcoming Dart\'s Single Inheritance Wall: Composable CubitSignalMixin & BlocSignalMixin in Flutter',
+    description: 'Discover how CubitSignalMixin and BlocSignalMixin allow any existing Flutter controller, domain repository, or enterprise class to gain full reactive state container capabilities without occupying its single inheritance slot.',
+    url: 'https://dev.to/gde/overcoming-darts-single-inheritance-wall-composable-cubitsignalmixin-blocsignalmixin-in-flutter-43bf',
+    date: 'Aug 30',
+    readTime: '5 min read',
+    category: 'Flutter & Jaspr',
+    type: 'Article',
+    tags: ["flutter", "dart", "architecture", "statemanagement"],
+  ),
+  PublicationItem(
     title: 'Grand Central Station: Why BLoC, Riverpod, and BlocSignal Are Now True Peers',
     description: 'Discover why Flutter state management is no longer an all-or-nothing choice. Explore how BlocSignal, Classic BLoC, and Riverpod now operate as first-class bidirectional peers at the Grand Central State Terminal.',
     url: 'https://dev.to/gde/grand-central-station-why-bloc-riverpod-and-blocsignal-are-now-true-peers-3fd8',

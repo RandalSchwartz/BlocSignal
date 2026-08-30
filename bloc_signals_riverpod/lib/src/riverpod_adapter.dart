@@ -1,6 +1,8 @@
 import 'package:bloc_signals/bloc_signals.dart';
-// `ProviderListenable` is exported via Riverpod's internal library entrypoint
-// (`package:riverpod/src/internals.dart`) for third-party adapter authors.
+import 'package:riverpod/riverpod.dart'
+    hide AsyncData, AsyncError, AsyncLoading;
+// `ProviderListenable` and legacy provider types are exported via Riverpod's
+// internal library entrypoint in Riverpod 3 for third-party adapter authors.
 // ignore: implementation_imports
 import 'package:riverpod/src/internals.dart'
     hide AsyncData, AsyncError, AsyncLoading;

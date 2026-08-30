@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.1
+
+- Fix dependency lower bound analysis failure on pub.dev (#211):
+  - Maintain compatibility across both Riverpod 2.x and Riverpod 3.x (`>=2.5.0 <4.0.0`) by importing both `riverpod.dart` and `src/internals.dart`.
+  - Configure package analysis options to ensure clean static analysis on dependency lower bounds (`dart pub downgrade`).
+
 ## 1.1.0
 
 - Add bidirectional read-and-mutate interoperability (#207):

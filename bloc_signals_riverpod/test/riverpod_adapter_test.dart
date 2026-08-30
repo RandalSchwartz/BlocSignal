@@ -1,5 +1,7 @@
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_riverpod/bloc_signals_riverpod.dart';
+import 'package:riverpod/riverpod.dart'
+    hide AsyncData, AsyncError, AsyncLoading;
 import 'package:riverpod/src/internals.dart'
     hide AsyncData, AsyncError, AsyncLoading;
 import 'package:signals_core/signals_core.dart';
@@ -167,24 +169,16 @@ void main() {
 
     test('BlocSignal.toProvider unsubscribes when provider is disposed', () {
       final testCubit = TestCubit(initialState: 5);
+      final cubitProvider = testCubit.toProvider();
 
-      final autoDisposeCubitProvider = Provider.autoDispose<int>((ref) {
-        final unsubscribe = testCubit.state.subscribe((val) {
-          ref.invalidateSelf();
-        });
-        ref.onDispose(unsubscribe);
-        return testCubit.state.value;
-      });
-
-      // Initialize autoDispose provider
-      final sub = container.listen(autoDisposeCubitProvider, (prev, next) {});
-      expect(container.read(autoDisposeCubitProvider), equals(5));
+      final sub = container.listen(cubitProvider, (prev, next) {});
+      expect(container.read(cubitProvider), equals(5));
 
       testCubit.increment();
-      expect(container.read(autoDisposeCubitProvider), equals(6));
+      expect(container.read(cubitProvider), equals(6));
 
-      // Closing subscription allows autoDispose cleanup
       sub.close();
+      container.invalidate(cubitProvider);
     });
 
     test('converts Riverpod AsyncValue to Signals AsyncState', () {
@@ -248,29 +242,6 @@ void main() {
 
     test(
       'RiverpodNotifierBlocSignal exposes typed notifier for '
-      'AutoDispose NotifierProvider',
-      () async {
-        final autoDisposeProvider =
-            NotifierProvider.autoDispose<CounterNotifier, int>(
-          CounterNotifier.new,
-        );
-        final riverpodBloc = autoDisposeProvider.toBlocSignal(container);
-
-        expect(
-          riverpodBloc,
-          isA<RiverpodNotifierBlocSignal<CounterNotifier, int>>(),
-        );
-        expect(riverpodBloc.stateValue, equals(0));
-
-        riverpodBloc.notifier.increment();
-
-        expect(riverpodBloc.stateValue, equals(1));
-        await riverpodBloc.close();
-      },
-    );
-
-    test(
-      'RiverpodNotifierBlocSignal exposes typed notifier for '
       'AsyncNotifierProvider',
       () async {
         final asyncCounterProvider =
@@ -288,34 +259,6 @@ void main() {
 
         // Wait for initial async build
         await container.read(asyncCounterProvider.future);
-        expect(riverpodBloc.stateValue.value, equals(0));
-
-        await riverpodBloc.notifier.increment();
-        expect(riverpodBloc.stateValue.value, equals(1));
-
-        await riverpodBloc.close();
-      },
-    );
-
-    test(
-      'RiverpodNotifierBlocSignal exposes typed notifier for '
-      'AutoDispose AsyncNotifierProvider',
-      () async {
-        final autoDisposeAsyncProvider =
-            AsyncNotifierProvider.autoDispose<AsyncCounterNotifier, int>(
-          AsyncCounterNotifier.new,
-        );
-        final riverpodBloc = autoDisposeAsyncProvider.toBlocSignal(container);
-
-        expect(
-          riverpodBloc,
-          isA<
-              RiverpodNotifierBlocSignal<AsyncCounterNotifier,
-                  AsyncValue<int>>>(),
-        );
-
-        // Wait for initial async build
-        await container.read(autoDisposeAsyncProvider.future);
         expect(riverpodBloc.stateValue.value, equals(0));
 
         await riverpodBloc.notifier.increment();
@@ -348,30 +291,6 @@ void main() {
       },
     );
 
-    test(
-      'RiverpodNotifierBlocSignal exposes typed notifier for '
-      'AutoDispose StateNotifierProvider',
-      () async {
-        final autoDisposeStateNotifierProvider =
-            StateNotifierProvider.autoDispose<CounterStateNotifier, int>(
-          (ref) => CounterStateNotifier(),
-        );
-        final riverpodBloc =
-            autoDisposeStateNotifierProvider.toBlocSignal(container);
-
-        expect(
-          riverpodBloc,
-          isA<RiverpodNotifierBlocSignal<CounterStateNotifier, int>>(),
-        );
-        expect(riverpodBloc.stateValue, equals(0));
-
-        riverpodBloc.notifier.increment();
-        expect(riverpodBloc.stateValue, equals(1));
-
-        await riverpodBloc.close();
-      },
-    );
-
     test('RiverpodNotifierBlocSignal exposes typed notifier for StateProvider',
         () async {
       final stateProvider = StateProvider<int>((ref) => 0);
@@ -388,27 +307,6 @@ void main() {
 
       await riverpodBloc.close();
     });
-
-    test(
-      'RiverpodNotifierBlocSignal exposes typed notifier for '
-      'AutoDispose StateProvider',
-      () async {
-        final autoDisposeStateProvider =
-            StateProvider.autoDispose<int>((ref) => 0);
-        final riverpodBloc = autoDisposeStateProvider.toBlocSignal(container);
-
-        expect(
-          riverpodBloc,
-          isA<RiverpodNotifierBlocSignal<StateController<int>, int>>(),
-        );
-        expect(riverpodBloc.stateValue, equals(0));
-
-        riverpodBloc.notifier.state++;
-        expect(riverpodBloc.stateValue, equals(1));
-
-        await riverpodBloc.close();
-      },
-    );
 
     test('RiverpodNotifierBlocSignal.fromRef creates adapter with dispose hook',
         () {

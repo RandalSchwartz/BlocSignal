@@ -33,6 +33,55 @@ assertion and then returns without changing state when assertions are disabled.
 > - **Named Initial State**: Constructors take required named argument `initialState:` (`: super(initialState: ...)`), NOT positional `super(...)`.
 > - **State Access**: Use `stateValue` (or `state.value`) to read raw `StateType` values inside methods/handlers (`emit(stateValue + 1)`). `state` returns `ReadonlySignal<StateType>` for reactive signal observers.
 
+## Composable Mixins (Overcoming Single Inheritance)
+
+In Dart, classes are restricted to single inheritance (`extends SuperClass`). When an existing class already extends a third-party or Flutter framework base class (for example `ChangeNotifier`, `TextEditingController`, `AnimationController`, or `BaseRepository`), use `CubitSignalMixin` and `BlocSignalMixin` to grant it full `BlocSignalBase` reactive capabilities without occupying its single inheritance slot:
+
+### 1. CubitSignalMixin (Method-Driven Composable State)
+```dart
+class UserProfileRepository extends BaseRepository
+    with CubitSignalMixin<UserProfileState> {
+  UserProfileRepository() {
+    initCubitSignal(initialState: const UserProfileInitial());
+  }
+
+  Future<void> fetchProfile(String id) async {
+    emit(const UserProfileLoading());
+    final user = await api.getUser(id);
+    emit(UserProfileLoaded(user));
+  }
+}
+```
+
+### 2. BlocSignalMixin (Event-Driven Composable State)
+```dart
+class AuthenticationBlocService extends BaseService
+    with
+        CubitSignalMixin<AuthState>,
+        BlocSignalMixin<AuthEvent, AuthState> {
+  AuthenticationBlocService() {
+    initCubitSignal(initialState: const AuthInitial());
+
+    on<LoginRequested>((event, emit) async {
+      emit(const AuthLoading());
+      final user = await authApi.login(event.username, event.password);
+      emit(AuthAuthenticated(user));
+    });
+
+    on<LogoutRequested>((event, emit) {
+      emit(const AuthUnauthenticated());
+    });
+  }
+}
+```
+
+### 3. DRY Core Architecture
+`CubitSignal<StateType>` and `BlocSignal<Event, StateType>` compose `CubitSignalMixin` and `BlocSignalMixin` as their single source of truth:
+- `CubitSignal<StateType>` extends `BlocSignalBase<StateType>` with `CubitSignalMixin<StateType>`
+- `BlocSignal<Event, StateType>` extends `BlocSignalBase<StateType>` with `CubitSignalMixin<StateType>`, `BlocSignalMixin<Event, StateType>`
+
+Because `CubitSignalMixin` implements `BlocSignalBase<StateType>`, any class mixing it in is polymorphically compatible with `BlocSignalProvider`, `context.select`, `blocSignalTest`, `bloc_signals_riverpod`, `bloc_signals_hydrate`, and `bloc_signals_replay`.
+
 ## Custom Equality & Identity Comparison (`equals`)
 
 By default, `BlocSignalBase` uses standard value equality (`previous == current`) to de-duplicate state emissions and prevent redundant reactive updates.

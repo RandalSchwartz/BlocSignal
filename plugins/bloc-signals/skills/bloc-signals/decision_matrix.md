@@ -22,13 +22,15 @@ This guide provides an opinionated architectural rubric for choosing the right s
 
 ## 📊 Architectural Comparison Matrix
 
-| Container                        | Mutation Mechanism                   | Event Concurrency                     | Reified Events | Persistence         | Undo / Redo                     | Primary Use Case                              |
-| :------------------------------- | :----------------------------------- | :------------------------------------ | :------------- | :------------------ | :------------------------------ | :-------------------------------------------- |
-| **Raw `Signal` / `computed()`**  | Direct assignment (`.value = x`)     | In-frame direct                       | No             | Manual              | Manual                          | Widget-local ephemeral UI state               |
-| **`CubitSignal<State>`**         | Direct methods (`cubit.action()`)    | Mutex locks                           | No             | Via `HydratedMixin` | Via `ReplayMixin`               | Standard screen features, settings, CRUD      |
-| **`BlocSignal<Event, State>`**   | Reified events (`bloc.add(Event())`) | Built-in (`droppable`, `restartable`) | Yes            | Via `HydratedMixin` | Via `ReplayMixin`               | Search inputs, multi-step wizards, audit logs |
-| **`HydratedCubitSignal<State>`** | Direct methods + storage             | Mutex locks                           | No             | Frame-1 synchronous | Via `ReplayMixin`               | Persistent user preferences, auth caching     |
-| **`ReplayCubitMixin<State>`**    | Direct methods + change stack        | Mutex locks                           | No             | Via `HydratedMixin` | Built-in (`.undo()`, `.redo()`) | Drawing canvas, document editors, undo flows  |
+| Container                             | Mutation Mechanism                   | Event Concurrency                     | Reified Events | Persistence         | Undo / Redo                     | Primary Use Case                                   |
+| :------------------------------------ | :----------------------------------- | :------------------------------------ | :------------- | :------------------ | :------------------------------ | :------------------------------------------------- |
+| **Raw `Signal` / `computed()`**       | Direct assignment (`.value = x`)     | In-frame direct                       | No             | Manual              | Manual                          | Widget-local ephemeral UI state                    |
+| **`CubitSignal<State>`**              | Direct methods (`cubit.action()`)    | Mutex locks                           | No             | Via `HydratedMixin` | Via `ReplayMixin`               | Standard screen features, settings, CRUD           |
+| **`BlocSignal<Event, State>`**        | Reified events (`bloc.add(Event())`) | Built-in (`droppable`, `restartable`) | Yes            | Via `HydratedMixin` | Via `ReplayMixin`               | Search inputs, multi-step wizards, audit logs      |
+| **`CubitSignalMixin<State>`**         | Direct methods (`emit(newState)`)    | Mutex locks                           | No             | Via `HydratedMixin` | Via `ReplayMixin`               | Classes extending existing superclasses (e.g. repo)|
+| **`BlocSignalMixin<Event, State>`**   | Reified events (`add(Event())`)      | Built-in (`droppable`, `restartable`) | Yes            | Via `HydratedMixin` | Via `ReplayMixin`               | Services with existing base class & event handling |
+| **`HydratedCubitSignal<State>`**      | Direct methods + storage             | Mutex locks                           | No             | Frame-1 synchronous | Via `ReplayMixin`               | Persistent user preferences, auth caching          |
+| **`ReplayCubitMixin<State>`**         | Direct methods + change stack        | Mutex locks                           | No             | Via `HydratedMixin` | Built-in (`.undo()`, `.redo()`) | Drawing canvas, document editors, undo flows       |
 
 ---
 
@@ -63,7 +65,15 @@ Choose `BlocSignal` when your feature requires structured event handling, concur
 
 ---
 
-### 4. When to Use `HydratedCubitSignal` & `ReplayCubitMixin`
+### 4. When to Use `CubitSignalMixin` & `BlocSignalMixin` (Single Inheritance Bypass)
+Choose mixins instead of extending `CubitSignal` or `BlocSignal` when your target class already inherits from an existing framework or enterprise base class:
+* **Existing Superclasses**: Classes extending Flutter's `ChangeNotifier`, `TextEditingController`, `AnimationController`, or third-party enterprise classes like `BaseRepository` / `BaseService`.
+* **DRY Composition**: Combines seamlessly with other mixins (`with CubitSignalMixin<State>, HydratedMixin<State>`).
+* **Polymorphic Ecosystem Compatibility**: Any class using `CubitSignalMixin` satisfies `BlocSignalBase` and is immediately usable with `BlocSignalProvider`, `context.select`, and `blocSignalTest`.
+
+---
+
+### 5. When to Use `HydratedCubitSignal` & `ReplayCubitMixin`
 * **Persistence (`bloc_signals_hydrate`)**: When state must survive application restarts without flashing an empty or loading state on Frame 1.
 * **Undo / Redo (`bloc_signals_replay`)**: When users must be able to roll back actions (for example in a drawing canvas, rich text editor, or form builder).
 

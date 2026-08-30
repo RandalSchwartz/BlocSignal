@@ -1,9 +1,9 @@
 ---
 series: "BlocSignal Architecture & Practice"
 title: "Production Flutter Networking Without the Boilerplate: Reactive Repositories with BlocSignal"
-published: false
 description: "Learn how to structure production-grade networking in Flutter without the traditional boilerplate. Combine Dio or HTTP clients with CubitSignalMixin, HydratedMixin, and .toAsyncBlocSignal() for zero-race-condition, offline-cached reactive architecture."
 tags: flutter, dart, architecture, statemanagement
+published: true
 ---
 
 ## The Networking Architecture Dilemma in Production Flutter

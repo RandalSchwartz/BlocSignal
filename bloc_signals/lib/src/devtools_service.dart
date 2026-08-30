@@ -206,7 +206,7 @@ class DevToolsService {
       );
     }
 
-    if (eventStr != null && bloc is BlocSignal<dynamic, dynamic>) {
+    if (eventStr != null && bloc is BlocSignalMixin<dynamic, dynamic>) {
       dynamic eventPayload = eventStr;
       if (eventStr.startsWith('{') || eventStr.startsWith('[')) {
         try {

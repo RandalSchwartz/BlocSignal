@@ -117,9 +117,26 @@ void main() {
   print(bloc.stateValue); // 1
   bloc.close();
 }
+### 3. Composable Mixins (Overcoming Single Inheritance)
+
+Use `CubitSignalMixin` or `BlocSignalMixin` to turn any class with an existing superclass (for example, `ChangeNotifier`, `TextEditingController`, `AnimationController`, or `BaseRepository`) into a first-class `BlocSignalBase` state container without occupying its single `extends` slot:
+
+```dart
+class UserProfileRepository extends BaseRepository
+    with CubitSignalMixin<UserProfileState> {
+  UserProfileRepository() {
+    initCubitSignal(initialState: const UserProfileInitial());
+  }
+
+  Future<void> fetchProfile(String id) async {
+    emit(const UserProfileLoading());
+    final user = await api.getUser(id);
+    emit(UserProfileLoaded(user));
+  }
+}
 ```
 
-### 3. Event Concurrency Transformers (`droppable`, `sequential`, `restartable`)
+### 4. Event Concurrency Transformers (`droppable`, `sequential`, `restartable`)
 
 ```dart
 class AsyncDataBloc extends BlocSignal<DataEvent, DataState> {
@@ -136,7 +153,7 @@ class AsyncDataBloc extends BlocSignal<DataEvent, DataState> {
 }
 ```
 
-### 4. Custom Equality Comparators
+### 5. Custom Equality Comparators
 
 ```dart
 class UserBloc extends CubitSignal<UserModel> {
@@ -148,7 +165,7 @@ class UserBloc extends CubitSignal<UserModel> {
 }
 ```
 
-### 5. Stream Interop Extensions
+### 6. Stream Interop Extensions
 
 ```dart
 // Convert any BlocSignal into a Dart Stream
@@ -161,7 +178,7 @@ final streamBloc = stream.toBlocSignal(initialState: 0);
 final asyncStreamBloc = stream.toAsyncBlocSignal();
 ```
 
-### 6. Signal & Future Interop Extensions
+### 7. Signal & Future Interop Extensions
 
 ```dart
 // Convert any ReadonlySignal (Signal, Computed, AsyncSignal) to BlocSignalBase<T>

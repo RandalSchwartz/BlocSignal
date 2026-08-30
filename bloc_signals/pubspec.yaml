@@ -1,7 +1,7 @@
 name: bloc_signals
 resolution: workspace
 description: Core pure Dart reactive state container bridging BLoC semantics with signals v7 primitives.
-version: 1.1.0
+version: 1.2.0
 repository: https://github.com/RandalSchwartz/BlocSignal
 issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
 

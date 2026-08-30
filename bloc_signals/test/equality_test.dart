@@ -86,7 +86,8 @@ void main() {
       expect(bloc.stateValue, same(initial));
     });
 
-    test('supports subclass equals override (e.g. identity comparison)', () {
+    test('supports subclass equals override (for example, identity comparison)',
+        () {
       const initial = TestState(1, 'a');
       final bloc = IdentityEqualsBloc(initial);
 

@@ -63,6 +63,7 @@ Future<void> main() async {
     'docs/overview',
     'docs/installation',
     'docs/quickstart',
+    'docs/decision-matrix',
     'docs/cubit-vs-bloc',
     'docs/state-modeling',
     'docs/events-and-handlers',

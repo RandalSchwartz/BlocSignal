@@ -1,13 +1,15 @@
 import 'dart:async';
 
+import 'package:bloc_signals/src/bloc_signal_mixin.dart';
 import 'package:bloc_signals/src/change.dart';
-import 'package:bloc_signals/src/concurrency/event_transformers.dart';
-import 'package:bloc_signals/src/transition.dart';
+import 'package:bloc_signals/src/cubit_signal_mixin.dart';
 import 'package:meta/meta.dart';
 import 'package:preact_signals/preact_signals.dart' show SignalEquality;
 import 'package:signals_core/signals_core.dart';
 
+export 'bloc_signal_mixin.dart';
 export 'change.dart';
+export 'cubit_signal_mixin.dart';
 export 'transition.dart';
 
 /// An observer interface to watch all [BlocSignalBase] instances' lifecycles,
@@ -53,108 +55,34 @@ abstract class BlocSignalObserver {
   void onClose(BlocSignalBase<dynamic> bloc) {}
 }
 
-/// A base class for all reactive state containers.
+/// A base contract for all reactive state containers.
 ///
 /// Manages the state signal, provides lifecycle hooks, and manages disposal.
 abstract class BlocSignalBase<StateType> {
-  /// Creates a [BlocSignalBase] with the specified [initialState].
-  ///
-  /// Accepts an optional [equals] comparator callback (e.g. `equals: identical`
-  /// to force reference-identity equality updates), and optional [options]
-  /// to configure signal debug names ([SignalOptions.name]) or custom
-  /// [SignalEquality].
-  ///
-  /// ### Equality Evaluation Precedence Order:
-  /// 1. `options.equality` *(highest priority if provided in [options])*
-  /// 2. `equals` constructor parameter or `@override bool equals(...)` method
-  /// 3. Default value equality (`previous == current`)
-  ///
-  /// ```dart
-  /// // Forcing identity equality via built-in `identical` tear-off:
-  /// class IdentityCubit extends CubitSignal<MyState> {
-  ///   IdentityCubit(MyState initial)
-  ///       : super(initialState: initial, equals: identical);
-  /// }
-  /// ```
-  BlocSignalBase({
-    required StateType initialState,
-    bool Function(StateType previous, StateType current)? equals,
-    SignalOptions<StateType>? options,
-  })  : _customEquals = equals,
-        _optionsEquality = options?.equalityCheck {
-    final debugName = options?.name ?? '$runtimeType.state';
-    _state = signal<StateType>(
-      initialState,
-      options: SignalOptions<StateType>(
-        name: debugName,
-        autoDispose: options?.autoDispose ?? false,
-        watched: options?.watched,
-        unwatched: options?.unwatched,
-        equality: options?.equalityCheck ??
-            SignalEquality<StateType>.custom(
-              (a, b) => this.equals(a, b),
-            ),
-      ),
-    );
-    final modelConstructor = createModel(() {
-      effect(
-        () {
-          _onStateChangedInternal(_state.value);
-        },
-        options: EffectOptions(name: '$runtimeType.lifecycleEffect'),
-      );
-      return null;
-    });
-    _lifecycleModel = modelConstructor();
-    BlocSignalObserver.observer?.onCreate(this);
-  }
-
-  final bool Function(StateType previous, StateType current)? _customEquals;
-  final SignalEquality<StateType>? _optionsEquality;
-
-  bool _isClosed = false;
+  /// Creates a [BlocSignalBase].
+  const BlocSignalBase();
 
   /// Whether the state container is closed.
   ///
   /// A closed container will drop any subsequent events and state updates.
-  bool get isClosed => _isClosed;
-
-  late final Signal<StateType> _state;
-  late final SignalModel<void> _lifecycleModel;
-  final List<void Function()> _effectsToDispose = [];
+  bool get isClosed;
 
   /// Exposes read-only access to the state signal.
-  ReadonlySignal<StateType> get state => _state;
+  ReadonlySignal<StateType> get state;
 
   /// Retrieves the current raw state value.
-  StateType get stateValue => _state.value;
+  StateType get stateValue;
 
   /// Compares [previous] and [current] state to determine if state has changed.
-  ///
-  /// Equality Evaluation Precedence Order:
-  /// 1. `options.equality` *(highest priority if passed via `options`)*
-  /// 2. `equals` constructor parameter or `@override bool equals(...)` method
-  /// 3. Default value equality (`previous == current`)
   ///
   /// Subclasses can override this method or pass `equals: identical` to force
   /// reference identity comparison.
   @protected
-  bool equals(StateType previous, StateType current) {
-    final optEquality = _optionsEquality;
-    if (optEquality != null) {
-      return optEquality.equals(previous, current);
-    }
-    final custom = _customEquals;
-    if (custom != null) {
-      return custom(previous, current);
-    }
-    return previous == current;
-  }
+  bool equals(StateType previous, StateType current);
 
   /// Internal zone key used to track the causing event of a transition.
   @protected
-  Object get zoneEventKey => _zoneEventKey;
-  final Object _zoneEventKey = Object();
+  Object get zoneEventKey;
 
   /// Updates the state synchronously.
   ///
@@ -163,41 +91,16 @@ abstract class BlocSignalBase<StateType> {
   /// global [BlocSignalObserver].
   @protected
   @visibleForTesting
-  void emit(StateType newState) {
-    assert(
-      !_isClosed,
-      'Cannot emit new states after calling close() on $runtimeType.',
-    );
-    if (_isClosed) return;
-    final oldState = _state.value;
-    if (equals(oldState, newState)) return;
-
-    final event = Zone.current[zoneEventKey];
-    if (event != null) {
-      handleTransition(event as Object, oldState, newState);
-    } else {
-      BlocSignalObserver.observer?.onTransition(this, null, newState);
-    }
-
-    _state.value = newState;
-
-    final change = Change<StateType>(
-      currentState: oldState,
-      nextState: newState,
-    );
-    onChange(change);
-  }
+  void emit(StateType newState);
 
   /// Internal helper to dispatch transitions to the type-safe [BlocSignal].
   @protected
-  void handleTransition(Object event, StateType oldState, StateType newState) {}
+  void handleTransition(Object event, StateType oldState, StateType newState);
 
   /// Called when a state change occurs.
   @protected
   @mustCallSuper
-  void onChange(Change<StateType> change) {
-    BlocSignalObserver.observer?.onChange(this, change);
-  }
+  void onChange(Change<StateType> change);
 
   /// Called when an exception is thrown in event processing or state
   /// transition.
@@ -205,16 +108,7 @@ abstract class BlocSignalBase<StateType> {
   /// Notifies the global [BlocSignalObserver] if one is registered.
   @protected
   @mustCallSuper
-  void onError(Object error, StackTrace stackTrace) {
-    final currentObserver = BlocSignalObserver.observer;
-    if (currentObserver != null) {
-      currentObserver.onError(this, error, stackTrace);
-    }
-  }
-
-  void _onStateChangedInternal(StateType latestState) {
-    // Hooks for logging or syncing inside the SignalModel lifecycle
-  }
+  void onError(Object error, StackTrace stackTrace);
 
   /// Creates a reactive [effect] that is automatically cleaned up when the
   /// state container is closed.
@@ -226,48 +120,44 @@ abstract class BlocSignalBase<StateType> {
     void Function() callback, {
     EffectOptions? options,
     void Function()? onDispose,
-  }) {
-    final debugName =
-        options?.name ?? '$runtimeType.effect#${_effectsToDispose.length + 1}';
-    final dispose = effect(
-      callback,
-      options: EffectOptions(
-        name: debugName,
-        onDispose: onDispose ?? options?.onDispose,
-      ),
-    );
-    _effectsToDispose.add(dispose);
-    return dispose;
-  }
+  });
 
   /// Shuts down all internal effects and disposes of the
   /// underlying [SignalModel].
   @mustCallSuper
-  Future<void> close() async {
-    if (_isClosed) return;
-    _isClosed = true;
-    for (final dispose in _effectsToDispose) {
-      dispose();
-    }
-    _effectsToDispose.clear();
-    _lifecycleModel.dispose();
-    BlocSignalObserver.observer?.onClose(this);
-  }
-
-  @override
-  String toString() => '$runtimeType($stateValue)';
+  Future<void> close();
 }
 
 /// A clean base class for method-driven state management.
 ///
 /// Exposes state and [emit] directly for subclass methods.
-abstract class CubitSignal<StateType> extends BlocSignalBase<StateType> {
+abstract class CubitSignal<StateType> extends BlocSignalBase<StateType>
+    with CubitSignalMixin<StateType> {
   /// Creates a [CubitSignal] with the specified [initialState].
+  ///
+  /// Accepts an optional [equals] comparator callback (for example
+  /// `equals: identical` to force reference-identity equality updates), and
+  /// optional [options] to configure signal debug names ([SignalOptions.name])
+  /// or custom [SignalEquality].
+  ///
+  /// ```dart
+  /// class CounterCubit extends CubitSignal<int> {
+  ///   CounterCubit() : super(initialState: 0);
+  ///
+  ///   void increment() => emit(stateValue + 1);
+  /// }
+  /// ```
   CubitSignal({
-    required super.initialState,
-    super.equals,
-    super.options,
-  });
+    required StateType initialState,
+    bool Function(StateType previous, StateType current)? equals,
+    SignalOptions<StateType>? options,
+  }) {
+    initCubitSignal(
+      initialState: initialState,
+      equals: equals,
+      options: options,
+    );
+  }
 }
 
 /// A synchronous state management container integrating BLoC design patterns
@@ -275,159 +165,31 @@ abstract class CubitSignal<StateType> extends BlocSignalBase<StateType> {
 ///
 /// State updates are immediate and synchronous, ensuring glitch-free rendering
 /// and seamless integration with reactive contexts.
-abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType> {
+abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType>
+    with CubitSignalMixin<StateType>, BlocSignalMixin<Event, StateType> {
   /// Creates a [BlocSignal] with the specified [initialState].
-  BlocSignal({
-    required super.initialState,
-    super.equals,
-    super.options,
-  });
-
-  final List<_HandlerRegistry<Event, StateType>> _handlers = [];
-
-  /// Called when a transition occurs.
-  @protected
-  @mustCallSuper
-  void onTransition(Transition<Event, StateType> transition) {
-    BlocSignalObserver.observer
-        ?.onTransition(this, transition.event, transition.nextState);
-  }
-
-  @override
-  @protected
-  void handleTransition(Object event, StateType oldState, StateType newState) {
-    onTransition(
-      Transition<Event, StateType>(
-        currentState: oldState,
-        event: event as Event,
-        nextState: newState,
-      ),
-    );
-  }
-
-  /// Dispatches an event to the [onEvent] handler.
   ///
-  /// Notifies the global [BlocSignalObserver] of the incoming event and catches
-  /// errors thrown in [onEvent], delegating them to [onError].
-  void add(Event event) {
-    if (isClosed) return;
-    final currentObserver = BlocSignalObserver.observer;
-    if (currentObserver != null) {
-      currentObserver.onEvent(this, event);
-    }
-
-    runZoned(
-      () {
-        try {
-          final result = onEvent(event);
-          if (result is Future) {
-            unawaited(_handleAsyncResult(result));
-          }
-        } catch (e, stackTrace) {
-          onError(e, stackTrace);
-          if (e is Error) rethrow;
-        }
-      },
-      zoneValues: {zoneEventKey: event},
-    );
-  }
-
-  Future<void> _handleAsyncResult(Future<dynamic> result) async {
-    try {
-      await result;
-    } catch (e, stackTrace) {
-      onError(e, stackTrace);
-      if (e is Error) {
-        Error.throwWithStackTrace(e, stackTrace);
-      }
-    }
-  }
-
-  /// Registers an event handler for events of type [E].
-  ///
-  /// By default, handlers are invoked immediately when an event of type [E]
-  /// is added. If [transformer] is provided, it intercepts each incoming event
-  /// to control concurrency (such as dropping, queuing, or debouncing).
+  /// Accepts an optional [equals] comparator callback (for example
+  /// `equals: identical` to force reference-identity equality updates), and
+  /// optional [options] to configure signal debug names ([SignalOptions.name])
+  /// or custom [SignalEquality].
   ///
   /// ```dart
   /// class CounterBloc extends BlocSignal<CounterEvent, int> {
   ///   CounterBloc() : super(initialState: 0) {
-  ///     // Basic handler:
   ///     on<Increment>((event, emit) => emit(stateValue + 1));
-  ///
-  ///     // Handler with concurrency transformer:
-  ///     on<IncrementAsync>(
-  ///       (event, emit) async {
-  ///         await Future<void>.delayed(const Duration(milliseconds: 100));
-  ///         emit(stateValue + 1);
-  ///       },
-  ///       transformer: restartable(),
-  ///     );
   ///   }
   /// }
   /// ```
-  @protected
-  void on<E extends Event>(
-    FutureOr<void> Function(
-      E event,
-      void Function(StateType state) emit,
-    ) handler, {
-    EventTransformer<E, StateType>? transformer,
+  BlocSignal({
+    required StateType initialState,
+    bool Function(StateType previous, StateType current)? equals,
+    SignalOptions<StateType>? options,
   }) {
-    if (_handlers.any((h) => h.type == E)) {
-      throw StateError(
-        'on<$E> was called multiple times. '
-        'There should only be a single event handler for each event.',
-      );
-    }
-    _handlers.add(
-      _HandlerRegistry<Event, StateType>(
-        type: E,
-        isType: (dynamic e) => e is E,
-        handler: (dynamic event, void Function(StateType state) emit) {
-          if (transformer != null) {
-            return transformer(
-              event as E,
-              (e, em) => handler(e, em),
-              emit,
-            );
-          }
-          return handler(event as E, emit);
-        },
-      ),
+    initCubitSignal(
+      initialState: initialState,
+      equals: equals,
+      options: options,
     );
   }
-
-  /// Handles incoming events and delegates them to registered handlers.
-  ///
-  /// Can be overridden to customize event routing or behavior.
-  @mustCallSuper
-  FutureOr<void> onEvent(Event event) {
-    final matched = _handlers.where((h) => h.isType(event));
-    List<Future<dynamic>>? futures;
-    for (final registry in matched) {
-      final result = registry.handler(event, emit) as dynamic;
-      if (result is Future) {
-        (futures ??= []).add(result);
-      }
-    }
-    if (futures != null) {
-      return Future.wait(futures).then<void>((_) {});
-    }
-  }
-}
-
-class _HandlerRegistry<Event, StateType> {
-  _HandlerRegistry({
-    required this.type,
-    required this.isType,
-    required this.handler,
-  });
-
-  final Type type;
-  final bool Function(dynamic) isType;
-  final FutureOr<dynamic> Function(
-    dynamic event,
-    void Function(StateType state) emit,
-  ) handler;
 }

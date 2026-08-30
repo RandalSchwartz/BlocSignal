@@ -1,3 +1,9 @@
+## 1.2.0
+
+- Add `CubitSignalMixin<StateType>` and `BlocSignalMixin<Event, StateType>` to overcome Dart's single inheritance limitation and allow arbitrary classes (`ChangeNotifier`, `TextEditingController`, `AnimationController`, `BaseRepository`, custom models) to become first-class `BlocSignalBase` containers.
+- Adopt a DRY core architecture where `CubitSignal` and `BlocSignal` compose `CubitSignalMixin` and `BlocSignalMixin` as the single source of truth.
+- Update `DevToolsService` to recognize and dispatch events to all `BlocSignalMixin` containers.
+
 ## 1.1.0
 
 - Add `SignalBlocSignal` reactive adapter container wrapping any `ReadonlySignal` into a `BlocSignalBase`.

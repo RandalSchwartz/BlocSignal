@@ -75,7 +75,6 @@ BlocSignalBuilder<BlocSignalBase<AsyncState<UserProfile>>, AsyncState<UserProfil
     AsyncData(:final value) => ProfileDetailsView(user: value),
     AsyncError(:final error) => ErrorCard(
         message: error.toString(),
-        onRetry: () => userProfileBloc.add(const Refresh()),
       ),
   },
 )
@@ -111,46 +110,43 @@ class ProductRepository extends BaseApiClient
     initHydrated(storageKey: 'cached_products_v1');
   }
 
-  /// Refreshes data from the network while preserving cached UI in the interim
+  /// Refreshes data from the network using toFutureSignal to eliminate try-catch
   Future<void> refresh() async {
-    // Keep showing existing data with a loading indicator or emit loading
     emit(const AsyncLoading());
 
-    try {
-      final response = await dio.get('/products');
-      final rawList = response.data as List<dynamic>;
-      final products = rawList
-          .map((json) => Product.fromJson(json as Map<String, dynamic>))
-          .toList();
-
-      emit(AsyncData(products));
-    } catch (error, stackTrace) {
-      emit(AsyncError(error, stackTrace));
-    }
+    // ⚡ toFutureSignal automatically projects success into AsyncData and exceptions into AsyncError!
+    final fetchSignal = _fetchProducts().toFutureSignal();
+    await fetchSignal.future;
+    emit(fetchSignal.value);
   }
 
-  // 💾 Automatic JSON serialization for instant offline boot
+  Future<List<Product>> _fetchProducts() async {
+    final response = await dio.get('/products');
+    final rawList = response.data as List<dynamic>;
+    return [
+      for (final item in rawList) Product.fromJson(item as Map<String, dynamic>),
+    ];
+  }
+
+  // 💾 Pattern matching for instant offline hydration:
   @override
-  Map<String, dynamic>? toJson(AsyncState<List<Product>> state) {
-    return switch (state) {
-      AsyncData(:final value) => {
-          'products': value.map((p) => p.toJson()).toList(),
-        },
-      _ => null,
-    };
-  }
+  Object? toJson(AsyncState<List<Product>> state) => switch (state) {
+        AsyncData(:final value) => [
+            for (final product in value) product.toJson(),
+          ],
+        _ => null,
+      };
 
   @override
-  AsyncState<List<Product>>? fromJson(Map<String, dynamic> json) {
-    try {
-      final list = (json['products'] as List<dynamic>)
-          .map((e) => Product.fromJson(e as Map<String, dynamic>))
-          .toList();
-      return AsyncData(list);
-    } catch (_) {
-      return null;
-    }
-  }
+  AsyncState<List<Product>>? fromJson(dynamic json) => switch (json) {
+        {'products': List<dynamic> list} => AsyncData([
+            for (final item in list) Product.fromJson(item as Map<String, dynamic>),
+          ]),
+        List<dynamic> list => AsyncData([
+            for (final item in list) Product.fromJson(item as Map<String, dynamic>),
+          ]),
+        _ => null,
+      };
 }
 ```
 
@@ -195,17 +191,18 @@ class SearchRepository extends BaseApiClient
       }
 
       emit(const AsyncLoading());
-      try {
-        final response = await dio.get('/search', queryParameters: {'q': query});
-        final results = (response.data as List<dynamic>)
-            .map((json) => SearchResult.fromJson(json as Map<String, dynamic>))
-            .toList();
-
-        emit(AsyncData(results));
-      } catch (error, stackTrace) {
-        emit(AsyncError(error, stackTrace));
-      }
+      final searchSignal = _executeSearch(query).toFutureSignal();
+      await searchSignal.future;
+      emit(searchSignal.value);
     }, transformer: restartable());
+  }
+
+  Future<List<SearchResult>> _executeSearch(String query) async {
+    final response = await dio.get('/search', queryParameters: {'q': query});
+    final results = response.data as List<dynamic>;
+    return [
+      for (final item in results) SearchResult.fromJson(item as Map<String, dynamic>),
+    ];
   }
 }
 ```

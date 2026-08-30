@@ -336,8 +336,9 @@ class _PublicationsPageState() extends State<PublicationsPage> {
   final websiteDir = Directory.current.path.endsWith('/website')
       ? Directory.current
       : Directory('website');
-  final targetFile =
-      File('${websiteDir.path}/lib/src/pages/publications_page.dart');
+  final targetFile = File(
+    '${websiteDir.path}/lib/src/pages/publications_page.dart',
+  );
   await targetFile.writeAsString(buffer.toString());
   print('💾 Updated ${targetFile.path}');
 

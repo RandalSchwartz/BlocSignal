@@ -14,6 +14,10 @@ class const DocsEventsAndHandlersPage({super.key}) extends StatelessComponent {
       anchor: 'event-registration',
     ),
     TocHeading(
+      title: 'Immutable Events & Sealed Hierarchies',
+      anchor: 'immutable-events',
+    ),
+    TocHeading(
       title: 'Single-Registration Rule',
       anchor: 'single-registration-rule',
     ),
@@ -98,7 +102,87 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
         ),
       ]),
 
-      // 2. Single-Registration Rule
+      // 2. Immutable Events & Sealed Hierarchies
+      section(id: 'immutable-events', classes: 'docs-section', [
+        h2([Component.text('Immutable Events & Sealed Hierarchies')]),
+        p([
+          Component.text(
+            'Event objects in BlocSignal represent historical facts—things that have already occurred in the application (for example, ',
+          ),
+          code([Component.text('SubmitOrder')]),
+          Component.text(' or '),
+          code([Component.text('QueryChanged')]),
+          Component.text(
+            '). Event classes should always be immutable, marked with ',
+          ),
+          code([Component.text('@immutable')]),
+          Component.text(' or structured as Dart 3 '),
+          code([Component.text('sealed')]),
+          Component.text(' hierarchies with '),
+          code([Component.text('const')]),
+          Component.text(' constructors.'),
+        ]),
+        const DocsCallout(
+          type: CalloutType.tip,
+          title: 'Why Immutable Events Matter',
+          children: [
+            p([
+              Component.text(
+                '1. Zero Allocations: Events without dynamic payloads can use const constructors (for example bloc.add(const RefreshFeed())), eliminating garbage collection overhead on high-frequency UI dispatches.',
+              ),
+            ]),
+            p([
+              Component.text(
+                '2. Concurrency Transformer Safety: When events are queued or debounced by asynchronous transformers (such as restartable() or sequential()), immutability ensures the event payload cannot be mutated in flight.',
+              ),
+            ]),
+            p([
+              Component.text(
+                '3. Deterministic Tracing: Observers, DevTools, and OpenTelemetry spans record the exact immutable payload dispatched at that instant in time.',
+              ),
+            ]),
+          ],
+        ),
+        const DocsCodeBlock(
+          filename: 'search_events.dart',
+          dart313Code: '''
+import 'package:meta/meta.dart';
+
+@immutable
+sealed class SearchEvent;
+
+final class QueryChanged(final String query) extends SearchEvent;
+
+final class ClearQuery extends SearchEvent {
+  const ClearQuery();
+}
+
+final class FilterToggled(final String filterCategory) extends SearchEvent;''',
+          dart35Code: '''
+import 'package:meta/meta.dart';
+
+@immutable
+sealed class SearchEvent {
+  const SearchEvent();
+}
+
+final class QueryChanged extends SearchEvent {
+  const QueryChanged(this.query);
+  final String query;
+}
+
+final class ClearQuery extends SearchEvent {
+  const ClearQuery();
+}
+
+final class FilterToggled extends SearchEvent {
+  const FilterToggled(this.filterCategory);
+  final String filterCategory;
+}''',
+        ),
+      ]),
+
+      // 3. Single-Registration Rule
       section(id: 'single-registration-rule', classes: 'docs-section', [
         h2([Component.text('Single-Registration Rule')]),
         p([

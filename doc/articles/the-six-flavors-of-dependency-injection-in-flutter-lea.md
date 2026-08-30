@@ -1,9 +1,5 @@
 ---
 series: "BlocSignal Architecture & Practice"
----
-
-
----
 title: "The Six Flavors of Dependency Injection in Flutter"
 published: true
 description: "Dependency injection isn't just one pattern or package. Here is a breakdown of all six distinct DI mechanisms in Dart & Flutter, from InheritedWidget to compile-time IoC."

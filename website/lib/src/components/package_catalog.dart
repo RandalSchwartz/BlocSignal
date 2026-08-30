@@ -53,7 +53,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_riverpod',
-    version: '1.1.0',
+    version: '1.2.0',
     desc: 'Bidirectional read-and-mutate Riverpod 2 & 3 interop adapters (toBlocSignal / toProvider / typed Notifier access).',
     icon: '🌊',
     category: 'State & Interop',

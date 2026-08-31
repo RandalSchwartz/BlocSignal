@@ -203,6 +203,86 @@ EventTransformer<E, S> debounce<E, S>(Duration duration) {
 // on<SearchInputChanged>(..., transformer: debounce(const Duration(milliseconds: 300)));
 ''',
         ),
+        p([
+          Component.text(
+            'Here is a custom circuit breaker transformer that fast-drops events after repeated failures until a cooldown period passes:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          filename: 'circuit_breaker_transformer.dart',
+          dart313Code: '''
+import 'package:bloc_signals/bloc_signals.dart';
+
+EventTransformer<E, S> circuitBreaker<E, S>({
+  int failureThreshold = 3,
+  Duration resetTimeout = const Duration(seconds: 30),
+}) {
+  var failureCount = 0;
+  DateTime? trippedAt;
+
+  return (event, handler, emit) async {
+    final now = DateTime.now();
+    if (trippedAt != null) {
+      if (now.difference(trippedAt!) < resetTimeout) {
+        return; // Circuit is OPEN: fast-drop incoming events
+      }
+      trippedAt = null; // Half-open trial
+      failureCount = 0;
+    }
+
+    try {
+      await handler(event, emit);
+      failureCount = 0; // Success! Reset failures
+    } catch (e) {
+      failureCount++;
+      if (failureCount >= failureThreshold) {
+        trippedAt = DateTime.now(); // Trip circuit OPEN!
+      }
+      rethrow;
+    }
+  };
+}
+
+// Usage in Bloc constructor:
+// on<FetchPaymentGateway>(..., transformer: circuitBreaker(failureThreshold: 3));
+''',
+          dart35Code: '''
+import 'package:bloc_signals/bloc_signals.dart';
+
+EventTransformer<E, S> circuitBreaker<E, S>({
+  int failureThreshold = 3,
+  Duration resetTimeout = const Duration(seconds: 30),
+}) {
+  var failureCount = 0;
+  DateTime? trippedAt;
+
+  return (event, handler, emit) async {
+    final now = DateTime.now();
+    if (trippedAt != null) {
+      if (now.difference(trippedAt!) < resetTimeout) {
+        return; // Circuit is OPEN: fast-drop incoming events
+      }
+      trippedAt = null; // Half-open trial
+      failureCount = 0;
+    }
+
+    try {
+      await handler(event, emit);
+      failureCount = 0; // Success! Reset failures
+    } catch (e) {
+      failureCount++;
+      if (failureCount >= failureThreshold) {
+        trippedAt = DateTime.now(); // Trip circuit OPEN!
+      }
+      rethrow;
+    }
+  };
+}
+
+// Usage in Bloc constructor:
+// on<FetchPaymentGateway>(..., transformer: circuitBreaker(failureThreshold: 3));
+''',
+        ),
       ]),
     ]);
   }

@@ -182,6 +182,76 @@ void dispose(dynamic context) {
 
       expect(manualCloses, hasLength(1));
     });
+
+    test(
+      'AvoidContextWatchForBlocState detects context.watch<T>() in build',
+      () {
+        const badCode = '''
+class CounterView {
+  Widget build(dynamic context) {
+    final bloc = context.watch<CounterBloc>();
+    return Container();
+  }
+}
+''';
+        final parseResult = parseString(content: badCode);
+        final watchedBlocs = <String>[];
+
+        parseResult.unit.visitChildren(
+          _MethodInvocationVisitor((node) {
+            if (node.methodName.name == 'watch') {
+              final typeArgs = node.typeArguments?.arguments;
+              if (typeArgs != null && typeArgs.isNotEmpty) {
+                final typeName = typeArgs.first.toSource();
+                if (typeName.endsWith('Bloc') || typeName.endsWith('Cubit')) {
+                  final method = node.thisOrAncestorOfType<MethodDeclaration>();
+                  if (method != null && method.name.lexeme == 'build') {
+                    watchedBlocs.add(typeName);
+                  }
+                }
+              }
+            }
+          }),
+        );
+
+        expect(watchedBlocs, contains('CounterBloc'));
+      },
+    );
+
+    test(
+      'AvoidContextWatchForBlocState accepts context.read<T>() in build',
+      () {
+        const goodCode = '''
+class CounterView {
+  Widget build(dynamic context) {
+    final bloc = context.read<CounterBloc>();
+    return Container();
+  }
+}
+''';
+        final parseResult = parseString(content: goodCode);
+        final watchedBlocs = <String>[];
+
+        parseResult.unit.visitChildren(
+          _MethodInvocationVisitor((node) {
+            if (node.methodName.name == 'watch') {
+              final typeArgs = node.typeArguments?.arguments;
+              if (typeArgs != null && typeArgs.isNotEmpty) {
+                final typeName = typeArgs.first.toSource();
+                if (typeName.endsWith('Bloc') || typeName.endsWith('Cubit')) {
+                  final method = node.thisOrAncestorOfType<MethodDeclaration>();
+                  if (method != null && method.name.lexeme == 'build') {
+                    watchedBlocs.add(typeName);
+                  }
+                }
+              }
+            }
+          }),
+        );
+
+        expect(watchedBlocs, isEmpty);
+      },
+    );
   });
 }
 

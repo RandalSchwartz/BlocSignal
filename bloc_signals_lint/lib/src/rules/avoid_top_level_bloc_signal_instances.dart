@@ -18,7 +18,7 @@ class AvoidTopLevelBlocSignalInstances extends DartLintRule {
         'static variable.',
     correctionMessage:
         'Scope containers using BlocSignalProvider, dependency injection, or '
-        'factory getters. Primitive signals (e.g. signal(0)) can remain '
+        'factory getters. Primitive signals (for example signal(0)) can remain '
         'global.',
   );
 

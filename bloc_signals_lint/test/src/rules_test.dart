@@ -199,7 +199,211 @@ class Service {
         expect(globalVars, containsAll(['counterBloc', 'authBloc']));
       },
     );
+
+    test('RequireCubitSignalMixinInit detects uninitialized mixin constructors',
+        () {
+      const badCode = '''
+class CounterService extends BaseService with CubitSignalMixin<int> {
+  CounterService() {
+    print('hello');
+  }
+}
+''';
+      final parseResult = parseString(content: badCode);
+      final uninitializedConstructors = <String>[];
+
+      parseResult.unit.visitChildren(
+        _ClassVisitor((classNode) {
+          final withClause = classNode.withClause;
+          if (withClause != null &&
+              withClause.toSource().contains('CubitSignalMixin')) {
+            for (final ctor
+                in classNode.members.whereType<ConstructorDeclaration>()) {
+              var callsInit = false;
+              ctor.body.visitChildren(
+                _MethodInvocationVisitor((method) {
+                  if (method.methodName.name == 'initCubitSignal' ||
+                      method.methodName.name == 'initBlocSignal') {
+                    callsInit = true;
+                  }
+                }),
+              );
+              if (!callsInit) {
+                uninitializedConstructors
+                    .add(ctor.name?.lexeme ?? classNode.name.lexeme);
+              }
+            }
+          }
+        }),
+      );
+
+      expect(uninitializedConstructors, contains('CounterService'));
+    });
+
+    test('RequireCubitSignalMixinInit accepts initialized mixin constructors',
+        () {
+      const goodCode = '''
+class CounterService extends BaseService with CubitSignalMixin<int> {
+  CounterService() {
+    initCubitSignal(initialState: 0);
+  }
+}
+''';
+      final parseResult = parseString(content: goodCode);
+      final uninitializedConstructors = <String>[];
+
+      parseResult.unit.visitChildren(
+        _ClassVisitor((classNode) {
+          final withClause = classNode.withClause;
+          if (withClause != null &&
+              withClause.toSource().contains('CubitSignalMixin')) {
+            for (final ctor
+                in classNode.members.whereType<ConstructorDeclaration>()) {
+              var callsInit = false;
+              ctor.body.visitChildren(
+                _MethodInvocationVisitor((method) {
+                  if (method.methodName.name == 'initCubitSignal' ||
+                      method.methodName.name == 'initBlocSignal') {
+                    callsInit = true;
+                  }
+                }),
+              );
+              if (!callsInit) {
+                uninitializedConstructors
+                    .add(ctor.name?.lexeme ?? classNode.name.lexeme);
+              }
+            }
+          }
+        }),
+      );
+
+      expect(uninitializedConstructors, isEmpty);
+    });
+
+    test('AvoidRawSignalEffectsInBloc detects top-level effect in bloc', () {
+      const badCode = '''
+class MyCubit extends CubitSignal<int> {
+  MyCubit() : super(initialState: 0) {
+    effect(() {
+      print(stateValue);
+    });
+  }
+}
+''';
+      final parseResult = parseString(content: badCode);
+      final rawEffects = <String>[];
+
+      parseResult.unit.visitChildren(
+        _MethodInvocationVisitor((node) {
+          if (node.methodName.name == 'effect' && node.target == null) {
+            final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
+            if (classNode != null &&
+                (classNode.extendsClause?.toSource().contains('CubitSignal') ??
+                    false)) {
+              rawEffects.add(node.methodName.name);
+            }
+          }
+        }),
+      );
+
+      expect(rawEffects, contains('effect'));
+    });
+
+    test('AvoidRawSignalEffectsInBloc accepts createEffect in bloc', () {
+      const goodCode = '''
+class MyCubit extends CubitSignal<int> {
+  MyCubit() : super(initialState: 0) {
+    createEffect(() {
+      print(stateValue);
+    });
+  }
+}
+''';
+      final parseResult = parseString(content: goodCode);
+      final rawEffects = <String>[];
+
+      parseResult.unit.visitChildren(
+        _MethodInvocationVisitor((node) {
+          if (node.methodName.name == 'effect' && node.target == null) {
+            rawEffects.add(node.methodName.name);
+          }
+        }),
+      );
+
+      expect(rawEffects, isEmpty);
+    });
+
+    test('AvoidUnusedSelectResult detects discarded context.select statements',
+        () {
+      const badCode = '''
+void build(dynamic context) {
+  context.select<MyBloc, int>((b) => b.stateValue);
+}
+''';
+      final parseResult = parseString(content: badCode);
+      final unusedSelects = <String>[];
+
+      parseResult.unit.visitChildren(
+        _ExpressionStatementVisitor((node) {
+          final expr = node.expression;
+          if (expr is MethodInvocation &&
+              expr.methodName.name == 'select' &&
+              (expr.target?.toSource().contains('context') ?? false)) {
+            unusedSelects.add(expr.methodName.name);
+          }
+        }),
+      );
+
+      expect(unusedSelects, contains('select'));
+    });
+
+    test('AvoidUnusedSelectResult accepts assigned context.select expressions',
+        () {
+      const goodCode = '''
+void build(dynamic context) {
+  final count = context.select<MyBloc, int>((b) => b.stateValue);
+  print(count);
+}
+''';
+      final parseResult = parseString(content: goodCode);
+      final unusedSelects = <String>[];
+
+      parseResult.unit.visitChildren(
+        _ExpressionStatementVisitor((node) {
+          final expr = node.expression;
+          if (expr is MethodInvocation &&
+              expr.methodName.name == 'select' &&
+              (expr.target?.toSource().contains('context') ?? false)) {
+            unusedSelects.add(expr.methodName.name);
+          }
+        }),
+      );
+
+      expect(unusedSelects, isEmpty);
+    });
   });
+}
+
+class _ClassVisitor extends RecursiveAstVisitor<void> {
+  _ClassVisitor(this.onClass);
+  final void Function(ClassDeclaration node) onClass;
+
+  @override
+  void visitClassDeclaration(ClassDeclaration node) {
+    onClass(node);
+    super.visitClassDeclaration(node);
+  }
+}
+
+class _ExpressionStatementVisitor extends RecursiveAstVisitor<void> {
+  _ExpressionStatementVisitor(this.onStatement);
+  final void Function(ExpressionStatement node) onStatement;
+
+  @override
+  void visitExpressionStatement(ExpressionStatement node) {
+    onStatement(node);
+    super.visitExpressionStatement(node);
+  }
 }
 
 class _MethodInvocationVisitor extends RecursiveAstVisitor<void> {

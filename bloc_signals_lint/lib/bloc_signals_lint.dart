@@ -1,13 +1,17 @@
+import 'package:bloc_signals_lint/src/rules/avoid_context_watch_for_bloc_state.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_emit_in_build.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_invalid_context_select_generics.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_top_level_bloc_signal_instances.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_unmanaged_signal_effects.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_unused_select_result.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_bloc_signal_provider_read_in_callbacks.dart';
+import 'package:bloc_signals_lint/src/rules/require_cubit_signal_mixin_init.dart';
 import 'package:bloc_signals_lint/src/rules/require_super_on_event.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
@@ -28,5 +32,9 @@ class _BlocSignalsLinter extends PluginBase {
         const AvoidProvidingExistingInstanceWithCreate(),
         const AvoidManualCloseOnProvidedBloc(),
         const AvoidInvalidContextSelectGenerics(),
+        const RequireCubitSignalMixinInit(),
+        const AvoidContextWatchForBlocState(),
+        const AvoidRawSignalEffectsInBloc(),
+        const AvoidUnusedSelectResult(),
       ];
 }

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.0
+
+- Added 4 next-generation analyzer rules and diagnostics:
+  - `require_cubit_signal_mixin_init`: Enforces calling `initCubitSignal(initialState: ...)` in constructors of classes mixing in `CubitSignalMixin` or `BlocSignalMixin`.
+  - `avoid_context_watch_for_bloc_state`: Protects against repository scars by flagging `context.watch<T>()` in `build()` methods when reading state.
+  - `avoid_raw_signal_effects_in_bloc`: Flags unmanaged top-level `effect()` calls in `BlocSignalBase` containers, recommending `createEffect()`.
+  - `avoid_unused_select_result`: Flags discarded expressions of `context.select<T, R>(...)`.
+- Added automated IDE quick-fixes:
+  - `RequireCubitSignalMixinInitFix`: Auto-inserts `initCubitSignal(initialState: ...);`.
+  - `ReplaceContextWatchWithReadFix`: Rewrites `context.watch<T>()` to `context.read<T>()`.
+  - `AvoidRawSignalEffectsInBlocFix`: Rewrites `effect(` to `createEffect(`.
+  - `UseProviderValueFix`: Rewrites `create:` to `value:` in `BlocSignalProvider`.
+- Enhanced `avoid_emit_in_build` to properly allow state emissions inside event callback closures.
+
 ## 1.0.0+1
 
 - Re-trigger pub.dev Pana static analysis.
@@ -44,7 +58,7 @@
 - Added 3 Flutter UI lint rules:
   - `avoid_emit_in_build`: Flags state emissions (`emit`/`add`) directly inside Flutter `Widget.build()` methods.
   - `avoid_unmanaged_signal_effects`: Flags unassigned `effect()` calls created in Flutter `Widget` or `State` scopes.
-  - `prefer_bloc_signal_provider_read_in_callbacks`: Warns on `context.watch<T>()` inside callback closures (e.g. `onPressed`).
+  - `prefer_bloc_signal_provider_read_in_callbacks`: Warns on `context.watch<T>()` inside callback closures (for example `onPressed`).
 - Added automated IDE quick-fixes (`Cmd+.` / `Alt+Enter`):
   - `AddSuperOnEventFix`: Automatically inserts `super.onEvent(event);`.
   - `PreferReadInCallbacksFix`: Automatically replaces `context.watch<T>()` with `context.read<T>()`.

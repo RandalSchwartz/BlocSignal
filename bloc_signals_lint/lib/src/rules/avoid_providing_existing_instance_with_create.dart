@@ -3,6 +3,7 @@
 
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/error/listener.dart';
+import 'package:bloc_signals_lint/src/fixes/use_provider_value_fix.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that flags passing pre-existing variable references to
@@ -21,6 +22,9 @@ class AvoidProvidingExistingInstanceWithCreate extends DartLintRule {
         'Use BlocSignalProvider.value(value: ...) to provide existing '
         'instances without transferring disposal ownership.',
   );
+
+  @override
+  List<Fix> getFixes() => [UseProviderValueFix()];
 
   @override
   void run(

@@ -42,6 +42,10 @@ class AvoidEmitInBuild extends DartLintRule {
       if (targetType == null) return;
 
       if (_blocSignalBaseChecker.isAssignableFromType(targetType)) {
+        final enclosingClosure =
+            node.thisOrAncestorOfType<FunctionExpression>();
+        if (enclosingClosure != null) return;
+
         final enclosingMethod = node.thisOrAncestorOfType<MethodDeclaration>();
         if (enclosingMethod != null && enclosingMethod.name.lexeme == 'build') {
           reporter.atNode(

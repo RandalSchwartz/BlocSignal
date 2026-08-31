@@ -186,6 +186,13 @@ For UI reactions, use `BlocSignalListener` when suppressing the initial state an
 a state-owned or widget-owned reaction when the listener must receive both previous and current
 values.
 
+> [!TIP]
+> **Lint Rules for Flutter UI**:
+> `bloc_signals_lint` enforces clean Flutter UI patterns with dedicated analyzer rules:
+> - `avoid_emit_in_build`: Prohibits direct `emit()` / `add()` in `build()` while allowing them in event callback closures (for example `onPressed: () => ...`).
+> - `avoid_context_watch_for_bloc_state`: Flags `context.watch<T>()` in `build()` and suggests `context.read<T>()` with `BlocSignalBuilder` or `context.select`.
+> - `avoid_unused_select_result`: Flags discarded `context.select` invocations.
+
 ## Flutter Hooks Integration (Zero-Cost with `signals_hooks`)
 
 Because `bloc.state` is natively a `ReadonlySignal<S>`, developers migrating from or using `flutter_hooks` do **not** need a separate glue-code package (like the legacy `flutter_hooks_bloc`). Using `package:signals_hooks`, any `HookWidget` can consume, filter, or react to `BlocSignal` state out-of-the-box:

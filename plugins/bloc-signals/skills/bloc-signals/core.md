@@ -80,6 +80,10 @@ class AuthenticationBlocService extends BaseService
 - `CubitSignal<StateType>` extends `BlocSignalBase<StateType>` with `CubitSignalMixin<StateType>`
 - `BlocSignal<Event, StateType>` extends `BlocSignalBase<StateType>` with `CubitSignalMixin<StateType>`, `BlocSignalMixin<Event, StateType>`
 
+> [!TIP]
+> **Static Lint Enforcement**:
+> `bloc_signals_lint` automatically enforces `initCubitSignal` and `initBlocSignal` constructor invocations via the `require_cubit_signal_mixin_init` lint rule with automated IDE quick-fixes (`Cmd+.` / `Alt+Enter`).
+
 Because `CubitSignalMixin` implements `BlocSignalBase<StateType>`, any class mixing it in is polymorphically compatible with `BlocSignalProvider`, `context.select`, `blocSignalTest`, `bloc_signals_riverpod`, `bloc_signals_hydrate`, and `bloc_signals_replay`.
 
 ## Custom Equality & Identity Comparison (`equals`)

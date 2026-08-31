@@ -1,6 +1,6 @@
 # Monorepo Package Publishing & Pub Points Scoring Guide
 
-This document details the internal requirements, release checklists, and scoring standards needed to achieve maximum quality scores (160/160 pub points) across all 10 packages in the `BlocSignal` monorepo.
+This document details the internal requirements, release checklists, and scoring standards needed to achieve maximum quality scores (160/160 pub points) across all 11 packages in the `BlocSignal` monorepo.
 
 ---
 
@@ -39,17 +39,18 @@ When publishing packages to pub.dev:
 ## 📋 2. Monorepo Documentation Consistency
 
 ### Uniform Package Catalog Table
-Ensure all 10 workspace package `README.md` files feature the exact same uniform 10-package ecosystem catalog table with pub version badges, pub points badges, and descriptions:
+Ensure all 11 workspace package `README.md` files feature the exact same uniform 11-package ecosystem catalog table with pub version badges, pub points badges, and descriptions:
 1. `bloc_signals`
 2. `bloc_signals_flutter`
-3. `bloc_signals_riverpod`
-4. `bloc_signals_test`
-5. `bloc_signals_lint`
-6. `bloc_signals_hydrate`
-7. `bloc_signals_otel`
-8. `bloc_signals_replay`
-9. `bloc_signals_jaspr`
-10. `bloc_signals_devtools`
+3. `bloc_signals_bloc`
+4. `bloc_signals_riverpod`
+5. `bloc_signals_test`
+6. `bloc_signals_lint`
+7. `bloc_signals_hydrate`
+8. `bloc_signals_otel`
+9. `bloc_signals_replay`
+10. `bloc_signals_jaspr`
+11. `bloc_signals_devtools`
 
 ### Mandatory Public API Docstrings
 - **Complete Docstring Coverage**: Always write clear, comprehensive Dart doc-comments (`///`) with descriptive summaries, parameter explanations, and runnable code examples.

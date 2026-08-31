@@ -18,6 +18,17 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title:
+        'Automate Flutter\'s New Split Package Migration with AI Agent Skills',
+    description: 'How to use dart-sdk-skills to empower your AI coding agent to seamlessly migrate Flutter projects to standalone material_ui and cupertino_ui packages.',
+    url: 'https://dev.to/gde/automate-flutters-new-split-package-migration-with-ai-agent-skills-bn2',
+    date: 'Aug 31',
+    readTime: '4 min read',
+    category: 'Architecture',
+    type: 'Article',
+    tags: ["flutter", "dart", "ai", "webdev"],
+  ),
+  PublicationItem(
     title: 'Production Flutter Networking Without the Boilerplate: Reactive Repositories with BlocSignal',
     description: 'Learn how to structure production-grade networking in Flutter without the traditional boilerplate. Combine Dio or HTTP clients with CubitSignalMixin, HydratedMixin, and .toAsyncBlocSignal() for zero-race-condition, offline-cached reactive architecture.',
     url: 'https://dev.to/gde/production-flutter-networking-without-the-boilerplate-reactive-repositories-with-blocsignal-4c3c',

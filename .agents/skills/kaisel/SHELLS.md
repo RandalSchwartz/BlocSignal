@@ -15,6 +15,12 @@ the app has a bottom navigation bar, a sidebar, or any other "this is
 the persistent chrome, and the content swaps based on the selected
 section" pattern.
 
+**Screen-view analytics across branches:** an observer belongs to one
+navigator, so its own de-duplication is per-branch — A → B → A re-logs A.
+For a single app-wide signal use `onScreenChanged` on the config, which
+reports the active branch's top (never the route hosting the shell) and
+de-duplicates across every navigator.
+
 ## Quick reference
 
 | Type | Purpose |
@@ -343,6 +349,23 @@ branch, each with a different `R`. From the chrome:
 branch shares **one** route type `R`, so there's no per-branch typing.
 It builds its own `ShellRouter` internally from `branchInitials` — you
 don't construct one, and there's no `shell:` parameter.
+
+**A screen that is both a tab and a full screen needs two route values.**
+This follows from the scoping rule below, and it looks like duplication until
+you see why. A "recipients" screen might be a bottom-nav tab (no app bar of
+its own — the shell chrome supplies one) *and* be reachable as a full screen
+from a settings drawer (its own app bar, covering the bottom bar). Those are
+genuinely different navigation states, so each family gets a value:
+
+```dart
+final class RecipientsTab extends DashboardTabRoute { const RecipientsTab(); }
+final class Recipients extends AppRoute { const Recipients(); }
+```
+
+Both build the same page widget with different chrome. The alternative —
+one value in two families — isn't expressible, and shouldn't be: pushing the
+tab's value onto the main stack would render a tab body with no shell around
+it.
 
 **Critical: `R` must be a sealed type scoped to the shell's routes, not
 your app-wide `AppRoute`.** The `pageBuilder` switch is exhaustive over

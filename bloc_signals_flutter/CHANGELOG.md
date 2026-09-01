@@ -1,3 +1,9 @@
+## 1.2.2
+
+- Refactor example application to showcase declarative routing with Kaisel 1.1 `reevaluateOn` and `loginBloc.toValueListenable()` (#222, #223).
+- Eliminate imperative navigation side effects (`WidgetsBinding.instance.addPostFrameCallback`) from example screen builders.
+- Bump example `kaisel` dependency constraint to `^1.1.0`.
+
 ## 1.2.1
 
 - Fix `context.select` subscription transfer when provider container instance is swapped above `const` subtrees (#204).

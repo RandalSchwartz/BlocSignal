@@ -257,12 +257,40 @@ class TimerBloc extends BlocSignal<TimerEvent, TimerState> {
 }
 
 // ==========================================
-// 3. Main App Entry
+// 3. Main App Entry & Declarative Routing
 // ==========================================
-void main() {
-  /// Initialize type-safe Kaisel router matching routes to screen widgets.
-  final config = KaiselRouterConfig<AppRoute>(
-    initial: const LoginRoute(),
+/// Guards application navigation based on [LoginBloc] authentication state.
+///
+/// Unauthenticated users are redirected to [LoginRoute]. Authenticated users
+/// attempting to navigate to [LoginRoute] are redirected to [HomeRoute].
+KaiselGuard<AppRoute> authGuard(LoginBloc loginBloc) => (current, proposed) {
+      final isLoggedIn = loginBloc.stateValue.isLoggedIn;
+
+      // When unauthenticated, only LoginRoute is permitted
+      if (!isLoggedIn) {
+        if (proposed.length == 1 && proposed.first is LoginRoute) {
+          return proposed;
+        }
+        return const [LoginRoute()];
+      }
+
+      // When authenticated, redirect away from LoginRoute to HomeRoute
+      if (proposed.any((r) => r is LoginRoute)) {
+        return [HomeRoute(loginBloc.stateValue.username)];
+      }
+
+      return proposed;
+    };
+
+/// Creates the [KaiselRouterConfig] wired with [authGuard] and [loginBloc]
+/// guard re-evaluation.
+KaiselRouterConfig<AppRoute> createRouterConfig(LoginBloc loginBloc) {
+  return KaiselRouterConfig<AppRoute>(
+    initial: loginBloc.stateValue.isLoggedIn
+        ? HomeRoute(loginBloc.stateValue.username)
+        : const LoginRoute(),
+    guards: [authGuard(loginBloc)],
+    reevaluateOn: loginBloc.toValueListenable(),
     builder: (context, route) => switch (route) {
       LoginRoute() => const LoginScreen(),
       HomeRoute(:final username) => HomeScreen(username: username),
@@ -272,12 +300,16 @@ void main() {
         ),
     },
   );
+}
+
+void main() {
+  final loginBloc = LoginBloc();
+  final config = createRouterConfig(loginBloc);
 
   runApp(
-    /// Inject [LoginBloc] globally using [BlocSignalProvider].
-    /// It automatically manages the BLoC's lifecycle and disposes it on removal.
-    BlocSignalProvider<LoginBloc>(
-      create: (_) => LoginBloc(),
+    /// Inject [LoginBloc] globally using [BlocSignalProvider.value].
+    BlocSignalProvider<LoginBloc>.value(
+      value: loginBloc,
       child: MyApp(routerConfig: config),
     ),
   );
@@ -340,13 +372,6 @@ class LoginScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(32.0),
                   child: BlocSignalBuilder<LoginBloc, LoginState>(
                     builder: (context, state) {
-                      // Navigate to dashboard if logged in
-                      if (state.isLoggedIn) {
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          context.replaceTop(HomeRoute(state.username));
-                        });
-                      }
-
                       return Column(
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -466,9 +491,9 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
-              // Dispatch logout event and navigate back
+              // Dispatch logout event; Kaisel authGuard automatically
+              // re-evaluates via reevaluateOn and redirects to LoginRoute.
               bloc.add(Logout());
-              context.replaceTop(const LoginRoute());
             },
           ),
         ],

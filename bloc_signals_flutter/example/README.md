@@ -14,8 +14,10 @@ This example demonstrates best practices for building reactive Flutter applicati
    - State emissions via `emit()` propagate synchronously to widget subtrees in the exact same frame.
    - Built-in state de-duplication using `==` equality prevents unnecessary UI rebuilds.
 
-3. **Type-Safe Routing with Kaisel**:
+3. **Type-Safe Declarative Routing with Kaisel 1.1**:
    - Sealed class route hierarchies (`AppRoute`) paired with `MaterialApp.router`.
+   - Declarative route guards (`KaiselGuard`) protecting authenticated destinations without UI-level redirection side-effects.
+   - Automatic guard re-evaluation driven directly by `reevaluateOn: loginBloc.toValueListenable()`.
 
 4. **Dependency Injection & UI Scoping**:
    - `BlocSignalProvider` for managing BLoC lifecycles and automatic disposal.

@@ -6,7 +6,7 @@ The `BlocSignal` project takes the security and integrity of our reactive state 
 
 ## Supported Versions
 
-Security updates are actively applied to the latest major and minor release versions published to [pub.dev](https://pub.dev/publishers/stonehenge.com/packages).
+Security updates are actively applied to the latest major and minor release versions published to [pub.dev](https://pub.dev/publishers/blocsignal.dev/packages).
 
 | Package                 | Supported Versions |
 | :---------------------- | :----------------- |

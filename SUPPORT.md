@@ -27,7 +27,7 @@ Connect with other Dart and Flutter engineers:
 ## 📖 Official Documentation & References
 
 * **Website**: [https://blocsignal.dev](https://blocsignal.dev)
-* **API Documentation**: Browsable dartdocs on [pub.dev](https://pub.dev/publishers/stonehenge.com/packages)
+* **API Documentation**: Browsable dartdocs on [pub.dev](https://pub.dev/publishers/blocsignal.dev/packages)
 * **Sample Applications**: Explore over 20+ runnable examples in the [`examples/`](./examples) directory of this repository.
 * **Developer Handbook**: Internal architecture and maintainer operations are documented in [AGENTS.md](./AGENTS.md).
 

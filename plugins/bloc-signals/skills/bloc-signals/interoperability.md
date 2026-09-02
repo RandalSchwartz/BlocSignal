@@ -253,6 +253,19 @@ final cubit = riverpodProvider.toBlocSignal(ref);
 final ValueListenable<int> listenable = cubit.toValueListenable();
 ```
 
+### Declarative Routing (`toValueListenable()`)
+```dart
+// Bridges BlocSignal state into Flutter's ValueListenable ecosystem
+final ValueListenable<AuthState> authListenable = authBloc.toValueListenable();
+
+// Compatible with Kaisel 1.1 reevaluateOn and GoRouter refreshListenable
+final router = KaiselRouterConfig(
+  initial: authBloc.stateValue.isAuthenticated ? const HomeRoute() : const LoginRoute(),
+  reevaluateOn: [authListenable],
+  guards: [authGuard],
+);
+```
+
 ---
 
 ## 🛡️ Migrating Away from FutureBuilder & StreamBuilder (Quarantining Async at the Perimeter)

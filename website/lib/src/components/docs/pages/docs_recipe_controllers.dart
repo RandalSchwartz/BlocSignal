@@ -144,7 +144,7 @@ class _SearchInputWidgetState extends State<SearchInputWidget> {
     return BlocSignalListener<SearchCubit, SearchState>(
       listenWhen: (prev, current) => prev.query != current.query,
       listener: (context, state) {
-        // Sync external query resets (e.g. from a clear filters button)
+        // Sync external query resets (for example from a clear filters button)
         if (_controller.text != state.query) {
           _controller.value = TextEditingValue(
             text: state.query,

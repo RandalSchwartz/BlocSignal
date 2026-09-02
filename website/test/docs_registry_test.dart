@@ -100,6 +100,14 @@ void main() {
       expect(pkgDevtools.id, equals('pkg-devtools'));
       expect(pkgDevtools.category, equals('Satellite Packages'));
 
+      final pkgLint = DocsRegistry.resolveSection('pkg-lint');
+      expect(pkgLint.id, equals('pkg-lint'));
+      expect(pkgLint.category, equals('Satellite Packages'));
+
+      final pkgJaspr = DocsRegistry.resolveSection('pkg-jaspr');
+      expect(pkgJaspr.id, equals('pkg-jaspr'));
+      expect(pkgJaspr.category, equals('Satellite Packages'));
+
       final recipeOneShot = DocsRegistry.resolveSection('recipe-one-shot');
       expect(recipeOneShot.id, equals('recipe-one-shot'));
       expect(recipeOneShot.category, equals('Architecture & Recipes'));

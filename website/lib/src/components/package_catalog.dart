@@ -26,7 +26,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_flutter',
-    version: '1.2.1',
+    version: '1.2.2',
     desc: 'Flutter UI bindings, InheritedWidget providers, builders, listeners, selectors, and Listenable interop.',
     icon: '💙',
     category: 'Core & UI',
@@ -53,7 +53,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_riverpod',
-    version: '1.2.0',
+    version: '1.1.1',
     desc: 'Bidirectional read-and-mutate Riverpod 2 & 3 interop adapters (toBlocSignal / toProvider / typed Notifier access).',
     icon: '🌊',
     category: 'State & Interop',
@@ -71,7 +71,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_replay',
-    version: '1.0.0',
+    version: '1.1.0',
     desc: 'Replay, undo, and redo state tracking utilities (ReplayCubit, ReplayBloc, ReplayEvent).',
     icon: '↩️',
     category: 'State & Interop',
@@ -89,7 +89,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_devtools',
-    version: '1.0.0',
+    version: '1.0.0+1',
     desc: 'Custom Flutter DevTools extension for timeline tracing, state diffing, and memory leak detection.',
     icon: '🛠️',
     category: 'DevTools & Tooling',
@@ -98,7 +98,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_test',
-    version: '1.0.0',
+    version: '1.0.0+1',
     desc: 'Declarative unit testing utilities and test observers for BlocSignal and CubitSignal.',
     icon: '🧪',
     category: 'DevTools & Tooling',
@@ -107,7 +107,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_lint',
-    version: '1.0.0',
+    version: '1.1.0',
     desc: 'Custom analyzer lints and automated IDE quick-fixes for enforcing BlocSignal best practices.',
     icon: '🔍',
     category: 'DevTools & Tooling',
@@ -225,7 +225,7 @@ class _PackageCatalogState() extends State<PackageCatalog> {
               value: _searchQuery,
               onInput: _onSearchChanged,
               attributes: {
-                'placeholder': 'Search packages (e.g. hydrate, flutter, riverpod, otel)...',
+                'placeholder': 'Search packages (for example: hydrate, flutter, riverpod, otel)...',
                 'aria-label': 'Search packages',
               },
             ),

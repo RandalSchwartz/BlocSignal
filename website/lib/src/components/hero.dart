@@ -84,7 +84,7 @@ class _HeroBannerContentState() extends State<_HeroBannerContent> {
             div(classes: 'hero-badge-tag', [
               span(classes: 'hero-badge-dot', []),
               Component.text(
-                '⚡ v1.1.0 Released — 0ms Latency State Management for Dart & Flutter',
+                '⚡ v1.2.0 Released — 0ms Latency State Management for Dart & Flutter',
               ),
             ]),
             h1(classes: 'hero-title', [

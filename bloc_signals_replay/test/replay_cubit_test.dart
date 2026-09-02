@@ -1,3 +1,4 @@
+import 'package:bloc_signals_replay/bloc_signals_replay.dart';
 import 'package:test/test.dart';
 
 import 'cubits/counter_cubit.dart';
@@ -487,5 +488,63 @@ void main() {
         expect(states, [0, 1, 2, 1, 0]);
       });
     });
+
+    group('named constructor & history limits ergonomics', () {
+      test(
+        'supports named initialState and maxHistoryLength parameter',
+        () async {
+          final cubit = _NamedCounterCubit(
+            initialState: 10,
+            maxHistoryLength: 2,
+          );
+          expect(cubit.stateValue, 10);
+          cubit
+            ..increment() // 11
+            ..increment() // 12
+            ..increment(); // 13
+          expect(cubit.stateValue, 13);
+          cubit.undo();
+          expect(cubit.stateValue, 12);
+          cubit.undo();
+          expect(cubit.stateValue, 11);
+          expect(cubit.canUndo, isFalse); // Limited to 2 historical states
+          await cubit.close();
+        },
+      );
+
+      test(
+        'supports deprecated positional constructor for backward compatibility',
+        () async {
+          final cubit = _PositionalCounterCubit(10, limit: 2);
+          expect(cubit.stateValue, 10);
+          cubit
+            ..increment()
+            ..increment()
+            ..increment();
+          expect(cubit.stateValue, 13);
+          cubit.undo();
+          expect(cubit.stateValue, 12);
+          cubit.undo();
+          expect(cubit.stateValue, 11);
+          expect(cubit.canUndo, isFalse);
+          await cubit.close();
+        },
+      );
+    });
   });
+}
+
+class _NamedCounterCubit extends ReplayCubit<int> {
+  _NamedCounterCubit({required super.initialState, super.maxHistoryLength});
+
+  void increment() => emit(stateValue + 1);
+}
+
+class _PositionalCounterCubit extends ReplayCubit<int> {
+  _PositionalCounterCubit(super.initialState, {super.limit})
+      // Testing backward-compatible positional constructor.
+      // ignore: deprecated_member_use_from_same_package
+      : super.positional();
+
+  void increment() => emit(stateValue + 1);
 }

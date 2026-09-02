@@ -1,8 +1,8 @@
 # Migrating from Riverpod
 
 This reference covers migrations from `riverpod`, `flutter_riverpod`, `hooks_riverpod`, and
-generated `@riverpod` or `@Riverpod` declarations. The BlocSignal notes match `bloc_signals` 0.2.0,
-`bloc_signals_flutter` 0.2.0, and Signals 7.1.0. Inspect the consumer project's resolved Riverpod
+generated `@riverpod` or `@Riverpod` declarations. The BlocSignal notes match `bloc_signals` 1.2.x,
+`bloc_signals_flutter` 1.2.x, and Signals 7.x. Inspect the consumer project's resolved Riverpod
 version, generated output, and installed source before changing it.
 
 Riverpod provider declarations are often top-level, but their state and lifetime belong to a
@@ -91,9 +91,8 @@ For a simple selected rebuild, `BlocSignalSelector` is closer to widget `select`
 builder. It rebuilds when its selected value changes by equality. It does not reproduce Riverpod
 scope, provider recomputation, or family caching.
 
-`context.select<B, R>` is another narrow widget option (using 2 generic type parameters: container type `B` and return type `R`, passing the `bloc` instance to the callback: `(bloc) => bloc.stateValue.property`), but 0.2.0 caches calls by element and call
-index. Keep calls unconditional and stable in order. Note that unlike Riverpod's `ref.watch(provider.select(...))` or 3-generic-parameter signatures, `bloc_signals_flutter`'s `context.select` takes exactly 2 generic arguments `<B, R>`. It does not depend on inherited provider
-replacement, so prefer `BlocSignalSelector` when the bloc instance can change.
+`context.select<B, R>` is another narrow widget option (using 2 generic type parameters: container type `B` and return type `R`, passing the `bloc` instance to the callback: `(bloc) => bloc.stateValue.property`), caching calls by element and call
+index. Keep calls unconditional and stable in order. Note that unlike Riverpod's `ref.watch(provider.select(...))` or 3-generic-parameter signatures, `bloc_signals_flutter`'s `context.select` takes exactly 2 generic arguments `<B, R>`. Because it registers an inherited dependency (`listen: true`), `context.select` automatically rebinds when an ancestor provider swaps container instances, ensuring reliable reactivity across all subtrees.
 
 `signals_flutter` 7.1.0 also exports the lower-level `SignalEffect` and its `SignalListener` alias.
 They own and dispose their effect, run immediately on mount, provide no previous/current pair, and

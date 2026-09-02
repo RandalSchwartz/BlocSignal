@@ -13,6 +13,8 @@ import '../components/docs/pages/docs_overview.dart';
 import '../components/docs/pages/docs_pkg_bloc.dart';
 import '../components/docs/pages/docs_pkg_devtools.dart';
 import '../components/docs/pages/docs_pkg_hydrate.dart';
+import '../components/docs/pages/docs_pkg_jaspr.dart';
+import '../components/docs/pages/docs_pkg_lint.dart';
 import '../components/docs/pages/docs_pkg_otel.dart';
 import '../components/docs/pages/docs_pkg_replay.dart';
 import '../components/docs/pages/docs_pkg_riverpod.dart';
@@ -220,6 +222,23 @@ class const DocsRegistry() {
           category: 'Satellite Packages',
           description: 'DevTools timeline inspection and leak detector badge.',
           builder: DocsPkgDevtoolsPage.new,
+        ),
+        DocSectionItem(
+          id: 'pkg-lint',
+          title: 'bloc_signals_lint',
+          path: '/docs/pkg-lint',
+          category: 'Satellite Packages',
+          description: 'Static analysis rules and automated IDE quick-fixes.',
+          builder: DocsPkgLintPage.new,
+        ),
+        DocSectionItem(
+          id: 'pkg-jaspr',
+          title: 'bloc_signals_jaspr',
+          path: '/docs/pkg-jaspr',
+          category: 'Satellite Packages',
+          description:
+              'High-performance web state management for Jaspr web apps.',
+          builder: DocsPkgJasprPage.new,
         ),
       ],
     ),

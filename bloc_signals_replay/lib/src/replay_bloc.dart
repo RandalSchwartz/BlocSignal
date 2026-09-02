@@ -35,7 +35,7 @@ class _Undo extends ReplayEvent {
 /// }
 ///
 /// class CounterBloc extends ReplayBloc<CounterEvent, int> {
-///   CounterBloc() : super(0) {
+///   CounterBloc() : super(initialState: 0) {
 ///     on<Increment>((event, emit) => emit(stateValue + 1));
 ///   }
 /// }
@@ -53,14 +53,31 @@ class _Undo extends ReplayEvent {
 abstract class ReplayBloc<Event extends ReplayEvent, State>
     extends BlocSignal<Event, State> with ReplayBlocMixin<Event, State> {
   /// {@macro replay_bloc}
-  ReplayBloc(
+  ReplayBloc({
+    required super.initialState,
+    int? limit,
+    int? maxHistoryLength,
+    super.equals,
+    super.options,
+  }) {
+    final effectiveLimit = limit ?? maxHistoryLength;
+    if (effectiveLimit != null) {
+      this.limit = effectiveLimit;
+    }
+  }
+
+  /// Creates a [ReplayBloc] with a positional [initialState].
+  @Deprecated('Use named parameter initialState: instead')
+  ReplayBloc.positional(
     State initialState, {
     int? limit,
+    int? maxHistoryLength,
     super.equals,
     super.options,
   }) : super(initialState: initialState) {
-    if (limit != null) {
-      this.limit = limit;
+    final effectiveLimit = limit ?? maxHistoryLength;
+    if (effectiveLimit != null) {
+      this.limit = effectiveLimit;
     }
   }
 }

@@ -1,3 +1,9 @@
+## 1.1.0
+
+- **Constructor Alignment**: Support named parameter `required State initialState` on `ReplayCubit` and `ReplayBloc` constructors to align with framework-wide conventions (#224).
+- **Migration Path**: Existing subclasses calling positional `super(initialState)` can update to named `super(initialState: initialState)` or invoke the backward-compatible `@Deprecated` constructor `super.positional(initialState)`.
+- Add `maxHistoryLength` parameter as a named alias for `limit`.
+
 ## 1.0.0+1
 
 - Re-trigger pub.dev Pana static analysis.

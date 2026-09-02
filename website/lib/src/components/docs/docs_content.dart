@@ -7,6 +7,7 @@ import '../../models/docs_models.dart';
 import '../../models/docs_registry.dart';
 import 'docs_toc.dart';
 import 'pages/docs_cubit_vs_bloc.dart';
+import 'pages/docs_decision_matrix.dart';
 import 'pages/docs_event_transformers.dart';
 import 'pages/docs_events_and_handlers.dart';
 import 'pages/docs_flutter_context.dart';
@@ -17,8 +18,11 @@ import 'pages/docs_lifecycle_and_observers.dart';
 import 'pages/docs_migration_bloc.dart';
 import 'pages/docs_migration_riverpod.dart';
 import 'pages/docs_overview.dart';
+import 'pages/docs_pkg_bloc.dart';
 import 'pages/docs_pkg_devtools.dart';
 import 'pages/docs_pkg_hydrate.dart';
+import 'pages/docs_pkg_jaspr.dart';
+import 'pages/docs_pkg_lint.dart';
 import 'pages/docs_pkg_otel.dart';
 import 'pages/docs_pkg_replay.dart';
 import 'pages/docs_pkg_riverpod.dart';
@@ -130,6 +134,8 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return DocsInstallationPage.headings;
       case 'quickstart':
         return DocsQuickstartPage.headings;
+      case 'decision-matrix':
+        return DocsDecisionMatrixPage.headings;
       case 'cubit-vs-bloc':
         return DocsCubitVsBlocPage.headings;
       case 'state-modeling':
@@ -156,10 +162,16 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return DocsPkgReplayPage.headings;
       case 'pkg-riverpod':
         return DocsPkgRiverpodPage.headings;
+      case 'pkg-bloc':
+        return DocsPkgBlocPage.headings;
       case 'pkg-otel':
         return DocsPkgOtelPage.headings;
       case 'pkg-devtools':
         return DocsPkgDevtoolsPage.headings;
+      case 'pkg-lint':
+        return DocsPkgLintPage.headings;
+      case 'pkg-jaspr':
+        return DocsPkgJasprPage.headings;
       case 'recipe-one-shot':
         return DocsRecipeOneShotPage.headings;
       case 'recipe-form-validation':
@@ -185,6 +197,8 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return 'website/lib/src/components/docs/pages/docs_installation.dart';
       case 'quickstart':
         return 'website/lib/src/components/docs/pages/docs_quickstart.dart';
+      case 'decision-matrix':
+        return 'website/lib/src/components/docs/pages/docs_decision_matrix.dart';
       case 'cubit-vs-bloc':
         return 'website/lib/src/components/docs/pages/docs_cubit_vs_bloc.dart';
       case 'state-modeling':
@@ -211,10 +225,16 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return 'website/lib/src/components/docs/pages/docs_pkg_replay.dart';
       case 'pkg-riverpod':
         return 'website/lib/src/components/docs/pages/docs_pkg_riverpod.dart';
+      case 'pkg-bloc':
+        return 'website/lib/src/components/docs/pages/docs_pkg_bloc.dart';
       case 'pkg-otel':
         return 'website/lib/src/components/docs/pages/docs_pkg_otel.dart';
       case 'pkg-devtools':
         return 'website/lib/src/components/docs/pages/docs_pkg_devtools.dart';
+      case 'pkg-lint':
+        return 'website/lib/src/components/docs/pages/docs_pkg_lint.dart';
+      case 'pkg-jaspr':
+        return 'website/lib/src/components/docs/pages/docs_pkg_jaspr.dart';
       case 'recipe-one-shot':
         return 'website/lib/src/components/docs/pages/docs_recipe_one_shot.dart';
       case 'recipe-form-validation':

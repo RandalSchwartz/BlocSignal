@@ -2,7 +2,7 @@ import 'package:bloc_signals_replay/bloc_signals_replay.dart';
 
 /// An example CounterCubit with undo and redo state history tracking.
 class CounterCubit extends ReplayCubit<int> {
-  CounterCubit() : super(0);
+  CounterCubit() : super(initialState: 0);
 
   void increment() => emit(stateValue + 1);
   void decrement() => emit(stateValue - 1);

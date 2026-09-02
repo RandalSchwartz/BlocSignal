@@ -157,8 +157,8 @@ final canSubmit = context.select<FormCubit, bool>(
 > [!TIP]
 > **Generic Type Parameters for `context.select`**:
 > Unlike Riverpod's 3-parameter `context.select` or `package:flutter_bloc`, `BlocSignal`'s `context.select` takes **2** generic type parameters:
-> 1. `B`: The `BlocSignalBase` container type (e.g., `UserCubit` or `CounterBloc`)
-> 2. `R`: The selected return value type (e.g., `String` or `bool`)
+> 1. `B`: The `BlocSignalBase` container type (for example `UserCubit` or `CounterBloc`)
+> 2. `R`: The selected return value type (for example `String` or `bool`)
 >
 > The callback receives the **`bloc` instance** directly: `context.select<FormCubit, bool>((cubit) => cubit.stateValue.canSubmit)`.
 

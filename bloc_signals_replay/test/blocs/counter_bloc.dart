@@ -23,7 +23,7 @@ class CounterBloc extends ReplayBloc<CounterEvent, int> {
     super.limit,
     bool Function(int state)? shouldReplayCallback,
   })  : _shouldReplayCallback = shouldReplayCallback,
-        super(0) {
+        super(initialState: 0) {
     on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
     on<CounterDecrementPressed>((event, emit) => emit(stateValue - 1));
   }

@@ -1,6 +1,6 @@
 # Flutter bindings and ownership
 
-This reference matches `bloc_signals_flutter` 0.2.0. Inspect the installed package when the version
+This reference matches `bloc_signals_flutter` 1.2.x. Inspect the installed package when the version
 differs.
 
 ## Provider ownership
@@ -73,7 +73,7 @@ final isSubmitEnabled = context.select<FormCubit, bool>(
 > Unlike `flutter_riverpod` (which uses 3 generic parameters in some forms) or classic `flutter_bloc` context selection, `bloc_signals_flutter` passes the **`bloc` container instance** to the selector callback (`(bloc) => bloc.stateValue.canSubmit`), allowing direct property access via `bloc.stateValue`.
 
 It rebuilds the element when the selected value changes by `!=`. Keep each element's select calls
-unconditional and in a stable order because 0.2.0 caches subscriptions by call index. The provider
+unconditional and in a stable order because subscriptions are cached by call index. The provider
 lookup registers an inherited dependency (`listen: true`), so if an ancestor provider swaps its
 container instance, `context.select` automatically rebinds to the new container and continues
 observing state updates seamlessly.
@@ -97,7 +97,7 @@ BlocSignalListener<AuthBloc, AuthState>(
 ```
 
 The listener callback receives only the current state; `listenWhen` receives both values. An
-unrelated parent rebuild does not restart the effect in 0.2.0. When `bloc:` is omitted, the listener
+unrelated parent rebuild does not restart the effect. When `bloc:` is omitted, the listener
 uses a non-listening provider lookup, so a provider instance swap can be missed until another
 widget update runs. Pass the bloc explicitly or verify replacement behavior in a widget test when
 the provider can change.
@@ -125,9 +125,8 @@ BlocSignalSelector<ProfileCubit, ProfileState, String>(
 ```
 
 Give the selected type meaningful equality and avoid mutating a selected object in place. The
-selector is reinitialized when its bloc or selector callback changes. In 0.2.0 it cleans up its
-effect but does not explicitly dispose the `Computed` object; inspect the installed implementation
-when deterministic computed disposal matters.
+selector is reinitialized when its bloc or selector callback changes. It cleans up its
+effect and rebinds automatically when its bloc instance or selector changes.
 
 `MultiBlocSignalListener` nests several listeners around one child. Individual listeners do not require a placeholder `child` parameter:
 
@@ -276,8 +275,50 @@ BlocSignalBuilder<UserDataCubit, UserData>(
 - **Automatic Sync on External Changes**: Updating `ValueKey` forces `TextFormField` to re-initialize cleanly with `initialValue` when state changes externally (such as state hydration or unit switching).
 - **Clean Field State**: Allows standard typing and validation while keeping state reactivity declarative.
 
-## Missing-provider failures
+## Declarative Routing & Route Guards (Kaisel / GoRouter)
 
+`bloc_signals_flutter` provides `extension BlocSignalValueListenableX<T> on BlocSignalBase<T>` which exposes `bloc.toValueListenable()`. This bridges synchronous signal emissions into Flutter's `ValueListenable` ecosystem, enabling declarative routers (such as Kaisel 1.1 or GoRouter) to re-evaluate route guards automatically on state transitions.
+
+```dart
+final router = KaiselRouterConfig(
+  // 1. Compute initial route dynamically from current stateValue to prevent screen flash
+  initial: authBloc.stateValue.isAuthenticated
+      ? const HomeRoute()
+      : const LoginRoute(),
+  // 2. Wire reactive re-evaluation via toValueListenable()
+  reevaluateOn: [authBloc.toValueListenable()],
+  guards: [
+    (proposed) {
+      final isAuthenticated = authBloc.stateValue.isAuthenticated;
+
+      // 3. Idempotent self-bypass: prevent infinite redirect loops
+      if (!isAuthenticated && proposed.length == 1 && proposed.first is LoginRoute) {
+        return proposed;
+      }
+      if (!isAuthenticated) {
+        return const [LoginRoute()];
+      }
+      return proposed;
+    },
+  ],
+);
+```
+
+For GoRouter:
+```dart
+final router = GoRouter(
+  refreshListenable: authBloc.toValueListenable(),
+  redirect: (context, state) {
+    final loggedIn = authBloc.stateValue.isAuthenticated;
+    final loggingIn = state.matchedLocation == '/login';
+    if (!loggedIn) return loggingIn ? null : '/login';
+    if (loggingIn) return '/';
+    return null;
+  },
+);
+```
+
+## Missing-provider failures
 
 `BlocSignalProvider.of<T>` throws `FlutterError` when no exact provider type is found. Check that the
 lookup context is below the provider and that the generic type matches the provided concrete bloc.

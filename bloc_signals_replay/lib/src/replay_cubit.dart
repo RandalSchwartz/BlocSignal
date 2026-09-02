@@ -15,7 +15,7 @@ part 'replay_bloc.dart';
 ///
 /// ```dart
 /// class CounterCubit extends ReplayCubit<int> {
-///   CounterCubit() : super(0);
+///   CounterCubit() : super(initialState: 0);
 ///
 ///   void increment() => emit(stateValue + 1);
 /// }
@@ -33,14 +33,31 @@ part 'replay_bloc.dart';
 abstract class ReplayCubit<State> extends CubitSignal<State>
     with ReplayCubitMixin<State> {
   /// {@macro replay_cubit}
-  ReplayCubit(
+  ReplayCubit({
+    required super.initialState,
+    int? limit,
+    int? maxHistoryLength,
+    super.equals,
+    super.options,
+  }) {
+    final effectiveLimit = limit ?? maxHistoryLength;
+    if (effectiveLimit != null) {
+      this.limit = effectiveLimit;
+    }
+  }
+
+  /// Creates a [ReplayCubit] with a positional [initialState].
+  @Deprecated('Use named parameter initialState: instead')
+  ReplayCubit.positional(
     State initialState, {
     int? limit,
+    int? maxHistoryLength,
     super.equals,
     super.options,
   }) : super(initialState: initialState) {
-    if (limit != null) {
-      this.limit = limit;
+    final effectiveLimit = limit ?? maxHistoryLength;
+    if (effectiveLimit != null) {
+      this.limit = effectiveLimit;
     }
   }
 }

@@ -1,4 +1,3 @@
-import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_replay/bloc_signals_replay.dart';
 import 'package:test/test.dart';
 
@@ -247,5 +246,63 @@ void main() {
       dispose();
       expect(states, [0, 1, 2, 1, 2]);
     });
+
+    group('named constructor & history limits ergonomics', () {
+      test(
+        'supports named initialState and maxHistoryLength parameter',
+        () async {
+          final bloc = _NamedCounterBloc(
+            initialState: 10,
+            maxHistoryLength: 2,
+          );
+          expect(bloc.stateValue, 10);
+          bloc
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed());
+          expect(bloc.stateValue, 13);
+          bloc.undo();
+          expect(bloc.stateValue, 12);
+          bloc.undo();
+          expect(bloc.stateValue, 11);
+          expect(bloc.canUndo, isFalse);
+          await bloc.close();
+        },
+      );
+
+      test(
+        'supports deprecated positional constructor for backward compatibility',
+        () async {
+          final bloc = _PositionalCounterBloc(10, limit: 2);
+          expect(bloc.stateValue, 10);
+          bloc
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed());
+          expect(bloc.stateValue, 13);
+          bloc.undo();
+          expect(bloc.stateValue, 12);
+          bloc.undo();
+          expect(bloc.stateValue, 11);
+          expect(bloc.canUndo, isFalse);
+          await bloc.close();
+        },
+      );
+    });
   });
+}
+
+class _NamedCounterBloc extends ReplayBloc<CounterEvent, int> {
+  _NamedCounterBloc({required super.initialState, super.maxHistoryLength}) {
+    on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
+  }
+}
+
+class _PositionalCounterBloc extends ReplayBloc<CounterEvent, int> {
+  _PositionalCounterBloc(super.initialState, {super.limit})
+      // Testing backward-compatible positional constructor.
+      // ignore: deprecated_member_use_from_same_package
+      : super.positional() {
+    on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
+  }
 }

@@ -1,6 +1,6 @@
 # Core API and event processing
 
-This reference matches `bloc_signals` 0.2.0. Re-read the installed source when the project uses a
+This reference matches `bloc_signals` 1.2.x. Re-read the installed source when the project uses a
 different version.
 
 ## Public state and lifecycle
@@ -229,7 +229,7 @@ handler futures without making the synchronous switch asynchronous. Import `dart
 the event. Each state container has its own zone key, so an `emit` on another bloc does not borrow
 the first bloc's event. A `CubitSignal` transition and any emit outside `add` report a null event.
 For a nullable event type, `add(null)` is also treated as a null-event transition and skips the
-typed local `onTransition` hook in 0.2.0.
+typed local `onTransition` hook.
 
 ## Error behavior
 
@@ -324,6 +324,6 @@ together. `onCreate` runs before the subclass constructor body and late fields a
 observers should not read subtype-specific fields there. Local `onTransition`, `onChange`,
 `onError`, and `close` are annotated `@mustCallSuper`; keep the superclass call in overrides.
 
-Await `close()` when completion or observer errors matter. The current 0.2.0 cleanup body runs
+Await `close()` when completion or observer errors matter. The cleanup body runs
 synchronously before the returned future completes, but callers should code to the `Future<void>`
 contract.

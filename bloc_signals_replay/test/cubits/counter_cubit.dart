@@ -5,7 +5,7 @@ class CounterCubit extends ReplayCubit<int> {
     super.limit,
     bool Function(int state)? shouldReplayCallback,
   })  : _shouldReplayCallback = shouldReplayCallback,
-        super(0);
+        super(initialState: 0);
 
   final bool Function(int state)? _shouldReplayCallback;
 

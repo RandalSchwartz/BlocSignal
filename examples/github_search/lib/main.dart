@@ -214,7 +214,7 @@ class GithubSearchPage extends StatelessWidget {
             TextField(
               decoration: const InputDecoration(
                 labelText: 'Search Repositories',
-                hintText: 'e.g. bloc, signals, flutter',
+                hintText: 'For example: bloc, signals, flutter',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
               ),

@@ -99,7 +99,7 @@ class UserCubit extends HydratedCubitSignal<UserModel> {
 
 Storage keys are derived via the `storageToken` getter (`'$storagePrefix${id != null ? '_$id' : ''}'`).
 
-* **Singletons**: Omit `id` (defaults to `null`). Storage key automatically uses the class name (e.g. `'CounterCubit'`).
+* **Singletons**: Omit `id` (defaults to `null`). Storage key automatically uses the class name (for example `'CounterCubit'`).
 * **Multi-Instance**: Pass `id` via constructor to scope storage per user/session (`CounterCubit(id: 'user_123')` -> key `'CounterCubit_user_123'`).
 * **Custom Keys**: Override `storageToken` or `storagePrefix` directly for custom key formats:
 

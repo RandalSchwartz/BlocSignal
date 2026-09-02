@@ -225,6 +225,30 @@ enum DocSymbol(
     'BlocSignalToClassicCubitX',
     'bloc_signals_bloc',
     'BlocSignalToClassicCubitX.html',
+  ),
+
+  // Jaspr (bloc_signals_jaspr)
+  blocSignalJasprProvider(
+    'BlocSignalProvider',
+    'bloc_signals_jaspr',
+    'BlocSignalProvider-class.html',
+  ),
+  blocSignalJasprBuilder(
+    'BlocSignalBuilder',
+    'bloc_signals_jaspr',
+    'BlocSignalBuilder-class.html',
+  ),
+  blocSignalJasprConsumer(
+    'BlocSignalConsumer',
+    'bloc_signals_jaspr',
+    'BlocSignalConsumer-class.html',
+  ),
+
+  // Lint (bloc_signals_lint)
+  blocSignalsLintCreatePlugin(
+    'createPlugin',
+    'bloc_signals_lint',
+    'createPlugin.html',
   );
 
   /// Canonical URL on pub.dev documentation.

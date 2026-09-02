@@ -66,6 +66,7 @@ void main() {
       expect(names, contains('read'));
       expect(names, contains('watch'));
       expect(names, contains('select'));
+      expect(names, contains('createPlugin'));
     });
   });
 }

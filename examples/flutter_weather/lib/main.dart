@@ -157,7 +157,7 @@ final class UnitsToggled extends WeatherEvent {
 /// Manages weather fetching, temperature unit conversion, and condition reporting.
 ///
 /// **Educational Key Takeaways**:
-/// - Shows how `BlocSignalConsumer` coordinates UI rebuilds with side-effects (e.g. updating app theme).
+/// - Shows how `BlocSignalConsumer` coordinates UI rebuilds with side-effects (for example updating app theme).
 /// - Synchronous emissions allow unit tests to verify weather retrieval without stream delay.
 class WeatherBlocSignal extends BlocSignal<WeatherEvent, WeatherState> {
   WeatherBlocSignal({WeatherRepository repository = const WeatherRepository()})
@@ -344,7 +344,7 @@ class _SearchPageState extends State<SearchPage> {
                 autofocus: true,
                 decoration: const InputDecoration(
                   labelText: 'City',
-                  hintText: 'e.g. London, Chicago, Tokyo',
+                  hintText: 'For example: London, Chicago, Tokyo',
                 ),
               ),
             ),

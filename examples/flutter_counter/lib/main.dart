@@ -50,7 +50,7 @@ final class CounterDecremented extends CounterEvent {
 /// An event-driven [BlocSignal] managing an integer counter state.
 ///
 /// Use `BlocSignal` when state transitions require explicit event tracing, observer logging,
-/// or event concurrency transformers (e.g. `sequential()`, `droppable()`).
+/// or event concurrency transformers (for example `sequential()`, `droppable()`).
 class CounterBloc extends BlocSignal<CounterEvent, int> {
   CounterBloc() : super(initialState: 0) {
     on<CounterIncremented>((event, emit) => emit(stateValue + 1));

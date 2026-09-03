@@ -65,25 +65,51 @@ class const DocsEventTransformersPage({super.key}) extends StatelessComponent {
           apiLink(DocSymbol.droppable),
           Component.text(
             ' ignores and drops any incoming events while the current event handler is actively processing an asynchronous Future. '
-            'Ideal for submit buttons, login actions, and checkout forms to prevent duplicate requests.',
+            'Ideal for submit buttons, login actions, checkout forms, and infinite scroll pagination to prevent duplicate requests.',
           ),
         ]),
         const DocsCodeBlock(
-          filename: 'droppable_example.dart',
+          filename: 'droppable_pagination_example.dart',
           dart313Code: '''
-on<SubmitFormPressed>((event, emit) async {
-  emit(const FormSubmitting());
-  await api.postPayload(event.data);
-  emit(const FormSuccess());
+// Drops duplicate scroll triggers while a page fetch is active
+on<PostsFetched>((event, emit) async {
+  if (stateValue.hasReachedMax) return;
+  final newPosts = await api.fetchPosts(startIndex: stateValue.posts.length);
+  emit(stateValue.copyWith(
+    posts: [...stateValue.posts, ...newPosts],
+    hasReachedMax: newPosts.isEmpty,
+  ));
 }, transformer: droppable());
 ''',
           dart35Code: '''
-on<SubmitFormPressed>((event, emit) async {
-  emit(const FormSubmitting());
-  await _api.postPayload(event.data);
-  emit(const FormSuccess());
+// Drops duplicate scroll triggers while a page fetch is active
+on<PostsFetched>((event, emit) async {
+  if (stateValue.hasReachedMax) return;
+  final newPosts = await _api.fetchPosts(startIndex: stateValue.posts.length);
+  emit(stateValue.copyWith(
+    posts: [...stateValue.posts, ...newPosts],
+    hasReachedMax: newPosts.isEmpty,
+  ));
 }, transformer: droppable());
 ''',
+        ),
+        const DocsCallout(
+          type: CalloutType.tip,
+          title: 'Infinite Scroll Pagination Showcase',
+          children: [
+            p([
+              Component.text(
+                'Explore a complete, production-ready Flutter infinite scroll app with search debouncing in ',
+              ),
+              a(
+                href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/infinite_scroll',
+                target: Target.blank,
+                classes: 'docs-inline-link',
+                [Component.text('examples/infinite_scroll ↗')],
+              ),
+              Component.text('.'),
+            ]),
+          ],
         ),
       ]),
 

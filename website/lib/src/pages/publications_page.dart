@@ -18,13 +18,23 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title: 'Taming Flutter Infinite Scroll: Why 3 Lines of async* Missed the Point, and How BlocSignal Fixes It',
+    description: 'Explore why using async* generators for infinite scroll pagination in Flutter hides subtle concurrency crashes, and discover how BlocSignal solves rapid scrolling race conditions streamlessly with droppable().',
+    url: 'https://dev.to/gde/taming-flutter-infinite-scroll-why-3-lines-of-async-missed-the-point-and-how-blocsignal-fixes-it-3n48',
+    date: 'Sep 3',
+    readTime: '8 min read',
+    category: 'Flutter & Jaspr',
+    type: 'Article',
+    tags: ["flutter", "dart", "architecture", "statemanagement"],
+  ),
+  PublicationItem(
     title:
         'Automate Flutter\'s New Split Package Migration with AI Agent Skills',
     description: 'How to use dart-sdk-skills to empower your AI coding agent to seamlessly migrate Flutter projects to standalone material_ui and cupertino_ui packages.',
     url: 'https://dev.to/gde/automate-flutters-new-split-package-migration-with-ai-agent-skills-bn2',
     date: 'Aug 31',
     readTime: '4 min read',
-    category: 'Architecture',
+    category: 'Flutter & Jaspr',
     type: 'Article',
     tags: ["flutter", "dart", "ai", "webdev"],
   ),

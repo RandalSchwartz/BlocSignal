@@ -36,7 +36,7 @@ installed Signals source before changing code.
 - Read [core.md](core.md) for event dispatch, equality, errors, closure, observers, and reactive
   ownership.
 - Read [flutter.md](flutter.md) for providers, builders, listeners, multi-listeners, consumers,
-  selectors, context extensions, `flutter_hooks` integration (`signals_hooks`), widget ownership, and derived UI state.
+  selectors, context extensions, infinite scroll pagination recipes, `flutter_hooks` integration (`signals_hooks`), widget ownership, and derived UI state.
 - Read [testing.md](testing.md) for synchronous assertions, deterministic async tests, zones, and
   widget tests.
 - Read [migration.md](migration.md) before replacing `bloc`, `flutter_bloc`, or their widgets.

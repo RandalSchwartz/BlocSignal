@@ -318,6 +318,233 @@ final router = GoRouter(
 );
 ```
 
+## Infinite scroll pagination recipes
+
+When implementing infinite scroll pagination in Flutter with BlocSignal, follow these foundational architectural rules:
+1. **Event-Boundary Concurrency**: Tag pagination fetch events with `transformer: droppable()` to drop duplicate scroll threshold flings synchronously on the same frame.
+2. **Offset-Based Cursor**: Derive the start index directly from `stateValue.items.length` rather than storing an independent, mutable page counter that can desynchronize on network failures.
+3. **Query Cancellation**: Tag search or filter mutation events with `transformer: restartable()` to automatically discard stale in-flight pagination requests when filters change.
+4. **Zero Third-Party Widgets**: Use standard Flutter `ListView.builder` or `CustomScrollView` rather than proprietary pagination packages.
+
+### Recipe 1: Standard Separation of Concerns (ScrollController + BLoC)
+
+When keeping domain business logic pure and decoupled from the Flutter widget layer:
+
+```dart
+// 1. PostsBloc with streamless droppable() and restartable()
+class PostsBloc extends BlocSignal<PostsEvent, PostsState> {
+  PostsBloc({required PostRepository repository})
+      : _repository = repository,
+        super(initialState: const PostsState()) {
+    on<PostsFetched>(_onPostsFetched, transformer: droppable());
+    on<PostsSearchChanged>(_onSearchChanged, transformer: restartable());
+  }
+
+  final PostRepository _repository;
+
+  Future<void> _onPostsFetched(
+    PostsFetched event,
+    void Function(PostsState) emit,
+  ) async {
+    if (stateValue.hasReachedMax) return;
+    try {
+      final newPosts = await _repository.fetchPosts(
+        query: stateValue.searchQuery,
+        startIndex: stateValue.posts.length,
+        limit: 10,
+      );
+      emit(
+        newPosts.isEmpty
+            ? stateValue.copyWith(hasReachedMax: true)
+            : stateValue.copyWith(
+                status: PostsStatus.success,
+                posts: [...stateValue.posts, ...newPosts],
+                hasReachedMax: newPosts.length < 10,
+              ),
+      );
+    } catch (_) {
+      emit(stateValue.copyWith(status: PostsStatus.failure));
+    }
+  }
+
+  Future<void> _onSearchChanged(
+    PostsSearchChanged event,
+    void Function(PostsState) emit,
+  ) async {
+    emit(stateValue.copyWith(
+      status: PostsStatus.loading,
+      searchQuery: event.query,
+    ));
+    try {
+      final posts = await _repository.fetchPosts(
+        query: event.query,
+        startIndex: 0,
+        limit: 10,
+      );
+      emit(PostsState(
+        status: PostsStatus.success,
+        posts: posts,
+        hasReachedMax: posts.length < 10,
+        searchQuery: event.query,
+      ));
+    } catch (_) {
+      emit(stateValue.copyWith(status: PostsStatus.failure));
+    }
+  }
+}
+
+// 2. Flutter View with ScrollController threshold trigger
+class PostsView extends StatefulWidget {
+  const PostsView({super.key});
+
+  @override
+  State<PostsView> createState() => _PostsViewState();
+}
+
+class _PostsViewState extends State<PostsView> {
+  final _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
+    if (currentScroll >= (maxScroll * 0.9)) {
+      context.read<PostsBloc>().add(const PostsFetched());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSignalBuilder<PostsBloc, PostsState>(
+      builder: (context, state) {
+        if (state.status == PostsStatus.loading && state.posts.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return ListView.builder(
+          controller: _scrollController,
+          itemCount: state.hasReachedMax
+              ? state.posts.length
+              : state.posts.length + 1,
+          itemBuilder: (context, index) {
+            if (index >= state.posts.length) {
+              return const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            return PostTile(post: state.posts[index]);
+          },
+        );
+      },
+    );
+  }
+}
+```
+
+### Recipe 2: The Self-Paging Controller (Zero Glue Code & 100% StatelessWidget)
+
+To eliminate `StatefulWidget`, `initState`, and `dispose` boilerplate completely, mix `CubitSignalMixin` and `BlocSignalMixin` directly into `ScrollController`. The controller serves simultaneously as Flutter's `ScrollController` and the reactive `BlocSignalBase`:
+
+```dart
+class PaginatedPostsController extends ScrollController
+    with CubitSignalMixin<PostsState>, BlocSignalMixin<PostsEvent, PostsState> {
+  PaginatedPostsController({required PostRepository repository})
+      : _repository = repository {
+    initCubitSignal(initialState: const PostsState());
+
+    on<PostsFetched>(_onPostsFetched, transformer: droppable());
+    on<PostsSearchChanged>(_onSearchChanged, transformer: restartable());
+
+    // Controller monitors its own viewport geometry
+    addListener(_onScrollChanged);
+  }
+
+  final PostRepository _repository;
+
+  void _onScrollChanged() {
+    if (!hasClients) return;
+    if (offset >= (position.maxScrollExtent * 0.9)) {
+      add(const PostsFetched());
+    }
+  }
+
+  Future<void> _onPostsFetched(
+    PostsFetched event,
+    void Function(PostsState) emit,
+  ) async {
+    if (stateValue.hasReachedMax) return;
+    try {
+      final posts = await _repository.fetchPosts(
+        query: stateValue.searchQuery,
+        startIndex: stateValue.posts.length,
+      );
+      emit(stateValue.copyWith(
+        status: PostsStatus.success,
+        posts: [...stateValue.posts, ...posts],
+        hasReachedMax: posts.isEmpty,
+      ));
+    } catch (_) {
+      emit(stateValue.copyWith(status: PostsStatus.failure));
+    }
+  }
+
+  Future<void> _onSearchChanged(
+    PostsSearchChanged event,
+    void Function(PostsState) emit,
+  ) async {
+    // restartable query implementation...
+  }
+
+  @override
+  void dispose() {
+    removeListener(_onScrollChanged);
+    close();
+    super.dispose();
+  }
+}
+
+// 100% StatelessWidget UI without initState or controller disposal boilerplate:
+class PostsView extends StatelessWidget {
+  const PostsView({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.read<PaginatedPostsController>();
+
+    return BlocSignalBuilder<PaginatedPostsController, PostsState>(
+      builder: (context, state) {
+        return ListView.builder(
+          controller: controller, // Direct ScrollController binding
+          itemCount: state.posts.length + (state.hasReachedMax ? 0 : 1),
+          itemBuilder: (context, index) {
+            if (index >= state.posts.length) {
+              return const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            return PostTile(post: state.posts[index]);
+          },
+        );
+      },
+    );
+  }
+}
+```
+
 ## Missing-provider failures
 
 `BlocSignalProvider.of<T>` throws `FlutterError` when no exact provider type is found. Check that the

@@ -1,46 +1,28 @@
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:flutter/material.dart';
-import '../posts/posts_bloc.dart';
 
-class PostsView extends StatefulWidget {
-  const PostsView({super.key});
+import '../controllers/paginated_posts_controller.dart';
 
-  @override
-  State<PostsView> createState() => _PostsViewState();
-}
-
-class _PostsViewState extends State<PostsView> {
-  final _scrollController = ScrollController();
-
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
-
-  @override
-  void dispose() {
-    _scrollController.removeListener(_onScroll);
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_isBottom) {
-      context.read<PostsBloc>().add(const PostsFetched());
-    }
-  }
-
-  bool get _isBottom {
-    if (!_scrollController.hasClients) return false;
-    return _scrollController.position.extentAfter <= 200.0;
-  }
+/// A 100% [StatelessWidget] infinite scroll view powered by
+/// [PaginatedPostsController].
+///
+/// Because [PaginatedPostsController] is simultaneously a [ScrollController]
+/// and a [BlocSignalBase], there is zero widget-level plumbing:
+/// - No [StatefulWidget]
+/// - No [State.initState]
+/// - No [State.dispose]
+/// - No manual [ScrollController.addListener]
+/// - No manual scroll threshold math
+class SelfPagingPostsView extends StatelessWidget {
+  const SelfPagingPostsView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final controller = context.read<PaginatedPostsController>();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Infinite Scroll Posts'),
+        title: const Text('Self-Paging Controller (Stateless)'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: Padding(
@@ -53,13 +35,13 @@ class _PostsViewState extends State<PostsView> {
                 border: OutlineInputBorder(),
               ),
               onChanged: (query) {
-                context.read<PostsBloc>().add(PostsSearchChanged(query));
+                controller.add(PostsSearchChanged(query));
               },
             ),
           ),
         ),
       ),
-      body: BlocSignalBuilder<PostsBloc, PostsState>(
+      body: BlocSignalBuilder<PaginatedPostsController, PostsState>(
         builder: (context, state) {
           switch (state.status) {
             case PostsStatus.initial:
@@ -73,7 +55,7 @@ class _PostsViewState extends State<PostsView> {
                 return const Center(child: Text('No posts found.'));
               }
               return ListView.builder(
-                controller: _scrollController,
+                controller: controller,
                 itemCount: state.hasReachedMax
                     ? state.posts.length
                     : state.posts.length + 1,

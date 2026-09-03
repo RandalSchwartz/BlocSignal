@@ -325,6 +325,7 @@ When implementing infinite scroll pagination in Flutter with BlocSignal, follow 
 2. **Offset-Based Cursor**: Derive the start index directly from `stateValue.items.length` rather than storing an independent, mutable page counter that can desynchronize on network failures.
 3. **Query Cancellation**: Tag search or filter mutation events with `transformer: restartable()` to automatically discard stale in-flight pagination requests when filters change.
 4. **Zero Third-Party Widgets**: Use standard Flutter `ListView.builder` or `CustomScrollView` rather than proprietary pagination packages.
+5. **Extent-After Metric**: Use `position.extentAfter <= threshold` (for example `200.0` logical pixels) rather than multiplying `maxScrollExtent * 0.9` to provide a consistent lead-time regardless of list length.
 
 ### Recipe 1: Standard Separation of Concerns (ScrollController + BLoC)
 
@@ -419,9 +420,7 @@ class _PostsViewState extends State<PostsView> {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    final currentScroll = _scrollController.offset;
-    if (currentScroll >= (maxScroll * 0.9)) {
+    if (_scrollController.position.extentAfter <= 200.0) {
       context.read<PostsBloc>().add(const PostsFetched());
     }
   }
@@ -476,7 +475,7 @@ class PaginatedPostsController extends ScrollController
 
   void _onScrollChanged() {
     if (!hasClients) return;
-    if (offset >= (position.maxScrollExtent * 0.9)) {
+    if (position.extentAfter <= 200.0) {
       add(const PostsFetched());
     }
   }

@@ -21,6 +21,7 @@ workspace:
   - examples/shopping_cart
   - examples/auth_flow
   - examples/infinite_scroll
+  - examples/infinite_scroll_mixin
   - examples/flutter_counter
   - examples/flutter_async
   - examples/flutter_colorband

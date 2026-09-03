@@ -32,6 +32,14 @@ class const ExamplesSection({super.key}) extends StatelessComponent {
         webLink: null,
       ),
       (
+        title: 'Self-Paging Controller',
+        tag: 'CubitSignalMixin & Stateless UI',
+        desc: 'ScrollController with CubitSignalMixin & BlocSignalMixin for zero-glue infinite scroll with 100% StatelessWidgets.',
+        icon: '⚡',
+        path: 'examples/infinite_scroll_mixin',
+        webLink: null,
+      ),
+      (
         title: 'Flutter Counter',
         tag: 'Core Primitives',
         desc: 'Side-by-side demonstration of CubitSignal vs BlocSignal with zero microtask latency.',

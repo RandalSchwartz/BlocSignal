@@ -33,6 +33,28 @@ assertion and then returns without changing state when assertions are disabled.
 > - **Named Initial State**: Constructors take required named argument `initialState:` (`: super(initialState: ...)`), NOT positional `super(...)`.
 > - **State Access**: Use `stateValue` (or `state.value`) to read raw `StateType` values inside methods/handlers (`emit(stateValue + 1)`). `state` returns `ReadonlySignal<StateType>` for reactive signal observers.
 
+### Prefer Inline `late final` Computed Properties
+
+When exposing derived, observable state properties on a `CubitSignal` or `BlocSignal`, **prefer declaring and initializing them directly as fields using type inference** instead of splitting them into a manual type declaration and constructor-body assignment:
+
+```dart
+class CartCubit extends CubitSignal<CartState> {
+  CartCubit() : super(initialState: CartState.empty());
+
+  // PREFERRED: Direct inline field initialization with type inference
+  late final itemCount = computed(() => stateValue.items.length);
+  late final totalPrice = computed(
+    () => stateValue.items.fold(0.0, (sum, item) => sum + item.price),
+  );
+  late final isEmpty = computed(() => stateValue.items.isEmpty);
+}
+```
+
+**Why this is preferred**:
+- **Type Inference**: Dart infers `ReadonlySignal<T>` automatically without verbose type repetition.
+- **Clean Constructors**: Keeps constructor parameter lists and bodies focused purely on initialization (`: super(initialState: ...)`).
+- **Encapsulation**: Keeps the derivation rule right next to the property name on a single declarative line.
+
 ## Composable Mixins (Overcoming Single Inheritance)
 
 In Dart, classes are restricted to single inheritance (`extends SuperClass`). When an existing class already extends a third-party or Flutter framework base class (for example `ChangeNotifier`, `TextEditingController`, `AnimationController`, or `BaseRepository`), use `CubitSignalMixin` and `BlocSignalMixin` to grant it full `BlocSignalBase` reactive capabilities without occupying its single inheritance slot:

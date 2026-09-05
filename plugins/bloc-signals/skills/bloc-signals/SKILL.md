@@ -89,6 +89,7 @@ Load only the references needed for the task.
 - A global `BlocSignalObserver` is a single slot. Installing a telemetry observer can replace an
   existing logger unless the application composes them.
 - `BlocSignalBase` overrides `toString()` to output `$runtimeType($stateValue)`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses.
+- Prefer inline `late final` field declarations with type inference for computed properties (for example `late final itemCount = computed(() => stateValue.items.length);`) rather than uninitialized field declarations with constructor-body assignments.
 
 Never create an `effect` or `computed` during a Flutter `build` method. Keep its owner and disposal
 path explicit.

@@ -43,6 +43,7 @@ To satisfy pub.dev publishing requirements while maintaining local developer wor
 3. **Streamless Execution**: No Rx streams or microtask queues under the hood; event transformers use higher-order functions and async `Mutex` locks.
 4. **Constructor & State Ergonomics**: Constructors require named parameter `initialState:` (`: super(initialState: ...)`). Use `stateValue` for raw value access (`emit(stateValue + 1)`); `state` exposes `ReadonlySignal<StateType>` for reactive subscriptions.
 5. **Lifecycle & Disposal**: `close()` marks `isClosed = true` and cleans up effects. Subsequent `add()` or `emit()` calls are safely dropped.
+6. **Prefer Inline `late final` Computed Properties**: For derived, observable state properties on a `CubitSignal` or `BlocSignal`, prefer declaring and initializing them directly as fields using type inference (for example `late final isCartEmpty = computed(() => stateValue.items.isEmpty);`) rather than two-step manual type declarations and constructor-body assignments (`late final ReadonlySignal<bool> isCartEmpty;` + `isCartEmpty = computed(...)`).
 
 ---
 

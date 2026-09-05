@@ -515,4 +515,3 @@ By combining `droppable()` concurrency with `CubitSignalMixin` and `BlocSignalMi
 * 📦 [`bloc_signals_flutter` on pub.dev](https://pub.dev/packages/bloc_signals_flutter)
 * 🌐 Official Documentation Hub: [blocsignal.dev](https://blocsignal.dev)
 * 🌟 GitHub Repository: [RandalSchwartz/BlocSignal](https://github.com/RandalSchwartz/BlocSignal)
-

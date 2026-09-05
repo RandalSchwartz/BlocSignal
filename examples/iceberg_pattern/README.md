@@ -23,6 +23,9 @@ A reference implementation demonstrating **The Iceberg Pattern**: a 4-tier react
 │   • Error translation: Catches repository sync errors ➔ onError()      │
 └───────────────────────────────────▲────────────────────────────────────┘
                                     │ Observes ReadonlySignal<List<Task>>
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~│~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~ WATERLINE (SURFACE LEVEL) ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~│~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ┌───────────────────────────────────┴────────────────────────────────────┐
 │             3. DOMAIN ENGINE & CACHE (TaskRepository)                  │
 │   • Lifecycle: App/Session-scoped (survives screen navigation)         │
@@ -57,6 +60,17 @@ A reference implementation demonstrating **The Iceberg Pattern**: a 4-tier react
    - Stale-While-Revalidate UX: Displays cached tasks with a subtle warning banner during offline or sync disruption instead of replacing content with a disruptive full-screen error widget.
 4. **Dart 3 Records as Domain Models**:
    - Zero boilerplate classes; structural equality and pattern matching ready out of the box (`typedef Task = ({String id, String title, bool isCompleted, List<String> tags});`).
+
+---
+
+## 🚫 What Has Disappeared
+
+- ❌ **No Anemic Use Cases**: Zero 3-line pass-through interactors doing nothing but forwarding calls to a repository.
+- ❌ **No `StreamBuilder` or `FutureBuilder` Widgets**: Zero async builders in your Flutter widget tree; UI is 100% synchronous projection (`UI = ƒ(State)`).
+- ❌ **No Microtask Frame Lag**: Zero waiting for asynchronous stream queues to cycle; state updates propagate synchronously in frame 0.
+- ❌ **No Torn UI States**: Atomic transitions via `batch()` prevent intermediate partial states during optimistic reconciliation and rollback.
+- ❌ **No Disruptive Error Flickers**: Stale-while-revalidate caching keeps data visible with a subtle banner instead of replacing the screen with a full-page error widget.
+- ❌ **No Boilerplate Model Classes**: Pure Dart 3 records replace hundreds of lines of tedious `copyWith`, `props`, and code-generation ceremony.
 
 ---
 

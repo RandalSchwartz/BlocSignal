@@ -54,6 +54,9 @@ In the Iceberg Pattern, every layer has a distinct lifecycle, operates on differ
 │   • Error translation: Catches repository sync errors ➔ onError()      │
 └───────────────────────────────────▲────────────────────────────────────┘
                                     │ Observes ReadonlySignal<List<Task>>
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~│~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~ WATERLINE (SURFACE LEVEL) ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~│~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ┌───────────────────────────────────┴────────────────────────────────────┐
 │             3. DOMAIN ENGINE & CACHE (TaskRepository)                  │
 │   • Lifecycle: App/Session-scoped (survives screen navigation)         │
@@ -113,11 +116,11 @@ Dart 3 records provide built-in structural equality, clean destructuring, and pa
 
 ### 2. The Submerged Engine: `TaskRepository`
 
-The repository is the heart of the Iceberg Pattern. It:
-1. Absorbs the raw cloud snapshot stream into a private `StreamSignal`.
-2. Maintains private optimistic overrides (`_optimisticPatches`).
-3. Computes the combined view of server truth and pending local mutations via `computed()`.
-4. Atomically reconciles or rolls back mutations using `batch()`.
+The repository is the heart of the Iceberg Pattern:
+1. It absorbs the raw cloud snapshot stream into a private `StreamSignal`.
+2. It maintains private optimistic overrides (`_optimisticPatches`).
+3. It computes the combined view of server truth and pending local mutations via `computed()`.
+4. It atomically reconciles or rolls back mutations using `batch()`.
 
 ```dart
 // data/task_repository.dart
@@ -582,4 +585,21 @@ The Iceberg Pattern gives developers a principled path past the limitations of t
 - **Stale-While-Revalidate UX**: Avoid flash-of-error screens. Keep cached data visible with a subtle banner while the background engine recovers connection truth.
 - **Pure Dart Portability**: When domain models and state machines have zero platform or widget dependencies, your core application logic runs and tests at native speed across Flutter, Jaspr web, and backend services.
 
-Check out the complete runnable codebase in the [BlocSignal Monorepo on GitHub](https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/iceberg_pattern).
+When you step back and look at the completed architecture, notice what has completely disappeared:
+
+- ❌ **No Anemic Use Cases**: Zero 3-line pass-through interactors doing nothing but forwarding calls to a repository.
+- ❌ **No `StreamBuilder` or `FutureBuilder` Widgets**: Zero async builders in your Flutter widget tree; UI is 100% synchronous projection (`UI = ƒ(State)`).
+- ❌ **No Microtask Frame Lag**: Zero waiting for asynchronous stream queues to cycle; state updates propagate synchronously in frame 0.
+- ❌ **No Torn UI States**: Atomic transitions via `batch()` prevent intermediate partial states during optimistic reconciliation and rollback.
+- ❌ **No Disruptive Error Flickers**: Stale-while-revalidate caching keeps data visible with a subtle banner instead of replacing the screen with a full-page error widget.
+- ❌ **No Boilerplate Model Classes**: Pure Dart 3 records replace hundreds of lines of tedious `copyWith`, `props`, and code-generation ceremony.
+
+---
+
+### Resources & Companion Code
+
+* 💻 Full Runnable Example: [examples/iceberg_pattern on GitHub](https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/iceberg_pattern)
+* 📦 [`bloc_signals` on pub.dev](https://pub.dev/packages/bloc_signals)
+* 📦 [`bloc_signals_flutter` on pub.dev](https://pub.dev/packages/bloc_signals_flutter)
+* 🌐 Official Documentation Hub: [blocsignal.dev](https://blocsignal.dev)
+* 🌟 GitHub Repository: [RandalSchwartz/BlocSignal](https://github.com/RandalSchwartz/BlocSignal)

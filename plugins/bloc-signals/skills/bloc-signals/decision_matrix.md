@@ -157,6 +157,9 @@ When architecting real-time applications backed by cloud datastores (such as Fir
 │   • Error translation ➔ CubitSignal.onError()          │
 └───────────────────────────▲────────────────────────────┘
                             │ Observes ReadonlySignal<T>
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~│~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~ WATERLINE ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~│~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ┌───────────────────────────┴────────────────────────────┐
 │      3. SUBMERGED ENGINE & CACHE (Repository)          │
 │   • App/session-scoped lifecycle                       │

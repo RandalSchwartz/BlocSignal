@@ -101,7 +101,12 @@ void main() {
         updateCloudTask: (_, __) async {},
         deleteCloudTask: (_) => deleteCompleter.future,
         initialTasks: [
-          (id: '1', title: 'Task to Delete', isCompleted: false, tags: const []),
+          (
+            id: '1',
+            title: 'Task to Delete',
+            isCompleted: false,
+            tags: const []
+          ),
         ],
       );
       final cubit = TaskBoardCubit(repository: repository);
@@ -128,7 +133,8 @@ void main() {
       await cubit.close();
     });
 
-    testWidgets('displays offline banner and snackbar when hasSyncError is true',
+    testWidgets(
+        'displays offline banner and snackbar when hasSyncError is true',
         (tester) async {
       repository = TaskRepository(
         cloudSnapshotStream: cloudController.stream,

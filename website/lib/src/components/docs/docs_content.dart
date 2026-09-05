@@ -27,6 +27,7 @@ import 'pages/docs_pkg_otel.dart';
 import 'pages/docs_pkg_replay.dart';
 import 'pages/docs_pkg_riverpod.dart';
 import 'pages/docs_quickstart.dart';
+import 'pages/docs_recipe_batching.dart';
 import 'pages/docs_recipe_caching.dart';
 import 'pages/docs_recipe_controllers.dart';
 import 'pages/docs_recipe_form_validation.dart';
@@ -180,6 +181,8 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return DocsRecipeControllersPage.headings;
       case 'recipe-caching':
         return DocsRecipeCachingPage.headings;
+      case 'recipe-batching':
+        return DocsRecipeBatchingPage.headings;
       case 'migration-bloc':
         return DocsMigrationBlocPage.headings;
       case 'migration-riverpod':
@@ -243,6 +246,8 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return 'website/lib/src/components/docs/pages/docs_recipe_controllers.dart';
       case 'recipe-caching':
         return 'website/lib/src/components/docs/pages/docs_recipe_caching.dart';
+      case 'recipe-batching':
+        return 'website/lib/src/components/docs/pages/docs_recipe_batching.dart';
       case 'migration-bloc':
         return 'website/lib/src/components/docs/pages/docs_migration_bloc.dart';
       case 'migration-riverpod':

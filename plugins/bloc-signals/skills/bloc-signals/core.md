@@ -249,6 +249,42 @@ BlocSignal compares the current and next state with `==` before updating the sig
 mutable state object reused after in-place changes can suppress the update and hide changes from
 consumers.
 
+## State atomicity and batch() guidance
+
+### 1. Inherent Atomicity of emit()
+Inside an individual `BlocSignal` or `CubitSignal`, state updates are **strictly atomic by design**.
+Each container manages a single underlying `Signal<StateType> _state`. Calling `emit(newState)`
+assigns `_state.value = newState` in a single synchronous operation without any intermediate or
+partial states. Wrapping an individual `emit()` inside `batch()` is redundant.
+
+### 2. Anti-Pattern: Batching Synchronous Emits
+Do NOT wrap multiple synchronous `emit()` calls inside `batch()` in an event handler or method:
+```dart
+// ❌ Anti-pattern: Swallows ProfileLoading in reactive UI
+on<ResetAndInit>((event, emit) {
+  batch(() {
+    emit(ProfileLoading());
+    emit(ProfileReady(user));
+  });
+});
+```
+`batch()` delays reactive graph evaluation until the batch callback completes, causing downstream
+subscribers (`BlocSignalBuilder`, `context.select`, `computed`) to observe only the final state,
+skipping intermediate states. Meanwhile, observer hooks (`onTransition`, `onChange`) still execute
+for each emit, creating a mismatch between observer logs and the UI.
+- If an intermediate state should not be observed, do not emit it—emit the final state directly.
+- If an intermediate state represents an asynchronous step (for example `Loading` before an async fetch),
+  the updates occur across an `await` boundary, which synchronous `batch()` cannot span anyway.
+
+### 3. Valid Use Cases for batch()
+- **Cross-Bloc Coordination**: When a single user action mutates multiple independent blocs or cubits
+  (for example logging out while resetting carts and clearing caches), wrap the dispatches in
+  `batch(() { authBloc.add(Logout()); cartBloc.add(Clear()); })`. This guarantees that any widget or
+  `computed()` depending on multiple state containers evaluates only once with consistent states.
+- **Internal Auxiliary Signals**: When a state container manages multiple internal raw `Signal` instances
+  that feed into a `computed()` derivation or `createEffect`, batching writes to those auxiliary signals
+  prevents duplicate derivation runs.
+
 ## Change and transition hooks
 
 `Change<State>` records `currentState` and `nextState`. `Transition<Event, State>` adds the event.

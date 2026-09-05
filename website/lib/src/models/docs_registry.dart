@@ -19,6 +19,7 @@ import '../components/docs/pages/docs_pkg_otel.dart';
 import '../components/docs/pages/docs_pkg_replay.dart';
 import '../components/docs/pages/docs_pkg_riverpod.dart';
 import '../components/docs/pages/docs_quickstart.dart';
+import '../components/docs/pages/docs_recipe_batching.dart';
 import '../components/docs/pages/docs_recipe_caching.dart';
 import '../components/docs/pages/docs_recipe_controllers.dart';
 import '../components/docs/pages/docs_recipe_form_validation.dart';
@@ -277,6 +278,14 @@ class const DocsRegistry() {
           category: 'Architecture & Recipes',
           description: 'Managing asynchronous server data with automatic cache invalidation.',
           builder: DocsRecipeCachingPage.new,
+        ),
+        DocSectionItem(
+          id: 'recipe-batching',
+          title: 'Batching & Atomic Transactions',
+          path: '/docs/recipe-batching',
+          category: 'Architecture & Recipes',
+          description: 'State atomicity, avoiding multi-emit batching anti-patterns, and cross-bloc coordination.',
+          builder: DocsRecipeBatchingPage.new,
         ),
       ],
     ),

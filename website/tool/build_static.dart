@@ -79,10 +79,13 @@ Future<void> main() async {
     'docs/pkg-riverpod',
     'docs/pkg-otel',
     'docs/pkg-devtools',
+    'docs/pkg-lint',
+    'docs/pkg-jaspr',
     'docs/recipe-one-shot',
     'docs/recipe-form-validation',
     'docs/recipe-controllers',
     'docs/recipe-caching',
+    'docs/recipe-batching',
     'docs/migration-bloc',
     'docs/migration-riverpod',
   ];

@@ -120,6 +120,19 @@ final checkoutSummary = computed(() {
 // Automatically re-evaluates ONLY when cart or user state changes!
 ''',
         ),
+        const DocsCallout(
+          type: CalloutType.tip,
+          title: 'Coordinating Multi-Bloc Mutations with batch()',
+          children: [
+            p([
+              Component.text(
+                'When mutating multiple Blocs or Cubits that feed into a single computed() derivation, wrap the dispatches '
+                'in batch(() { ... }) to evaluate the derived calculation once and avoid intermediate torn states. '
+                'See the Batching & Atomic Transactions recipe in Architecture & Recipes for detailed patterns.',
+              ),
+            ]),
+          ],
+        ),
       ]),
 
       // 4. Managing Side Effects with effect()

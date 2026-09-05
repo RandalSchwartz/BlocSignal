@@ -128,6 +128,10 @@ void main() {
       expect(recipeCaching.id, equals('recipe-caching'));
       expect(recipeCaching.category, equals('Architecture & Recipes'));
 
+      final recipeBatching = DocsRegistry.resolveSection('recipe-batching');
+      expect(recipeBatching.id, equals('recipe-batching'));
+      expect(recipeBatching.category, equals('Architecture & Recipes'));
+
       final migrationBloc = DocsRegistry.resolveSection('migration-bloc');
       expect(migrationBloc.id, equals('migration-bloc'));
       expect(migrationBloc.category, equals('Migration Guides'));

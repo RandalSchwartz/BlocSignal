@@ -18,6 +18,16 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title: 'Beyond Clean Architecture: The Iceberg Pattern for Real-Time Flutter Apps with BlocSignal',
+    description: 'Discover why Uncle Bob\'s Clean Architecture breaks down in real-time cloud apps, and learn how the Iceberg Pattern pairs synchronous signals with screen facades for 0ms optimistic UI.',
+    url: 'https://dev.to/gde/beyond-clean-architecture-the-iceberg-pattern-for-real-time-flutter-apps-with-blocsignal',
+    date: 'Sep 4',
+    readTime: '9 min read',
+    category: 'Architecture & Recipes',
+    type: 'Article',
+    tags: ["flutter", "dart", "architecture", "statemanagement"],
+  ),
+  PublicationItem(
     title: 'Taming Flutter Infinite Scroll (Part 2): Turning ScrollController into a Reactive State Machine with CubitSignalMixin',
     description: 'Discover how to eliminate Flutter StatefulWidget boilerplate and overcome Dart\'s single-inheritance wall by combining ScrollController with CubitSignalMixin and BlocSignalMixin for a 100% StatelessWidget UI.',
     url: 'https://dev.to/gde/taming-flutter-infinite-scroll-part-2-turning-scrollcontroller-into-a-reactive-state-machine-cgh',

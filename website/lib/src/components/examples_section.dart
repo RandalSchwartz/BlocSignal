@@ -40,6 +40,14 @@ class const ExamplesSection({super.key}) extends StatelessComponent {
         webLink: null,
       ),
       (
+        title: 'The Iceberg Pattern',
+        tag: 'Real-Time Architecture',
+        desc: 'Submerged reactive repository engine with 0ms optimistic mutations, silent rollback, and screen-scoped facades.',
+        icon: '🧊',
+        path: 'examples/iceberg_pattern',
+        webLink: null,
+      ),
+      (
         title: 'Flutter Counter',
         tag: 'Core Primitives',
         desc: 'Side-by-side demonstration of CubitSignal vs BlocSignal with zero microtask latency.',

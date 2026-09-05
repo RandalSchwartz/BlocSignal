@@ -136,3 +136,42 @@ class CounterBloc() extends BlocSignal<CounterEvent, int> {
 }
 ```
 
+---
+
+## 🧊 Real-Time Cloud Architecture: The Iceberg Pattern
+
+When architecting real-time applications backed by cloud datastores (such as Firebase Firestore, Supabase, or live WebSockets), avoid both the **"Anemic Lasagna"** trap (endless pass-through use cases) and **Stream Spaghetti** (complex Rx combinators). Adopt **The Iceberg Pattern**:
+
+```plaintext
+┌────────────────────────────────────────────────────────┐
+│             1. PRESENTATION LAYER (FLUTTER)            │
+│   • Pure synchronous projection (UI = ƒ(State))        │
+│   • Non-blocking stale-while-revalidate offline banner │
+└───────────────────────────▲────────────────────────────┘
+                            │
+┌───────────────────────────┴────────────────────────────┐
+│          2. APPLICATION FACADE (CubitSignal)           │
+│   • Screen-scoped lifecycle (created on push/mount)    │
+│   • View-specific filtering, sorting, & search         │
+│   • Ephemeral interaction tracking (for example row spinners)│
+│   • Error translation ➔ CubitSignal.onError()          │
+└───────────────────────────▲────────────────────────────┘
+                            │ Observes ReadonlySignal<T>
+┌───────────────────────────┴────────────────────────────┐
+│      3. SUBMERGED ENGINE & CACHE (Repository)          │
+│   • App/session-scoped lifecycle                       │
+│   • Private reactive signals (_cloudStreamSignal)      │
+│   • Global 0ms optimistic mutations with rollback      │
+│   • Exposes ReadonlySignal<T> & ReadonlySignal<bool>   │
+└───────────────────────────▲────────────────────────────┘
+                            │ Live cloud snapshots
+┌───────────────────────────┴────────────────────────────┐
+│          4. EXTERNAL DATASTORE (FIREBASE / CLOUD)      │
+└────────────────────────────────────────────────────────┘
+```
+
+- **Submerged Engine (Repository Layer)**: Holds private reactive signals to collapse asynchronous streams into a warm, synchronous cache. Exposes only `ReadonlySignal<T>` and `ReadonlySignal<bool> hasSyncError`. Handles 0ms optimistic updates and rolls back silently upon network failure.
+- **Visible Boundary (Cubit Layer)**: Screen-scoped facade that shapes domain data for a specific screen, manages transient interaction states, and forwards sync errors to `onError`.
+- **Presentation Layer**: 100% synchronous projection (`UI = ƒ(State)`) using `BlocSignalBuilder` and `BlocSignalListener`, with zero `StreamBuilder` widgets or microtask latency.
+
+

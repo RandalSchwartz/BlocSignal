@@ -28,6 +28,7 @@ workspace:
   - examples/eval_calculator
   - examples/persist_shared_preferences
   - examples/clean_architecture
+  - examples/iceberg_pattern
   - examples/get_it_signals
   - examples/flutter_timer
   - examples/flutter_todos

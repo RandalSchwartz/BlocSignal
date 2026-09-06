@@ -184,7 +184,7 @@ class PaginationCubit extends CubitSignal<PaginationState> {
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 
 class TodoCubit() extends CubitSignal<IList<String>> {
-  this : super(initialState: const <String>[].lock);
+  this : super(initialState: const IList.empty());
 
   void addTodo(String item) => emit(stateValue.add(item));
   void removeTodo(int index) => emit(stateValue.removeAt(index));
@@ -193,7 +193,7 @@ class TodoCubit() extends CubitSignal<IList<String>> {
 import 'package:fast_immutable_collections/fast_immutable_collections.dart';
 
 class TodoCubit extends CubitSignal<IList<String>> {
-  TodoCubit() : super(initialState: const <String>[].lock);
+  TodoCubit() : super(initialState: const IList.empty());
 
   void addTodo(String item) {
     emit(stateValue.add(item));

@@ -18,6 +18,16 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title: 'The Unbreakable Shopping Cart: Pairing BlocSignal with Fast Immutable Collections (FIC) for Bulletproof Flutter Apps',
+    description: 'Eliminate in-place mutation bugs, corrupted undo stacks, defensive copying overhead, and skipped Flutter rebuilds by pairing BlocSignal with fast_immutable_collections.',
+    url: 'https://dev.to/gde/the-unbreakable-shopping-cart-pairing-blocsignal-with-fast-immutable-collections-fic-for-1pn2',
+    date: 'Sep 6',
+    readTime: '16 min read',
+    category: 'Flutter & Jaspr',
+    type: 'Article',
+    tags: ["flutter", "dart", "architecture", "statemanagement"],
+  ),
+  PublicationItem(
     title: 'Beyond Clean Architecture: The Iceberg Pattern for Real-Time Flutter Apps with BlocSignal',
     description: 'Discover why Uncle Bob\'s Clean Architecture breaks down in real-time cloud apps, and learn how the Iceberg Pattern pairs synchronous signals with screen facades for 0ms optimistic UI.',
     url: 'https://dev.to/gde/beyond-clean-architecture-the-iceberg-pattern-for-real-time-flutter-apps-with-blocsignal-3l84',

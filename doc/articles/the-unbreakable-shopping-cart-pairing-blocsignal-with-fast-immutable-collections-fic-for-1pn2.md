@@ -863,3 +863,5 @@ Try replacing a mutable `List` with an `IList` in your next Flutter feature—yo
 - 📦 **`fast_immutable_collections` on pub.dev**: [pub.dev/packages/fast_immutable_collections](https://pub.dev/packages/fast_immutable_collections)
 - 🌐 **Official Documentation & Recipes**: [blocsignal.dev](https://blocsignal.dev)
 - 🐙 **GitHub Repository**: [github.com/RandalSchwartz/BlocSignal](https://github.com/RandalSchwartz/BlocSignal)
+- 🛒 **Worked Example on GitHub**: [github.com/RandalSchwartz/BlocSignal/tree/main/examples/fic_shopping_cart](https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/fic_shopping_cart)
+

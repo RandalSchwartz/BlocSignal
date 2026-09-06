@@ -1,0 +1,27 @@
+name: fic_shopping_cart_example
+description: Enterprise-ready shopping cart demonstrating BlocSignal with Fast Immutable Collections (FIC), offline persistence, and zero-cost undo/redo.
+publish_to: none
+resolution: workspace
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  bloc_signals: ^1.0.0
+  bloc_signals_flutter: ^1.0.0
+  bloc_signals_hydrate: ^1.0.0
+  bloc_signals_replay: ^1.0.0
+  signals_core: ^7.0.0
+  fast_immutable_collections: ^11.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  bloc_signals_test: ^1.0.0
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

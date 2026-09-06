@@ -19,6 +19,7 @@ workspace:
   - bloc_signals_bloc
   - benchmarks
   - examples/shopping_cart
+  - examples/fic_shopping_cart
   - examples/auth_flow
   - examples/infinite_scroll
   - examples/infinite_scroll_mixin

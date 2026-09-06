@@ -204,6 +204,18 @@ class TodoCubit extends CubitSignal<IList<String>> {
   }
 }''',
         ),
+        p([
+          Component.text(
+            'For a complete enterprise-ready implementation featuring offline JSON persistence, '
+            'undo/redo, and derived computed totals, explore the ',
+          ),
+          a(
+            href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/fic_shopping_cart',
+            target: Target.blank,
+            [Component.text('FIC Shopping Cart Example')],
+          ),
+          Component.text('.'),
+        ]),
       ]),
 
       // 5. Equality & De-duplication

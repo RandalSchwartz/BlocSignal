@@ -20,7 +20,7 @@ The `bloc_signals_replay` package provides automatic undo and redo state trackin
 import 'package:bloc_signals_replay/bloc_signals_replay.dart';
 
 class CounterCubit extends ReplayCubit<int> {
-  CounterCubit() : super(0);
+  CounterCubit() : super(initialState: 0);
 
   void increment() => emit(stateValue + 1);
 }
@@ -52,7 +52,7 @@ final class Increment extends CounterEvent {
 }
 
 class CounterBloc extends ReplayBloc<CounterEvent, int> {
-  CounterBloc() : super(0) {
+  CounterBloc() : super(initialState: 0) {
     on<Increment>((event, emit) => emit(stateValue + 1));
   }
 }
@@ -77,7 +77,7 @@ Limit the maximum number of historical states stored in memory:
 ```dart
 class BoundedCubit extends ReplayCubit<int> {
   // Store a maximum of 10 history entries
-  BoundedCubit() : super(0, limit: 10);
+  BoundedCubit() : super(initialState: 0, limit: 10);
 }
 ```
 
@@ -87,7 +87,7 @@ Override `shouldReplay` to filter out intermediate or ephemeral states during un
 
 ```dart
 class SelectiveCubit extends ReplayCubit<MyState> {
-  SelectiveCubit() : super(MyInitialState());
+  SelectiveCubit() : super(initialState: MyInitialState());
 
   @override
   bool shouldReplay(MyState state) {

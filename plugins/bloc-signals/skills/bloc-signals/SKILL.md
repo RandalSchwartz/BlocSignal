@@ -39,7 +39,7 @@ installed Signals source before changing code.
   selectors, context extensions, infinite scroll pagination recipes, `flutter_hooks` integration (`signals_hooks`), widget ownership, and derived UI state.
 - Read [testing.md](testing.md) for synchronous assertions, deterministic async tests, zones, and
   widget tests.
-- Read [migration.md](migration.md) before replacing `bloc`, `flutter_bloc`, or their widgets.
+- Read [migration.md](migration.md) before replacing `bloc`, `flutter_bloc`, `bloc_concurrency`, `hydrated_bloc`, `replay_bloc`, or `bloc_test`.
 - Read [migration_bridge.md](migration_bridge.md) for Stream and Listenable interop bridges.
 - Read [riverpod_migration.md](riverpod_migration.md) before replacing Riverpod providers,
   consumers, families, scopes, or generated declarations.

@@ -1,6 +1,17 @@
 # Migration Guide: From classic `bloc` to `BlocSignal`
 
-This guide explains how to migrate your Flutter and Dart applications from classic BLoC (`package:bloc` and `package:flutter_bloc`) to `BlocSignal` (`package:bloc_signals` and `package:bloc_signals_flutter`).
+This guide explains how to migrate your Flutter and Dart applications from Felix Angelov's classic `bloc` monorepo packages (`package:bloc`, `package:flutter_bloc`, `package:bloc_concurrency`, `package:hydrated_bloc`, `package:replay_bloc`, `package:bloc_test`) to the `BlocSignal` ecosystem.
+
+## 🏛️ Felix Angelov `bloc` Monorepo Transition Matrix
+
+| Felix Angelov `bloc` Package | `BlocSignal` Ecosystem Package | Migration Focus & Parity Guarantee |
+| :--- | :--- | :--- |
+| **`package:bloc`** | `package:bloc_signals` & `bloc_signals_bloc` | 0ms synchronous propagation, named `initialState:`, `stateValue` vs `state`, `BlocSignalObserver` lifecycle. Bidirectional interop via `toBlocSignal()` and `toClassicBloc()`. |
+| **`package:flutter_bloc`** | `package:bloc_signals_flutter` | `BlocSignalProvider`, `MultiBlocSignalProvider`, `BlocSignalBuilder` (`buildWhen`), `BlocSignalListener` (`listenWhen`), `BlocSignalConsumer`, `BlocSignalSelector`, `context.select<B, R>`. |
+| **`package:bloc_concurrency`** | `package:bloc_signals` (transformers) | Streamless higher-order functions (`droppable()`, `sequential()`, `restartable()`), async `Mutex` lock fairness guarantees. |
+| **`package:hydrated_bloc`** | `package:bloc_signals_hydrate` | Synchronous frame-1 constructor hydration, zero-override primitive hydration, built-in `SharedPreferences` and `SecureStorage` adapters. |
+| **`package:replay_bloc`** | `package:bloc_signals_replay` | `ReplayCubit` and `ReplayBloc`, `undo()` / `redo()`, history `limit`, `shouldReplay()`, synthetic observer events. |
+| **`package:bloc_test`** | `package:bloc_signals_test` | Declarative `blocSignalTest<B, S>`, constructor state seeding, observer scoping, deterministic completion. |
 
 ## 🚀 Progressive Migration Strategy (Zero All-at-Once Rewrite)
 
@@ -561,6 +572,236 @@ MultiBlocSignalListener(
   ],
   child: const HomeScreen(),
 )
+```
+
+---
+
+## 8. Migrating Persistent State (`package:hydrated_bloc` ➔ `package:bloc_signals_hydrate`)
+
+In classic BLoC, state persistence is provided by `package:hydrated_bloc` via `HydratedBloc` and `HydratedCubit`.
+In `BlocSignal`, state persistence is provided by `package:bloc_signals_hydrate` via `HydratedBlocSignal`, `HydratedCubitSignal`, or the composable `HydratedMixin`.
+
+### Key Differences & Modern Conveniences
+
+1. **Zero-Override Primitive State Serialization**:
+   In classic `hydrated_bloc`, even simple primitive cubits (`HydratedCubit<int>`) require manually implementing `fromJson` and `toJson`:
+   ```dart
+   // Classic hydrated_bloc requires boilerplate even for int:
+   @override
+   int? fromJson(Map<String, dynamic> json) => json['value'] as int?;
+   @override
+   Map<String, dynamic>? toJson(int state) => {'value': state};
+   ```
+   In `bloc_signals_hydrate`, `HydratedMixin` automatically handles core primitive types (`int`, `double`, `String`, `bool`, `Map`, `List`). Primitive and collection state containers require **zero method overrides**!
+
+2. **Synchronous Frame-1 Hydration (Zero Flicker)**:
+   In classic `hydrated_bloc`, storage initialization requires asynchronous file I/O before `runApp()`. In `bloc_signals_hydrate`, state is restored **synchronously during constructor execution** (`initHydratedState()`). The very first widget build frame displays the restored state directly with zero loading shimmers or UI flicker.
+
+3. **Storage Engine Setup**:
+   `bloc_signals_hydrate` provides tree-shakable adapters for both `SharedPreferences` and `FlutterSecureStorage` without requiring custom path lookups:
+   ```dart
+   // Using SharedPreferences adapter:
+   import 'package:bloc_signals_hydrate/shared_preferences.dart';
+   HydratedStorage.storage = SharedPreferencesHydratedStorage(prefs);
+   ```
+
+### Side-by-Side: Primitive Hydrated Cubit
+
+#### Before (Classic `hydrated_bloc`)
+```dart
+import 'package:hydrated_bloc/hydrated_bloc.dart';
+
+class CounterCubit extends HydratedCubit<int> {
+  CounterCubit() : super(0);
+
+  void increment() => emit(state + 1);
+
+  @override
+  int? fromJson(Map<String, dynamic> json) => json['value'] as int?;
+
+  @override
+  Map<String, dynamic>? toJson(int state) => {'value': state};
+}
+```
+
+#### After (BlocSignal `bloc_signals_hydrate`)
+```dart
+import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
+
+// Zero fromJson/toJson overrides needed for primitives!
+class CounterCubit extends HydratedCubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
+}
+```
+
+### Side-by-Side: Complex Domain Model Hydration
+
+#### Before (Classic `hydrated_bloc`)
+```dart
+import 'package:hydrated_bloc/hydrated_bloc.dart';
+
+class UserCubit extends HydratedCubit<UserState> {
+  UserCubit() : super(const UserState.initial());
+
+  @override
+  UserState? fromJson(Map<String, dynamic> json) => UserState.fromJson(json);
+
+  @override
+  Map<String, dynamic>? toJson(UserState state) => state.toJson();
+}
+```
+
+#### After (BlocSignal `bloc_signals_hydrate`)
+```dart
+import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
+
+class UserCubit extends HydratedCubitSignal<UserState> {
+  UserCubit() : super(initialState: const UserState.initial());
+
+  @override
+  UserState? fromJson(dynamic json) {
+    if (json is Map<String, dynamic>) {
+      return UserState.fromJson(json);
+    }
+    return null;
+  }
+
+  @override
+  dynamic toJson(UserState state) => state.toJson();
+}
+```
+
+---
+
+## 9. Migrating Undo/Redo State History (`package:replay_bloc` ➔ `package:bloc_signals_replay`)
+
+In classic BLoC, state time-travel and undo/redo capabilities are provided by `package:replay_bloc`.
+In `BlocSignal`, undo/redo state history is provided by `package:bloc_signals_replay` via `ReplayCubit`, `ReplayBloc`, and their composable mixins (`ReplayCubitMixin`, `ReplayBlocMixin`).
+
+### Key Differences & Architectural Parity
+
+1. **Named Constructor Invariant**:
+   `ReplayCubit` and `ReplayBloc` follow the framework-wide named parameter invariant `: super(initialState: ...)` (while providing backward-compatible `@Deprecated` positional constructors for gradual migration).
+2. **Synthetic Observer Replay Events**:
+   When invoking `undo()` or `redo()` on a `ReplayBloc`, synthetic `_Undo` and `_Redo` events are dispatched into the observer pipeline (`onEvent` and `onTransition`). This guarantees that telemetry, DevTools, and OpenTelemetry accurately capture replay operations identically to regular events.
+3. **Mixin Composition for Custom Class Hierarchies**:
+   If a state container already inherits from another class (for example, a repository or Flutter controller), apply `ReplayCubitMixin<State>` or `ReplayBlocMixin<Event, State>` directly without fighting Dart's single-inheritance limitation.
+
+### Side-by-Side: Replay Cubit
+
+#### Before (Classic `replay_bloc`)
+```dart
+import 'package:replay_bloc/replay_bloc.dart';
+
+class TextEditorCubit extends ReplayCubit<String> {
+  TextEditorCubit({int? limit}) : super('', limit: limit);
+
+  void setText(String text) => emit(text);
+}
+
+void main() {
+  final cubit = TextEditorCubit(limit: 5);
+  cubit.setText('Hello');
+  cubit.setText('Hello World');
+
+  cubit.undo(); // State is 'Hello'
+  cubit.redo(); // State is 'Hello World'
+}
+```
+
+#### After (BlocSignal `bloc_signals_replay`)
+```dart
+import 'package:bloc_signals_replay/bloc_signals_replay.dart';
+
+class TextEditorCubit extends ReplayCubit<String> {
+  TextEditorCubit({int? limit}) : super(initialState: '', limit: limit);
+
+  void setText(String text) => emit(text);
+}
+
+void main() {
+  final cubit = TextEditorCubit(limit: 5);
+  cubit.setText('Hello');
+  cubit.setText('Hello World');
+
+  cubit.undo(); // Synchronously 'Hello'
+  cubit.redo(); // Synchronously 'Hello World'
+}
+```
+
+---
+
+## 10. Migrating Unit Tests (`package:bloc_test` ➔ `package:bloc_signals_test`)
+
+In classic BLoC, declarative unit tests use `blocTest<B, S>` from `package:bloc_test`.
+In `BlocSignal`, declarative unit tests use `blocSignalTest<B, S>` from `package:bloc_signals_test`.
+
+### Key Differences & Testing Ergonomics
+
+1. **Synchronous Execution & Frame Latency**:
+   In classic BLoC, state emissions route through Dart streams and microtask queues, often requiring microtask flushing or pump cycles. In `BlocSignal`, state changes propagate **synchronously in 0ms**. Test expectations evaluate immediately upon `act` completion unless testing an explicitly asynchronous operation (which uses `wait:`).
+2. **State Seeding via Constructor Injection**:
+   Classic `blocTest` provides a `seed: () => State` hook because classic BLoC constructors usually hardcode initial states with positional parameters (`: super(0)`).
+   Because `BlocSignal` enforces the named parameter standard (`initialState:`), you seed state directly in the `build:` closure:
+   ```dart
+   build: () => CounterBloc(initialState: 10),
+   ```
+3. **Automatic Observer Isolation**:
+   `blocSignalTest` automatically isolates `BlocSignalObserver.observer` during test execution. It sets up an isolated test observer before invoking `build()`, capturing `onCreate`, `onEvent`, `onTransition`, `onChange`, and `onError` without cross-test leakage.
+4. **Error Verification**:
+   Use `errors: () => [isA<MyException>()]` to assert exceptions routed to `onError`.
+
+### Side-by-Side: Declarative Test
+
+#### Before (Classic `bloc_test`)
+```dart
+import 'package:bloc_test/bloc_test.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('CounterBloc', () {
+    blocTest<CounterBloc, int>(
+      'emits [1] when Increment is added',
+      build: () => CounterBloc(),
+      act: (bloc) => bloc.add(Increment()),
+      expect: () => [1],
+    );
+
+    blocTest<CounterBloc, int>(
+      'emits [11] when Increment is added with seeded state',
+      build: () => CounterBloc(),
+      seed: () => 10,
+      act: (bloc) => bloc.add(Increment()),
+      expect: () => [11],
+    );
+  });
+}
+```
+
+#### After (BlocSignal `bloc_signals_test`)
+```dart
+import 'package:bloc_signals_test/bloc_signals_test.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('CounterBloc', () {
+    blocSignalTest<CounterBloc, int>(
+      'emits [1] when Increment is added',
+      build: () => CounterBloc(),
+      act: (bloc) => bloc.add(Increment()),
+      expect: () => [1],
+    );
+
+    blocSignalTest<CounterBloc, int>(
+      'emits [11] when Increment is added with seeded state',
+      build: () => CounterBloc(initialState: 10),
+      act: (bloc) => bloc.add(Increment()),
+      expect: () => [11],
+    );
+  });
+}
 ```
 
 ---

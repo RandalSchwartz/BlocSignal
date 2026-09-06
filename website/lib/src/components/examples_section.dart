@@ -16,6 +16,14 @@ class const ExamplesSection({super.key}) extends StatelessComponent {
         webLink: null,
       ),
       (
+        title: 'Enterprise FIC Shopping Cart',
+        tag: 'Fast Immutable Collections & Replay',
+        desc: 'Unbreakable shopping cart with IMap, offline JSON persistence, O(1) copy-on-write mutations, and zero-cost time-travel undo/redo.',
+        icon: '🛍️',
+        path: 'examples/fic_shopping_cart',
+        webLink: null,
+      ),
+      (
         title: 'Shopping Cart & Catalog',
         tag: 'State & Selectors',
         desc: 'CatalogCubit, CartBloc, and fine-grained BlocSignalSelector rebuild optimizations.',

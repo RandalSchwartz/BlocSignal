@@ -381,11 +381,228 @@ void build(dynamic context) {
 
       expect(unusedSelects, isEmpty);
     });
+
+    test(
+      'PreferNamedReplayConstructor detects super.positional on ReplayCubit',
+      () {
+        const badCode = '''
+class CounterCubit extends ReplayCubit<int> {
+  CounterCubit(int initial, {int? limit})
+      : super.positional(initial, limit: limit);
+}
+''';
+        final parseResult = parseString(content: badCode);
+        final flaggedInvocations = <String>[];
+
+        parseResult.unit.visitChildren(
+          _SuperConstructorInvocationVisitor((node) {
+            final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
+            final superclass = classNode?.extendsClause?.superclass.toSource();
+            if (node.constructorName?.name == 'positional' &&
+                superclass != null &&
+                superclass.startsWith('ReplayCubit')) {
+              flaggedInvocations.add(node.toSource());
+            }
+          }),
+        );
+
+        expect(
+          flaggedInvocations,
+          contains('super.positional(initial, limit: limit)'),
+        );
+      },
+    );
+
+    test(
+      'PreferNamedReplayConstructor detects super.positional on ReplayBloc',
+      () {
+        const badCode = '''
+class CounterBloc extends ReplayBloc<CounterEvent, int> {
+  CounterBloc(int initial) : super.positional(initial);
+}
+''';
+        final parseResult = parseString(content: badCode);
+        final flaggedInvocations = <String>[];
+
+        parseResult.unit.visitChildren(
+          _SuperConstructorInvocationVisitor((node) {
+            final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
+            final superclass = classNode?.extendsClause?.superclass.toSource();
+            if (node.constructorName?.name == 'positional' &&
+                superclass != null &&
+                superclass.startsWith('ReplayBloc')) {
+              flaggedInvocations.add(node.toSource());
+            }
+          }),
+        );
+
+        expect(flaggedInvocations, contains('super.positional(initial)'));
+      },
+    );
+
+    test(
+      'PreferNamedReplayConstructor accepts named super(initialState: ...)',
+      () {
+        const goodCode = '''
+class CounterCubit extends ReplayCubit<int> {
+  CounterCubit(int initial, {int? limit})
+      : super(initialState: initial, limit: limit);
+}
+class CounterBloc extends ReplayBloc<CounterEvent, int> {
+  CounterBloc(int initial) : super(initialState: initial);
+}
+''';
+        final parseResult = parseString(content: goodCode);
+        final flaggedInvocations = <String>[];
+
+        parseResult.unit.visitChildren(
+          _SuperConstructorInvocationVisitor((node) {
+            final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
+            final superclass = classNode?.extendsClause?.superclass.toSource();
+            if (node.constructorName?.name == 'positional' &&
+                superclass != null &&
+                (superclass.startsWith('ReplayCubit') ||
+                    superclass.startsWith('ReplayBloc'))) {
+              flaggedInvocations.add(node.toSource());
+            }
+          }),
+        );
+
+        expect(flaggedInvocations, isEmpty);
+      },
+    );
+
+    test(
+      'ReplacePositionalReplayConstructorFix rewrites super.positional',
+      () {
+        const sourceCode = '''
+class CounterCubit extends ReplayCubit<int> {
+  CounterCubit(int initial, {int? limit})
+      : super.positional(initial, limit: limit);
+}
+''';
+        final parseResult = parseString(content: sourceCode);
+        String? transformed;
+
+        parseResult.unit.visitChildren(
+          _SuperConstructorInvocationVisitor((node) {
+            if (node.constructorName?.name == 'positional') {
+              final period = node.period!;
+              final constructorName = node.constructorName!;
+              final positionalArg = node.argumentList.arguments
+                  .where((arg) => arg is! NamedExpression)
+                  .firstOrNull;
+
+              if (positionalArg != null) {
+                final beforePeriod = sourceCode.substring(0, period.offset);
+                final betweenPeriodAndArg = sourceCode.substring(
+                  constructorName.end,
+                  positionalArg.offset,
+                );
+                final afterArg = sourceCode.substring(positionalArg.offset);
+                transformed = '$beforePeriod$betweenPeriodAndArg'
+                    'initialState: $afterArg';
+              }
+            }
+          }),
+        );
+
+        expect(
+          transformed,
+          contains('super(initialState: initial, limit: limit)'),
+        );
+        expect(transformed, isNot(contains('super.positional')));
+      },
+    );
+
+    test(
+      'ReplacePositionalReplayConstructorFix rewrites with leading named args',
+      () {
+        const sourceCode = '''
+class CounterCubit extends ReplayCubit<int> {
+  CounterCubit(int initial, {int? limit})
+      : super.positional(limit: limit, initial);
+}
+''';
+        final parseResult = parseString(content: sourceCode);
+        String? transformed;
+
+        parseResult.unit.visitChildren(
+          _SuperConstructorInvocationVisitor((node) {
+            if (node.constructorName?.name == 'positional') {
+              final period = node.period!;
+              final constructorName = node.constructorName!;
+              final positionalArg = node.argumentList.arguments
+                  .where((arg) => arg is! NamedExpression)
+                  .firstOrNull;
+
+              if (positionalArg != null) {
+                final beforePeriod = sourceCode.substring(0, period.offset);
+                final betweenConstructorAndArg = sourceCode.substring(
+                  constructorName.end,
+                  positionalArg.offset,
+                );
+                final afterArg = sourceCode.substring(positionalArg.offset);
+                transformed = '$beforePeriod$betweenConstructorAndArg'
+                    'initialState: $afterArg';
+              }
+            }
+          }),
+        );
+
+        expect(
+          transformed,
+          contains('super(limit: limit, initialState: initial)'),
+        );
+        expect(transformed, isNot(contains('super.positional')));
+      },
+    );
+
+    test(
+      'ReplacePositionalReplayConstructorFix safely skips '
+      'empty super parameters',
+      () {
+        const sourceCode = '''
+class CounterCubit extends ReplayCubit<int> {
+  CounterCubit(super.initialState, {super.limit}) : super.positional();
+}
+''';
+        final parseResult = parseString(content: sourceCode);
+        var skipped = false;
+
+        parseResult.unit.visitChildren(
+          _SuperConstructorInvocationVisitor((node) {
+            if (node.constructorName?.name == 'positional') {
+              final positionalArg = node.argumentList.arguments
+                  .where((arg) => arg is! NamedExpression)
+                  .firstOrNull;
+              if (positionalArg == null) {
+                skipped = true;
+              }
+            }
+          }),
+        );
+
+        expect(skipped, isTrue);
+      },
+    );
   });
+}
+
+class _SuperConstructorInvocationVisitor extends RecursiveAstVisitor<void> {
+  _SuperConstructorInvocationVisitor(this.onInvocation);
+  final void Function(SuperConstructorInvocation node) onInvocation;
+
+  @override
+  void visitSuperConstructorInvocation(SuperConstructorInvocation node) {
+    onInvocation(node);
+    super.visitSuperConstructorInvocation(node);
+  }
 }
 
 class _ClassVisitor extends RecursiveAstVisitor<void> {
   _ClassVisitor(this.onClass);
+
   final void Function(ClassDeclaration node) onClass;
 
   @override

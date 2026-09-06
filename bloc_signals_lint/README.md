@@ -51,8 +51,10 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 | **`avoid_top_level_bloc_signal_instances`** | Warning | Flags top-level variables and static fields declared directly as `BlocSignal` / `CubitSignal` instances. | — |
 | **`require_cubit_signal_mixin_init`** | Warning | Enforces calling `initCubitSignal(initialState: ...)` in constructors of classes mixing in `CubitSignalMixin` or `BlocSignalMixin`. | `Cmd+.` -> Add `initCubitSignal(initialState: ...);` |
 | **`avoid_raw_signal_effects_in_bloc`** | Warning | Flags unmanaged top-level `effect()` calls inside `BlocSignalBase` containers, recommending `createEffect()`. | `Cmd+.` -> Replace `effect` with `createEffect` |
+| **`prefer_named_replay_constructor`** | Warning | Flags `super.positional(...)` invocations in `ReplayCubit` and `ReplayBloc` subclasses, recommending `super(initialState: ...)`. | `Cmd+.` -> Replace `super.positional(...)` with `super(initialState: ...)` |
 
 ### Flutter UI Rules
+
 
 | Rule | Default Severity | Description | Automated Fix |
 | :--- | :--- | :--- | :--- |

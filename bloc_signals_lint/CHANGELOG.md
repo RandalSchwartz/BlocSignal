@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0
+
+- Added custom analyzer rule `prefer_named_replay_constructor`:
+  - Flags deprecated `super.positional(...)` constructor invocations in `ReplayCubit` and `ReplayBloc` subclasses, enforcing the framework-wide `super(initialState: ...)` named parameter standard.
+- Added automated IDE quick-fix `ReplacePositionalReplayConstructorFix`:
+  - Provides a 1-click IDE quick-fix (`Cmd + .` / `Alt + Enter` / `dart fix --apply`) that cleanly rewrites `super.positional(...)` to `super(initialState: ...)`, preserving any trailing named parameters (`limit:`, `maxHistoryLength:`, `equals:`).
+- Updated test suite with full coverage across all 16 rules and 7 automated quick-fixes.
+
 ## 1.1.0
 
 - Added 4 next-generation analyzer rules and diagnostics:

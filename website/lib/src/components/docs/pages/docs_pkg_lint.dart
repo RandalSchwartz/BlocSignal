@@ -32,10 +32,11 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
         h2([Component.text('Overview & Installation')]),
         p([
           Component.text(
-            'The bloc_signals_lint package is an official custom_lint plugin providing 15 specialized analyzer rules. '
+            'The bloc_signals_lint package is an official custom_lint plugin providing 16 specialized analyzer rules. '
             'It detects dangerous runtime pitfalls—such as emitting states during widget build cycles, omitting mixin initializers, or unmanaged signal effects—directly in VS Code and Android Studio with one-click automated quick-fixes.',
           ),
         ]),
+
         const DocsCodeBlock(
           title: 'terminal',
           language: 'bash',
@@ -179,6 +180,21 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                 td([
                   Component.text(
                     'Flags unmanaged top-level effect() calls inside BlocSignalBase containers, recommending container-owned createEffect().',
+                  ),
+                ]),
+              ]),
+              tr([
+                td([
+                  code([Component.text('prefer_named_replay_constructor')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    'Flags deprecated super.positional(...) constructor calls on ReplayCubit and ReplayBloc subclasses, recommending super(initialState: ...).',
                   ),
                 ]),
               ]),
@@ -429,6 +445,12 @@ void example(BuildContext context, CounterBloc bloc) {
             strong([Component.text('UseProviderValueFix')]),
             Component.text(
               ': Replaces BlocSignalProvider(create: (_) => existing) with BlocSignalProvider.value(value: existing).',
+            ),
+          ]),
+          li([
+            strong([Component.text('ReplacePositionalReplayConstructorFix')]),
+            Component.text(
+              ': Rewrites super.positional(...) to super(initialState: ...), preserving trailing named parameters.',
             ),
           ]),
         ]),

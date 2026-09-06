@@ -11,6 +11,7 @@ import 'package:bloc_signals_lint/src/rules/avoid_top_level_bloc_signal_instance
 import 'package:bloc_signals_lint/src/rules/avoid_unmanaged_signal_effects.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_unused_select_result.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_bloc_signal_provider_read_in_callbacks.dart';
+import 'package:bloc_signals_lint/src/rules/prefer_named_replay_constructor.dart';
 import 'package:bloc_signals_lint/src/rules/require_cubit_signal_mixin_init.dart';
 import 'package:bloc_signals_lint/src/rules/require_super_on_event.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
@@ -36,5 +37,6 @@ class _BlocSignalsLinter extends PluginBase {
         const AvoidContextWatchForBlocState(),
         const AvoidRawSignalEffectsInBloc(),
         const AvoidUnusedSelectResult(),
+        const PreferNamedReplayConstructor(),
       ];
 }

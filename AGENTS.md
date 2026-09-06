@@ -14,8 +14,9 @@ We use a native Dart workspace (supported in Dart 3.5+) instead of Melos.
   - `bloc_signals_bloc` (Classic BLoC 8/9 interop adapters)
   - `bloc_signals_riverpod` (Bidirectional Riverpod interop adapters)
   - `bloc_signals_test` (Declarative unit testing utilities)
-  - `bloc_signals_lint` (Static analysis lints & IDE diagnostics - 15 rules & automated quick-fixes)
+  - `bloc_signals_lint` (Static analysis lints & IDE diagnostics - 16 rules & automated quick-fixes)
   - `bloc_signals_hydrate` (Persistent state storage adapters)
+
   - `bloc_signals_otel` (OpenTelemetry tracing & metrics)
   - `bloc_signals_replay` (State history & undo/redo tracking)
   - `bloc_signals_jaspr` (Jaspr web component bindings)
@@ -73,7 +74,7 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 - [hydration.md](plugins/bloc-signals/skills/bloc-signals/hydration.md): Hydrated state persistence and JSON serialization.
 - [replay.md](plugins/bloc-signals/skills/bloc-signals/replay.md): Undo/redo state history and replay architecture.
 - [interoperability.md](plugins/bloc-signals/skills/bloc-signals/interoperability.md) & [riverpod_migration.md](plugins/bloc-signals/skills/bloc-signals/riverpod_migration.md): Riverpod, Flutter Listenable, and Stream bridges.
-- [devtools.md](plugins/bloc-signals/skills/bloc-signals/devtools.md), [lint.md](plugins/bloc-signals/skills/bloc-signals/lint.md), [otel.md](plugins/bloc-signals/skills/bloc-signals/otel.md): DevTools extensions, custom linter rules (15 rules and automated IDE quick-fixes), and OpenTelemetry.
+- [devtools.md](plugins/bloc-signals/skills/bloc-signals/devtools.md), [lint.md](plugins/bloc-signals/skills/bloc-signals/lint.md), [otel.md](plugins/bloc-signals/skills/bloc-signals/otel.md): DevTools extensions, custom linter rules (16 rules and automated IDE quick-fixes), and OpenTelemetry.
 
 ### Internal Maintainer Operations (`doc/internals/`)
 - [website_and_publications.md](doc/internals/website_and_publications.md): `blocsignal.dev` architecture, DEV.to publication sync tools, static compilation, local preview, and Firebase deployment.

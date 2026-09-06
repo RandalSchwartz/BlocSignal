@@ -393,7 +393,7 @@ In enterprise applications, shopping carts are notorious bug magnets:
 - The cart must survive app restarts through offline persistence.
 - Users expect an "Undo Remove" action that must never corrupt previous state history.
 
-Here is the complete domain model and `CubitSignal` implementation:
+Here is the complete domain model and `CubitSignal` implementation (you can explore and run the full Flutter application and test suite in the companion repository at [**`examples/fic_shopping_cart` on GitHub**](https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/fic_shopping_cart)):
 
 ```dart
 import 'package:bloc_signals/bloc_signals.dart';

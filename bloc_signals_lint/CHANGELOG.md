@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.1
+
+- Fix `require_cubit_signal_mixin_init` AST parsing to use `type.toSource()` instead of `type.name`.
+  - Ensures full compatibility with dependency constraint lower bounds during `dart pub downgrade` analysis across all analyzer versions.
+
 ## 1.2.0
 
 - Added custom analyzer rule `prefer_named_replay_constructor`:

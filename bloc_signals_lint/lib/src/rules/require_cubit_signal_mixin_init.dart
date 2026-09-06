@@ -47,18 +47,25 @@ class RequireCubitSignalMixinInit extends DartLintRule {
 
       var mixinName = '';
       for (final type in withClause.mixinTypes) {
-        final typeName = type.name.lexeme;
-        if (typeName.contains('CubitSignalMixin') ||
-            typeName.contains('BlocSignalMixin')) {
-          mixinName = typeName;
+        final typeSource = type.toSource();
+        if (typeSource.contains('BlocSignalMixin')) {
+          mixinName = 'BlocSignalMixin';
+          break;
+        }
+        if (typeSource.contains('CubitSignalMixin')) {
+          mixinName = 'CubitSignalMixin';
           break;
         }
         final staticType = type.type;
-        if (staticType != null &&
-            (_cubitMixinChecker.isAssignableFromType(staticType) ||
-                _blocMixinChecker.isAssignableFromType(staticType))) {
-          mixinName = typeName;
-          break;
+        if (staticType != null) {
+          if (_blocMixinChecker.isAssignableFromType(staticType)) {
+            mixinName = 'BlocSignalMixin';
+            break;
+          }
+          if (_cubitMixinChecker.isAssignableFromType(staticType)) {
+            mixinName = 'CubitSignalMixin';
+            break;
+          }
         }
       }
 

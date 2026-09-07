@@ -86,8 +86,22 @@ jobs:
               // Always load core and testing skills if present
               const skillFilesToLoad = new Set(['core.md', 'testing.md']);
 
-              // Topic-specific skill routing based on diff contents
               const lowerDiff = diff.toLowerCase();
+
+              // Auto-discover skills: any *.md whose basename appears in the diff is automatically included
+              try {
+                const availableFiles = fs.readdirSync(pluginSkillsDir).filter(f => f.endsWith('.md'));
+                for (const file of availableFiles) {
+                  const baseName = path.basename(file, '.md').toLowerCase();
+                  if (lowerDiff.includes(baseName)) {
+                    skillFilesToLoad.add(file);
+                  }
+                }
+              } catch (e) {
+                console.log('Notice: Failed scanning plugin skills directory:', e.message);
+              }
+
+              // Component keyword aliases (mapping package/domain names to skill files)
               if (lowerDiff.includes('bloc_signals_flutter') || lowerDiff.includes('flutter') || lowerDiff.includes('widget')) {
                 skillFilesToLoad.add('flutter.md');
               }

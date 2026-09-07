@@ -34,6 +34,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            const path = require('path');
             const apiKey = process.env.GEMINI_API_KEY;
             if (!apiKey) {
               console.log('⚠️ No GEMINI_API_KEY secret configured in repository settings. Skipping automated code review.');
@@ -67,21 +68,125 @@ jobs:
             const prTitle = context.payload.pull_request?.title || 'PR Review';
             const prBody = context.payload.pull_request?.body || 'No description provided.';
 
-            const prompt = "You are Gemini Code Assist (GCA), an expert automated code reviewer for Dart and Flutter monorepos.\n\n" +
-              "Review the following Pull Request diff for the BlocSignal project:\n" +
+            // 1. Ingest AGENTS.md (core developer handbook & repo constitution)
+            let agentsContext = '';
+            if (fs.existsSync('AGENTS.md')) {
+              try {
+                agentsContext = fs.readFileSync('AGENTS.md', 'utf8');
+                console.log('Loaded AGENTS.md (' + agentsContext.length + ' chars)');
+              } catch (e) {
+                console.log('Notice: Failed reading AGENTS.md:', e.message);
+              }
+            }
+
+            // 2. Ingest relevant framework skills based on diff and core baselines
+            const pluginSkillsDir = path.join('plugins', 'bloc-signals', 'skills', 'bloc-signals');
+            let skillsContext = '';
+            if (fs.existsSync(pluginSkillsDir)) {
+              // Always load core and testing skills if present
+              const skillFilesToLoad = new Set(['core.md', 'testing.md']);
+
+              // Topic-specific skill routing based on diff contents
+              const lowerDiff = diff.toLowerCase();
+              if (lowerDiff.includes('bloc_signals_flutter') || lowerDiff.includes('flutter') || lowerDiff.includes('widget')) {
+                skillFilesToLoad.add('flutter.md');
+              }
+              if (lowerDiff.includes('bloc_signals_jaspr') || lowerDiff.includes('jaspr')) {
+                skillFilesToLoad.add('jaspr.md');
+              }
+              if (lowerDiff.includes('bloc_signals_hydrate') || lowerDiff.includes('hydrate')) {
+                skillFilesToLoad.add('hydration.md');
+              }
+              if (lowerDiff.includes('bloc_signals_replay') || lowerDiff.includes('replay')) {
+                skillFilesToLoad.add('replay.md');
+              }
+              if (lowerDiff.includes('bloc_signals_riverpod') || lowerDiff.includes('riverpod')) {
+                skillFilesToLoad.add('riverpod_migration.md');
+                skillFilesToLoad.add('interoperability.md');
+              }
+              if (lowerDiff.includes('bloc_signals_bloc')) {
+                skillFilesToLoad.add('interoperability.md');
+              }
+              if (lowerDiff.includes('bloc_signals_lint') || lowerDiff.includes('analysis_options')) {
+                skillFilesToLoad.add('lint.md');
+              }
+              if (lowerDiff.includes('bloc_signals_otel') || lowerDiff.includes('telemetry') || lowerDiff.includes('opentelemetry')) {
+                skillFilesToLoad.add('otel.md');
+              }
+              if (lowerDiff.includes('bloc_signals_devtools') || lowerDiff.includes('devtools')) {
+                skillFilesToLoad.add('devtools.md');
+              }
+
+              for (const skillFile of skillFilesToLoad) {
+                const fullSkillPath = path.join(pluginSkillsDir, skillFile);
+                if (fs.existsSync(fullSkillPath)) {
+                  try {
+                    const content = fs.readFileSync(fullSkillPath, 'utf8');
+                    skillsContext += '\n\n--- SKILL GUIDANCE: ' + skillFile + ' ---\n' + content;
+                    console.log('Loaded skill: ' + skillFile + ' (' + content.length + ' chars)');
+                  } catch (e) {
+                    console.log('Notice: Failed reading skill ' + skillFile + ':', e.message);
+                  }
+                }
+              }
+            }
+
+            // 3. Scan .agents/skills if referenced in diff
+            const repoSkillsDir = path.join('.agents', 'skills');
+            if (fs.existsSync(repoSkillsDir)) {
+              try {
+                const lowerDiff = diff.toLowerCase();
+                const subdirs = fs.readdirSync(repoSkillsDir);
+                for (const subdir of subdirs) {
+                  if (lowerDiff.includes(subdir.toLowerCase())) {
+                    const skillMd = path.join(repoSkillsDir, subdir, 'SKILL.md');
+                    if (fs.existsSync(skillMd)) {
+                      const skillContent = fs.readFileSync(skillMd, 'utf8');
+                      skillsContext += '\n\n--- SKILL GUIDANCE: ' + subdir + ' ---\n' + skillContent;
+                      console.log('Loaded repo skill: ' + subdir + ' (' + skillContent.length + ' chars)');
+                    }
+                  }
+                }
+              } catch (e) {
+                console.log('Notice: Failed reading .agents/skills:', e.message);
+              }
+            }
+
+            const maxContextLength = 120000;
+            if (skillsContext.length > maxContextLength) {
+              skillsContext = skillsContext.substring(0, maxContextLength) + '\n... (skills context truncated)';
+            }
+
+            const prompt = "You are Gemini Code Assist (GCA), an expert automated code reviewer for the BlocSignal Dart and Flutter monorepo.\n\n" +
+              (agentsContext ? "=== REPOSITORY CONSTITUTION & DEVELOPER HANDBOOK (AGENTS.md) ===\n" + agentsContext + "\n\n" : "") +
+              (skillsContext ? "=== RELEVANT ARCHITECTURAL SKILLS ===\n" + skillsContext + "\n\n" : "") +
+              "=== PULL REQUEST DETAILS ===\n" +
               "- PR Title: " + prTitle + "\n" +
               "- PR Description: " + prBody + "\n\n" +
               "Diff:\n" +
               "```diff\n" +
               truncatedDiff + "\n" +
               "```\n\n" +
-              "Provide a professional, concise code review covering:\n" +
-              "1. 🔍 Architectural & Code Analysis\n" +
-              "2. 🧪 Test Coverage & Static Analysis Compliance\n" +
-              "3. 🎯 GCA Recommendation (🟢 APPROVE or 🟡 REQUEST CHANGES)\n\n" +
+              "=== REVIEW INSTRUCTIONS ===\n" +
+              "Provide a professional, concise code review evaluated strictly against the repository standards and rules above:\n" +
+              "1. 🔍 Architectural & Code Analysis:\n" +
+              "   - Check adherence to Core Framework Principles (synchronous propagation, streamless execution, constructor ergonomics using named parameter initialState:, inline late final computed properties).\n" +
+              "   - Check against known Repository Scars & Crash Defenses in AGENTS.md (for example: avoiding context.watch for state rebuilds, constructor migration patterns, AST visitor closure scoping, Dart 3.13 syntax vs SDK 3.5 package compatibility).\n" +
+              "2. 🧪 Test Coverage & Code Quality:\n" +
+              "   - Verify 100% line coverage requirement across packages.\n" +
+              "   - Check declarative testing standards using blocSignalTest.\n" +
+              "   - Ensure all public APIs have comprehensive doc comments (///) with runnable examples.\n" +
+              "   - Phrasing standard check: Strictly verify no usage of 'e.g.' (must write 'for example') or 'i.e.' (must write 'that is') in documentation or comments.\n" +
+              "3. 🎯 GCA Recommendation:\n" +
+              "   - Explicit recommendation tag: 🟢 APPROVE or 🟡 REQUEST CHANGES.\n\n" +
               "Format your response in clean GitHub Markdown with headings, bullet points, and an explicit GCA approval status tag.";
 
-            const candidateModels = ['gemini-1.5-flash-002', 'gemini-2.5-flash', 'gemini-2.0-flash-exp'];
+            const candidateModels = [
+              'gemini-3.8-flash',
+              'gemini-2.5-flash',
+              'gemini-2.0-flash',
+              'gemini-1.5-flash-002'
+            ];
             let response;
             let reviewText = null;
 

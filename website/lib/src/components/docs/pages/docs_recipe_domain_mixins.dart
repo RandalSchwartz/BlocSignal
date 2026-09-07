@@ -322,8 +322,18 @@ void main() {
           Component.text(
             'You can inspect a complete, production-ready implementation of this pattern in the ',
           ),
-          code([Component.text('examples/fic_shopping_cart')]),
-          Component.text(' reference app:'),
+          a(
+            href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/fic_shopping_cart',
+            target: Target.blank,
+            [
+              Component.text('FIC Shopping Cart reference app ('),
+              code([Component.text('examples/fic_shopping_cart')]),
+              Component.text(')'),
+            ],
+          ),
+          Component.text(', also featured on the '),
+          a(href: '/showcase', [Component.text('Showcase catalog')]),
+          Component.text(':'),
         ]),
         ul([
           li([

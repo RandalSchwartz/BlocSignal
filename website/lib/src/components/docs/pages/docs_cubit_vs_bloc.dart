@@ -128,6 +128,20 @@ class const DocsCubitVsBlocPage({super.key}) extends StatelessComponent {
             ),
           ]),
         ]),
+        DocsCallout(
+          type: CalloutType.tip,
+          title: 'Atomic Transitions & Explicit Helper Naming',
+          children: [
+            p([
+              Component.text(
+                'Because state transitions propagate synchronously in frame 0, keep transitions atomic. '
+                'Avoid multiple synchronous emit() calls along the same linear path without an intervening await. '
+                'When refactoring mutations into private helpers, always include "emit" in the helper name (for example _pruneAndEmit() '
+                'rather than _prune()) so callers declare state transition side-effects explicitly.',
+              ),
+            ]),
+          ],
+        ),
       ]),
 
       // 4. When to Use BlocSignal

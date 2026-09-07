@@ -20,6 +20,8 @@ All rules are **enabled by default** once `custom_lint` is configured in `analys
 | **`require_cubit_signal_mixin_init`** | Warning | Enforces calling `initCubitSignal(initialState: ...)` in constructors of classes mixing in `CubitSignalMixin` or `BlocSignalMixin`. | `Cmd+.` -> Add `initCubitSignal(initialState: ...);` |
 | **`avoid_raw_signal_effects_in_bloc`** | Warning | Flags unmanaged top-level `effect()` calls inside `BlocSignalBase` containers, recommending `createEffect()`. | `Cmd+.` -> Replace `effect` with `createEffect` |
 | **`prefer_named_replay_constructor`** | Warning | Flags `super.positional(...)` invocations in `ReplayCubit` and `ReplayBloc` subclasses, recommending `super(initialState: ...)`. | `Cmd+.` -> Replace `super.positional(...)` with `super(initialState: ...)` |
+| **`require_emit_in_helper_name`** | Warning | Flags private helper methods calling `emit()` whose names do not reflect state emission. | `Cmd+.` -> Rename to `...AndEmit` |
+| **`avoid_multiple_synchronous_emits`** | Warning | Flags multiple synchronous `emit()` calls along the same linear execution path without an intervening `await`. | — |
 
 ### Flutter UI Rules
 

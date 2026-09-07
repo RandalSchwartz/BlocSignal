@@ -1,11 +1,13 @@
 import 'package:bloc_signals_lint/bloc_signals_lint.dart';
 import 'package:bloc_signals_lint/src/fixes/replace_positional_replay_constructor_fix.dart';
+import 'package:bloc_signals_lint/src/fixes/require_emit_in_helper_name_fix.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_context_watch_for_bloc_state.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_emit_in_build.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_invalid_context_select_generics.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_multiple_synchronous_emits.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
@@ -15,20 +17,21 @@ import 'package:bloc_signals_lint/src/rules/avoid_unused_select_result.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_bloc_signal_provider_read_in_callbacks.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_named_replay_constructor.dart';
 import 'package:bloc_signals_lint/src/rules/require_cubit_signal_mixin_init.dart';
+import 'package:bloc_signals_lint/src/rules/require_emit_in_helper_name.dart';
 import 'package:bloc_signals_lint/src/rules/require_super_on_event.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('bloc_signals_lint plugin entrypoint', () {
-    test('createPlugin returns PluginBase with 16 core and UI rules', () {
+    test('createPlugin returns PluginBase with 18 core and UI rules', () {
       final plugin = createPlugin();
       expect(plugin, isA<PluginBase>());
 
       /// Ignore internal member usage for testing.
       // ignore: invalid_use_of_internal_member
       final rules = plugin.getLintRules(CustomLintConfigs.empty);
-      expect(rules, hasLength(16));
+      expect(rules, hasLength(18));
       expect(rules, contains(isA<AvoidDuplicateEventHandlers>()));
       expect(rules, contains(isA<RequireSuperOnEvent>()));
       expect(rules, contains(isA<AvoidStreamTransformersOnBlocSignal>()));
@@ -48,6 +51,8 @@ void main() {
       expect(rules, contains(isA<AvoidRawSignalEffectsInBloc>()));
       expect(rules, contains(isA<AvoidUnusedSelectResult>()));
       expect(rules, contains(isA<PreferNamedReplayConstructor>()));
+      expect(rules, contains(isA<RequireEmitInHelperName>()));
+      expect(rules, contains(isA<AvoidMultipleSynchronousEmits>()));
     });
   });
 
@@ -170,6 +175,22 @@ void main() {
         equals('prefer_named_replay_constructor'),
       );
     });
+
+    test('RequireEmitInHelperName code is properly configured', () {
+      const rule = RequireEmitInHelperName();
+      expect(
+        rule.code.name,
+        equals('require_emit_in_helper_name'),
+      );
+    });
+
+    test('AvoidMultipleSynchronousEmits code is properly configured', () {
+      const rule = AvoidMultipleSynchronousEmits();
+      expect(
+        rule.code.name,
+        equals('avoid_multiple_synchronous_emits'),
+      );
+    });
   });
 
   group('Rule Fix Association assertions', () {
@@ -198,6 +219,13 @@ void main() {
 
       const effectRule = AvoidRawSignalEffectsInBloc();
       expect(effectRule.getFixes(), hasLength(1));
+
+      const helperNameRule = RequireEmitInHelperName();
+      expect(helperNameRule.getFixes(), hasLength(1));
+      expect(
+        helperNameRule.getFixes().first,
+        isA<RequireEmitInHelperNameFix>(),
+      );
     });
   });
 }

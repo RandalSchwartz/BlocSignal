@@ -14,7 +14,7 @@ We use a native Dart workspace (supported in Dart 3.5+) instead of Melos.
   - `bloc_signals_bloc` (Classic BLoC 8/9 interop adapters)
   - `bloc_signals_riverpod` (Bidirectional Riverpod interop adapters)
   - `bloc_signals_test` (Declarative unit testing utilities)
-  - `bloc_signals_lint` (Static analysis lints & IDE diagnostics - 16 rules & automated quick-fixes)
+  - `bloc_signals_lint` (Static analysis lints & IDE diagnostics - 18 rules & 8 automated quick-fixes)
   - `bloc_signals_hydrate` (Persistent state storage adapters)
 
   - `bloc_signals_otel` (OpenTelemetry tracing & metrics)
@@ -46,6 +46,7 @@ To satisfy pub.dev publishing requirements while maintaining local developer wor
 5. **Lifecycle & Disposal**: `close()` marks `isClosed = true` and cleans up effects. Subsequent `add()` or `emit()` calls are safely dropped.
 6. **Prefer Inline `late final` Computed Properties**: For derived, observable state properties on a `CubitSignal` or `BlocSignal`, prefer declaring and initializing them directly as fields using type inference (for example `late final isCartEmpty = computed(() => stateValue.items.isEmpty);`) rather than two-step manual type declarations and constructor-body assignments (`late final ReadonlySignal<bool> isCartEmpty;` + `isCartEmpty = computed(...)`).
 7. **Compose Complex Domain Logic via Targeted Mixins**: To avoid bloating state containers into god-objects, encapsulate complex business rules (for example discounts, taxes, shipping, or calculated projections) into mixins targeted onto the container (`mixin CartPricingMixin on CubitSignal<ShoppingCartState>`). This provides typed access to `stateValue`, leverages cascading `late final computed(...)` signals, decouples domain math from storage/replay, and enables isolated testing on lightweight stub cubits.
+8. **Atomic State Transitions & Explicit Helper Emission Naming**: Because state transitions propagate synchronously and immediately in the exact same frame, maintain state atomicity ($S_n \to S_{n+1}$) by consolidating multiple synchronous `emit()` calls along the same linear path into a single emission (enforced by `avoid_multiple_synchronous_emits`). Any private helper method in a state container that invokes `emit()` internally must explicitly declare state emission in its name (for example `_pruneAndEmit()` or `_emitPosition()`) so callers are never caught off guard by hidden state mutations and subscriber reactions (enforced by `require_emit_in_helper_name`).
 
 ---
 
@@ -75,7 +76,7 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 - [hydration.md](plugins/bloc-signals/skills/bloc-signals/hydration.md): Hydrated state persistence and JSON serialization.
 - [replay.md](plugins/bloc-signals/skills/bloc-signals/replay.md): Undo/redo state history and replay architecture.
 - [interoperability.md](plugins/bloc-signals/skills/bloc-signals/interoperability.md) & [riverpod_migration.md](plugins/bloc-signals/skills/bloc-signals/riverpod_migration.md): Riverpod, Flutter Listenable, and Stream bridges.
-- [devtools.md](plugins/bloc-signals/skills/bloc-signals/devtools.md), [lint.md](plugins/bloc-signals/skills/bloc-signals/lint.md), [otel.md](plugins/bloc-signals/skills/bloc-signals/otel.md): DevTools extensions, custom linter rules (16 rules and automated IDE quick-fixes), and OpenTelemetry.
+- [devtools.md](plugins/bloc-signals/skills/bloc-signals/devtools.md), [lint.md](plugins/bloc-signals/skills/bloc-signals/lint.md), [otel.md](plugins/bloc-signals/skills/bloc-signals/otel.md): DevTools extensions, custom linter rules (18 rules and 8 automated IDE quick-fixes), and OpenTelemetry.
 
 ### Internal Maintainer Operations (`doc/internals/`)
 - [website_and_publications.md](doc/internals/website_and_publications.md): `blocsignal.dev` architecture, DEV.to publication sync tools, static compilation, local preview, and Firebase deployment.

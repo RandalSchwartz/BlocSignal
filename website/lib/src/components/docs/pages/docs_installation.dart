@@ -155,7 +155,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_lint')],
                   ),
                 ]),
-                td([Component.text('^1.2.0')]),
+                td([Component.text('^1.3.0')]),
                 td([
                   Component.text(
                     'Custom analyzer lints and automated IDE quick-fixes for enforcing best practices.',

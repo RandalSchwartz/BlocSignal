@@ -32,7 +32,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
         h2([Component.text('Overview & Installation')]),
         p([
           Component.text(
-            'The bloc_signals_lint package is an official custom_lint plugin providing 16 specialized analyzer rules. '
+            'The bloc_signals_lint package is an official custom_lint plugin providing 18 specialized analyzer rules. '
             'It detects dangerous runtime pitfalls—such as emitting states during widget build cycles, omitting mixin initializers, or unmanaged signal effects—directly in VS Code and Android Studio with one-click automated quick-fixes.',
           ),
         ]),
@@ -195,6 +195,36 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                 td([
                   Component.text(
                     'Flags deprecated super.positional(...) constructor calls on ReplayCubit and ReplayBloc subclasses, recommending super(initialState: ...).',
+                  ),
+                ]),
+              ]),
+              tr([
+                td([
+                  code([Component.text('require_emit_in_helper_name')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    'Flags private helper methods calling emit() whose names do not indicate state emission, recommending renaming to ...AndEmit.',
+                  ),
+                ]),
+              ]),
+              tr([
+                td([
+                  code([Component.text('avoid_multiple_synchronous_emits')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    'Flags multiple synchronous emit() calls along the same execution path without an intervening await to preserve state atomicity.',
                   ),
                 ]),
               ]),
@@ -451,6 +481,12 @@ void example(BuildContext context, CounterBloc bloc) {
             strong([Component.text('ReplacePositionalReplayConstructorFix')]),
             Component.text(
               ': Rewrites super.positional(...) to super(initialState: ...), preserving trailing named parameters.',
+            ),
+          ]),
+          li([
+            strong([Component.text('RequireEmitInHelperNameFix')]),
+            Component.text(
+              ': Renames private helper methods calling emit() and their call sites by appending AndEmit.',
             ),
           ]),
         ]),

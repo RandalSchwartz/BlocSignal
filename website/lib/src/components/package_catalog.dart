@@ -107,7 +107,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_lint',
-    version: '1.2.1',
+    version: '1.3.0',
     desc: 'Custom analyzer lints and automated IDE quick-fixes for enforcing BlocSignal best practices.',
     icon: '🔍',
     category: 'DevTools & Tooling',

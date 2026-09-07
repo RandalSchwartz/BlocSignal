@@ -411,8 +411,8 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
       );
 
       // Simulate iteration 2 to catch loops repeating synchronous emits.
-      // Only paths that neither terminated (e.g. return) nor broke (break)
-      // will execute a second iteration.
+      // Only paths that neither terminated (for example return) nor broke
+      // (break) will execute a second iteration.
       final activeIter1 =
           afterIter1.where((p) => !p.isTerminated && !p.isBroken).toList();
       if (activeIter1.isNotEmpty) {

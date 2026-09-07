@@ -79,69 +79,24 @@ jobs:
               }
             }
 
-            // 2. Ingest relevant framework skills based on diff and core baselines
+            // 2. Ingest all public framework skills unconditionally
             const pluginSkillsDir = path.join('plugins', 'bloc-signals', 'skills', 'bloc-signals');
             let skillsContext = '';
             if (fs.existsSync(pluginSkillsDir)) {
-              // Always load core and testing skills if present
-              const skillFilesToLoad = new Set(['core.md', 'testing.md']);
-
-              const lowerDiff = diff.toLowerCase();
-
-              // Auto-discover skills: any *.md whose basename appears in the diff is automatically included
               try {
-                const availableFiles = fs.readdirSync(pluginSkillsDir).filter(f => f.endsWith('.md'));
-                for (const file of availableFiles) {
-                  const baseName = path.basename(file, '.md').toLowerCase();
-                  if (lowerDiff.includes(baseName)) {
-                    skillFilesToLoad.add(file);
+                const skillFiles = fs.readdirSync(pluginSkillsDir).filter(f => f.endsWith('.md')).sort();
+                for (const file of skillFiles) {
+                  const fullSkillPath = path.join(pluginSkillsDir, file);
+                  try {
+                    const content = fs.readFileSync(fullSkillPath, 'utf8');
+                    skillsContext += '\n\n--- SKILL GUIDANCE: ' + file + ' ---\n' + content;
+                    console.log('Loaded framework skill: ' + file + ' (' + content.length + ' chars)');
+                  } catch (e) {
+                    console.log('Notice: Failed reading skill ' + file + ':', e.message);
                   }
                 }
               } catch (e) {
                 console.log('Notice: Failed scanning plugin skills directory:', e.message);
-              }
-
-              // Component keyword aliases (mapping package/domain names to skill files)
-              if (lowerDiff.includes('bloc_signals_flutter') || lowerDiff.includes('flutter') || lowerDiff.includes('widget')) {
-                skillFilesToLoad.add('flutter.md');
-              }
-              if (lowerDiff.includes('bloc_signals_jaspr') || lowerDiff.includes('jaspr')) {
-                skillFilesToLoad.add('jaspr.md');
-              }
-              if (lowerDiff.includes('bloc_signals_hydrate') || lowerDiff.includes('hydrate')) {
-                skillFilesToLoad.add('hydration.md');
-              }
-              if (lowerDiff.includes('bloc_signals_replay') || lowerDiff.includes('replay')) {
-                skillFilesToLoad.add('replay.md');
-              }
-              if (lowerDiff.includes('bloc_signals_riverpod') || lowerDiff.includes('riverpod')) {
-                skillFilesToLoad.add('riverpod_migration.md');
-                skillFilesToLoad.add('interoperability.md');
-              }
-              if (lowerDiff.includes('bloc_signals_bloc')) {
-                skillFilesToLoad.add('interoperability.md');
-              }
-              if (lowerDiff.includes('bloc_signals_lint') || lowerDiff.includes('analysis_options')) {
-                skillFilesToLoad.add('lint.md');
-              }
-              if (lowerDiff.includes('bloc_signals_otel') || lowerDiff.includes('telemetry') || lowerDiff.includes('opentelemetry')) {
-                skillFilesToLoad.add('otel.md');
-              }
-              if (lowerDiff.includes('bloc_signals_devtools') || lowerDiff.includes('devtools')) {
-                skillFilesToLoad.add('devtools.md');
-              }
-
-              for (const skillFile of skillFilesToLoad) {
-                const fullSkillPath = path.join(pluginSkillsDir, skillFile);
-                if (fs.existsSync(fullSkillPath)) {
-                  try {
-                    const content = fs.readFileSync(fullSkillPath, 'utf8');
-                    skillsContext += '\n\n--- SKILL GUIDANCE: ' + skillFile + ' ---\n' + content;
-                    console.log('Loaded skill: ' + skillFile + ' (' + content.length + ' chars)');
-                  } catch (e) {
-                    console.log('Notice: Failed reading skill ' + skillFile + ':', e.message);
-                  }
-                }
               }
             }
 
@@ -166,7 +121,7 @@ jobs:
               }
             }
 
-            const maxContextLength = 120000;
+            const maxContextLength = 500000;
             if (skillsContext.length > maxContextLength) {
               skillsContext = skillsContext.substring(0, maxContextLength) + '\n... (skills context truncated)';
             }

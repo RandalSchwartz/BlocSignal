@@ -82,6 +82,7 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 - [publishing_and_scoring.md](doc/internals/publishing_and_scoring.md): 160/160 pub.dev points checklist, explicit constructors for dartdoc, package examples, and README catalog tables.
 - [benchmarks_and_workflow.md](doc/internals/benchmarks_and_workflow.md): Benchmark microtask draining, batch UI updates, GitHub Actions script safety, and maintainer delivery protocols.
 - **Article Archive Maintenance (`doc/articles/`)**: Always maintain the local markdown archive in `doc/articles/` with every newly published DEV.to article by running `dart run tool/sync_all_articles.dart` to provide rich contextual knowledge for developers and AI agents.
+- **Automated Gemini Code Review & Skill Ingestion (`.github/workflows/gemini-code-review.yml`)**: Automated PR code reviews dynamically ingest `AGENTS.md` and scan `plugins/bloc-signals/skills/bloc-signals/` and `.agents/skills/` for relevant topic guidance. When introducing new member packages or architectural skills with non-obvious keywords, ensure corresponding aliases are registered in `gemini-code-review.yml` so automated PR reviews evaluate incoming changes against domain guidelines.
 
 ---
 
@@ -160,4 +161,9 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 - **The Pathogen / Wound**: Accessing `type.name.lexeme` on `NamedType` in AST lint rules causes `dart pub downgrade` analysis on pub.dev to fail with `UNDEFINED_GETTER: The getter 'name' isn't defined for the type 'NamedType'`, losing 20 pub points. In analyzer 6.x/7.x, `NamedType` exposed `name2`, whereas analyzer 8+ re-introduced `name` and removed `name2`.
 - **The Antigen / Vulnerability Vector**: Assuming property names on analyzer AST nodes are uniform across a wide dependency constraint range (for example `analyzer: ">=6.8.0 <15.0.0"`).
 - **The Antibody / Permanent Reflex**: When inspecting type names on `NamedType` across wide analyzer version ranges, query `type.toSource()` (inherited from `AstNode`) or check assignability using `TypeChecker` instead of accessing `.name` or `.name2` tokens. Guarded by `dart pub downgrade && dart analyze` validation.
+
+### 🩹 Scar: Automated PR Review Skill Routing & Knowledge Ingestion
+- **The Pathogen / Wound**: Creating new member packages or authoring new framework architectural skill guides in `plugins/bloc-signals/skills/bloc-signals/` without mapping them in `.github/workflows/gemini-code-review.yml` left the automated Gemini Code Review bot blinded to domain rules for those components on incoming pull requests.
+- **The Antigen / Vulnerability Vector**: Assuming external review bots automatically discover bespoke file naming schemes without explicit keyword mapping or dynamic directory scanning.
+- **The Antibody / Permanent Reflex**: The CI workflow dynamically scans `plugins/bloc-signals/skills/bloc-signals/` and matches all `*.md` file basenames against the pull request diff, supplemented by explicit package keyword aliases (for example `bloc_signals_flutter` ↔ `flutter.md`). When creating new member packages or architectural skills with non-obvious keywords, ensure corresponding topic aliases are registered in `gemini-code-review.yml` so the bot evaluates pull requests against the latest domain standards.
 

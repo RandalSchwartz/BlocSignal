@@ -22,6 +22,7 @@ import '../components/docs/pages/docs_quickstart.dart';
 import '../components/docs/pages/docs_recipe_batching.dart';
 import '../components/docs/pages/docs_recipe_caching.dart';
 import '../components/docs/pages/docs_recipe_controllers.dart';
+import '../components/docs/pages/docs_recipe_domain_mixins.dart';
 import '../components/docs/pages/docs_recipe_form_validation.dart';
 import '../components/docs/pages/docs_recipe_one_shot.dart';
 import '../components/docs/pages/docs_signals_reactivity.dart';
@@ -286,6 +287,14 @@ class const DocsRegistry() {
           category: 'Architecture & Recipes',
           description: 'State atomicity, avoiding multi-emit batching anti-patterns, and cross-bloc coordination.',
           builder: DocsRecipeBatchingPage.new,
+        ),
+        DocSectionItem(
+          id: 'recipe-domain-mixins',
+          title: 'Domain Mixins & Reactive Composition',
+          path: '/docs/recipe-domain-mixins',
+          category: 'Architecture & Recipes',
+          description: 'Decomposing complex domain rules into modular mixins with computed signals.',
+          builder: DocsRecipeDomainMixinsPage.new,
         ),
       ],
     ),

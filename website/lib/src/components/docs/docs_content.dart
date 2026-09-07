@@ -30,6 +30,7 @@ import 'pages/docs_quickstart.dart';
 import 'pages/docs_recipe_batching.dart';
 import 'pages/docs_recipe_caching.dart';
 import 'pages/docs_recipe_controllers.dart';
+import 'pages/docs_recipe_domain_mixins.dart';
 import 'pages/docs_recipe_form_validation.dart';
 import 'pages/docs_recipe_one_shot.dart';
 import 'pages/docs_signals_reactivity.dart';
@@ -183,6 +184,8 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return DocsRecipeCachingPage.headings;
       case 'recipe-batching':
         return DocsRecipeBatchingPage.headings;
+      case 'recipe-domain-mixins':
+        return DocsRecipeDomainMixinsPage.headings;
       case 'migration-bloc':
         return DocsMigrationBlocPage.headings;
       case 'migration-riverpod':
@@ -248,6 +251,8 @@ class const DocsContent({super.key}) extends StatelessComponent {
         return 'website/lib/src/components/docs/pages/docs_recipe_caching.dart';
       case 'recipe-batching':
         return 'website/lib/src/components/docs/pages/docs_recipe_batching.dart';
+      case 'recipe-domain-mixins':
+        return 'website/lib/src/components/docs/pages/docs_recipe_domain_mixins.dart';
       case 'migration-bloc':
         return 'website/lib/src/components/docs/pages/docs_migration_bloc.dart';
       case 'migration-riverpod':

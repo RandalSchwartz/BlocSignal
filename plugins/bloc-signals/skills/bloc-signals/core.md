@@ -108,6 +108,64 @@ class AuthenticationBlocService extends BaseService
 
 Because `CubitSignalMixin` implements `BlocSignalBase<StateType>`, any class mixing it in is polymorphically compatible with `BlocSignalProvider`, `context.select`, `blocSignalTest`, `bloc_signals_riverpod`, `bloc_signals_hydrate`, and `bloc_signals_replay`.
 
+## Targeted Domain Mixins on Cubits & Blocs (Composing Business Logic)
+
+While `CubitSignalMixin` provides base cubit capabilities to external classes, **Targeted Domain Mixins** (`mixin DomainRules on CubitSignal<DomainState>`) compose domain-specific business rules, computed projections, and calculations onto your state containers.
+
+### Why Target Domain Mixins on `CubitSignal<State>`?
+In complex enterprise applications (such as e-commerce checkout, financial portfolios, or multi-step wizards), business logic quickly balloons:
+- Promo codes, tiered discounts, and coupon redemption
+- Tax rules, VAT calculations, and regional surcharges
+- Freight thresholds and dynamic shipping tiers
+
+Inlining all calculations into a single `CubitSignal` turns it into an unwieldy god-object. Conversely, moving derived numbers directly into the state record forces tedious manual recalculations on every single `emit()`.
+
+### The Solution: Targeted Reactive Mixins
+By targeting the mixin `on CubitSignal<StateType>`, the mixin receives safe, typed access to `stateValue` while keeping domain logic 100% decoupled from storage (`HydratedMixin`) or time-travel history (`ReplayCubitMixin`):
+
+```dart
+mixin CartPricingMixin on CubitSignal<ShoppingCartState> {
+  /// Base subtotal derived from line items
+  late final subtotal = computed(() => stateValue.items.values.fold(
+        0.0,
+        (sum, item) => sum + item.lineTotal,
+      ));
+
+  /// Tiered shipping calculation based on subtotal threshold
+  late final shippingFee = computed(() {
+    if (subtotal.value == 0.0 || subtotal.value >= 50.0) return 0.0;
+    return 5.99;
+  });
+
+  /// Synchronous grand total composing multiple signals
+  late final grandTotal = computed(() =>
+      (subtotal.value - discountAmount.value + shippingFee.value)
+          .clamp(0.0, double.infinity));
+}
+```
+
+### Write Once, Test Once
+Because the domain mixin is constrained only by `on CubitSignal<ShoppingCartState>`, you can verify complex pricing rules against a minimal test harness Cubit without needing database mocks, disk storage, or UI widgets:
+
+```dart
+class TestCartCubit extends CubitSignal<ShoppingCartState>
+    with CartPricingMixin {
+  TestCartCubit() : super(initialState: ShoppingCartState.empty());
+  void updateState(ShoppingCartState next) => emit(next);
+}
+
+test('applies tiered shipping threshold correctly', () {
+  final cubit = TestCartCubit();
+  expect(cubit.shippingFee.value, 0.0); // Empty cart
+
+  cubit.updateState(cartWithItem(price: 25.0));
+  expect(cubit.shippingFee.value, 5.99); // Under $50 threshold
+
+  cubit.updateState(cartWithItem(price: 55.0));
+  expect(cubit.shippingFee.value, 0.0); // Free shipping unlocked
+});
+```
+
 ## Custom Equality & Identity Comparison (`equals`)
 
 By default, `BlocSignalBase` uses standard value equality (`previous == current`) to de-duplicate state emissions and prevent redundant reactive updates.

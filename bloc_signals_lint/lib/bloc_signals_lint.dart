@@ -4,6 +4,7 @@ import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart'
 import 'package:bloc_signals_lint/src/rules/avoid_emit_in_build.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_invalid_context_select_generics.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_multiple_synchronous_emits.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
@@ -13,6 +14,7 @@ import 'package:bloc_signals_lint/src/rules/avoid_unused_select_result.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_bloc_signal_provider_read_in_callbacks.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_named_replay_constructor.dart';
 import 'package:bloc_signals_lint/src/rules/require_cubit_signal_mixin_init.dart';
+import 'package:bloc_signals_lint/src/rules/require_emit_in_helper_name.dart';
 import 'package:bloc_signals_lint/src/rules/require_super_on_event.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
@@ -38,5 +40,7 @@ class _BlocSignalsLinter extends PluginBase {
         const AvoidRawSignalEffectsInBloc(),
         const AvoidUnusedSelectResult(),
         const PreferNamedReplayConstructor(),
+        const RequireEmitInHelperName(),
+        const AvoidMultipleSynchronousEmits(),
       ];
 }

@@ -117,6 +117,10 @@ void main() {
   print(bloc.stateValue); // 1
   bloc.close();
 }
+```
+
+> **Tip**: Because state transitions propagate synchronously in frame 0, keep transitions atomic ($S_n \to S_{n+1}$). Avoid multiple synchronous `emit()` calls along the same linear path, and name private helper methods that emit state explicitly (for example `_pruneAndEmit()` rather than `_prune()`).
+
 ### 3. Composable Mixins (Overcoming Single Inheritance)
 
 Use `CubitSignalMixin` or `BlocSignalMixin` to turn any class with an existing superclass (for example, `ChangeNotifier`, `TextEditingController`, `AnimationController`, or `BaseRepository`) into a first-class `BlocSignalBase` state container without occupying its single `extends` slot:

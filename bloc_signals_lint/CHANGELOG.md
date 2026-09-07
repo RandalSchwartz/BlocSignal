@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.0
+
+- Added custom analyzer rule `require_emit_in_helper_name`:
+  - Flags private helper methods in state container classes calling `emit()` whose names do not reflect state emission.
+- Added automated IDE quick-fix `RequireEmitInHelperNameFix`:
+  - Renames private helper methods calling `emit()` and all internal call sites by appending `AndEmit` (for example `_prune` $\to$ `_pruneAndEmit`).
+- Added custom analyzer rule `avoid_multiple_synchronous_emits`:
+  - Flags multiple synchronous `emit()` calls along the same linear execution path without an intervening `await`, safeguarding single-frame state atomicity and preventing intermediate torn state leakage.
+- Expanded rule suite to 18 rules with 8 automated quick-fixes and 100% AST unit test coverage across all rule and fix logic.
+
 ## 1.2.1
 
 - Fix `require_cubit_signal_mixin_init` AST parsing to use `type.toSource()` instead of `type.name`.

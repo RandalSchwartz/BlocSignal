@@ -55,6 +55,40 @@ class CartCubit extends CubitSignal<CartState> {
 - **Clean Constructors**: Keeps constructor parameter lists and bodies focused purely on initialization (`: super(initialState: ...)`).
 - **Encapsulation**: Keeps the derivation rule right next to the property name on a single declarative line.
 
+### Atomic State Transitions & Explicit Helper Emission Naming
+
+In `CubitSignal` and `BlocSignal`, state transitions propagate synchronously and immediately in the exact same frame. Every emission represents an atomic state transition ($S_n \to S_{n+1}$).
+
+1. **Explicit Helper Naming ("Does What It Says on the Tin")**:
+   When factoring out complex state mutations or computations into private helper methods, any helper that calls `emit()` internally must declare this side-effect in its name (for example, `void _pruneAndEmit()` or `void _emitPosition()`, rather than an innocent-sounding `void _prune()`). This prevents callers from unwittingly triggering unexpected UI rebuilds and reactive observer runs.
+   - Enforced by lint rule `require_emit_in_helper_name` with automated quick-fix `RequireEmitInHelperNameFix`.
+
+2. **Avoid Multiple Synchronous Emits (State Atomicity)**:
+   Avoid calling `emit()` multiple times along the same synchronous linear control-flow path without an intervening `await` or event loop boundary. Emitting multiple intermediate states in the same frame leaks temporary, inconsistent states to downstream subscribers and computed signals before the final state is reached.
+   - Enforced by lint rule `avoid_multiple_synchronous_emits`.
+
+```dart
+// BAD: Innocent-sounding helper hides emit; multiple synchronous emits in one path
+void updateCoordinates(Position pos) {
+  emit(stateValue.add(pos)); // ⚠️ Emits intermediate unpruned state!
+  _prune();                  // ⚠️ Helper emits again in the exact same frame!
+}
+
+void _prune() {
+  emit(stateValue.where(...).toIList());
+}
+
+// GOOD: Single atomic jump; helper explicitly declares state emission
+void updateCoordinates(Position pos) {
+  _pruneAndEmit(base: stateValue.add(pos)); // Atomic single frame transition
+}
+
+void _pruneAndEmit({IList? base}) {
+  final list = base ?? stateValue;
+  emit(list.where(...).toIList());
+}
+```
+
 ## Composable Mixins (Overcoming Single Inheritance)
 
 In Dart, classes are restricted to single inheritance (`extends SuperClass`). When an existing class already extends a third-party or Flutter framework base class (for example `ChangeNotifier`, `TextEditingController`, `AnimationController`, or `BaseRepository`), use `CubitSignalMixin` and `BlocSignalMixin` to grant it full `BlocSignalBase` reactive capabilities without occupying its single inheritance slot:

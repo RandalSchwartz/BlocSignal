@@ -100,6 +100,20 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
   }
 }''',
         ),
+        DocsCallout(
+          type: CalloutType.tip,
+          title: 'Decomposing Handlers & Explicit Helper Naming',
+          children: [
+            p([
+              Component.text(
+                'When breaking down complex event handling logic into private helper methods, any helper that calls emit() '
+                'must explicitly indicate state emission in its name (for example _pruneAndEmit() instead of _prune()). '
+                'Additionally, avoid multiple synchronous emit() calls along the same linear execution path to prevent intermediate '
+                'invalid states from leaking to reactive listeners in frame 0.',
+              ),
+            ]),
+          ],
+        ),
       ]),
 
       // 2. Immutable Events & Sealed Hierarchies

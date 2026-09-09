@@ -62,6 +62,16 @@ enum DocSymbol(
   restartable('restartable', 'bloc_signals', 'restartable.html'),
   sequential('sequential', 'bloc_signals', 'sequential.html'),
   concurrent('concurrent', 'bloc_signals', 'concurrent.html'),
+  blocEventTransformer(
+    'BlocEventTransformer',
+    'bloc_signals',
+    'BlocEventTransformer.html',
+  ),
+  eventTransformerExtension(
+    'EventTransformerExtension',
+    'bloc_signals',
+    'EventTransformerExtension.html',
+  ),
 
   // Flutter (bloc_signals_flutter)
   blocSignalProvider(
@@ -197,6 +207,8 @@ enum DocSymbol(
     'bloc_signals_otel',
     'OtelBlocSignalObserver-class.html',
   ),
+  traced('traced', 'bloc_signals_otel', 'traced.html'),
+  tracedBloc('tracedBloc', 'bloc_signals_otel', 'tracedBloc.html'),
 
   // DevTools (bloc_signals_devtools)
   devToolsBlocSignalObserver(

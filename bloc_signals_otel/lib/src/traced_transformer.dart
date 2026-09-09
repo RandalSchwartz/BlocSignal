@@ -84,7 +84,7 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
         (e, em) {
           try {
             final res = handler(e, em);
-            if (res is Future<void>) {
+            if (res is Future) {
               return res.catchError((Object error, StackTrace stackTrace) {
                 span
                   ..recordException(error, stackTrace: stackTrace)

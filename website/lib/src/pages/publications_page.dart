@@ -18,6 +18,16 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title: 'The Modern Pitch for BlocSignal: Why Engineering Leads Are Moving to Reactive Primitives',
+    description: 'A comprehensive guide for tech leads, staff architects, and engineering managers evaluating BlocSignal: cutting through CISC ceremony, unlocking AI agent velocity, eliminating the code-gen tax, and mastering push-pull reactivity.',
+    url: 'https://dev.to/gde/the-modern-pitch-for-blocsignal-why-engineering-leads-are-moving-to-reactive-primitives-5d5h',
+    date: 'Sep 9',
+    readTime: '15 min read',
+    category: 'State Machines',
+    type: 'Article',
+    tags: ["flutter", "dart", "architecture", "programming"],
+  ),
+  PublicationItem(
     title: 'Beyond Black-Box Concurrency: Streamless Event Transformers, Telemetry, and the End of Stream-Whacking',
     description: 'Why event concurrency transformers in Flutter must be streamless higher-order functions, and how generic transformer telemetry solves the black-box dilemma without polluting UI domain state.',
     url: 'https://dev.to/gde/beyond-black-box-concurrency-streamless-event-transformers-telemetry-and-the-end-of-3b08',

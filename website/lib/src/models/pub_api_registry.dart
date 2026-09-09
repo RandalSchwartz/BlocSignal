@@ -30,6 +30,26 @@ enum DocSymbol(
   change('Change', 'bloc_signals', 'Change-class.html'),
   blocSignalOn('on', 'bloc_signals', 'BlocSignal/on.html'),
   blocSignalEmit('emit', 'bloc_signals', 'BlocSignalBase/emit.html'),
+  blocSignalEmitError(
+    'emitError',
+    'bloc_signals',
+    'BlocSignalBase/emitError.html',
+  ),
+  blocSignalEmitTelemetry(
+    'emitTelemetry',
+    'bloc_signals',
+    'BlocSignalBase/emitTelemetry.html',
+  ),
+  blocSignalOnTelemetry(
+    'onTelemetry',
+    'bloc_signals',
+    'BlocSignalObserver/onTelemetry.html',
+  ),
+  blocTelemetryKeys(
+    'BlocTelemetryKeys',
+    'bloc_signals',
+    'BlocTelemetryKeys-class.html',
+  ),
   blocSignalAdd('add', 'bloc_signals', 'BlocSignal/add.html'),
   blocSignalClose('close', 'bloc_signals', 'BlocSignalBase/close.html'),
   blocSignalState('state', 'bloc_signals', 'BlocSignalBase/state.html'),

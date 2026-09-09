@@ -51,8 +51,29 @@ abstract class BlocSignalObserver {
     StackTrace stackTrace,
   ) {}
 
+  /// Called when a container or concurrency transformer emits
+  /// diagnostic or observability telemetry (for example: dropped events,
+  /// task preemption, queue latencies, cache events, or rate-limiting).
+  void onTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {}
+
   /// Called when a [BlocSignalBase] is closed.
   void onClose(BlocSignalBase<dynamic> bloc) {}
+}
+
+/// Internal dispatcher allowing built-in concurrency transformers to emit
+/// operational telemetry on [bloc].
+void emitContainerTelemetry(
+  BlocSignalBase<dynamic> bloc,
+  String name, {
+  Object? event,
+  Map<String, dynamic>? metadata,
+}) {
+  bloc.emitTelemetry(name, event: event, metadata: metadata);
 }
 
 /// A base contract for all reactive state containers.
@@ -80,9 +101,17 @@ abstract class BlocSignalBase<StateType> {
   @protected
   bool equals(StateType previous, StateType current);
 
+  /// Canonical zone key used to track the ambient host [BlocSignalBase]
+  /// instance.
+  static final Object ambientZoneBlocKey = Object();
+
   /// Internal zone key used to track the causing event of a transition.
   @protected
   Object get zoneEventKey;
+
+  /// Internal zone key used to track the host bloc instance.
+  @protected
+  Object get zoneBlocKey => ambientZoneBlocKey;
 
   /// Updates the state synchronously.
   ///
@@ -109,6 +138,49 @@ abstract class BlocSignalBase<StateType> {
   @protected
   @mustCallSuper
   void onError(Object error, StackTrace stackTrace);
+
+  /// Emits an error to this container and the global [BlocSignalObserver].
+  ///
+  /// Forwards directly to [onError].
+  @protected
+  @mustCallSuper
+  void emitError(Object error, [StackTrace? stackTrace]);
+
+  /// Backward-compatible alias for [emitError] to maintain classic BLoC
+  /// protocol parity.
+  @protected
+  @mustCallSuper
+  void addError(Object error, [StackTrace? stackTrace]);
+
+  /// Emits an operational telemetry diagnostic event to this container
+  /// and the global [BlocSignalObserver].
+  ///
+  /// Telemetry events represent non-state operational physics (such as cache
+  /// hits/misses, queue wait times, or dropped events) or business milestones
+  /// (such as checkout initiated) that must not pollute UI domain state.
+  ///
+  /// ```dart
+  /// emitTelemetry(
+  ///   'cache_hit',
+  ///   metadata: {'key': itemId, 'latency_ms': 5},
+  /// );
+  /// ```
+  @protected
+  void emitTelemetry(
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  });
+
+  /// Hook invoked when telemetry is emitted. Subclasses can override to
+  /// enrich or filter telemetry before passing to the global observer.
+  @protected
+  @mustCallSuper
+  void onTelemetry(
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  });
 
   /// Creates a reactive [effect] that is automatically cleaned up when the
   /// state container is closed.

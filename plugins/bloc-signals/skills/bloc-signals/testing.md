@@ -35,6 +35,7 @@ void main() {
 * **Observer Setup Timing**: `blocSignalTest` automatically sets up `BlocSignalObserver.observer` **before** invoking `build()` so `onCreate` lifecycle events are captured cleanly.
 * **Automatic De-duplication**: `BlocSignal` automatically suppresses duplicate state emissions using `==` equality. Re-emitting an identical state will not produce a test emission.
 * **Exceptions & Error Routing**: Use `errors: () => [isA<MyException>()]` to assert operational exceptions captured by `onError`.
+* **Telemetry & Concurrency Assertions**: Use `expectTelemetry: () => [isTelemetry('event_name', metadata: {'key': 'val'})]` to assert operational telemetry emitted via `emitTelemetry` and concurrency transformers (`BlocTelemetryKeys`). Matchers support partial metadata matching.
 
 ---
 

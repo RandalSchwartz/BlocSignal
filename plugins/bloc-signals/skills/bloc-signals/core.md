@@ -13,7 +13,9 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 | --- | --- |
 | `stateValue` | Reads the current `StateType` synchronously. |
 | `state` | Exposes `ReadonlySignal<StateType>` for signals consumers. |
-| `emit(next)` | Updates synchronously unless `next == stateValue`. |
+| `emit(next)` | Updates presentation state synchronously unless `next == stateValue`. |
+| `emitError(error, [stackTrace])` | Emits an operational error to observers and container hooks (`addError` is a backward-compatible alias). |
+| `emitTelemetry(name, {event, metadata})` | Emits an operational telemetry event and optional metadata payload to observers. |
 | `BlocSignal.add(event)` | Routes an event and returns `void`. |
 | `BlocSignalBase(..., options: ...)` | Accepts optional `SignalOptions<StateType>` to configure signal settings (such as debug `name`). Defaults debug name to `'$runtimeType.state'`. |
 | `createEffect(callback, options: ..., onDispose: ...)` | Creates an effect immediately, assigning `options?.name` (defaulting to `'$runtimeType.effect#N'`) and registering its disposer with the base. |
@@ -24,6 +26,14 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 | `future.toBlocSignal(required initialState:)` | Adapts any `Future<T>` into a `FutureBlocSignal<T>` holding raw values with an initial state. |
 | `future.toAsyncBlocSignal()` | Adapts any `Future<T>` into a `SignalBlocSignal<AsyncState<T>>` container backed by a `FutureSignal`. |
 | `stream.toAsyncBlocSignal()` | Adapts any `Stream<T>` into a `SignalBlocSignal<AsyncState<T>>` container backed by a `StreamSignal`. |
+
+### The Diagnostic Triad (`emit`, `emitError`, `emitTelemetry`)
+
+`BlocSignalBase` structures application state, failure modes, and operational observability into three distinct, dedicated diagnostic primitives:
+
+1. **`emit(state)`**: Exclusively models **presentation state** driving UI and computed derivations. Updates propagate synchronously in the same frame.
+2. **`emitError(error, [stackTrace])`**: Models **exceptional operational failures** (for example API timeouts or unhandled parser failures) notifying `onError` on the container and global observers without corrupting presentation state. (Aliased by `addError` for classic BLoC compatibility).
+3. **`emitTelemetry(name, [metadata])`**: Models **operational telemetry and business intent** (for example cache hits/misses, analytics milestones, concurrency events). Telemetry flows to `BlocSignalObserver.onTelemetry` without causing UI widget rebuilds. Built-in concurrency transformers automatically emit standardized keys via `BlocTelemetryKeys` (`eventDropped`, `taskPreempted`, `taskCanceled`, `eventQueued`). Standard telemetry calls short-circuit with zero allocations when no global observer is installed.
 
 The state remains readable after closure. `add` silently drops new events. `emit` has a debug
 assertion and then returns without changing state when assertions are disabled.
@@ -466,7 +476,8 @@ when possible, or check request freshness and `isClosed` after each async gap be
 - `onTransition(BlocSignalBase<dynamic> bloc, event, nextState)` before an event-backed write, or
   with a null event for cubit and direct emits;
 - `onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change)` after the state write;
-- `onError(BlocSignalBase<dynamic> bloc, error, stackTrace)` for reported failures.
+- `onError(BlocSignalBase<dynamic> bloc, error, stackTrace)` for reported failures;
+- `onTelemetry(BlocSignalBase<dynamic> bloc, String name, {Object? event, Map<String, dynamic>? metadata})` for operational telemetry and concurrency diagnostics;
 - `onClose(BlocSignalBase<dynamic> bloc)` after owned effects and the internal model are disposed.
 
 There is no built-in observer chain. Write a composite observer when logging and telemetry must run

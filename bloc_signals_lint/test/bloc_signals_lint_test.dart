@@ -8,7 +8,9 @@ import 'package:bloc_signals_lint/src/rules/avoid_emit_in_build.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_invalid_context_select_generics.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_multiple_synchronous_emits.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_primitive_event_types.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_pseudo_events_in_telemetry.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_top_level_bloc_signal_instances.dart';
@@ -24,14 +26,14 @@ import 'package:test/test.dart';
 
 void main() {
   group('bloc_signals_lint plugin entrypoint', () {
-    test('createPlugin returns PluginBase with 18 core and UI rules', () {
+    test('createPlugin returns PluginBase with 20 core and UI rules', () {
       final plugin = createPlugin();
       expect(plugin, isA<PluginBase>());
 
       /// Ignore internal member usage for testing.
       // ignore: invalid_use_of_internal_member
       final rules = plugin.getLintRules(CustomLintConfigs.empty);
-      expect(rules, hasLength(18));
+      expect(rules, hasLength(20));
       expect(rules, contains(isA<AvoidDuplicateEventHandlers>()));
       expect(rules, contains(isA<RequireSuperOnEvent>()));
       expect(rules, contains(isA<AvoidStreamTransformersOnBlocSignal>()));
@@ -53,6 +55,8 @@ void main() {
       expect(rules, contains(isA<PreferNamedReplayConstructor>()));
       expect(rules, contains(isA<RequireEmitInHelperName>()));
       expect(rules, contains(isA<AvoidMultipleSynchronousEmits>()));
+      expect(rules, contains(isA<AvoidPrimitiveEventTypes>()));
+      expect(rules, contains(isA<AvoidPseudoEventsInTelemetry>()));
     });
   });
 
@@ -189,6 +193,22 @@ void main() {
       expect(
         rule.code.name,
         equals('avoid_multiple_synchronous_emits'),
+      );
+    });
+
+    test('AvoidPrimitiveEventTypes code is properly configured', () {
+      const rule = AvoidPrimitiveEventTypes();
+      expect(
+        rule.code.name,
+        equals('avoid_primitive_event_types'),
+      );
+    });
+
+    test('AvoidPseudoEventsInTelemetry code is properly configured', () {
+      const rule = AvoidPseudoEventsInTelemetry();
+      expect(
+        rule.code.name,
+        equals('avoid_pseudo_events_in_telemetry'),
       );
     });
   });

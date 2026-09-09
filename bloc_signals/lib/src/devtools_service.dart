@@ -121,6 +121,27 @@ class DevToolsService {
     );
   }
 
+  /// Tracks container telemetry.
+  void trackTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {
+    _record(
+      bloc.hashCode,
+      DevToolsHistoryEntry(
+        type: 'telemetry',
+        timestamp: DateTime.now().toIso8601String(),
+        data: {
+          'name': name,
+          'event': event?.toString(),
+          'metadata': metadata,
+        },
+      ),
+    );
+  }
+
   /// Tracks container closure.
   void trackClose(BlocSignalBase<dynamic> bloc) {
     _containers.remove(bloc.hashCode);

@@ -63,6 +63,10 @@ void main() {
       expect(names, contains('ReplayBloc'));
       expect(names, contains('on'));
       expect(names, contains('emit'));
+      expect(names, contains('emitError'));
+      expect(names, contains('emitTelemetry'));
+      expect(names, contains('onTelemetry'));
+      expect(names, contains('BlocTelemetryKeys'));
       expect(names, contains('read'));
       expect(names, contains('watch'));
       expect(names, contains('select'));

@@ -57,7 +57,7 @@ class AvoidPrimitiveEventTypes extends DartLintRule {
     final extendsClause = node.extendsClause;
     if (extendsClause != null) {
       final superclass = extendsClause.superclass;
-      final superclassName = superclass.name2.lexeme;
+      final superclassName = superclass.toSource().split('<').first.trim();
       final staticType = superclass.type;
       final isBlocSuperclass = _isBlocClassName(superclassName) ||
           (staticType != null &&
@@ -82,7 +82,7 @@ class AvoidPrimitiveEventTypes extends DartLintRule {
     final withClause = node.withClause;
     if (withClause != null) {
       for (final mixinType in withClause.mixinTypes) {
-        final mixinName = mixinType.name2.lexeme;
+        final mixinName = mixinType.toSource().split('<').first.trim();
         final staticType = mixinType.type;
         final isBlocMixin = _isBlocClassName(mixinName) ||
             (staticType != null &&

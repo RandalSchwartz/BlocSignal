@@ -111,7 +111,7 @@ abstract class BlocSignalBase<StateType> {
 
   /// Internal zone key used to track the host bloc instance.
   @protected
-  Object get zoneBlocKey => ambientZoneBlocKey;
+  Object get zoneBlocKey;
 
   /// Updates the state synchronously.
   ///

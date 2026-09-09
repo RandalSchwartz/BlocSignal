@@ -76,3 +76,25 @@ Use an in-memory exporter and assert:
 
 Reset `BlocSignalObserver.observer` and shut down the tracer provider after each test.
 Await each bloc's `close()` future during cleanup.
+
+## Traced transformer decorators (`traced` & `tracedBloc`)
+
+`bloc_signals_otel` provides composable transformer decorators that instrument event handling with dedicated OpenTelemetry spans:
+
+```dart
+import 'package:bloc_signals/bloc_signals.dart';
+import 'package:bloc_signals_otel/bloc_signals_otel.dart';
+
+class OrderBloc extends BlocSignal<OrderEvent, OrderState> {
+  OrderBloc() : super(initialState: OrderInitial()) {
+    on<SubmitOrder>(
+      _onSubmitOrder,
+      // Automatically tags spans with bloc.type and records errors:
+      blocTransformer: traced(droppable()),
+    );
+  }
+}
+```
+
+- **`traced(transformer, {tracer, spanName})`**: Wraps a standard 3-parameter `EventTransformer` in a `BlocEventTransformer` that automatically creates an OpenTelemetry span tagged with `bloc.type` and `event.type`. Unhandled exceptions are recorded on the span before rethrowing.
+- **`tracedBloc(transformer, {tracer, spanName})`**: Decorates an existing contextual 4-parameter `BlocEventTransformer` with the same OpenTelemetry span instrumentation.

@@ -329,6 +329,32 @@ EventTransformer<E, S> filterEvents<E, S>(bool Function(E) predicate) {
 }
 ```
 
+#### Contextual Event Transformers (`BlocEventTransformer`)
+
+Contextual transformers receive the host `bloc` instance as their first parameter:
+```dart
+typedef BlocEventTransformer<E, StateType> = FutureOr<void> Function(
+  BlocSignalMixin<dynamic, StateType> bloc,
+  E event,
+  EventHandler<E, StateType> handler,
+  void Function(StateType state) emit,
+);
+```
+
+Register contextual transformers directly on `on<E>` using `blocTransformer:`:
+```dart
+on<SearchQueryChanged>(
+  _onSearchQueryChanged,
+  blocTransformer: debounceWithTelemetry(const Duration(milliseconds: 300)),
+);
+```
+
+Only one of `transformer:` or `blocTransformer:` may be provided to `on<E>`.
+
+- **`toBlocTransformer()`**: Extension method on `EventTransformer` that lifts any standard 3-parameter transformer into a 4-parameter `BlocEventTransformer` that ignores the host bloc argument.
+- **`withBloc(transformer)`**: Instance method on `BlocSignalMixin` that binds `this` as the first argument of a `BlocEventTransformer`, returning a standard 3-parameter `EventTransformer`.
+
+
 
 Override `onEvent` with an exhaustive switch when a sealed event hierarchy needs compile-time
 coverage:

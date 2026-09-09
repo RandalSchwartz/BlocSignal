@@ -20,6 +20,10 @@ class const DocsEventTransformersPage({super.key}) extends StatelessComponent {
       title: 'Custom Transformer Recipes',
       anchor: 'custom-transformers',
     ),
+    TocHeading(
+      title: 'Contextual Transformers (withBloc & traced)',
+      anchor: 'contextual-transformers',
+    ),
   ];
 
   @override
@@ -307,6 +311,169 @@ EventTransformer<E, S> circuitBreaker<E, S>({
 
 // Usage in Bloc constructor:
 // on<FetchPaymentGateway>(..., transformer: circuitBreaker(failureThreshold: 3));
+''',
+        ),
+      ]),
+
+      // 6. Contextual Transformers (withBloc & traced)
+      section(id: 'contextual-transformers', classes: 'docs-section', [
+        h2([Component.text('Contextual Transformers (withBloc & traced)')]),
+        p([
+          Component.text(
+            'While standard transformers operate purely on incoming events and handlers, contextual transformers accept the host ',
+          ),
+          code([Component.text('bloc')]),
+          Component.text(' container as their first argument via '),
+          apiLink(DocSymbol.blocEventTransformer),
+          Component.text('. This unlocks typed access to current state ('),
+          code([Component.text('bloc.stateValue')]),
+          Component.text(
+            '), operational telemetry, and distributed tracing without awkward closure capturing.',
+          ),
+        ]),
+        const DocsCodeBlock(
+          filename: 'contextual_debounce_telemetry.dart',
+          dart313Code: '''
+import 'dart:async';
+import 'package:bloc_signals/bloc_signals.dart';
+
+// Contextual transformer with direct access to the host bloc:
+BlocEventTransformer<E, S> debounceWithTelemetry<E, S>(Duration duration) {
+  Timer? timer;
+  return (bloc, event, handler, emit) {
+    if (timer?.isActive ?? false) {
+      emitContainerTelemetry(
+        bloc,
+        BlocTelemetryKeys.eventDropped,
+        event: event,
+        metadata: const {'reason': 'coalesced'},
+      );
+    }
+    timer?.cancel();
+    timer = Timer(duration, () async {
+      await handler(event, emit);
+    });
+  };
+}
+
+class SearchBloc extends BlocSignal<SearchEvent, SearchState> {
+  SearchBloc() : super(initialState: SearchInitial()) {
+    // 1. Direct registration via blocTransformer:
+    on<SearchQueryChanged>(
+      _onSearchQueryChanged,
+      blocTransformer: debounceWithTelemetry(const Duration(milliseconds: 300)),
+    );
+
+    // 2. Adapting a standard transformer using .toBlocTransformer():
+    on<QuickFilterApplied>(
+      _onFilter,
+      blocTransformer: droppable<QuickFilterApplied, SearchState>().toBlocTransformer(),
+    );
+
+    // 3. Adapting a contextual transformer to standard transformer using withBloc:
+    on<RefreshRequested>(
+      _onRefresh,
+      transformer: withBloc(debounceWithTelemetry(const Duration(seconds: 1))),
+    );
+  }
+
+  void _onSearchQueryChanged(SearchQueryChanged event, void Function(SearchState) emit) {}
+  void _onFilter(QuickFilterApplied event, void Function(SearchState) emit) {}
+  void _onRefresh(RefreshRequested event, void Function(SearchState) emit) {}
+}
+''',
+          dart35Code: '''
+import 'dart:async';
+import 'package:bloc_signals/bloc_signals.dart';
+
+// Contextual transformer with direct access to the host bloc:
+BlocEventTransformer<E, S> debounceWithTelemetry<E, S>(Duration duration) {
+  Timer? timer;
+  return (bloc, event, handler, emit) {
+    if (timer?.isActive ?? false) {
+      emitContainerTelemetry(
+        bloc,
+        BlocTelemetryKeys.eventDropped,
+        event: event,
+        metadata: const {'reason': 'coalesced'},
+      );
+    }
+    timer?.cancel();
+    timer = Timer(duration, () async {
+      await handler(event, emit);
+    });
+  };
+}
+
+class SearchBloc extends BlocSignal<SearchEvent, SearchState> {
+  SearchBloc() : super(initialState: SearchInitial()) {
+    // 1. Direct registration via blocTransformer:
+    on<SearchQueryChanged>(
+      _onSearchQueryChanged,
+      blocTransformer: debounceWithTelemetry(const Duration(milliseconds: 300)),
+    );
+
+    // 2. Adapting a standard transformer using .toBlocTransformer():
+    on<QuickFilterApplied>(
+      _onFilter,
+      blocTransformer: droppable<QuickFilterApplied, SearchState>().toBlocTransformer(),
+    );
+
+    // 3. Adapting a contextual transformer to standard transformer using withBloc:
+    on<RefreshRequested>(
+      _onRefresh,
+      transformer: withBloc(debounceWithTelemetry(const Duration(seconds: 1))),
+    );
+  }
+
+  void _onSearchQueryChanged(SearchQueryChanged event, void Function(SearchState) emit) {}
+  void _onFilter(QuickFilterApplied event, void Function(SearchState) emit) {}
+  void _onRefresh(RefreshRequested event, void Function(SearchState) emit) {}
+}
+''',
+        ),
+        p([
+          Component.text('With the '),
+          code([Component.text('bloc_signals_otel')]),
+          Component.text(' package, wrap any transformer with '),
+          apiLink(DocSymbol.traced),
+          Component.text(
+            ' to automatically instrument OpenTelemetry trace spans with bloc and event metadata:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          filename: 'traced_transformer_example.dart',
+          dart313Code: '''
+import 'package:bloc_signals/bloc_signals.dart';
+import 'package:bloc_signals_otel/bloc_signals_otel.dart';
+
+class OrderBloc extends BlocSignal<OrderEvent, OrderState> {
+  OrderBloc() : super(initialState: OrderInitial()) {
+    on<SubmitOrder>(
+      _onSubmitOrder,
+      // Automatically tags spans with bloc.type and records errors:
+      blocTransformer: traced(droppable()),
+    );
+  }
+
+  void _onSubmitOrder(SubmitOrder event, void Function(OrderState) emit) {}
+}
+''',
+          dart35Code: '''
+import 'package:bloc_signals/bloc_signals.dart';
+import 'package:bloc_signals_otel/bloc_signals_otel.dart';
+
+class OrderBloc extends BlocSignal<OrderEvent, OrderState> {
+  OrderBloc() : super(initialState: OrderInitial()) {
+    on<SubmitOrder>(
+      _onSubmitOrder,
+      // Automatically tags spans with bloc.type and records errors:
+      blocTransformer: traced(droppable()),
+    );
+  }
+
+  void _onSubmitOrder(SubmitOrder event, void Function(OrderState) emit) {}
+}
 ''',
         ),
       ]),

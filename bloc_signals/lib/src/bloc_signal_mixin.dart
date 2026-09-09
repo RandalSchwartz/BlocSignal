@@ -101,8 +101,15 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
   /// Registers an event handler for events of type [E].
   ///
   /// By default, handlers are invoked immediately when an event of type [E]
-  /// is added. If [transformer] is provided, it intercepts each incoming event
-  /// to control concurrency (such as dropping, queuing, or debouncing).
+  /// is added. If [transformer] or [blocTransformer] is provided, it intercepts
+  /// each incoming event to control concurrency (such as dropping, queuing,
+  /// debouncing, or tracing).
+  ///
+  /// Provide [blocTransformer] when the concurrency transformer requires access
+  /// to the host bloc container (for example to read [stateValue] or emit
+  /// operational telemetry via [emitTelemetry]).
+  ///
+  /// Only one of [transformer] or [blocTransformer] may be provided.
   ///
   /// ```dart
   /// class CounterBloc extends BlocSignal<CounterEvent, int> {
@@ -110,13 +117,22 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
   ///     // Basic handler:
   ///     on<Increment>((event, emit) => emit(stateValue + 1));
   ///
-  ///     // Handler with concurrency transformer:
+  ///     // Handler with standard concurrency transformer:
   ///     on<IncrementAsync>(
   ///       (event, emit) async {
   ///         await Future<void>.delayed(const Duration(milliseconds: 100));
   ///         emit(stateValue + 1);
   ///       },
   ///       transformer: restartable(),
+  ///     );
+  ///
+  ///     // Handler with contextual host-aware transformer:
+  ///     on<IncrementDebounced>(
+  ///       (event, emit) => emit(stateValue + 1),
+  ///       blocTransformer: (bloc, event, handler, emit) {
+  ///         bloc.emitTelemetry('debounced_event');
+  ///         return handler(event, emit);
+  ///       },
   ///     );
   ///   }
   /// }
@@ -128,7 +144,12 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
       void Function(StateType state) emit,
     ) handler, {
     EventTransformer<E, StateType>? transformer,
+    BlocEventTransformer<E, StateType>? blocTransformer,
   }) {
+    assert(
+      transformer == null || blocTransformer == null,
+      'Cannot provide both transformer and blocTransformer to on<$E>',
+    );
     if (_handlers.any((h) => h.type == E)) {
       throw StateError(
         'on<$E> was called multiple times. '
@@ -140,6 +161,14 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
         type: E,
         isType: (dynamic e) => e is E,
         handler: (dynamic event, void Function(StateType state) emit) {
+          if (blocTransformer != null) {
+            return blocTransformer(
+              this,
+              event as E,
+              (e, em) => handler(e, em),
+              emit,
+            );
+          }
           if (transformer != null) {
             return transformer(
               event as E,
@@ -152,6 +181,24 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
       ),
     );
   }
+
+  /// Binds this bloc instance to a contextual [BlocEventTransformer], adapting
+  /// it into a standard [EventTransformer].
+  ///
+  /// This allows contextual transformers to be passed to [transformer] or
+  /// composed with other [EventTransformer] utilities without manually
+  /// forwarding `this`.
+  ///
+  /// ```dart
+  /// on<SearchQueryChanged>(
+  ///   _onSearchQueryChanged,
+  ///   transformer: withBloc(myBlocTransformer),
+  /// );
+  /// ```
+  EventTransformer<E, StateType> withBloc<E extends Event>(
+    BlocEventTransformer<E, StateType> transformer,
+  ) =>
+      (event, handler, emit) => transformer(this, event, handler, emit);
 
   /// Handles incoming events and delegates them to registered handlers.
   ///

@@ -80,6 +80,74 @@ typedef EventTransformer<E, StateType> = FutureOr<void> Function(
   void Function(StateType state) emit,
 );
 
+/// A transformer function signature for controlling concurrency and execution
+/// flow with access to the host [bloc] instance.
+///
+/// In `BlocSignal`, contextual event transformers receive the host [bloc]
+/// instance as their first argument, allowing access to
+/// [BlocSignalBase.stateValue], operational telemetry
+/// ([BlocSignalBase.emitTelemetry]), and container metadata without manual
+/// closure captures or instance plumbing.
+///
+/// ### Example
+/// ```dart
+/// BlocEventTransformer<E, S> droppableWithTelemetry<E, S>() {
+///   var isProcessing = false;
+///   return (bloc, event, handler, emit) async {
+///     if (isProcessing) {
+///       bloc.emitTelemetry(
+///         BlocTelemetryKeys.eventDropped,
+///         event: event,
+///         metadata: const {'reason': 'in_flight'},
+///       );
+///       return;
+///     }
+///     isProcessing = true;
+///     try {
+///       final result = handler(event, emit);
+///       if (result is Future) {
+///         await result;
+///       }
+///     } finally {
+///       isProcessing = false;
+///     }
+///   };
+/// }
+/// ```
+///
+/// See also:
+/// - [EventTransformer], the standard 3-parameter transformer signature.
+/// - [EventTransformerExtension.toBlocTransformer], which lifts an
+///   [EventTransformer] into a [BlocEventTransformer].
+/// - [BlocSignalMixin.withBloc], which adapts a [BlocEventTransformer] to a
+///   standard [EventTransformer].
+typedef BlocEventTransformer<E, StateType> = FutureOr<void> Function(
+  BlocSignalMixin<dynamic, StateType> bloc,
+  E event,
+  EventHandler<E, StateType> handler,
+  void Function(StateType state) emit,
+);
+
+/// Extension methods for converting between transformer representations.
+extension EventTransformerExtension<E, StateType>
+    on EventTransformer<E, StateType> {
+  /// Lifts this 3-parameter [EventTransformer] into a contextual 4-parameter
+  /// [BlocEventTransformer] that ignores the host bloc argument.
+  ///
+  /// This allows standard transformers (such as [droppable] or [sequential])
+  /// to be passed directly to APIs expecting a [BlocEventTransformer].
+  ///
+  /// ```dart
+  /// on<SearchQueryChanged>(
+  ///   _onSearchQueryChanged,
+  ///   blocTransformer: droppable<SearchQueryChanged, SearchState>()
+  ///       .toBlocTransformer(),
+  /// );
+  /// ```
+  BlocEventTransformer<E, StateType> toBlocTransformer() =>
+      (bloc, event, handler, emit) => this(event, handler, emit);
+}
+
 /// Returns an [EventTransformer] that drops incoming events if a handler for
 /// that event type is currently executing.
 ///
@@ -105,7 +173,7 @@ EventTransformer<E, StateType> droppable<E, StateType>({
   BlocSignalBase<dynamic>? bloc,
 }) {
   var isProcessing = false;
-  return (event, handler, emit) async {
+  return (event, handler, emit) {
     if (isProcessing) {
       if (BlocSignalObserver.observer != null) {
         final host = bloc ??
@@ -120,16 +188,20 @@ EventTransformer<E, StateType> droppable<E, StateType>({
           );
         }
       }
-      return;
+      return null;
     }
     isProcessing = true;
     try {
       final result = handler(event, emit);
       if (result is Future) {
-        await result;
+        return result.whenComplete(() {
+          isProcessing = false;
+        });
       }
-    } finally {
       isProcessing = false;
+    } catch (_) {
+      isProcessing = false;
+      rethrow;
     }
   };
 }
@@ -227,7 +299,7 @@ EventTransformer<E, StateType> restartable<E, StateType>({
   var executionToken = 0;
   var inFlight = 0;
   E? lastInFlightEvent;
-  return (event, handler, emit) async {
+  return (event, handler, emit) {
     if (inFlight > 0 && BlocSignalObserver.observer != null) {
       final host = bloc ??
           (Zone.current[BlocSignalBase.ambientZoneBlocKey]
@@ -244,6 +316,14 @@ EventTransformer<E, StateType> restartable<E, StateType>({
     lastInFlightEvent = event;
     final currentToken = ++executionToken;
     inFlight++;
+
+    void onComplete() {
+      inFlight--;
+      if (inFlight == 0) {
+        lastInFlightEvent = null;
+      }
+    }
+
     try {
       final result = handler(
         event,
@@ -254,13 +334,12 @@ EventTransformer<E, StateType> restartable<E, StateType>({
         },
       );
       if (result is Future) {
-        await result;
+        return result.whenComplete(onComplete);
       }
-    } finally {
-      inFlight--;
-      if (inFlight == 0) {
-        lastInFlightEvent = null;
-      }
+      onComplete();
+    } catch (_) {
+      onComplete();
+      rethrow;
     }
   };
 }

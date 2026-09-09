@@ -1,3 +1,11 @@
+## 1.3.0
+
+- Introduce `BlocEventTransformer<E, StateType>` signature passing host `bloc` as first parameter `(bloc, event, handler, emit)` for typed access to `stateValue`, telemetry, and container context.
+- Add optional `blocTransformer:` parameter to `BlocSignalMixin.on<E>()` with mutual exclusivity assertion against `transformer:`.
+- Add `withBloc()` instance adapter method on `BlocSignalMixin` to adapt a `BlocEventTransformer` into a standard `EventTransformer`.
+- Add `EventTransformerExtension.toBlocTransformer()` extension method on `EventTransformer<E, StateType>` to adapt 3-parameter transformers into 4-parameter contextual transformers.
+- Refactor `droppable` and `restartable` to preserve synchronous fast-paths for synchronous handlers, avoiding microtask queue delays and ensuring immediate same-frame execution.
+
 ## 1.2.0
 
 - Add `CubitSignalMixin<StateType>` and `BlocSignalMixin<Event, StateType>` to overcome Dart's single inheritance limitation and allow arbitrary classes (`ChangeNotifier`, `TextEditingController`, `AnimationController`, `BaseRepository`, custom models) to become first-class `BlocSignalBase` containers.

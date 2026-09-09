@@ -80,7 +80,10 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
           if (e is Error) rethrow;
         }
       },
-      zoneValues: {zoneEventKey: event},
+      zoneValues: {
+        zoneEventKey: event,
+        zoneBlocKey: this,
+      },
     );
   }
 

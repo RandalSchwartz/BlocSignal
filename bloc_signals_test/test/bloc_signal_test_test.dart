@@ -220,5 +220,99 @@ void main() {
         expect(tracker.closed, hasLength(1));
       });
     });
+
+    group('expectTelemetry verification', () {
+      blocSignalTest<_TelemetryTestCubit, int>(
+        'verifies emitted telemetry matching isTelemetry',
+        build: _TelemetryTestCubit.new,
+        act: (cubit) => cubit.incrementWithTelemetry(),
+        expect: () => [1],
+        expectTelemetry: () => [
+          isTelemetry(
+            'counter_incremented',
+            metadata: {'current': 0},
+          ),
+        ],
+      );
+
+      test('isTelemetry matches name, event, and metadata subset', () {
+        const entry = BlocTelemetryEntry(
+          name: 'event_dropped',
+          event: 'query_text',
+          metadata: {'reason': 'in_flight', 'extra': 123},
+        );
+
+        expect(entry.toString(), contains('name: event_dropped'));
+        expect(isTelemetry('event_dropped').matches(entry, {}), isTrue);
+        expect(
+          isTelemetry('event_dropped', event: 'query_text').matches(entry, {}),
+          isTrue,
+        );
+        expect(
+          isTelemetry('event_dropped', metadata: {'reason': 'in_flight'})
+              .matches(entry, {}),
+          isTrue,
+        );
+        expect(
+          isTelemetry('other_name').matches(entry, {}),
+          isFalse,
+        );
+        expect(
+          isTelemetry('event_dropped', event: 'other').matches(entry, {}),
+          isFalse,
+        );
+        expect(
+          isTelemetry('event_dropped', metadata: {'reason': 'other'})
+              .matches(entry, {}),
+          isFalse,
+        );
+        expect(
+          isTelemetry('event_dropped', metadata: {'missing': 'val'})
+              .matches(entry, {}),
+          isFalse,
+        );
+        expect(
+          isTelemetry('event_dropped').matches('not an entry', {}),
+          isFalse,
+        );
+
+        const nullMetaEntry = BlocTelemetryEntry(name: 'event_dropped');
+        expect(
+          isTelemetry('event_dropped', metadata: {'reason': 'in_flight'})
+              .matches(nullMetaEntry, {}),
+          isFalse,
+        );
+
+        final description = StringDescription();
+        isTelemetry(
+          'event_dropped',
+          event: 'query',
+          metadata: {'k': 'v'},
+        ).describe(description);
+        expect(description.toString(), contains('event_dropped'));
+      });
+      blocSignalTest<_ConstructorTelemetryCubit, int>(
+        'captures telemetry emitted during build construction',
+        build: _ConstructorTelemetryCubit.new,
+        expectTelemetry: () => [
+          isTelemetry('cubit_initialized', metadata: {'initial': 42}),
+        ],
+      );
+    });
   });
+}
+
+class _TelemetryTestCubit extends CubitSignal<int> {
+  _TelemetryTestCubit() : super(initialState: 0);
+
+  void incrementWithTelemetry() {
+    emitTelemetry('counter_incremented', metadata: {'current': stateValue});
+    emit(stateValue + 1);
+  }
+}
+
+class _ConstructorTelemetryCubit extends CubitSignal<int> {
+  _ConstructorTelemetryCubit() : super(initialState: 42) {
+    emitTelemetry('cubit_initialized', metadata: {'initial': 42});
+  }
 }

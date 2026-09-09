@@ -49,6 +49,10 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   @protected
   Object get zoneEventKey => _zoneEventKey;
 
+  @override
+  @protected
+  Object get zoneBlocKey => BlocSignalBase.ambientZoneBlocKey;
+
   /// Initializes the state signal and lifecycle hooks for this container.
   ///
   /// Must be called in the constructor of the class that mixes in
@@ -192,6 +196,50 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
     final currentObserver = BlocSignalObserver.observer;
     if (currentObserver != null) {
       currentObserver.onError(this, error, stackTrace);
+    }
+  }
+
+  @override
+  @protected
+  @mustCallSuper
+  void emitError(Object error, [StackTrace? stackTrace]) {
+    onError(error, stackTrace ?? StackTrace.current);
+  }
+
+  @override
+  @protected
+  @mustCallSuper
+  void addError(Object error, [StackTrace? stackTrace]) =>
+      emitError(error, stackTrace);
+
+  @override
+  @protected
+  void emitTelemetry(
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {
+    if (BlocSignalObserver.observer == null) return;
+    onTelemetry(name, event: event, metadata: metadata);
+  }
+
+  @override
+  @protected
+  @mustCallSuper
+  void onTelemetry(
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {
+    try {
+      BlocSignalObserver.observer?.onTelemetry(
+        this,
+        name,
+        event: event,
+        metadata: metadata,
+      );
+    } on Object catch (e, stackTrace) {
+      onError(e, stackTrace);
     }
   }
 

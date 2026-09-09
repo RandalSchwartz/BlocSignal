@@ -1,3 +1,6 @@
+// Cascade invocations are ignored to keep test setup clean and readable.
+// ignore_for_file: cascade_invocations
+
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:test/test.dart';
 
@@ -64,9 +67,46 @@ class RecordingObserver extends BlocSignalObserver {
   }
 
   @override
+  void onTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {
+    super.onTelemetry(bloc, name, event: event, metadata: metadata);
+    calls.add('onTelemetry');
+  }
+
+  @override
   void onClose(BlocSignalBase<dynamic> bloc) {
     super.onClose(bloc);
     calls.add('onClose');
+  }
+}
+
+class _TelemetryCubit extends CubitSignal<int> {
+  _TelemetryCubit() : super(initialState: 0);
+
+  void sendTelemetry() {
+    emitTelemetry(
+      'cache_hit',
+      metadata: {
+        'count': 1,
+        'nested': {'k': 'v'},
+        'list': [1, 2],
+        'flag': true,
+      },
+    );
+  }
+
+  void sendTelemetryWithEvent(Object event) {
+    emitTelemetry(
+      'event_processed',
+      event: event,
+      metadata: {
+        'date': DateTime(2026, 2, 3),
+      },
+    );
   }
 }
 
@@ -124,6 +164,22 @@ void main() {
       await bloc.close();
 
       expect(recordingObserver.calls, contains('onClose'));
+    });
+
+    test('captures onTelemetry and forwards to previousObserver', () async {
+      final cubit = _TelemetryCubit();
+      cubit.sendTelemetry();
+
+      expect(recordingObserver.calls, contains('onTelemetry'));
+      await cubit.close();
+    });
+
+    test('captures onTelemetry with event and custom metadata types', () async {
+      final cubit = _TelemetryCubit();
+      cubit.sendTelemetryWithEvent(IncrementEvent());
+
+      expect(recordingObserver.calls, contains('onTelemetry'));
+      await cubit.close();
     });
   });
 }

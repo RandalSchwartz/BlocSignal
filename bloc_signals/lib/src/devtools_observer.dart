@@ -128,4 +128,50 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
       'timestamp': DateTime.now().microsecondsSinceEpoch,
     });
   }
+
+  @override
+  void onTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {
+    super.onTelemetry(bloc, name, event: event, metadata: metadata);
+    final sanitizedMeta = metadata != null ? _sanitizeMetadata(metadata) : null;
+    DevToolsService.instance.trackTelemetry(
+      bloc,
+      name,
+      event: event,
+      metadata: sanitizedMeta,
+    );
+    previousObserver?.onTelemetry(bloc, name, event: event, metadata: metadata);
+
+    _post('bloc_signal.onTelemetry', {
+      'blocType': bloc.runtimeType.toString(),
+      'hashCode': bloc.hashCode,
+      'name': name,
+      'event': event?.toString(),
+      'metadata': sanitizedMeta,
+      'timestamp': DateTime.now().microsecondsSinceEpoch,
+    });
+  }
+
+  static Map<String, dynamic> _sanitizeMetadata(Map<String, dynamic> metadata) {
+    final sanitized = <String, dynamic>{};
+    for (final entry in metadata.entries) {
+      final value = entry.value;
+      if (value == null || value is num || value is bool || value is String) {
+        sanitized[entry.key] = value;
+      } else if (value is Map) {
+        sanitized[entry.key] = value.map(
+          (k, v) => MapEntry(k.toString(), v?.toString()),
+        );
+      } else if (value is Iterable) {
+        sanitized[entry.key] = value.map((e) => e?.toString()).toList();
+      } else {
+        sanitized[entry.key] = value.toString();
+      }
+    }
+    return sanitized;
+  }
 }

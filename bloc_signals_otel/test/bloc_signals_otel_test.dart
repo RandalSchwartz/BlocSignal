@@ -1,3 +1,6 @@
+// Cascade invocations are ignored to keep test assertions clean and readable.
+// ignore_for_file: cascade_invocations
+
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_otel/bloc_signals_otel.dart';
 import 'package:opentelemetry/api.dart' as otel;
@@ -168,6 +171,92 @@ void main() {
       expect(span.name, equals('TestCubit.error'));
       expect(span.status.code, equals(otel.StatusCode.error));
       expect(span.status.description, contains('Cubit async error'));
+    });
+
+    test(
+        'instruments onTelemetry on active span with span event and contention '
+        'and ends span on eventDropped', () async {
+      final bloc = TestBloc();
+      final event = Increment();
+      observer.onEvent(bloc, event);
+
+      observer.onTelemetry(
+        bloc,
+        BlocTelemetryKeys.eventDropped,
+        event: event,
+        metadata: const {
+          'reason': 'in_flight',
+          'ratio': 0.75,
+          'tags': ['ui', 'gesture'],
+        },
+      );
+
+      // Dropped event should end immediately without onTransition!
+      expect(exporter.exportedSpans, hasLength(1));
+      final span = exporter.exportedSpans.first;
+      expect(span.name, equals('TestBloc.add(Increment)'));
+      expect(span.attributes.get('bloc.contention'), equals(true));
+      expect(span.events, hasLength(1));
+      final spanEvent = span.events.first;
+      expect(spanEvent.name, equals(BlocTelemetryKeys.eventDropped));
+      expect(
+        spanEvent.attributes.firstWhere((a) => a.key == 'reason').value,
+        equals('in_flight'),
+      );
+      expect(
+        spanEvent.attributes.firstWhere((a) => a.key == 'ratio').value,
+        equals(0.75),
+      );
+      await bloc.close();
+    });
+
+    test('instruments onTelemetry on active span and ends on taskPreempted',
+        () async {
+      final bloc = TestBloc();
+      final event = Increment();
+      observer.onEvent(bloc, event);
+
+      observer.onTelemetry(
+        bloc,
+        BlocTelemetryKeys.taskPreempted,
+        event: event,
+        metadata: const {
+          'reason': 'superseded',
+          'queue': [1, 2],
+          'rates': [1.5, 2.5],
+          'flags': [true, false],
+        },
+      );
+
+      // Preempted event should end immediately without onTransition!
+      expect(exporter.exportedSpans, hasLength(1));
+      final span = exporter.exportedSpans.first;
+      expect(span.name, equals('TestBloc.add(Increment)'));
+      expect(span.attributes.get('bloc.contention'), equals(true));
+      await bloc.close();
+    });
+
+    test('instruments onTelemetry outside active span to discrete span',
+        () async {
+      final cubit = TestCubit();
+      observer.onTelemetry(
+        cubit,
+        'cache_hit',
+        metadata: const {
+          'key': 'item_42',
+          'latency_ms': 5,
+          'cached': true,
+        },
+      );
+      await cubit.close();
+
+      expect(exporter.exportedSpans, hasLength(1));
+      final span = exporter.exportedSpans.first;
+      expect(span.name, equals('TestCubit.telemetry.cache_hit'));
+      expect(span.attributes.get('bloc.type'), equals('TestCubit'));
+      expect(span.attributes.get('key'), equals('item_42'));
+      expect(span.attributes.get('latency_ms'), equals(5));
+      expect(span.attributes.get('cached'), equals(true));
     });
   });
 }

@@ -5,7 +5,9 @@ import 'package:bloc_signals_lint/src/rules/avoid_emit_in_build.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_invalid_context_select_generics.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_multiple_synchronous_emits.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_primitive_event_types.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_pseudo_events_in_telemetry.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_top_level_bloc_signal_instances.dart';
@@ -42,5 +44,7 @@ class _BlocSignalsLinter extends PluginBase {
         const PreferNamedReplayConstructor(),
         const RequireEmitInHelperName(),
         const AvoidMultipleSynchronousEmits(),
+        const AvoidPrimitiveEventTypes(),
+        const AvoidPseudoEventsInTelemetry(),
       ];
 }

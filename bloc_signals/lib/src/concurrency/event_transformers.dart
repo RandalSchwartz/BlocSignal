@@ -1,6 +1,18 @@
 import 'dart:async';
 
+import 'package:bloc_signals/src/bloc_signals_base.dart';
+import 'package:bloc_signals/src/bloc_telemetry_keys.dart';
 import 'package:bloc_signals/src/concurrency/mutex.dart';
+
+const _droppableDroppedMetadata = <String, dynamic>{
+  'transformer': 'droppable',
+  'reason': 'in_flight',
+};
+
+const _restartablePreemptedMetadata = <String, dynamic>{
+  'transformer': 'restartable',
+  'reason': 'superseded',
+};
 
 /// A function handler signature for processing event [E] and emitting state
 /// updates.
@@ -89,10 +101,27 @@ typedef EventTransformer<E, StateType> = FutureOr<void> Function(
 ///   }
 /// }
 /// ```
-EventTransformer<E, StateType> droppable<E, StateType>() {
+EventTransformer<E, StateType> droppable<E, StateType>({
+  BlocSignalBase<dynamic>? bloc,
+}) {
   var isProcessing = false;
   return (event, handler, emit) async {
-    if (isProcessing) return;
+    if (isProcessing) {
+      if (BlocSignalObserver.observer != null) {
+        final host = bloc ??
+            (Zone.current[BlocSignalBase.ambientZoneBlocKey]
+                as BlocSignalBase<dynamic>?);
+        if (host != null) {
+          emitContainerTelemetry(
+            host,
+            BlocTelemetryKeys.eventDropped,
+            event: event,
+            metadata: _droppableDroppedMetadata,
+          );
+        }
+      }
+      return;
+    }
     isProcessing = true;
     try {
       final result = handler(event, emit);
@@ -111,6 +140,10 @@ EventTransformer<E, StateType> droppable<E, StateType>() {
 /// Even if multiple events of type [E] arrive concurrently, each handler
 /// execution runs to completion before the next queued event begins.
 ///
+/// Optionally accepts an explicit host [bloc] reference to emit operational
+/// telemetry ([BlocTelemetryKeys.eventQueued]) and record queue wait latencies.
+/// If omitted, ambient zone resolution is used.
+///
 /// ### Example
 /// ```dart
 /// class CounterBloc extends BlocSignal<CounterEvent, int> {
@@ -125,10 +158,34 @@ EventTransformer<E, StateType> droppable<E, StateType>() {
 ///   }
 /// }
 /// ```
-EventTransformer<E, StateType> sequential<E, StateType>() {
+EventTransformer<E, StateType> sequential<E, StateType>({
+  BlocSignalBase<dynamic>? bloc,
+}) {
   final mutex = Mutex();
   return (event, handler, emit) {
+    final isQueued = mutex.isLocked;
+    final stopwatch = isQueued && BlocSignalObserver.observer != null
+        ? (Stopwatch()..start())
+        : null;
+
     return mutex.protect(() async {
+      if (stopwatch != null) {
+        stopwatch.stop();
+        final host = bloc ??
+            (Zone.current[BlocSignalBase.ambientZoneBlocKey]
+                as BlocSignalBase<dynamic>?);
+        if (host != null) {
+          emitContainerTelemetry(
+            host,
+            BlocTelemetryKeys.eventQueued,
+            event: event,
+            metadata: {
+              'transformer': 'sequential',
+              'queue_wait_ms': stopwatch.elapsedMilliseconds,
+            },
+          );
+        }
+      }
       final result = handler(event, emit);
       if (result is Future) {
         await result;
@@ -145,6 +202,10 @@ EventTransformer<E, StateType> sequential<E, StateType>() {
 /// State emissions produced by earlier, in-flight handlers whose generation
 /// token does not match the latest token are discarded automatically.
 ///
+/// Optionally accepts an explicit host [bloc] reference to emit operational
+/// telemetry ([BlocTelemetryKeys.taskPreempted]) when an in-flight execution is
+/// superseded. If omitted, ambient zone resolution is used.
+///
 /// ### Example
 /// ```dart
 /// class AutocompleteBloc extends BlocSignal<QueryEvent, AutocompleteState> {
@@ -160,20 +221,46 @@ EventTransformer<E, StateType> sequential<E, StateType>() {
 ///   }
 /// }
 /// ```
-EventTransformer<E, StateType> restartable<E, StateType>() {
+EventTransformer<E, StateType> restartable<E, StateType>({
+  BlocSignalBase<dynamic>? bloc,
+}) {
   var executionToken = 0;
+  var inFlight = 0;
+  E? lastInFlightEvent;
   return (event, handler, emit) async {
+    if (inFlight > 0 && BlocSignalObserver.observer != null) {
+      final host = bloc ??
+          (Zone.current[BlocSignalBase.ambientZoneBlocKey]
+              as BlocSignalBase<dynamic>?);
+      if (host != null) {
+        emitContainerTelemetry(
+          host,
+          BlocTelemetryKeys.taskPreempted,
+          event: lastInFlightEvent,
+          metadata: _restartablePreemptedMetadata,
+        );
+      }
+    }
+    lastInFlightEvent = event;
     final currentToken = ++executionToken;
-    final result = handler(
-      event,
-      (state) {
-        if (currentToken == executionToken) {
-          emit(state);
-        }
-      },
-    );
-    if (result is Future) {
-      await result;
+    inFlight++;
+    try {
+      final result = handler(
+        event,
+        (state) {
+          if (currentToken == executionToken) {
+            emit(state);
+          }
+        },
+      );
+      if (result is Future) {
+        await result;
+      }
+    } finally {
+      inFlight--;
+      if (inFlight == 0) {
+        lastInFlightEvent = null;
+      }
     }
   };
 }

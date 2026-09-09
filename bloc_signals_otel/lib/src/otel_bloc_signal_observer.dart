@@ -119,4 +119,73 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
       _activeSpans.remove(key)?.end();
     }
   }
+
+  @override
+  void onTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {
+    super.onTelemetry(bloc, name, event: event, metadata: metadata);
+
+    final key = _spanKey(bloc, event);
+    final activeSpan = _activeSpans[key];
+
+    final attrs = <otel.Attribute>[
+      if (metadata != null)
+        for (final entry in metadata.entries)
+          _attributeFromValue(entry.key, entry.value),
+    ];
+
+    if (activeSpan != null) {
+      activeSpan.addEvent(name, attributes: attrs);
+      if (name == BlocTelemetryKeys.eventDropped ||
+          name == BlocTelemetryKeys.taskPreempted) {
+        activeSpan
+          ..setAttribute(
+            otel.Attribute.fromBoolean('bloc.contention', true),
+          )
+          ..setStatus(otel.StatusCode.ok)
+          ..end();
+        _activeSpans.remove(key);
+      }
+    } else {
+      _tracer.startSpan(
+        '${bloc.runtimeType}.telemetry.$name',
+        attributes: [
+          otel.Attribute.fromString(
+            'bloc.type',
+            bloc.runtimeType.toString(),
+          ),
+          ...attrs,
+        ],
+      ).end();
+    }
+  }
+
+  otel.Attribute _attributeFromValue(String key, dynamic value) {
+    if (value is bool) {
+      return otel.Attribute.fromBoolean(key, value);
+    }
+    if (value is int) {
+      return otel.Attribute.fromInt(key, value);
+    }
+    if (value is double) {
+      return otel.Attribute.fromDouble(key, value);
+    }
+    if (value is List<String>) {
+      return otel.Attribute.fromStringList(key, value);
+    }
+    if (value is List<int>) {
+      return otel.Attribute.fromIntList(key, value);
+    }
+    if (value is List<double>) {
+      return otel.Attribute.fromDoubleList(key, value);
+    }
+    if (value is List<bool>) {
+      return otel.Attribute.fromBooleanList(key, value);
+    }
+    return otel.Attribute.fromString(key, value.toString());
+  }
 }

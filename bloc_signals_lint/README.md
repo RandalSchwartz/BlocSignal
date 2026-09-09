@@ -54,6 +54,8 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 | **`prefer_named_replay_constructor`** | Warning | Flags `super.positional(...)` invocations in `ReplayCubit` and `ReplayBloc` subclasses, recommending `super(initialState: ...)`. | `Cmd+.` -> Replace `super.positional(...)` with `super(initialState: ...)` |
 | **`require_emit_in_helper_name`** | Warning | Flags private helper methods calling `emit()` whose names do not reflect state emission. | `Cmd+.` -> Rename to `...AndEmit` |
 | **`avoid_multiple_synchronous_emits`** | Warning | Flags multiple synchronous `emit()` calls along the same linear execution path without an intervening `await`. | — |
+| **`avoid_primitive_event_types`** | Warning | Flags `BlocSignal<Event, State>` or `BlocSignalMixin` using primitive or untyped types (`int`, `String`, `bool`, `dynamic`, etc.) as event types. | — |
+| **`avoid_pseudo_events_in_telemetry`** | Warning | Flags `emitTelemetry('...')` calls inside `CubitSignal` where the name matches UI event action patterns (`Pressed`, `Clicked`, `Submitted`, etc.). | — |
 
 ### Flutter UI Rules
 

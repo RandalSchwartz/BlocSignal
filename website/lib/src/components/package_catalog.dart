@@ -17,7 +17,7 @@ class const PackageItem({
 const List<PackageItem> _allPackages = [
   PackageItem(
     name: 'bloc_signals',
-    version: '1.2.0',
+    version: '1.3.0',
     desc: 'Core pure Dart reactive state container bridging BLoC semantics with Preact Signals v7 primitives.',
     icon: '⚡',
     category: 'Core & UI',
@@ -80,7 +80,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_otel',
-    version: '1.0.0+1',
+    version: '1.1.0',
     desc: 'OpenTelemetry lifecycle tracing, transition metrics, and distributed span correlation.',
     icon: '🔭',
     category: 'DevTools & Tooling',

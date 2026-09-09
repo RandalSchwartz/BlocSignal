@@ -1,6 +1,6 @@
 # OpenTelemetry observer
 
-This reference matches `bloc_signals_otel` 0.2.3.
+This reference matches `bloc_signals_otel` 1.1.x.
 
 ## Setup
 

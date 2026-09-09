@@ -1,6 +1,6 @@
 # Core API and event processing
 
-This reference matches `bloc_signals` 1.2.x. Re-read the installed source when the project uses a
+This reference matches `bloc_signals` 1.3.x. Re-read the installed source when the project uses a
 different version.
 
 ## Public state and lifecycle

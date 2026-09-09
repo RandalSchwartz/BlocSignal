@@ -18,6 +18,16 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title: 'Beyond Black-Box Concurrency: Streamless Event Transformers, Telemetry, and the End of Stream-Whacking',
+    description: 'Why event concurrency transformers in Flutter must be streamless higher-order functions, and how generic transformer telemetry solves the black-box dilemma without polluting UI domain state.',
+    url: 'https://dev.to/gde/beyond-black-box-concurrency-streamless-event-transformers-telemetry-and-the-end-of-3b08',
+    date: 'Sep 9',
+    readTime: '10 min read',
+    category: 'Flutter & Jaspr',
+    type: 'Article',
+    tags: ["flutter", "dart", "architecture", "reactive"],
+  ),
+  PublicationItem(
     title: 'The Unbreakable Shopping Cart: Pairing BlocSignal with Fast Immutable Collections (FIC) for Bulletproof Flutter Apps',
     description: 'Eliminate in-place mutation bugs, corrupted undo stacks, defensive copying overhead, and skipped Flutter rebuilds by pairing BlocSignal with fast_immutable_collections.',
     url: 'https://dev.to/gde/the-unbreakable-shopping-cart-pairing-blocsignal-with-fast-immutable-collections-fic-for-1pn2',

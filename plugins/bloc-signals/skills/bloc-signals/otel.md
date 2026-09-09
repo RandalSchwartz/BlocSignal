@@ -33,25 +33,25 @@ attributes.
 `onTransition` finds the span by bloc and event identity, writes `state.value` using
 `state.toString()`, marks the span successful, and ends it.
 
+`onTelemetry` handles operational telemetry. When emitted within an active span:
+- It records a Span Event with sanitized attributes (converting primitive types and lists).
+- If the telemetry indicates concurrency contention (`BlocTelemetryKeys.eventDropped` or `BlocTelemetryKeys.taskPreempted`), it tags `'bloc.contention': true`, marks the span `StatusCode.ok`, and immediately ends and removes the span from `_activeSpans`.
+When emitted outside an active span (for example, discrete cubit operations), it produces an independent span `<BlocType>.telemetry.<name>`.
+
 `onError` ends every active span for the failing bloc with an error status and recorded exception.
 When that bloc has no active span, it creates and immediately ends `<BlocType>.error`.
 
 Observer hooks accept `BlocSignalBase<dynamic>`, so the same observer receives `BlocSignal` and
-`CubitSignal` transitions and errors. A cubit has no event dispatch span. Its ordinary transitions
-carry a null event, and a reported cubit error with no active span produces a standalone
+`CubitSignal` transitions, telemetry, and errors. A cubit has no event dispatch span. Its ordinary transitions
+carry a null event, its operational metrics flow through `emitTelemetry()`, and a reported cubit error with no active span produces a standalone
 `<CubitType>.error` span.
 
 `OtelBlocSignalObserver` overrides `onClose` to purge and end lingering active spans associated with the closed container, preventing memory accumulation upon disposal.
 
 ## Completion gaps
 
-An event that emits no state, emits only an equal state, or waits indefinitely does not produce
-`onTransition`. Its span remains in the observer's active map until an error for that bloc occurs,
-the bloc is closed via `onClose`, or the map reaches its capacity limit (default 100 entries) and evicts the oldest span.
-
-Account for this behavior before using the observer for latency or completion metrics. Do not add a
-timer in application code merely to make traces look complete; fix the observer contract or model
-the operation with a span owned by the operation itself.
+In standard flows, an event that emits only an equal state or waits indefinitely does not produce
+`onTransition`. However, concurrency transformer contention (`droppable` drops and `restartable` preemptions) is automatically closed via `onTelemetry` with `'bloc.contention': true`. Lingering spans from equal emissions remain in the observer's active map until an error occurs, the container closes, or capacity eviction triggers.
 
 ## Data safety
 

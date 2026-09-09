@@ -99,6 +99,16 @@ void _pruneAndEmit({IList? base}) {
 }
 ```
 
+### Frame Budget Defense (Isolate Moat, Batch Shield, Cooperative Time-Slice)
+
+Because state transitions propagate synchronously within the same frame, heavy compute operations or tight event loops must not block the UI isolate. Always defend Flutter's frame budget (16.6ms for 60 FPS / 8.3ms for 120 FPS):
+
+1. **The Isolate Moat (`Isolate.run`)**: Offload CPU-heavy parsing, cryptography, and large data sorting completely off the main isolate using `await Isolate.run(() => ...)`.
+2. **The Batch Shield (`batch`)**: Collapse multiple independent signal or property mutations into a single frame paint using `batch(() => ...)`.
+3. **The Cooperative Time-Slice (`Stopwatch` + `Future.pause` / `Future.delayed`)**: When processing massive collections that must stay on the main isolate, time-slice cooperatively by monitoring actual elapsed frame time (yielding with `await Future.pause()` in Dart 3.13+ or `await Future<void>.delayed(Duration.zero)` in Dart 3.5 when elapsed time exceeds 8ms).
+
+*(For detailed architectural recipes and code comparisons, see [flutter.md](flutter.md#frame-budget-defense--preventing-ui-jank-60120-fps)).*
+
 ## Composable Mixins (Overcoming Single Inheritance)
 
 In Dart, classes are restricted to single inheritance (`extends SuperClass`). When an existing class already extends a third-party or Flutter framework base class (for example `ChangeNotifier`, `TextEditingController`, `AnimationController`, or `BaseRepository`), use `CubitSignalMixin` and `BlocSignalMixin` to grant it full `BlocSignalBase` reactive capabilities without occupying its single inheritance slot:

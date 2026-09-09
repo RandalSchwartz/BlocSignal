@@ -544,8 +544,96 @@ class PostsView extends StatelessWidget {
 }
 ```
 
+## Frame budget defense & preventing UI jank (60/120 FPS)
+
+State emissions in `BlocSignal` propagate synchronously within the exact same frame. While standard state mutations and signal derivations execute in fractions of a millisecond (<0.1ms), heavy CPU domain logic, large dataset transformations, or high-frequency event loops running on the main UI isolate can exceed Flutter's frame budget (16.6ms for 60 FPS or 8.3ms for 120 FPS displays), resulting in dropped frames and visual jank.
+
+To maintain silky 60/120 FPS animations and gesture responsiveness under heavy workloads, apply the three canonical lines of defense:
+
+### 1. The Isolate Moat (`Isolate.run`)
+For CPU-heavy domain computations, parsing large JSON payloads, cryptography, or heavy filtering over massive lists, offload the work completely from the UI thread using `Isolate.run`:
+
+```dart
+Future<void> importTelemetry(String rawPayload) async {
+  emit(stateValue.copyWith(isProcessing: true));
+
+  // Compute completely off the UI thread; zero frame budget impact:
+  final parsed = await Isolate.run(() => parseAndFilterTelemetry(rawPayload));
+
+  emit(stateValue.copyWith(data: parsed, isProcessing: false));
+}
+```
+
+### 2. The Batch Shield (`batch`)
+When an operation must update multiple independent signals, properties, or state containers concurrently, wrap them in `batch(() => ...)` from `signals_core`. This collapses all downstream subscriber reactions, derived signals, and widget rebuilds into a single synchronous evaluation at the conclusion of the batch block:
+
+```dart
+import 'package:signals_core/signals_core.dart';
+
+void updateTelemetryVectors({
+  required Position newPos,
+  required double newSpeed,
+  required double newHeading,
+}) {
+  // All three signal mutations coalesce into a single UI frame paint:
+  batch(() {
+    positionSignal.value = newPos;
+    speedSignal.value = newSpeed;
+    headingSignal.value = newHeading;
+  });
+}
+```
+
+### 3. The Cooperative Time-Slice (`Stopwatch` + `Future.pause` / `Future.delayed`)
+When a massive collection must be processed, initialized, or transformed incrementally on the main isolate (for example when generating UI widgets, element trees, or objects that cannot cross isolate boundaries), do not use arbitrary item-count heuristics (like "every 50 items"). Instead, time-slice cooperatively based on **actual elapsed frame budget**:
+
+<!-- carousel -->
+```dart
+// Dart 3.13+ (Modern concise syntax with Future.pause):
+Future<void> processLargeBatch(List<RawRecord> records) async {
+  final watch = Stopwatch()..start();
+  final results = <ProcessedRecord>[];
+
+  for (final record in records) {
+    results.add(transform(record));
+
+    // Yield politely if we have consumed half the frame budget (8ms):
+    if (watch.elapsedMilliseconds >= 8) {
+      await Future.pause();
+      watch.reset();
+    }
+  }
+
+  emit(stateValue.copyWith(records: results.toIList()));
+}
+```
+<!-- slide -->
+```dart
+// Dart 3.5 (Baseline syntax with Future.delayed):
+Future<void> processLargeBatch(List<RawRecord> records) async {
+  final watch = Stopwatch()..start();
+  final results = <ProcessedRecord>[];
+
+  for (final record in records) {
+    results.add(transform(record));
+
+    // Yield politely if we have consumed half the frame budget (8ms):
+    if (watch.elapsedMilliseconds >= 8) {
+      await Future<void>.delayed(Duration.zero);
+      watch.reset();
+    }
+  }
+
+  emit(stateValue.copyWith(records: results.toIList()));
+}
+```
+
+> [!NOTE]
+> **Systems Engineering vs. Framework Workarounds**: In `BlocSignal`, yielding to the event loop via `Future.pause()` or `Future.delayed(Duration.zero)` is reserved strictly for genuine cooperative time-slicing of long-running CPU loops. Never use event loop yields as an architectural "voodoo stick" to wait for state transitions to settle, because `BlocSignal` state updates propagate synchronously and deterministically.
+
 ## Missing-provider failures
 
 `BlocSignalProvider.of<T>` throws `FlutterError` when no exact provider type is found. Check that the
 lookup context is below the provider and that the generic type matches the provided concrete bloc.
 Do not catch the error and construct a hidden fallback bloc.
+

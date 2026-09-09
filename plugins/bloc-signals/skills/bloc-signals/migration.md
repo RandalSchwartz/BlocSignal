@@ -63,6 +63,20 @@ Classic BLoC is built on Dart `Stream`s, which are asynchronous and rely on the 
 
 In contrast, `BlocSignal` relies on reactive signals. State propagation is immediate and **synchronous**: calling `emit()` updates the state value instantly in the current execution block, recalculating the reactive dependency graph and triggering UI rebuilds in the exact same frame.
 
+### The Hidden Microtask Trap & Frame Budget Defense During Migration
+
+In classic BLoC, Dart's asynchronous `StreamController` acted as an **implicit shock absorber**. Because stream events were dispatched onto Dart's microtask queue:
+- Code could execute multiple `emit()` calls inside loops or helper methods, and intermediate states were buffered in the queue before listeners woke up.
+- Heavy synchronous operations inside event handlers deferred listener execution until the current event loop turn completed.
+
+When migrating to `BlocSignal`, **that hidden microtask shock absorber is completely removed**. Because `emit()` is 100% synchronous:
+1. **Rapid-Fire Loop Emits**: Calling `emit()` inside a loop in `BlocSignal` immediately triggers downstream subscribers and `computed` re-evaluations on every single iteration. Replace in-loop emits with atomic transitions: compute the final collection first, then call `emit()` once ($S_n \to S_{n+1}$) or use an explicit `_emitFinalState()` helper.
+2. **Defending the Frame Budget**: If a migrated BLoC handler processes heavy datasets or CPU-intensive domain math, it previously caused unnoticeable microtask queuing; in `BlocSignal`, it runs directly on the main isolate. Use the three canonical defenses:
+   - **The Isolate Moat (`Isolate.run`)**: Offload CPU-bound computations off the UI isolate completely.
+   - **The Batch Shield (`batch(() => ...)`)**: Collapse multiple independent signal or container mutations into a single UI frame.
+   - **The Cooperative Time-Slice (`Stopwatch` + `await Future.pause()` in Dart 3.13+ or `await Future<void>.delayed(Duration.zero)` in Dart 3.5)**: Yield control if processing large collections on the main isolate exceeds half the frame budget (8ms).
+   *(For full patterns and code comparisons, see [flutter.md](flutter.md#frame-budget-defense--preventing-ui-jank-60120-fps)).*
+
 ### Event Concurrency & Transformers
 
 In classic BLoC, transformers manipulate `Stream<Event>` pipelines using `package:stream_transform` or Rx operators. In `BlocSignal`, event transformers are **streamless higher-order functions** that intercept each event and wrap its handler call directly without stream allocations:

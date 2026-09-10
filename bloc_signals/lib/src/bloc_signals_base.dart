@@ -92,6 +92,23 @@ abstract class BlocSignalBase<StateType> {
   ReadonlySignal<StateType> get state;
 
   /// Retrieves the current raw state value.
+  ///
+  /// This is the preferred modern getter for reading raw container state,
+  /// establishing 1:1 symmetry with [state] (`bloc.state` / `bloc.value`),
+  /// Flutter context extensions (`context.state` / `context.value`), and
+  /// Flutter's `ValueListenable.value`.
+  ///
+  /// ```dart
+  /// final counterBloc = CounterBloc();
+  /// print(counterBloc.value); // 0
+  /// ```
+  StateType get value;
+
+  /// Retrieves the current raw state value.
+  ///
+  /// This getter remains fully supported for backward compatibility with
+  /// earlier releases, but [value] is preferred for concise and symmetrical
+  /// code.
   StateType get stateValue;
 
   /// Compares [previous] and [current] state to determine if state has changed.

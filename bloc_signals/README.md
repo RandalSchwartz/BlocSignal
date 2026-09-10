@@ -47,7 +47,7 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 ### Key Architectural Differences & Design Choices:
 - ⚡ **Synchronous State Propagation**: State changes run synchronously when calling `emit(newState)` rather than asynchronously on microtask-queue Streams.
 - 🔑 **Named Constructor Initial State (`initialState:`)**: Constructors require the named parameter `initialState:` (for example, `: super(initialState: 0)`), unlike Felix BLoC's positional `: super(0)`.
-- 📊 **Explicit State Value Access (`stateValue`)**: Use `stateValue` (or `state.value`) to read raw `StateType` values in methods or event handlers (for example, `emit(stateValue + 1)`), while `state` exposes `ReadonlySignal<StateType>` for reactive signal bindings.
+- 📊 **Explicit State Value Access (`value` / `stateValue`)**: Access raw `StateType` values directly via `value` (the preferred modern getter) or `stateValue` (fully supported for backward compatibility), for example `emit(value + 1)`. `state` exposes `ReadonlySignal<StateType>` for reactive signal bindings.
 - 🔒 **Streamless Concurrency**: Support for `Mutex`, `droppable()`, `sequential()`, and `restartable()` event transformers using pure Dart higher-order functions with zero stream memory allocations.
 
 ---

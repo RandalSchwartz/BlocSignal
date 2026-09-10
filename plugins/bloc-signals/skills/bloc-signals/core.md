@@ -11,7 +11,8 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 
 | API | Behavior |
 | --- | --- |
-| `stateValue` | Reads the current `StateType` synchronously. |
+| `value` | Reads the current `StateType` synchronously (preferred modern getter). |
+| `stateValue` | Reads the current `StateType` synchronously (permanent alias for backward compatibility). |
 | `state` | Exposes `ReadonlySignal<StateType>` for signals consumers. |
 | `emit(next)` | Updates presentation state synchronously unless `next == stateValue`. |
 | `emitError(error, [stackTrace])` | Emits an operational error to observers and container hooks (`addError` is a backward-compatible alias). |

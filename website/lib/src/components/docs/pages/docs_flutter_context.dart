@@ -324,15 +324,11 @@ class OrderSummaryBadge extends StatelessWidget {
     final cartSignal = context.state<CartCubit, CartState>();
     final promoSignal = context.state<PromoCubit, PromoState>();
 
-    // 2. Compose signals cleanly in a computed derivation:
-    final totalSignal = computed(() {
-      final subtotal = cartSignal.value.subtotal;
-      final discount = promoSignal.value.discountAmount;
-      return subtotal - discount;
+    // 2. Reactively evaluate inside Watch without allocating unmanaged computed signals:
+    return Watch((context) {
+      final total = cartSignal.value.subtotal - promoSignal.value.discountAmount;
+      return Text('Total: \$total');
     });
-
-    // 3. For UI rendering, bind the computed signal with Watch:
-    return Watch((context) => Text('Total: \${totalSignal.value}'));
   }
 }
 ''',
@@ -348,15 +344,12 @@ class OrderSummaryBadge extends StatelessWidget {
     final ReadonlySignal<PromoState> promoSignal =
         context.state<PromoCubit, PromoState>();
 
-    // 2. Compose signals cleanly in a computed derivation:
-    final Computed<double> totalSignal = computed(() {
-      final double subtotal = cartSignal.value.subtotal;
-      final double discount = promoSignal.value.discountAmount;
-      return subtotal - discount;
+    // 2. Reactively evaluate inside Watch without allocating unmanaged computed signals:
+    return Watch((context) {
+      final double total =
+          cartSignal.value.subtotal - promoSignal.value.discountAmount;
+      return Text('Total: \$total');
     });
-
-    // 3. For UI rendering, bind the computed signal with Watch:
-    return Watch((context) => Text('Total: \${totalSignal.value}'));
   }
 }
 ''',

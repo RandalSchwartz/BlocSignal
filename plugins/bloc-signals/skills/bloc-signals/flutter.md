@@ -119,10 +119,10 @@ Widget build(BuildContext context) {
 
 ### `context.state<B, S>()` (Signal Composition in `computed()`)
 
-To look up the underlying `ReadonlySignal<S>` without registering an element rebuild dependency on the context (`listen: false`), use `context.state<B, S>()`:
+To look up the underlying `ReadonlySignal<S>` without registering an element rebuild dependency on state emissions (while listening for ancestor provider swaps), use `context.state<B, S>()`:
 
 ```dart
-// Looks up the container signal without triggering element rebuilds on context:
+// In a stateful or long-lived owner (for example initState or service setup):
 final counterSignal = context.state<CounterCubit, int>();
 
 // Composes reactively in signals:

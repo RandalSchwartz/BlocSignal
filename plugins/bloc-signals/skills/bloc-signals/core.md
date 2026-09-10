@@ -42,7 +42,7 @@ assertion and then returns without changing state when assertions are disabled.
 > [!NOTE]
 > **Key Differences for Developers Migrating from Felix BLoC (`package:bloc`)**:
 > - **Named Initial State**: Constructors take required named argument `initialState:` (`: super(initialState: ...)`), NOT positional `super(...)`.
-> - **State Access**: Use `stateValue` (or `state.value`) to read raw `StateType` values inside methods/handlers (`emit(stateValue + 1)`). `state` returns `ReadonlySignal<StateType>` for reactive signal observers.
+> - **State Access**: Use `value` (the preferred modern getter) or `stateValue` (permanent alias for backward compatibility), or `state.value`, to read raw `StateType` values inside methods/handlers (`emit(value + 1)`). `state` returns `ReadonlySignal<StateType>` for reactive signal observers.
 
 ### Prefer Inline `late final` Computed Properties
 

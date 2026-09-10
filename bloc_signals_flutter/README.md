@@ -154,6 +154,30 @@ final canSubmit = context.select<FormCubit, bool>(
 );
 ```
 
+### 5. Reactive State & Signal Access (`context.value` & `context.state`)
+
+To subscribe directly to state emissions inside widget `build()` methods:
+
+```dart
+@override
+Widget build(BuildContext context) {
+  // Rebuilds this element whenever CounterCubit emits a new state value:
+  final count = context.value<CounterCubit, int>();
+
+  return Text('Count: $count');
+}
+```
+
+To look up the underlying `ReadonlySignal<S>` without registering an element rebuild dependency (for composing signals via `computed()` or `effect()`):
+
+```dart
+// Looks up the container signal without registering an element rebuild dependency:
+final counterSignal = context.state<CounterCubit, int>();
+
+// Composes reactively in signals:
+final isEven = computed(() => counterSignal.value.isEven);
+```
+
 > [!TIP]
 > **Generic Type Parameters for `context.select`**:
 > Unlike Riverpod's 3-parameter `context.select` or `package:flutter_bloc`, `BlocSignal`'s `context.select` takes **2** generic type parameters:
@@ -162,7 +186,7 @@ final canSubmit = context.select<FormCubit, bool>(
 >
 > The callback receives the **`bloc` instance** directly: `context.select<FormCubit, bool>((cubit) => cubit.stateValue.canSubmit)`.
 
-### 5. MultiBlocSignalProvider
+### 6. MultiBlocSignalProvider
 
 ```dart
 MultiBlocSignalProvider(
@@ -174,7 +198,7 @@ MultiBlocSignalProvider(
 )
 ```
 
-### 6. Flutter `Listenable` & `ChangeNotifier` Interop
+### 7. Flutter `Listenable` & `ChangeNotifier` Interop
 
 ```dart
 // Convert any ChangeNotifier into a CubitSignal

@@ -101,6 +101,39 @@ lookup registers an inherited dependency (`listen: true`), so if an ancestor pro
 container instance, `context.select` automatically rebinds to the new container and continues
 observing state updates seamlessly.
 
+### `context.value<B, S>()` (Reactive State in `build()`)
+
+To subscribe directly to state emissions inside widget `build()` methods without writing an explicit selector callback, use `context.value<B, S>()`:
+
+```dart
+@override
+Widget build(BuildContext context) {
+  // Subscribes this element to state changes on CounterCubit:
+  final count = context.value<CounterCubit, int>();
+
+  return Text('Count: $count');
+}
+```
+
+`context.value<B, S>()` delegates directly to `context.select<B, S>((bloc) => bloc.stateValue)`. It registers an element rebuild dependency so the calling widget rebuilds when state emits. When wrapped inside a `Builder(builder: (ctx) => ...)`, it scopes the rebuild exclusively to that inner builder subtree.
+
+### `context.state<B, S>()` (Signal Composition in `computed()`)
+
+To look up the underlying `ReadonlySignal<S>` without registering an element rebuild dependency on state emissions (while listening for ancestor provider swaps), use `context.state<B, S>()`:
+
+```dart
+// In a stateful or long-lived owner (for example initState or service setup):
+final counterSignal = context.state<CounterCubit, int>();
+
+// Composes reactively in signals:
+final isEven = computed(() => counterSignal.value.isEven);
+```
+
+> [!IMPORTANT]
+> **`context.value` vs `context.state` in Signal Graphs**:
+> - **In widget `build()` methods**: Use `context.value<B, S>()` when the widget itself must rebuild on state updates.
+> - **In `computed(() => ...)` or `effect(() => ...)`**: Always use `context.state<B, S>()`. Calling `context.value<B, S>()` inside a `computed` would inappropriately attach Flutter `Element` rebuild effects to pure reactive signal evaluations.
+
 ## Listeners, consumers, and selectors
 
 `BlocSignalListener<T, S>` captures the current state on subscription, suppresses the effect's

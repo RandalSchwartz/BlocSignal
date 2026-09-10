@@ -235,6 +235,46 @@ extension BlocSignalProviderExtension on BuildContext {
 
     return subscription.value;
   }
+
+  /// Watches the state of container [T] and registers a fine-grained rebuild
+  /// dependency on this [BuildContext], returning the current state value [S].
+  ///
+  /// This method is intended for use inside widget `build()` methods when
+  /// the widget element needs to rebuild whenever the container's state emits.
+  /// For composing reactive signals in `computed()` or `effect()`, use
+  /// [state] instead.
+  ///
+  /// Example:
+  /// ```dart
+  /// @override
+  /// Widget build(BuildContext context) {
+  ///   final count = context.value<CounterCubit, int>();
+  ///   return Text('Count: $count');
+  /// }
+  /// ```
+  S value<T extends BlocSignalBase<S>, S>() {
+    return select<T, S>((bloc) => bloc.stateValue);
+  }
+
+  /// Looks up the [T] container and returns its reactive state
+  /// [ReadonlySignal].
+  ///
+  /// Registers an inherited dependency on container instance swapping
+  /// (triggering a rebuild only if an ancestor replaces the container
+  /// instance), but does NOT rebuild when container state emits.
+  ///
+  /// This method is ideal for composing derived signals via `computed()` or
+  /// subscribing via `effect()` without triggering unnecessary element
+  /// rebuilds on state emissions.
+  ///
+  /// Example:
+  /// ```dart
+  /// final counterSignal = context.state<CounterCubit, int>();
+  /// final isEven = computed(() => counterSignal.value.isEven);
+  /// ```
+  ReadonlySignal<S> state<T extends BlocSignalBase<S>, S>() {
+    return BlocSignalProvider.of<T>(this, listen: true).state;
+  }
 }
 
 /// A widget that merges multiple [BlocSignalProvider]s into a single linear

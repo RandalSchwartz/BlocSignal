@@ -1,3 +1,8 @@
+## 1.3.0
+
+- Add `context.value<T, S>()` extension to subscribe to state emissions and return current state value in `build()` (#248).
+- Add `context.state<T, S>()` extension to look up the underlying `ReadonlySignal<S>` without registering an element rebuild dependency for `computed()` or `effect()` composition (#248).
+
 ## 1.2.2
 
 - Refactor example application to showcase declarative routing with Kaisel 1.1 `reevaluateOn` and `loginBloc.toValueListenable()` (#222, #223).

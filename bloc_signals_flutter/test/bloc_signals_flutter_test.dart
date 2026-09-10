@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:signals_flutter/signals_flutter.dart';
 
 sealed class CounterEvent {}
 
@@ -806,6 +807,171 @@ void main() {
 
         await bloc1.close();
         await bloc2.close();
+      },
+    );
+
+    testWidgets(
+      'context.value<T, S>() rebuilds reactively on state emission with '
+      'explicit state type',
+      (tester) async {
+        final cubit = CounterCubit();
+        var builds = 0;
+
+        final widget = MaterialApp(
+          home: BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: Builder(
+              builder: (context) {
+                builds++;
+                final count = context.value<CounterCubit, int>();
+                // Assert type at compile-time by passing to typed helper
+                expect(count, isA<int>());
+                return Text('Count: $count');
+              },
+            ),
+          ),
+        );
+
+        await tester.pumpWidget(widget);
+        expect(find.text('Count: 0'), findsOneWidget);
+        expect(builds, equals(1));
+
+        cubit.increment();
+        await tester.pump();
+        expect(find.text('Count: 1'), findsOneWidget);
+        expect(builds, equals(2));
+
+        await cubit.close();
+      },
+    );
+
+    testWidgets(
+      'context.value<T, S>() scopes rebuilds when wrapped inside Builder',
+      (tester) async {
+        final cubit = CounterCubit();
+        var parentBuilds = 0;
+        var scopedBuilds = 0;
+
+        final widget = MaterialApp(
+          home: BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: Builder(
+              builder: (context) {
+                parentBuilds++;
+                return Column(
+                  children: [
+                    const Text('Parent'),
+                    Builder(
+                      builder: (innerContext) {
+                        scopedBuilds++;
+                        final count = innerContext.value<CounterCubit, int>();
+                        return Text('Scoped: $count');
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+
+        await tester.pumpWidget(widget);
+        expect(parentBuilds, equals(1));
+        expect(scopedBuilds, equals(1));
+        expect(find.text('Scoped: 0'), findsOneWidget);
+
+        cubit.increment();
+        await tester.pump();
+        // Parent must not rebuild; only scoped inner builder rebuilds
+        expect(parentBuilds, equals(1));
+        expect(scopedBuilds, equals(2));
+        expect(find.text('Scoped: 1'), findsOneWidget);
+
+        await cubit.close();
+      },
+    );
+
+    testWidgets(
+      'context.state<T, S>() returns ReadonlySignal for computed signal '
+      'composition without rebuilding context',
+      (tester) async {
+        final cubit = CounterCubit();
+        var builds = 0;
+        late Computed<String> derivedSummary;
+
+        final widget = MaterialApp(
+          home: BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: Builder(
+              builder: (context) {
+                builds++;
+                final stateSignal = context.state<CounterCubit, int>();
+                derivedSummary =
+                    computed(() => 'Computed: ${stateSignal.value}');
+                return const Text('Static UI');
+              },
+            ),
+          ),
+        );
+
+        await tester.pumpWidget(widget);
+        expect(builds, equals(1));
+        expect(derivedSummary.value, equals('Computed: 0'));
+
+        cubit.increment();
+        await tester.pump();
+        // context.state must NOT trigger an element rebuild on context
+        expect(builds, equals(1));
+        // But the computed signal reacts synchronously to the underlying
+        // state signal
+        expect(derivedSummary.value, equals('Computed: 1'));
+
+        await cubit.close();
+      },
+    );
+
+    testWidgets(
+      'context.state<T, S>() rebinds when ancestor provider container is '
+      'swapped',
+      (tester) async {
+        final cubit1 = CounterCubit();
+        final cubit2 = CounterCubit();
+        var builds = 0;
+        ReadonlySignal<int>? currentSignal;
+
+        Widget buildTree(CounterCubit cubit) {
+          return MaterialApp(
+            home: BlocSignalProvider<CounterCubit>.value(
+              value: cubit,
+              child: Builder(
+                builder: (context) {
+                  builds++;
+                  currentSignal = context.state<CounterCubit, int>();
+                  return Text(
+                    'Signal Hash: ${identityHashCode(currentSignal)}',
+                  );
+                },
+              ),
+            ),
+          );
+        }
+
+        await tester.pumpWidget(buildTree(cubit1));
+        expect(builds, equals(1));
+        expect(currentSignal, equals(cubit1.state));
+
+        // State emissions do not trigger rebuilds
+        cubit1.increment();
+        await tester.pump();
+        expect(builds, equals(1));
+
+        // Swapping provider instance DOES trigger rebuild to update signal
+        await tester.pumpWidget(buildTree(cubit2));
+        expect(builds, equals(2));
+        expect(currentSignal, equals(cubit2.state));
+
+        await cubit1.close();
+        await cubit2.close();
       },
     );
   });

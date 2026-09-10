@@ -373,12 +373,15 @@ void main() {
 
     test('supports on<E> registration and handles events synchronously', () {
       final bloc = RegistryBloc();
+      expect(bloc.value, equals(0));
       expect(bloc.stateValue, equals(0));
 
       bloc.add(Increment());
+      expect(bloc.value, equals(1));
       expect(bloc.stateValue, equals(1));
 
       bloc.add(Decrement());
+      expect(bloc.value, equals(0));
       expect(bloc.stateValue, equals(0));
 
       unawaited(bloc.close());
@@ -417,6 +420,7 @@ void main() {
     group('CubitSignal Tests', () {
       test('initial state is correct', () {
         final cubit = CounterCubit();
+        expect(cubit.value, equals(0));
         expect(cubit.stateValue, equals(0));
         expect(cubit.state.value, equals(0));
         unawaited(cubit.close());
@@ -425,8 +429,10 @@ void main() {
       test('updates state synchronously when methods are called', () {
         final cubit = CounterCubit();
         cubit.increment();
+        expect(cubit.value, equals(1));
         expect(cubit.stateValue, equals(1));
         cubit.decrement();
+        expect(cubit.value, equals(0));
         expect(cubit.stateValue, equals(0));
         unawaited(cubit.close());
       });

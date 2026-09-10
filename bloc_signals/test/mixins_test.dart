@@ -199,12 +199,14 @@ void main() {
       final controller = CounterServiceController();
       expect(controller.serviceName, 'CounterService');
       expect(controller.isInitialized, isTrue);
+      expect(controller.value, 0);
       expect(controller.stateValue, 0);
       expect(controller.state.value, 0);
       expect(controller, isA<BlocSignalBase<int>>());
       expect(observer.created, contains(controller));
 
       controller.increment();
+      expect(controller.value, 1);
       expect(controller.stateValue, 1);
       expect(controller.state.value, 1);
       expect(observer.changes.length, 1);
@@ -212,6 +214,7 @@ void main() {
       expect(observer.changes.first.nextState, 1);
 
       controller.decrement();
+      expect(controller.value, 0);
       expect(controller.stateValue, 0);
 
       await controller.close();
@@ -226,6 +229,7 @@ void main() {
       final uninit = UninitializedServiceController();
       expect(uninit.isInitialized, isFalse);
       expect(() => uninit.state, throwsA(isA<AssertionError>()));
+      expect(() => uninit.value, throwsA(isA<AssertionError>()));
       expect(() => uninit.stateValue, throwsA(isA<AssertionError>()));
       expect(() => uninit.publicEmit(1), throwsA(isA<AssertionError>()));
       await uninit.close();

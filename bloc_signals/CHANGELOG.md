@@ -1,3 +1,7 @@
+## 1.4.0
+
+- Add `container.value` getter as an alias for `container.stateValue` on `BlocSignalBase` and `CubitSignalMixin` to provide complete 1:1 symmetry with `container.state`, Flutter context extensions (`context.state` / `context.value`), and Flutter's `ValueListenable.value`.
+
 ## 1.3.0
 
 - Introduce `BlocEventTransformer<E, StateType>` signature passing host `bloc` as first parameter `(bloc, event, handler, emit)` for typed access to `stateValue`, telemetry, and container context.

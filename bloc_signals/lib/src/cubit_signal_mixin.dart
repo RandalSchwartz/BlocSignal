@@ -122,6 +122,16 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   }
 
   @override
+  StateType get value {
+    assert(
+      _isInitialized,
+      'initCubitSignal() must be called in the constructor of $runtimeType '
+      'before accessing value.',
+    );
+    return _state.value;
+  }
+
+  @override
   StateType get stateValue {
     assert(
       _isInitialized,

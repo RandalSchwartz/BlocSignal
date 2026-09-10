@@ -24,6 +24,29 @@ BlocSignalProvider<CounterBloc>(
 `lazy` defaults to `true`. Use `lazy: false` only when creation must happen before the first lookup.
 The provider intentionally does not await the owned bloc's `close()` future during widget disposal.
 
+### Zero-Closure Provider Tearoffs (`Cubit.create`)
+
+In Dart, constructor tearoffs like `CounterCubit.new` have signature `CounterCubit Function()` (0 parameters) and cannot be directly passed to `create:` which requires `BlocSignalBase<dynamic> Function(BuildContext)` (1 parameter).
+
+To enable clean, lambda-free constructor tearoffs in `BlocSignalProvider`, define a dedicated `.create` named constructor that accepts `BuildContext _` and redirects:
+
+```dart
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  /// Provider factory constructor ignoring BuildContext to allow direct tearoffs.
+  CounterCubit.create(BuildContext _) : this();
+
+  void increment() => emit(stateValue + 1);
+}
+
+// Usage in widget tree:
+BlocSignalProvider(
+  create: CounterCubit.create,
+  child: const CounterPage(),
+)
+```
+
 Use `.value` only when another owner already controls the bloc's lifetime. Closing that bloc from
 both the provider and its original owner is an ownership bug even though the current `close` method
 is idempotent.

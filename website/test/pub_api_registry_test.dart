@@ -70,6 +70,8 @@ void main() {
       expect(names, contains('read'));
       expect(names, contains('watch'));
       expect(names, contains('select'));
+      expect(names, contains('value'));
+      expect(names, contains('state'));
       expect(names, contains('createPlugin'));
     });
   });

@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -147,7 +148,76 @@ class const CounterView({super.key}) extends StatelessComponent {
               ': Tracks provider container instance swapping only, without listening to individual state emissions.',
             ),
           ]),
+          li([
+            strong([
+              code([Component.text('context.value<B, S>()')]),
+            ]),
+            Component.text(
+              ': Subscribes the calling component Element to state updates and returns current state value ',
+            ),
+            code([Component.text('S')]),
+            Component.text(
+              '. Perfect for clean single-line state access inside build(context) methods.',
+            ),
+          ]),
+          li([
+            strong([
+              code([Component.text('context.state<B, S>()')]),
+            ]),
+            Component.text(': Returns the underlying '),
+            code([Component.text('ReadonlySignal<S>')]),
+            Component.text(
+              ' without registering an element rebuild dependency. Designed specifically for computed() and effect() signal graph composition.',
+            ),
+          ]),
         ]),
+        const DocsCodeBlock(
+          title: 'context.value and context.state in Jaspr',
+          dart313Code: '''
+class CounterStatsCard() extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    // 1. context.value subscribes this component to state emissions directly:
+    final count = context.value<CounterCubit, int>();
+
+    // 2. context.state returns ReadonlySignal<int> for computed signal composition
+    // without attaching redundant element rebuild subscriptions:
+    final isEven = computed(() => context.state<CounterCubit, int>().value.isEven);
+
+    return div(classes: 'stats-card', [
+      p([Component.text('Count: \$count')]),
+      p([Component.text('Is Even: \${isEven.value}')]),
+      button(
+        onClick: () => context.read<CounterCubit>().increment(),
+        [Component.text('Increment (+1)')],
+      ),
+    ]);
+  }
+}''',
+          dart35Code: '''
+class CounterStatsCard extends StatelessComponent {
+  const CounterStatsCard({super.key});
+
+  @override
+  Component build(BuildContext context) {
+    // 1. context.value subscribes this component to state emissions directly:
+    final int count = context.value<CounterCubit, int>();
+
+    // 2. context.state returns ReadonlySignal<int> for computed signal composition
+    // without attaching redundant element rebuild subscriptions:
+    final isEven = computed(() => context.state<CounterCubit, int>().value.isEven);
+
+    return div(classes: 'stats-card', [
+      p([Component.text('Count: \$count')]),
+      p([Component.text('Is Even: \${isEven.value}')]),
+      button(
+        onClick: () => context.read<CounterCubit>().increment(),
+        [Component.text('Increment (+1)')],
+      ),
+    ]);
+  }
+}''',
+        ),
       ]),
 
       // 5. SSR & Static Hydration

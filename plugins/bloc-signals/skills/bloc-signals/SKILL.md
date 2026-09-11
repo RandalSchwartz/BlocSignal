@@ -68,7 +68,7 @@ Load only the references needed for the task.
 - `BlocSignalBase<State>` owns state and lifecycle. Use `CubitSignal<State>` for public methods and
   `BlocSignal<Event, State>` for event dispatch. Use `CubitSignalMixin<State>` or `BlocSignalMixin<Event, State>` when a class already extends an existing superclass (such as `ChangeNotifier`, `TextEditingController`, or `BaseRepository`) and invoke `initCubitSignal(initialState: ...)` in the constructor.
 - Constructors require named parameter `initialState:` (for example `: super(initialState: initial)`), NOT positional `super(initial)`.
-- Use `stateValue` to read raw `StateType` values inside methods/handlers (such as `emit(stateValue + 1)`). `state` returns `ReadonlySignal<StateType>` for reactive signal subscriptions.
+- Use `value` (the preferred modern getter) or `stateValue` (permanent alias for backward compatibility) to read raw `StateType` values inside methods/handlers (such as `emit(value + 1)`). `state` returns `ReadonlySignal<StateType>` for reactive signal subscriptions.
 - `emit` changes state synchronously and skips a value equal to the current state.
 - `BlocSignal.add` returns `void`. Synchronous handlers finish before it returns. Async handler
   futures are observed for errors but are not returned or cancelled by `close`.

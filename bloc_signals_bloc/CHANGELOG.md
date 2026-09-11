@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+
+- Add `value` getter on `BlocSignalToClassicBloc` and `BlocSignalToClassicCubit` adapters (#251).
+- Update adapter doc comments to reference `.value` (#251).
+- Bump minimum `bloc_signals` dependency constraint to `^1.4.0` (#251).
+
 ## 1.0.0
 
 - Initial release of `bloc_signals_bloc`.

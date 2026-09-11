@@ -2,6 +2,7 @@ import 'package:bloc_signals_jaspr/bloc_signals_jaspr.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_test/jaspr_test.dart';
+import 'package:signals_core/signals_core.dart';
 
 import 'helpers/counter_cubit.dart';
 
@@ -308,6 +309,75 @@ void main() {
 
         await cubit1.close();
         await cubit2.close();
+      },
+    );
+
+    testComponents(
+      'context.value<T, S>() rebuilds component on state emission',
+      (tester) async {
+        final cubit = CounterCubit();
+        var buildCount = 0;
+
+        tester.pumpComponent(
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: Builder(
+              builder: (context) {
+                buildCount++;
+                final count = context.value<CounterCubit, int>();
+                return div([Component.text('ValueCount: $count')]);
+              },
+            ),
+          ),
+        );
+
+        expect(find.text('ValueCount: 0'), findsOneComponent);
+        expect(buildCount, 1);
+
+        cubit.increment();
+        await tester.pump();
+
+        expect(find.text('ValueCount: 1'), findsOneComponent);
+        expect(buildCount, 2);
+
+        await cubit.close();
+      },
+    );
+
+    testComponents(
+      'context.state<T, S>() returns ReadonlySignal without rebuilding context',
+      (tester) async {
+        final cubit = CounterCubit();
+        var buildCount = 0;
+        late Computed<String> derivedSummary;
+
+        tester.pumpComponent(
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: Builder(
+              builder: (context) {
+                buildCount++;
+                final stateSignal = context.state<CounterCubit, int>();
+                derivedSummary =
+                    computed(() => 'Computed: ${stateSignal.value}');
+                return const div([Component.text('StaticUI')]);
+              },
+            ),
+          ),
+        );
+
+        expect(buildCount, 1);
+        expect(derivedSummary.value, 'Computed: 0');
+
+        cubit.increment();
+        await tester.pump();
+
+        // context.state must NOT trigger an element rebuild on context
+        expect(buildCount, 1);
+        // But the computed signal reacts synchronously
+        expect(derivedSummary.value, 'Computed: 1');
+
+        await cubit.close();
       },
     );
   });

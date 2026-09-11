@@ -16,7 +16,7 @@ import 'package:signals_core/signals_core.dart';
 /// final blocSignal = ClassicBlocSignal(classicBloc);
 ///
 /// // Reactive read:
-/// print(blocSignal.stateValue);
+/// print(blocSignal.value);
 ///
 /// // Bidirectional event dispatch:
 /// blocSignal.add(IncrementEvent());
@@ -82,7 +82,7 @@ class ClassicBlocSignal<Event, State> extends BlocSignal<Event, State> {
 /// final cubitSignal = ClassicCubitSignal(classicCubit);
 ///
 /// // Reactive read:
-/// print(cubitSignal.stateValue);
+/// print(cubitSignal.value);
 ///
 /// // Typed method invocation:
 /// cubitSignal.cubit.increment();
@@ -170,6 +170,9 @@ class BlocSignalToClassicBloc<Event, State>
   /// The underlying modern [BlocSignal] instance.
   final BlocSignal<Event, State> blocSignal;
 
+  /// The current state value of the underlying [blocSignal].
+  State get value => blocSignal.value;
+
   /// Whether closing this classic bloc also closes the underlying [blocSignal].
   final bool autoClose;
 
@@ -222,6 +225,9 @@ class BlocSignalToClassicCubit<B extends BlocSignalBase<State>, State>
 
   /// Alias for [blocSignal] when wrapping a cubit container.
   B get cubit => blocSignal;
+
+  /// The current state value of the underlying [blocSignal].
+  State get value => blocSignal.value;
 
   /// Whether closing this classic cubit also closes the underlying
   /// [blocSignal].

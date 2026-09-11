@@ -1,3 +1,8 @@
+## 1.3.1
+
+- Update `context.value<T, S>()` implementation to delegate to `bloc.value` (#251).
+- Bump minimum `bloc_signals` dependency constraint to `^1.4.0` (#251).
+
 ## 1.3.0
 
 - Add `context.value<T, S>()` extension to subscribe to state emissions and return current state value in `build()` (#248).

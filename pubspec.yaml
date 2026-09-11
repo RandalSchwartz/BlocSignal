@@ -40,6 +40,7 @@ workspace:
   - examples/bloc_concurrency_visualizer
   - examples/github_search
   - examples/flutter_complex_list
+  - examples/flutter_context_ergonomics
   - examples/flutter_bloc_with_stream
   - examples/mine_sweeper
   - examples/riverpod_todos

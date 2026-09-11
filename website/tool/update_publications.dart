@@ -34,6 +34,26 @@ Future<void> main() async {
 
   final List<dynamic> articles = jsonDecode(jsonString);
 
+  // Check if latest symmetry of state article is present; if not, prepend it
+  const symmetryArticleUrl =
+      'https://dev.to/gde/the-symmetry-of-state-why-flutter-deserves-contextvalue-and-contextstate-4250';
+  final hasSymmetryArticle = articles.any(
+    (a) => (a['canonical_url'] ?? a['url']) == symmetryArticleUrl,
+  );
+  if (!hasSymmetryArticle) {
+    articles.insert(0, {
+      'title':
+          'The Symmetry of State: Why Flutter Deserves context.value and context.state',
+      'description':
+          'Eliminating the widget builder tax, closure fatigue, and the context.watch trap in Flutter: how 1:1 symmetry between containers and BuildContext unlocks cleaner, faster reactive apps.',
+      'url': symmetryArticleUrl,
+      'canonical_url': symmetryArticleUrl,
+      'readable_publish_date': 'Sep 11',
+      'reading_time_minutes': 9,
+      'tag_list': ['flutter', 'dart', 'architecture', 'programming'],
+    });
+  }
+
   // Check if latest dogfooding article is present; if not, prepend it
   const dogfoodArticleUrl =
       'https://dev.to/gde/dogfooding-blocsignal-on-the-web-building-a-100k-opssec-reactive-app-with-jaspr-and-dart-313-4am7';

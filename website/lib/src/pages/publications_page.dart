@@ -18,6 +18,16 @@ class const PublicationItem({
 
 const List<PublicationItem> _publications = [
   PublicationItem(
+    title: 'The Symmetry of State: Why Flutter Deserves context.value and context.state',
+    description: 'Eliminating the widget builder tax, closure fatigue, and the context.watch trap in Flutter: how 1:1 symmetry between containers and BuildContext unlocks cleaner, faster reactive apps.',
+    url: 'https://dev.to/gde/the-symmetry-of-state-why-flutter-deserves-contextvalue-and-contextstate-4250',
+    date: 'Sep 11',
+    readTime: '9 min read',
+    category: 'Flutter & Jaspr',
+    type: 'Article',
+    tags: ["flutter", "dart", "architecture", "programming"],
+  ),
+  PublicationItem(
     title: 'The Modern Pitch for BlocSignal: Why Engineering Leads Are Moving to Reactive Primitives',
     description: 'A comprehensive guide for tech leads, staff architects, and engineering managers evaluating BlocSignal: cutting through CISC ceremony, unlocking AI agent velocity, eliminating the code-gen tax, and mastering push-pull reactivity.',
     url: 'https://dev.to/gde/the-modern-pitch-for-blocsignal-why-engineering-leads-are-moving-to-reactive-primitives-5d5h',

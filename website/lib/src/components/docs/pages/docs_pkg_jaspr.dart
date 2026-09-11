@@ -1,4 +1,3 @@
-import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -174,15 +173,21 @@ class const CounterView({super.key}) extends StatelessComponent {
         const DocsCodeBlock(
           title: 'context.value and context.state in Jaspr',
           dart313Code: '''
-class CounterStatsCard() extends StatelessComponent {
+class const CounterStatsCard({super.key}) extends StatefulComponent {
+  @override
+  State<CounterStatsCard> createState() => _CounterStatsCardState();
+}
+
+class _CounterStatsCardState() extends State<CounterStatsCard> {
+  // Long-lived computed signal bound outside build() to prevent unmanaged re-allocations:
+  late final isEven = computed(
+    () => context.state<CounterCubit, int>().value.isEven,
+  );
+
   @override
   Component build(BuildContext context) {
-    // 1. context.value subscribes this component to state emissions directly:
+    // context.value subscribes this component to state emissions directly:
     final count = context.value<CounterCubit, int>();
-
-    // 2. context.state returns ReadonlySignal<int> for computed signal composition
-    // without attaching redundant element rebuild subscriptions:
-    final isEven = computed(() => context.state<CounterCubit, int>().value.isEven);
 
     return div(classes: 'stats-card', [
       p([Component.text('Count: \$count')]),
@@ -195,17 +200,23 @@ class CounterStatsCard() extends StatelessComponent {
   }
 }''',
           dart35Code: '''
-class CounterStatsCard extends StatelessComponent {
+class CounterStatsCard extends StatefulComponent {
   const CounterStatsCard({super.key});
 
   @override
-  Component build(BuildContext context) {
-    // 1. context.value subscribes this component to state emissions directly:
-    final int count = context.value<CounterCubit, int>();
+  State<CounterStatsCard> createState() => _CounterStatsCardState();
+}
 
-    // 2. context.state returns ReadonlySignal<int> for computed signal composition
-    // without attaching redundant element rebuild subscriptions:
-    final isEven = computed(() => context.state<CounterCubit, int>().value.isEven);
+class _CounterStatsCardState extends State<CounterStatsCard> {
+  // Long-lived computed signal bound outside build() to prevent unmanaged re-allocations:
+  late final ReadonlySignal<bool> isEven = computed(
+    () => context.state<CounterCubit, int>().value.isEven,
+  );
+
+  @override
+  Component build(BuildContext context) {
+    // context.value subscribes this component to state emissions directly:
+    final int count = context.value<CounterCubit, int>();
 
     return div(classes: 'stats-card', [
       p([Component.text('Count: \$count')]),

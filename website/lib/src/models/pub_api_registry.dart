@@ -129,6 +129,16 @@ enum DocSymbol(
     'bloc_signals_flutter',
     'BlocSignalProviderExtension/select.html',
   ),
+  contextValue(
+    'value',
+    'bloc_signals_flutter',
+    'BlocSignalProviderExtension/value.html',
+  ),
+  contextState(
+    'state',
+    'bloc_signals_flutter',
+    'BlocSignalProviderExtension/state.html',
+  ),
 
   // Testing (bloc_signals_test)
   blocSignalTest('blocSignalTest', 'bloc_signals_test', 'blocSignalTest.html'),
@@ -274,6 +284,31 @@ enum DocSymbol(
     'BlocSignalConsumer',
     'bloc_signals_jaspr',
     'BlocSignalConsumer-class.html',
+  ),
+  contextJasprRead(
+    'read',
+    'bloc_signals_jaspr',
+    'BlocSignalProviderExtension/read.html',
+  ),
+  contextJasprWatch(
+    'watch',
+    'bloc_signals_jaspr',
+    'BlocSignalProviderExtension/watch.html',
+  ),
+  contextJasprSelect(
+    'select',
+    'bloc_signals_jaspr',
+    'BlocSignalProviderExtension/select.html',
+  ),
+  contextJasprValue(
+    'value',
+    'bloc_signals_jaspr',
+    'BlocSignalProviderExtension/value.html',
+  ),
+  contextJasprState(
+    'state',
+    'bloc_signals_jaspr',
+    'BlocSignalProviderExtension/state.html',
   ),
 
   // Lint (bloc_signals_lint)

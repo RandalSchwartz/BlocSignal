@@ -341,6 +341,7 @@ void main() {
     test('initial state and stream propagation', () async {
       final classicAdapter = modernBloc.toClassicBloc();
       expect(classicAdapter.state, equals(0));
+      expect(classicAdapter.value, equals(0));
       expect(classicAdapter.blocSignal, same(modernBloc));
 
       final emittedStates = <int>[];
@@ -350,6 +351,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(classicAdapter.state, equals(1));
+      expect(classicAdapter.value, equals(1));
       expect(emittedStates, contains(1));
 
       await sub.cancel();
@@ -407,6 +409,7 @@ void main() {
     test('initial state, typed getters and stream updates', () async {
       final classicCubit = modernCubit.toClassicCubit();
       expect(classicCubit.state, equals(0));
+      expect(classicCubit.value, equals(0));
       expect(classicCubit.blocSignal, same(modernCubit));
       expect(classicCubit.cubit, same(modernCubit));
 
@@ -417,6 +420,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(classicCubit.state, equals(1));
+      expect(classicCubit.value, equals(1));
       expect(emittedStates, contains(1));
 
       await sub.cancel();

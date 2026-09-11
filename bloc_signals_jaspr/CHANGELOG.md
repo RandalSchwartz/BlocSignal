@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0
+
+- Add `context.value<T, S>()` and `context.state<T, S>()` extensions on `BuildContext` establishing feature parity with `bloc_signals_flutter` (#251).
+- Bump minimum `bloc_signals` dependency constraint to `^1.4.0` (#251).
+
 ## 1.0.1
 
 - Fix `context.select` subscription transfer when provider container instance is swapped above `const` subtrees (#204).

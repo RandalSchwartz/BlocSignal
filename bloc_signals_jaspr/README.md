@@ -33,7 +33,7 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 
 - **`BlocSignalProvider<T>`**: Injects a `BlocSignal` or `CubitSignal` into the Jaspr component tree via `InheritedComponent`, supporting lazy initialization (`lazy: true`), existing values (`.value`), and automatic container disposal.
 - **`MultiBlocSignalProvider`**: Combines multiple providers into a single linear component tree.
-- **`BuildContext` Extensions**: Read (`context.read<T>()`), watch (`context.watch<T>()`), and selectively subscribe (`context.select<T, R>()`) directly from `BuildContext`.
+- **`BuildContext` Extensions**: Read (`context.read<T>()`), watch (`context.watch<T>()`), selectively subscribe (`context.select<T, R>()`), subscribe to fine-grained state in build (`context.value<T, S>()`), and look up signals for composition (`context.state<T, S>()`) directly from `BuildContext`.
 - **`BlocSignalBuilder<T, S>`**: Rebuilds Jaspr components dynamically when state changes.
 - **`BlocSignalListener<T, S>`**: Executes side-effect callbacks on state changes with optional `listenWhen` filtering.
 - **`BlocSignalConsumer<T, S>`**: Combines `BlocSignalBuilder` and `BlocSignalListener`.

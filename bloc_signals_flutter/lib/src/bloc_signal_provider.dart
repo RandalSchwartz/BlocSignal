@@ -253,7 +253,7 @@ extension BlocSignalProviderExtension on BuildContext {
   /// }
   /// ```
   S value<T extends BlocSignalBase<S>, S>() {
-    return select<T, S>((bloc) => bloc.stateValue);
+    return select<T, S>((bloc) => bloc.value);
   }
 
   /// Looks up the [T] container and returns its reactive state

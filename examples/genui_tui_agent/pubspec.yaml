@@ -1,0 +1,17 @@
+name: genui_tui_agent
+resolution: workspace
+description: Interactive TUI showcase for bloc_signals_genui inspired by agy-cli.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  a2ui_core: ^0.1.1
+  bloc_signals: ^1.4.0
+  bloc_signals_genui: ^0.1.0
+
+dev_dependencies:
+  test: ^1.25.6
+  very_good_analysis: ">=10.3.0 <12.0.0"

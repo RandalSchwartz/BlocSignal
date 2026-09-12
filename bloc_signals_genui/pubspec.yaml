@@ -1,0 +1,27 @@
+name: bloc_signals_genui
+resolution: workspace
+description: Pure-Dart A2UI state machine and Generative UI adapter for the BlocSignal ecosystem.
+version: 0.1.0
+repository: https://github.com/RandalSchwartz/BlocSignal
+issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
+
+topics:
+  - bloc
+  - signals
+  - genui
+  - a2ui
+  - state-management
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  a2ui_core: ^0.1.1
+  bloc_signals: ^1.4.0
+  meta: ">=1.11.0 <2.0.0"
+
+dev_dependencies:
+  bloc_signals_test: ^1.0.0
+  coverage: ^1.11.0
+  test: ^1.25.6
+  very_good_analysis: ">=10.3.0 <12.0.0"

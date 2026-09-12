@@ -45,8 +45,13 @@ workspace:
   - examples/riverpod_todos
   - examples/riverpod_pub
   - examples/riverpod_marvel
+  - bloc_signals_genui
+  - examples/genui_tui_agent
   - website
 
 dev_dependencies:
   test: ^1.25.6
   very_good_analysis: ^11.0.0-rc.1
+
+dependency_overrides:
+  preact_signals: ^7.0.0

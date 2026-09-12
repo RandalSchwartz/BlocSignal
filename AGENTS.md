@@ -113,5 +113,8 @@ To protect developer context while preventing catastrophic regressions, full sca
 | **Lint Regex Wildcards** | `caseSensitive: false` wildcard substring leaks | Explicitly declare casing boundaries (`[a-z]Emit`); test with collision words (`_semitone`, `_demit`). |
 | **OTel Concurrency Leaks** | Abandoned spans on dropped/preempted events | Intercept `eventDropped` and `taskPreempted` in `onTelemetry`, tag `'bloc.contention': true`, and end span. |
 | **Synchronous Fast-Paths** | Async gaps delaying reentrancy flag reset | Never mark event transformer wrappers `async`; inspect `handler(...) is Future` and execute sync inline. |
+| **Mutable Model Deduplication** | In-place mutations dropped by `identical()` | Maintain a monotonic `version` counter and deep map/list equality in state `==` operators. |
+| **Stream Preemption Leaks** | Abandoned completer futures hanging in memory | Class-scope `_activeStreamCompleter` and explicitly resolve it on preemption or `close()`. |
 
 For the complete post-mortems, stack traces, and historical case studies for any scar above, inspect [`plugins/bloc-signals/skills/bloc-signals/scars.md`](plugins/bloc-signals/skills/bloc-signals/scars.md).
+

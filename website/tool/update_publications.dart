@@ -42,10 +42,8 @@ Future<void> main() async {
   );
   if (!hasSymmetryArticle) {
     articles.insert(0, {
-      'title':
-          'The Symmetry of State: Why Flutter Deserves context.value and context.state',
-      'description':
-          'Eliminating the widget builder tax, closure fatigue, and the context.watch trap in Flutter: how 1:1 symmetry between containers and BuildContext unlocks cleaner, faster reactive apps.',
+      'title': 'The Symmetry of State: Why Flutter Deserves context.value and context.state',
+      'description': 'Eliminating the widget builder tax, closure fatigue, and the context.watch trap in Flutter: how 1:1 symmetry between containers and BuildContext unlocks cleaner, faster reactive apps.',
       'url': symmetryArticleUrl,
       'canonical_url': symmetryArticleUrl,
       'readable_publish_date': 'Sep 11',

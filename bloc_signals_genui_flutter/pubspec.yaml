@@ -1,0 +1,35 @@
+name: bloc_signals_genui_flutter
+resolution: workspace
+description: Flutter UI bindings, declarative surface views, and catalog widgets for Generative UI (A2UI) with BlocSignal.
+version: 0.1.0
+repository: https://github.com/RandalSchwartz/BlocSignal
+issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
+
+topics:
+  - bloc
+  - signals
+  - genui
+  - a2ui
+  - flutter
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  a2ui_core: ^0.1.1
+  bloc_signals: ^1.4.0
+  bloc_signals_flutter: ^1.3.1
+  bloc_signals_genui: ^0.1.0
+  flutter:
+    sdk: flutter
+  json_schema_builder: any
+  meta: ">=1.11.0 <2.0.0"
+
+dev_dependencies:
+  bloc_signals_test: ^1.0.0
+  flutter_test:
+    sdk: flutter
+  very_good_analysis: ">=10.3.0 <12.0.0"
+
+flutter:

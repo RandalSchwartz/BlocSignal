@@ -47,6 +47,7 @@ workspace:
   - examples/riverpod_pub
   - examples/riverpod_marvel
   - bloc_signals_genui
+  - bloc_signals_genui_flutter
   - examples/genui_tui_agent
   - website
 

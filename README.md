@@ -34,6 +34,7 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 | **`bloc_signals_replay`**   | [![pub](https://img.shields.io/pub/v/bloc_signals_replay.svg)](https://pub.dev/packages/bloc_signals_replay)     | Undo & redo state history tracking for CubitSignal and BlocSignal |
 | **`bloc_signals_otel`**     | [![pub](https://img.shields.io/pub/v/bloc_signals_otel.svg)](https://pub.dev/packages/bloc_signals_otel)         | OpenTelemetry tracing and span generation for state transitions   |
 | **`bloc_signals_devtools`** | [![pub](https://img.shields.io/pub/v/bloc_signals_devtools.svg)](https://pub.dev/packages/bloc_signals_devtools) | Universal DevTools telemetry observer using `dart:developer`      |
+| **`bloc_signals_genui`**    | [![pub](https://img.shields.io/pub/v/bloc_signals_genui.svg)](https://pub.dev/packages/bloc_signals_genui)       | A2UI protocol state machine & Generative UI runtime adapter       |
 | **`bloc_signals_test`**     | [![pub](https://img.shields.io/pub/v/bloc_signals_test.svg)](https://pub.dev/packages/bloc_signals_test)         | Declarative unit testing utilities (`blocSignalTest`)             |
 | **`bloc_signals_lint`**     | [![pub](https://img.shields.io/pub/v/bloc_signals_lint.svg)](https://pub.dev/packages/bloc_signals_lint)         | Custom analyzer lint rules & automated IDE quick-fixes            |
 

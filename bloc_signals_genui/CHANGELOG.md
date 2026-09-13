@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
+## 0.1.1
+
+- Added `A2uiActionResponse.getFormValue<T>(String path)` for ergonomic retrieval of form data supporting flat keys, leading-slash paths, and nested dot-notation access.
+
 ## 0.1.0
 
 - Initial release of `bloc_signals_genui`.

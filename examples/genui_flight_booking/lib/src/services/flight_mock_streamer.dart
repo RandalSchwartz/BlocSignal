@@ -201,7 +201,7 @@ class FlightMockStreamer {
             'id': 'input_passenger_name',
             'component': 'TextField',
             'label': 'Primary Passenger Full Name',
-            'placeholder': 'e.g. Merlyn Schwartz',
+            'placeholder': 'Merlyn Schwartz',
             'value': {
               'path': '/passenger/name',
             },

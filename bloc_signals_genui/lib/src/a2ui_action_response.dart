@@ -47,6 +47,10 @@ class A2uiActionResponse {
   /// `'passenger.name'`, or `'input_passenger_name'`).
   ///
   /// Searches flat keys first, then recursively traverses nested maps by path segments.
+  ///
+  /// ```dart
+  /// final name = response.getFormValue<String>('/passenger/name');
+  /// ```
   T? getFormValue<T>(String path) {
     if (formData.containsKey(path)) {
       final val = formData[path];

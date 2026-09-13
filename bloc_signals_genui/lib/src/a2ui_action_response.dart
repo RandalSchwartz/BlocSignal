@@ -43,6 +43,46 @@ class A2uiActionResponse {
         'context': context,
       };
 
+  /// Retrieves a form value by its key or structured path (for example `'/passenger/name'`,
+  /// `'passenger.name'`, or `'input_passenger_name'`).
+  ///
+  /// Searches flat keys first, then recursively traverses nested maps by path segments.
+  ///
+  /// ```dart
+  /// final name = response.getFormValue<String>('/passenger/name');
+  /// ```
+  T? getFormValue<T>(String path) {
+    if (formData.containsKey(path)) {
+      final val = formData[path];
+      if (val is T) return val;
+      return null;
+    }
+
+    final normalized = path.startsWith('/') ? path.substring(1) : path;
+    if (formData.containsKey(normalized)) {
+      final val = formData[normalized];
+      if (val is T) return val;
+      return null;
+    }
+
+    final delimiter = normalized.contains('/') ? '/' : '.';
+    final segments =
+        normalized.split(delimiter).where((s) => s.isNotEmpty).toList();
+    if (segments.isEmpty) return null;
+
+    dynamic current = formData;
+    for (final seg in segments) {
+      if (current is Map && current.containsKey(seg)) {
+        current = current[seg];
+      } else {
+        return null;
+      }
+    }
+
+    if (current is T) return current;
+    return null;
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||

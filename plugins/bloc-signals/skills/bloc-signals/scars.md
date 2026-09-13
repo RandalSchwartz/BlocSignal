@@ -110,4 +110,13 @@ This document details the codified failure modes, architectural wounds, traps, a
 - **The Antigen / Vulnerability Vector**: Treating subscription cancellation (`subscription.cancel()`) as automatically resolving the handler's awaiting `Completer.future`.
 - **The Antibody / Permanent Reflex**: Maintain class-scoped references to both `_activeStreamSubscription` and `_activeStreamCompleter`. Whenever cancelling an active stream on preemption or inside `close()`, explicitly resolve the completer: `if (oldCompleter != null && !oldCompleter.isCompleted) oldCompleter.complete();`. Guard with unit tests asserting handler futures resolve promptly upon new event arrival.
 
+### 🩹 Scar: Nullable Field Reset Bypass in State `copyWith` (`SCAR-STATE-11`)
+- **The Pathogen / Wound**: Passing `null` to clear a nullable property in a state container's `copyWith` method (for example `activeSurfaceId: clearMessages ? null : value.activeSurfaceId`) fails silently when `copyWith` uses the default fallback pattern `activeSurfaceId ?? this.activeSurfaceId`. The `??` operator cannot distinguish between an omitted parameter and an explicit `null`, causing the state container to retain stale pointers and leak session state across resets.
+- **The Antigen / Vulnerability Vector**: Assuming Dart's standard parameter defaulting distinguishes omitted arguments from explicitly supplied `null` values.
+- **The Antibody / Permanent Reflex**: For any nullable field on a state class that must support resetting or unsetting, either:
+  1. Add an explicit boolean sentinel flag (for example `bool clearActiveSurfaceId = false`) evaluated before the fallback: `activeSurfaceId: clearActiveSurfaceId ? null : (activeSurfaceId ?? this.activeSurfaceId)`.
+  2. Use a nullable value supplier closure (for example `String? Function()? activeSurfaceId`).
+  Always write a dedicated unit test verifying that calling `copyWith` with the reset flag cleanly nullifies the property on a populated state instance.
+
+
 

@@ -19,6 +19,7 @@ void main(List<String> args) {
     'bloc_signals_genui',
     'bloc_signals_genui_flutter',
     'examples/genui_tui_agent',
+    'examples/genui_flight_booking',
     'website',
   ];
 

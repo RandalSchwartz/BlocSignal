@@ -489,5 +489,47 @@ void main() {
       expect(resp1.hashCode, equals(resp2.hashCode));
       expect(resp1.toString(), contains('a'));
     });
+
+    test('A2uiActionResponse.getFormValue retrieves flat and nested values',
+        () {
+      final now = DateTime.now();
+      final resp = A2uiActionResponse(
+        actionName: 'submit',
+        surfaceId: 'surf',
+        sourceComponentId: 'btn',
+        timestamp: now,
+        formData: const {
+          'directKey': 'hello',
+          '/flat/slash': 42,
+          'nested': {
+            'inner': 'world',
+            'deep': {
+              'count': 100,
+            },
+          },
+        },
+      );
+
+      // Direct key
+      expect(resp.getFormValue<String>('directKey'), equals('hello'));
+      expect(resp.getFormValue<int>('directKey'), isNull);
+
+      // Flat slash key
+      expect(resp.getFormValue<int>('/flat/slash'), equals(42));
+
+      // Nested via slash
+      expect(resp.getFormValue<String>('/nested/inner'), equals('world'));
+      expect(resp.getFormValue<String>('nested/inner'), equals('world'));
+      expect(resp.getFormValue<int>('/nested/deep/count'), equals(100));
+
+      // Nested via dot
+      expect(resp.getFormValue<String>('nested.inner'), equals('world'));
+      expect(resp.getFormValue<int>('nested.deep.count'), equals(100));
+
+      // Non-existent
+      expect(resp.getFormValue<String>('/nested/missing'), isNull);
+      expect(resp.getFormValue<String>('/unknown'), isNull);
+      expect(resp.getFormValue<String>(''), isNull);
+    });
   });
 }

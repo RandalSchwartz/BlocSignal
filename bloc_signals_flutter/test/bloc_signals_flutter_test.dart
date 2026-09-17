@@ -974,6 +974,95 @@ void main() {
         await cubit2.close();
       },
     );
+
+    testWidgets(
+      'BlocSignalListener rebinds when ancestor provider instance is swapped '
+      'above const child',
+      (tester) async {
+        final cubit1 = CounterCubit();
+        final cubit2 = CounterCubit();
+        final states = <int>[];
+
+        Widget buildTree(CounterCubit cubit) {
+          return MaterialApp(
+            home: BlocSignalProvider<CounterCubit>.value(
+              value: cubit,
+              child: _ConstListenerChild(
+                onState: states.add,
+              ),
+            ),
+          );
+        }
+
+        await tester.pumpWidget(buildTree(cubit1));
+        cubit1.increment(); // 1
+        await tester.pump();
+        expect(states, equals([1]));
+
+        // Swap provider to cubit2
+        await tester.pumpWidget(buildTree(cubit2));
+
+        // cubit2 emissions should be received by listener
+        cubit2.increment(); // 1
+        await tester.pump();
+        expect(states, equals([1, 1]));
+
+        // cubit1 is now disconnected/disposed; emissions should not be received
+        cubit1.increment(); // 2
+        await tester.pump();
+        expect(states, equals([1, 1]));
+
+        await cubit1.close();
+        await cubit2.close();
+      },
+    );
+
+    testWidgets(
+      'BlocSignalConsumer rebinds when ancestor provider instance is swapped',
+      (tester) async {
+        final cubit1 = CounterCubit();
+        final cubit2 = CounterCubit();
+        final listenedStates = <int>[];
+
+        Widget buildTree(CounterCubit cubit) {
+          return MaterialApp(
+            home: BlocSignalProvider<CounterCubit>.value(
+              value: cubit,
+              child: BlocSignalConsumer<CounterCubit, int>(
+                listener: (context, state) => listenedStates.add(state),
+                builder: (context, state) => Text('ConsumerState: $state'),
+              ),
+            ),
+          );
+        }
+
+        await tester.pumpWidget(buildTree(cubit1));
+        expect(find.text('ConsumerState: 0'), findsOneWidget);
+
+        cubit1.increment();
+        await tester.pump();
+        expect(find.text('ConsumerState: 1'), findsOneWidget);
+        expect(listenedStates, equals([1]));
+
+        // Swap to cubit2 (which is at initial state 0)
+        await tester.pumpWidget(buildTree(cubit2));
+        expect(find.text('ConsumerState: 0'), findsOneWidget);
+
+        cubit2.increment();
+        await tester.pump();
+        expect(find.text('ConsumerState: 1'), findsOneWidget);
+        expect(listenedStates, equals([1, 1]));
+
+        // cubit1 is now disconnected; emissions should not be received
+        cubit1.increment(); // 2
+        await tester.pump();
+        expect(find.text('ConsumerState: 1'), findsOneWidget);
+        expect(listenedStates, equals([1, 1]));
+
+        await cubit1.close();
+        await cubit2.close();
+      },
+    );
   });
 }
 
@@ -984,5 +1073,19 @@ class _ConstSelectorChild extends StatelessWidget {
   Widget build(BuildContext context) {
     final count = context.select<CounterBloc, int>((b) => b.stateValue);
     return Text('Count: $count');
+  }
+}
+
+class _ConstListenerChild extends StatelessWidget {
+  const _ConstListenerChild({required this.onState});
+
+  final void Function(int state) onState;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSignalListener<CounterCubit, int>(
+      listener: (context, state) => onState(state),
+      child: const Text('ConstListenerContent'),
+    );
   }
 }

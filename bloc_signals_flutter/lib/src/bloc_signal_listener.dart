@@ -87,7 +87,8 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final effectiveBloc = widget.bloc ?? BlocSignalProvider.of<T>(context);
+    final effectiveBloc =
+        widget.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     if (_bloc != effectiveBloc) {
       _bloc = effectiveBloc;
       _subscribe();

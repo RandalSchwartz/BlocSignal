@@ -27,6 +27,7 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
     required this.builder,
     required this.listener,
     this.bloc,
+    this.buildWhen,
     this.listenWhen,
     super.key,
   });
@@ -40,6 +41,10 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
 
   /// The callback that runs whenever the state changes.
   final void Function(BuildContext context, S state) listener;
+
+  /// An optional predicate function that determines whether [builder] should
+  /// rebuild.
+  final bool Function(S previous, S current)? buildWhen;
 
   /// A function that determines whether the [listener] should be called.
   ///
@@ -57,6 +62,7 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
       listenWhen: listenWhen,
       child: BlocSignalBuilder<T, S>(
         bloc: effectiveBloc,
+        buildWhen: buildWhen,
         builder: builder,
       ),
     );

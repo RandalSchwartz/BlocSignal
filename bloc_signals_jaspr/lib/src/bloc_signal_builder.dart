@@ -24,10 +24,15 @@ class BlocSignalBuilder<T extends BlocSignalBase<S>, S>
     required this.builder,
     super.key,
     this.bloc,
+    this.buildWhen,
   });
 
   /// The [BlocSignal] to listen to. If null, it is retrieved from the context.
   final T? bloc;
+
+  /// An optional predicate function that takes the previous and current state
+  /// and determines whether to rebuild the component.
+  final bool Function(S previous, S current)? buildWhen;
 
   /// The builder function that creates the component subtree given the
   /// current state.
@@ -41,14 +46,26 @@ class BlocSignalBuilder<T extends BlocSignalBase<S>, S>
 class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
     extends State<BlocSignalBuilder<T, S>> {
   T? _bloc;
+  S? _state;
   void Function()? _cleanup;
 
   void _subscribe() {
     _cleanup?.call();
+    _state = _bloc!.state.value;
+
     _cleanup = effect(
       () {
-        final _ = _bloc!.state.value;
-        setState(() {});
+        final currentState = _bloc!.state.value;
+        if (_state != currentState) {
+          final previous = _state as S;
+          if (component.buildWhen == null ||
+              component.buildWhen!(previous, currentState)) {
+            _state = currentState;
+            if (mounted) {
+              setState(() {});
+            }
+          }
+        }
       },
       options: EffectOptions(name: 'BlocSignalBuilder<$T, $S>.effect'),
     );
@@ -84,6 +101,6 @@ class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
 
   @override
   Component build(BuildContext context) {
-    return component.builder(context, _bloc!.state.value);
+    return component.builder(context, _state as S);
   }
 }

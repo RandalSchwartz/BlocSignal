@@ -10,11 +10,11 @@
 | :--- | :--- |
 | **`BlocSignalProvider<T>`** | Provides a `BlocSignal` or `CubitSignal` instance down the Jaspr component tree via `InheritedComponent`. Supports `lazy:` creation and `.value` injection. |
 | **`MultiBlocSignalProvider`** | Combines multiple `BlocSignalProvider` instances into a single linear component hierarchy. |
-| **`BlocSignalBuilder<T, S>`** | Rebuilds Jaspr components dynamically whenever container state updates with automatic subscription teardown. |
-| **`BlocSignalListener<T, S>`** | Fires side-effect callbacks (such as notifications or JS interop calls) on state updates with optional `listenWhen` predicate filtering. |
-| **`BlocSignalConsumer<T, S>`** | Combines `BlocSignalBuilder` and `BlocSignalListener`. |
+| **`BlocSignalBuilder<T, S>`** | Rebuilds Jaspr components dynamically whenever container state updates with optional `buildWhen` filtering and automatic subscription teardown. |
+| **`BlocSignalListener<T, S>`** | Fires side-effect callbacks (such as notifications or JS interop calls) on state updates with optional `listenWhen` predicate filtering and automatic provider swap rebinding. |
+| **`BlocSignalConsumer<T, S>`** | Combines `BlocSignalBuilder` and `BlocSignalListener`, supporting both `buildWhen` and `listenWhen`. |
 | **`BlocSignalSelector<T, S, V>`** | Subscribes to fine-grained computed state slices and rebuilds only when selection changes. |
-| **`MultiBlocSignalListener`** | Combines multiple `BlocSignalListener` instances cleanly. |
+| **`MultiBlocSignalListener`** | Combines multiple `BlocSignalListener` instances cleanly with dynamic list literals. |
 
 ---
 

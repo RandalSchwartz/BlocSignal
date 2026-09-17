@@ -154,9 +154,8 @@ BlocSignalListener<AuthBloc, AuthState>(
 
 The listener callback receives only the current state; `listenWhen` receives both values. An
 unrelated parent rebuild does not restart the effect. When `bloc:` is omitted, the listener
-uses a non-listening provider lookup, so a provider instance swap can be missed until another
-widget update runs. Pass the bloc explicitly or verify replacement behavior in a widget test when
-the provider can change.
+looks up its provider with `listen: true` during `didChangeDependencies`, so if an ancestor provider replaces
+its container instance, the listener automatically rebinds and continues observing state transitions seamlessly.
 
 `BlocSignalBuilder` supports `buildWhen(previous, current)` to conditionally suppress rebuilds when state changes:
 

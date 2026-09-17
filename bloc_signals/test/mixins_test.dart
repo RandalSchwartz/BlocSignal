@@ -414,7 +414,8 @@ void main() {
           'event': '{invalid json',
         },
       );
-      expect(invalidJsonResp.result, isNotNull);
+      expect(invalidJsonResp.isError(), isTrue);
+      expect(invalidJsonResp.errorCode, equals(-32602));
 
       // Dispatch with missing hashCode
       final missingHashCodeResp = await service.handleDispatch(

@@ -12,6 +12,7 @@ class DevToolsHistoryEntry {
     required this.type,
     required this.timestamp,
     required this.data,
+    this.instanceHashCode,
   });
 
   /// The type of entry ('transition', 'error', etc.).
@@ -23,11 +24,18 @@ class DevToolsHistoryEntry {
   /// Structured payload data.
   final Map<String, dynamic> data;
 
+  /// Optional container identity hash code.
+  final int? instanceHashCode;
+
   /// Converts this entry to a JSON-serializable Map.
   Map<String, dynamic> toJson() => {
         'type': type,
         'timestamp': timestamp,
         'data': data,
+        if (instanceHashCode != null) ...{
+          'hashCode': instanceHashCode,
+          'instanceHashCode': instanceHashCode,
+        },
       };
 }
 
@@ -51,7 +59,18 @@ class DevToolsService {
 
   final Map<int, WeakReference<BlocSignalBase<dynamic>>> _containers = {};
   final Map<int, List<DevToolsHistoryEntry>> _history = {};
+  final Map<Type, Object? Function(dynamic raw)> _eventDeserializers = {};
   bool _extensionsRegistered = false;
+
+  /// Registers an event deserializer callback for containers of type [T].
+  ///
+  /// This allows the DevTools `dispatch` RPC to reconstruct typed events from
+  /// JSON maps or strings when interacting with strongly-typed blocs.
+  void registerEventDeserializer<T extends BlocSignalBase<dynamic>>(
+    Object? Function(dynamic raw) deserializer,
+  ) {
+    _eventDeserializers[T] = deserializer;
+  }
 
   static bool get _inDebugMode {
     var inDebug = false;
@@ -118,13 +137,16 @@ class DevToolsService {
     Object? state,
   ) {
     if (!isEnabled) return;
+    final id = identityHashCode(bloc);
     _record(
-      identityHashCode(bloc),
+      id,
       DevToolsHistoryEntry(
         type: 'transition',
         timestamp: DateTime.now().toIso8601String(),
+        instanceHashCode: id,
         data: {
           'event': event?.toString(),
+          'currentState': bloc.stateValue.toString(),
           'nextState': state?.toString(),
         },
       ),
@@ -138,11 +160,13 @@ class DevToolsService {
     StackTrace stackTrace,
   ) {
     if (!isEnabled) return;
+    final id = identityHashCode(bloc);
     _record(
-      identityHashCode(bloc),
+      id,
       DevToolsHistoryEntry(
         type: 'error',
         timestamp: DateTime.now().toIso8601String(),
+        instanceHashCode: id,
         data: {
           'error': error.toString(),
           'stackTrace': stackTrace.toString(),
@@ -159,11 +183,13 @@ class DevToolsService {
     Map<String, dynamic>? metadata,
   }) {
     if (!isEnabled) return;
+    final id = identityHashCode(bloc);
     _record(
-      identityHashCode(bloc),
+      id,
       DevToolsHistoryEntry(
         type: 'telemetry',
         timestamp: DateTime.now().toIso8601String(),
+        instanceHashCode: id,
         data: {
           'name': name,
           'event': event?.toString(),
@@ -269,7 +295,24 @@ class DevToolsService {
       if (eventStr.startsWith('{') || eventStr.startsWith('[')) {
         try {
           eventPayload = jsonDecode(eventStr);
-        } on Exception catch (_) {}
+        } on FormatException catch (e) {
+          return developer.ServiceExtensionResponse.error(
+            developer.ServiceExtensionResponse.invalidParams,
+            'Invalid JSON event payload: ${e.message}',
+          );
+        }
+      }
+
+      final deserializer = _eventDeserializers[bloc.runtimeType];
+      if (deserializer != null) {
+        try {
+          eventPayload = deserializer(eventPayload);
+        } on Object catch (e) {
+          return developer.ServiceExtensionResponse.error(
+            developer.ServiceExtensionResponse.invalidParams,
+            'Failed to deserialize event for ${bloc.runtimeType}: $e',
+          );
+        }
       }
 
       try {

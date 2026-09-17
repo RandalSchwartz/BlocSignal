@@ -1,5 +1,6 @@
 ## 1.0.0+1
 
+- Support interactive history entry selection in `TimelineTracePanel` and wire selection state to `StateDiffInspector` in `BlocSignalsDevToolsExtension`.
 - Re-trigger pub.dev Pana static analysis.
 
 ## 1.0.0

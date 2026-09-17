@@ -1,6 +1,6 @@
 # DevTools & Telemetry Guide (`DevToolsBlocSignalObserver`)
 
-This guide details Flutter DevTools inspection and VM service telemetry for `BlocSignal` using `package:bloc_signals_flutter`.
+This guide details Flutter DevTools inspection and VM service telemetry for `BlocSignal` using `package:bloc_signals`.
 
 `DevToolsBlocSignalObserver` broadcasts container lifecycle events to the Dart VM service via `developer.postEvent` under `bloc_signal.*` event kinds, enabling real-time DevTools timeline inspection.
 

@@ -262,5 +262,82 @@ void main() {
 
       await bloc.close();
     });
+
+    test('records exception exactly once without duplicate exception events',
+        () async {
+      final bloc = TracedTestBloc(
+        workTransformer: sequential(),
+        tracer: tracer,
+      );
+
+      final tracedTx = traced<DoWorkEvent, String>(
+        (event, handler, emit) => handler(event, emit),
+        tracer: tracer,
+      );
+
+      try {
+        final res = tracedTx(
+          bloc,
+          DoWorkEvent('single_error'),
+          (e, emit) async {
+            throw StateError('Single error failure');
+          },
+          bloc.emit,
+        );
+        if (res is Future) await res;
+      } on Object catch (_) {}
+
+      expect(exporter.exportedSpans, hasLength(1));
+      final span = exporter.exportedSpans.first;
+      final exceptionEvents =
+          span.events.where((e) => e.name == 'exception').toList();
+      expect(exceptionEvents, hasLength(1));
+
+      await bloc.close();
+    });
+
+    test(
+        'keeps span open for transformers that defer execution without '
+        'returning a Future', () async {
+      final bloc = TracedTestBloc(
+        workTransformer: sequential(),
+        tracer: tracer,
+      );
+
+      final completer = Completer<void>();
+      // A transformer that schedules handler execution asynchronously
+      // without returning a Future.
+      final deferredTx = tracedBloc<DoWorkEvent, String>(
+        (b, event, handler, emit) {
+          Timer(const Duration(milliseconds: 20), () async {
+            await handler(event, emit);
+            completer.complete();
+          });
+        },
+        tracer: tracer,
+      );
+
+      deferredTx(
+        bloc,
+        DoWorkEvent('deferred'),
+        (e, emit) async {
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+          emit('deferred_done');
+        },
+        bloc.emit,
+      );
+
+      // Immediately after invoking deferredTx, span must NOT be exported yet!
+      expect(exporter.exportedSpans, isEmpty);
+
+      // Wait for timer and handler to complete
+      await completer.future;
+
+      expect(exporter.exportedSpans, hasLength(1));
+      final span = exporter.exportedSpans.first;
+      expect(span.status.code, equals(otel.StatusCode.ok));
+
+      await bloc.close();
+    });
   });
 }

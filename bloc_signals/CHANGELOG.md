@@ -1,5 +1,9 @@
 ## 1.5.0
 
+- Add `BlocSignalObserver.onEventCompleted` lifecycle hook called synchronously or asynchronously upon event handler completion.
+- Reconcile `DevToolsService` history payloads to include `instanceHashCode` and `currentState` for seamless integration with `bloc_signals_devtools`.
+- Support typed event deserializer registration in `DevToolsService.registerEventDeserializer()` and validate JSON payloads with explicit `FormatException` handling in `handleDispatch`.
+- Update `emitContainerTelemetry` documentation clarifying its role as the public entrypoint for custom concurrency transformers.
 - Isolate observer exceptions across `onCreate`, `onEvent`, `onTransition`, `onChange`, and `onClose` in `try/catch` blocks so that throwing observers cannot abort state updates (`_state.value = newState`) or lifecycle hooks. All observer exceptions are routed to `onError`.
 - Protect `onError` against recursive crashes if an observer throws inside its error handler.
 - Introduce `CompositeBlocSignalObserver` and static helpers `BlocSignalObserver.addObserver()` and `BlocSignalObserver.removeObserver()` for first-class multi-observer chaining without breaking existing single-observer assignments.

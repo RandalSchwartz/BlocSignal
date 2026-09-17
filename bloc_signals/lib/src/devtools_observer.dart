@@ -66,6 +66,12 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
   }
 
   @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+    super.onEventCompleted(bloc, event);
+    previousObserver?.onEventCompleted(bloc, event);
+  }
+
+  @override
   void onTransition(
     BlocSignalBase<dynamic> bloc,
     Object? event,
@@ -80,6 +86,7 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
         'blocType': bloc.runtimeType.toString(),
         'hashCode': identityHashCode(bloc),
         'event': event?.toString(),
+        'currentState': bloc.stateValue.toString(),
         'nextState': state.toString(),
         'timestamp': DateTime.now().microsecondsSinceEpoch,
       });

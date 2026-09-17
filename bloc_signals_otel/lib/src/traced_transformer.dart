@@ -22,7 +22,7 @@ import 'package:opentelemetry/api.dart' as otel;
 ///   SearchBloc() : super(initialState: SearchInitial()) {
 ///     on<SearchQueryChanged>(
 ///       _onSearchQueryChanged,
-///       blocTransformer: traced(debounce(const Duration(milliseconds: 300))),
+///       blocTransformer: traced(restartable()),
 ///     );
 ///   }
 /// }
@@ -77,25 +77,56 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
       ],
     );
 
+    var exceptionRecorded = false;
+    var spanEnded = false;
+    var handlerInvoked = false;
+
+    void recordError(Object error, StackTrace stackTrace) {
+      if (!exceptionRecorded) {
+        exceptionRecorded = true;
+        span
+          ..recordException(error, stackTrace: stackTrace)
+          ..setStatus(otel.StatusCode.error, error.toString());
+      }
+    }
+
+    void endSpanOk() {
+      if (!spanEnded && !exceptionRecorded) {
+        spanEnded = true;
+        span
+          ..setStatus(otel.StatusCode.ok)
+          ..end();
+      }
+    }
+
+    void endSpanError(Object error, StackTrace stackTrace) {
+      recordError(error, stackTrace);
+      if (!spanEnded) {
+        spanEnded = true;
+        span.end();
+      }
+    }
+
     try {
       final result = transformer(
         bloc,
         event,
         (e, em) {
+          handlerInvoked = true;
           try {
             final res = handler(e, em);
             if (res is Future) {
-              return res.catchError((Object error, StackTrace stackTrace) {
-                span
-                  ..recordException(error, stackTrace: stackTrace)
-                  ..setStatus(otel.StatusCode.error, error.toString());
+              return res.then<void>((_) {
+                endSpanOk();
+              }).catchError((Object error, StackTrace stackTrace) {
+                endSpanError(error, stackTrace);
                 Error.throwWithStackTrace(error, stackTrace);
               });
+            } else {
+              endSpanOk();
             }
           } catch (error, stackTrace) {
-            span
-              ..recordException(error, stackTrace: stackTrace)
-              ..setStatus(otel.StatusCode.error, error.toString());
+            endSpanError(error, stackTrace);
             rethrow;
           }
         },
@@ -104,26 +135,18 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
 
       if (result is Future) {
         return result.then((_) {
-          span
-            ..setStatus(otel.StatusCode.ok)
-            ..end();
+          endSpanOk();
         }).catchError((Object error, StackTrace stackTrace) {
-          span
-            ..recordException(error, stackTrace: stackTrace)
-            ..setStatus(otel.StatusCode.error, error.toString())
-            ..end();
+          endSpanError(error, stackTrace);
           Error.throwWithStackTrace(error, stackTrace);
         });
       }
 
-      span
-        ..setStatus(otel.StatusCode.ok)
-        ..end();
+      if (handlerInvoked) {
+        endSpanOk();
+      }
     } catch (error, stackTrace) {
-      span
-        ..recordException(error, stackTrace: stackTrace)
-        ..setStatus(otel.StatusCode.error, error.toString())
-        ..end();
+      endSpanError(error, stackTrace);
       rethrow;
     }
   };

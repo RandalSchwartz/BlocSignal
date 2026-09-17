@@ -194,6 +194,11 @@ class TestObserver extends BlocSignalObserver {
   ) {
     logs.add('error: $error');
   }
+
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+    logs.add('completed: $event');
+  }
 }
 
 void main() {
@@ -238,6 +243,7 @@ void main() {
         observer.logs,
         contains("transition: 1 (event: Instance of 'Increment')"),
       );
+      expect(observer.logs, contains("completed: Instance of 'Increment'"));
 
       unawaited(bloc.close());
     });

@@ -64,6 +64,17 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
     );
   }
 
+  void _notifyEventCompleted(Event event) {
+    final currentObserver = BlocSignalObserver.observer;
+    if (currentObserver != null) {
+      try {
+        currentObserver.onEventCompleted(this, event);
+      } on Object catch (e, stackTrace) {
+        onError(e, stackTrace);
+      }
+    }
+  }
+
   /// Dispatches an event to the [onEvent] handler.
   ///
   /// Notifies the global [BlocSignalObserver] of the incoming event and catches
@@ -84,10 +95,13 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
         try {
           final result = onEvent(event);
           if (result is Future) {
-            unawaited(_handleAsyncResult(result));
+            unawaited(_handleAsyncResult(result, event));
+          } else {
+            _notifyEventCompleted(event);
           }
         } catch (e, stackTrace) {
           onError(e, stackTrace);
+          _notifyEventCompleted(event);
           if (e is Error) rethrow;
         }
       },
@@ -98,7 +112,7 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
     );
   }
 
-  Future<void> _handleAsyncResult(Future<dynamic> result) async {
+  Future<void> _handleAsyncResult(Future<dynamic> result, Event event) async {
     try {
       await result;
     } catch (e, stackTrace) {
@@ -106,6 +120,8 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
       if (e is Error) {
         Error.throwWithStackTrace(e, stackTrace);
       }
+    } finally {
+      _notifyEventCompleted(event);
     }
   }
 

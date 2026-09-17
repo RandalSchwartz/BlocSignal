@@ -10,9 +10,14 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
   /// The [maxActiveSpans] parameter caps the active span cache size
   /// (default 100) to prevent transient memory growth under high-frequency
   /// event streams.
+  ///
+  /// An optional [stateRedactor] callback can be provided to format or redact
+  /// state values before recording them under the `state.value` span attribute.
+  /// If [stateRedactor] returns `null`, the `state.value` attribute is omitted.
   OtelBlocSignalObserver({
     otel.Tracer? tracer,
     this.maxActiveSpans = 100,
+    this.stateRedactor,
   })  : assert(maxActiveSpans > 0, 'maxActiveSpans must be greater than zero.'),
         _tracer =
             tracer ?? otel.globalTracerProvider.getTracer('bloc_signals_otel');
@@ -22,11 +27,33 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
   /// The maximum number of active unclosed spans retained before LRU eviction.
   final int maxActiveSpans;
 
+  /// Optional callback to redact or format state values before recording them
+  /// on OpenTelemetry spans.
+  final String? Function(BlocSignalBase<dynamic> bloc, Object? state)?
+      stateRedactor;
+
   // Track active spans for events mapped by a unique key per bloc/event.
-  final Map<String, otel.Span> _activeSpans = {};
+  // Uses a FIFO list to prevent collisions when repeated identical or const
+  // events are dispatched before prior spans close.
+  final Map<String, List<otel.Span>> _activeSpans = {};
+
+  int get _totalActiveSpans =>
+      _activeSpans.values.fold(0, (sum, list) => sum + list.length);
 
   String _spanKey(BlocSignalBase<dynamic> bloc, Object? event) {
     return '${identityHashCode(bloc)}_${identityHashCode(event)}';
+  }
+
+  void _applyStateAttribute(
+    otel.Span span,
+    BlocSignalBase<dynamic> bloc,
+    Object? state,
+  ) {
+    final stateStr =
+        stateRedactor != null ? stateRedactor!(bloc, state) : state?.toString();
+    if (stateStr != null) {
+      span.setAttribute(otel.Attribute.fromString('state.value', stateStr));
+    }
   }
 
   @override
@@ -34,9 +61,11 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
     super.onEvent(bloc, event);
     if (event == null) return;
 
-    if (_activeSpans.length >= maxActiveSpans) {
+    if (_totalActiveSpans >= maxActiveSpans) {
       final oldestKey = _activeSpans.keys.first;
-      _activeSpans.remove(oldestKey)?.end();
+      final list = _activeSpans[oldestKey]!;
+      list.removeAt(0).end();
+      if (list.isEmpty) _activeSpans.remove(oldestKey);
     }
 
     final span = _tracer.startSpan(
@@ -47,7 +76,7 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
       ],
     );
 
-    _activeSpans[_spanKey(bloc, event)] = span;
+    (_activeSpans[_spanKey(bloc, event)] ??= []).add(span);
   }
 
   @override
@@ -59,16 +88,41 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
     super.onTransition(bloc, event, state);
 
     final key = _spanKey(bloc, event);
-    final span = _activeSpans[key];
+    final spans = _activeSpans[key];
 
-    if (span != null) {
+    if (spans != null && spans.isNotEmpty) {
+      final span = spans.first;
+      _applyStateAttribute(span, bloc, state);
+      final stateStr = stateRedactor != null
+          ? stateRedactor!(bloc, state)
+          : state?.toString();
+      span.addEvent(
+        'transition',
+        attributes: [
+          if (stateStr != null)
+            otel.Attribute.fromString('state.value', stateStr),
+          if (event != null)
+            otel.Attribute.fromString('event.value', event.toString()),
+        ],
+      );
+    }
+  }
+
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+    super.onEventCompleted(bloc, event);
+
+    final key = _spanKey(bloc, event);
+    final spans = _activeSpans[key];
+
+    if (spans != null && spans.isNotEmpty) {
+      final span = spans.removeAt(0);
+      if (spans.isEmpty) _activeSpans.remove(key);
+
+      _applyStateAttribute(span, bloc, bloc.stateValue);
       span
-        ..setAttribute(
-          otel.Attribute.fromString('state.value', state.toString()),
-        )
         ..setStatus(otel.StatusCode.ok)
         ..end();
-      _activeSpans.remove(key);
     }
   }
 
@@ -86,12 +140,14 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
 
     if (keysToRemove.isNotEmpty) {
       for (final key in keysToRemove) {
-        final span = _activeSpans.remove(key);
-        if (span != null) {
-          span
-            ..recordException(error, stackTrace: stackTrace)
-            ..setStatus(otel.StatusCode.error, error.toString())
-            ..end();
+        final spans = _activeSpans.remove(key);
+        if (spans != null) {
+          for (final span in spans) {
+            span
+              ..recordException(error, stackTrace: stackTrace)
+              ..setStatus(otel.StatusCode.error, error.toString())
+              ..end();
+          }
         }
       }
     } else {
@@ -116,7 +172,12 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
         _activeSpans.keys.where((key) => key.startsWith('${blocId}_')).toList();
 
     for (final key in keysToRemove) {
-      _activeSpans.remove(key)?.end();
+      final spans = _activeSpans.remove(key);
+      if (spans != null) {
+        for (final span in spans) {
+          span.end();
+        }
+      }
     }
   }
 
@@ -130,7 +191,8 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
     super.onTelemetry(bloc, name, event: event, metadata: metadata);
 
     final key = _spanKey(bloc, event);
-    final activeSpan = _activeSpans[key];
+    final spans = _activeSpans[key];
+    final activeSpan = (spans != null && spans.isNotEmpty) ? spans.first : null;
 
     final attrs = <otel.Attribute>[
       if (metadata != null)
@@ -148,7 +210,8 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
           )
           ..setStatus(otel.StatusCode.ok)
           ..end();
-        _activeSpans.remove(key);
+        spans!.removeAt(0);
+        if (spans.isEmpty) _activeSpans.remove(key);
       }
     } else {
       _tracer.startSpan(

@@ -1,6 +1,13 @@
 # Changelog
 
-## 1.1.1
+## 1.1.2
+
+- Fix `WidgetRef` container resolution, disposal lifecycle, and interop synchronization (#266):
+  - Clarify `toBlocSignal(refOrContainer)` contract to strictly accept `Ref` (with automatic `ref.onDispose` cleanup) or `ProviderContainer`, eliminating silent subscription leaks from unsupported duck-typing.
+  - Consolidate container and disposal resolution logic in `ProviderListenableBlocSignalX` into shared internal helpers.
+  - Implement `Expando` provider caching on `bloc.toProvider({bool autoClose = false})` to guarantee referential stability across repeated calls.
+  - Add optional `autoClose` parameter to `toProvider()` and `BlocSignalNotifier`, automatically closing the underlying container when the Riverpod provider scope is disposed.
+  - Override `updateShouldNotify` on `BlocSignalNotifier` to delegate to `bloc.equals` for consistent state comparison semantics.
 
 - Fix dependency lower bound analysis failure on pub.dev (#211):
   - Maintain compatibility across both Riverpod 2.x and Riverpod 3.x (`>=2.5.0 <4.0.0`) by importing both `riverpod.dart` and `src/internals.dart`.

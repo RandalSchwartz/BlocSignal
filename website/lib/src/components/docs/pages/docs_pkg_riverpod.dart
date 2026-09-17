@@ -179,9 +179,10 @@ class CounterView extends ConsumerWidget {
         h2([Component.text('Auto-Disposal & Lifecycle Binding')]),
         p([
           Component.text(
-            'When you call .toBlocSignal(ref) and pass a Ref or WidgetRef, bloc_signals_riverpod automatically registers '
-            'ref.onDispose(bloc.close). This guarantees that when the surrounding Riverpod provider or consumer widget is destroyed, '
-            'the adapted BlocSignal is disposed of cleanly without retaining memory.',
+            'When you call .toBlocSignal(ref) and pass a Riverpod Ref, bloc_signals_riverpod automatically registers '
+            'ref.onDispose(bloc.close). This guarantees that when the surrounding Riverpod provider is disposed, '
+            'the adapted BlocSignal is closed cleanly without retaining memory. For standalone usage, pass a '
+            'ProviderContainer directly and manage container closure explicitly.',
           ),
         ]),
         const DocsCallout(

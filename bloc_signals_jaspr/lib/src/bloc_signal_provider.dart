@@ -293,8 +293,8 @@ class MultiBlocSignalProvider extends StatelessComponent {
     super.key,
   });
 
-  /// The list of [BlocSignalProvider] instances to inject.
-  final List<BlocSignalProvider<BlocSignalBase<dynamic>>> providers;
+  /// The list of provider components (such as [BlocSignalProvider]) to inject.
+  final List<dynamic> providers;
 
   /// The child component subtree that will have access to all provided blocs.
   final Component child;
@@ -303,7 +303,9 @@ class MultiBlocSignalProvider extends StatelessComponent {
   Component build(BuildContext context) {
     var current = child;
     for (final provider in providers.reversed) {
-      current = provider.copyWith(current);
+      if (provider is BlocSignalProvider) {
+        current = (provider as dynamic).copyWith(current) as Component;
+      }
     }
     return current;
   }

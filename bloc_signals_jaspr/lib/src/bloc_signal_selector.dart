@@ -70,9 +70,11 @@ class _BlocSignalSelectorState<T extends BlocSignalBase<S>, S, V>
       () {
         final newValue = _computed.value;
         if (newValue != _selectedValue) {
-          setState(() {
-            _selectedValue = newValue;
-          });
+          if (mounted) {
+            setState(() {
+              _selectedValue = newValue;
+            });
+          }
         }
       },
       options: EffectOptions(

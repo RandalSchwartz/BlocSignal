@@ -380,6 +380,234 @@ void main() {
         await cubit.close();
       },
     );
+
+    testComponents(
+      'BlocSignalListener rebinds when ancestor provider instance is swapped '
+      'above const component',
+      (tester) async {
+        final cubit1 = CounterCubit();
+        final cubit2 = CounterCubit();
+        final states = <int>[];
+        late _JasprSwapListenerProviderState swapState;
+
+        tester.pumpComponent(
+          _JasprSwapListenerProvider(
+            initialCubit: cubit1,
+            onCreated: (state) => swapState = state,
+            onState: states.add,
+          ),
+        );
+
+        cubit1.increment(); // 1
+        await tester.pump();
+        expect(states, equals([1]));
+
+        // Swap provider to cubit2 via stateful component above const child
+        swapState.setCubit(cubit2);
+        await tester.pump();
+
+        // cubit2 emissions should be received by listener
+        cubit2.increment(); // 1
+        await tester.pump();
+        expect(states, equals([1, 1]));
+
+        // cubit1 is disconnected; emissions should not be received
+        cubit1.increment(); // 2
+        await tester.pump();
+        expect(states, equals([1, 1]));
+
+        await cubit1.close();
+        await cubit2.close();
+      },
+    );
+
+    testComponents(
+      'BlocSignalConsumer rebinds when ancestor provider instance is swapped '
+      'above const component',
+      (tester) async {
+        final cubit1 = CounterCubit();
+        final cubit2 = CounterCubit();
+        final listenedStates = <int>[];
+        late _JasprSwapConsumerProviderState swapState;
+
+        tester.pumpComponent(
+          _JasprSwapConsumerProvider(
+            initialCubit: cubit1,
+            onCreated: (state) => swapState = state,
+            onState: listenedStates.add,
+          ),
+        );
+
+        expect(find.text('ConsumerCount: 0'), findsOneComponent);
+
+        cubit1.increment(); // 1
+        await tester.pump();
+        expect(find.text('ConsumerCount: 1'), findsOneComponent);
+        expect(listenedStates, equals([1]));
+
+        // Swap provider to cubit2 (starts at 0)
+        swapState.setCubit(cubit2);
+        await tester.pump();
+        expect(find.text('ConsumerCount: 0'), findsOneComponent);
+
+        // cubit2 emissions should be received by consumer builder and listener
+        cubit2.increment(); // 1
+        await tester.pump();
+        expect(find.text('ConsumerCount: 1'), findsOneComponent);
+        expect(listenedStates, equals([1, 1]));
+
+        // cubit1 is now disconnected; emissions should not be received
+        cubit1.increment(); // 2
+        await tester.pump();
+        expect(find.text('ConsumerCount: 1'), findsOneComponent);
+        expect(listenedStates, equals([1, 1]));
+
+        await cubit1.close();
+        await cubit2.close();
+      },
+    );
+
+    testComponents(
+      'BlocSignalBuilder respects buildWhen predicate',
+      (tester) async {
+        final cubit = CounterCubit();
+        var buildCount = 0;
+
+        tester.pumpComponent(
+          BlocSignalBuilder<CounterCubit, int>(
+            bloc: cubit,
+            buildWhen: (previous, current) => current.isEven,
+            builder: (context, state) {
+              buildCount++;
+              return div([Component.text('State: $state')]);
+            },
+          ),
+        );
+
+        expect(find.text('State: 0'), findsOneComponent);
+        expect(buildCount, equals(1));
+
+        cubit.increment(); // 1 (odd) -> buildWhen returns false
+        await tester.pump();
+        expect(find.text('State: 0'), findsOneComponent);
+        expect(buildCount, equals(1));
+
+        cubit.increment(); // 2 (even) -> buildWhen returns true
+        await tester.pump();
+        expect(find.text('State: 2'), findsOneComponent);
+        expect(buildCount, equals(2));
+
+        await cubit.close();
+      },
+    );
+
+    testComponents(
+      'BlocSignalConsumer respects buildWhen and listenWhen predicates',
+      (tester) async {
+        final cubit = CounterCubit();
+        final listenedStates = <int>[];
+        var buildCount = 0;
+
+        tester.pumpComponent(
+          BlocSignalConsumer<CounterCubit, int>(
+            bloc: cubit,
+            buildWhen: (previous, current) => current.isEven,
+            listenWhen: (previous, current) => current > 1,
+            listener: (context, state) => listenedStates.add(state),
+            builder: (context, state) {
+              buildCount++;
+              return div([Component.text('Count: $state')]);
+            },
+          ),
+        );
+
+        expect(find.text('Count: 0'), findsOneComponent);
+        expect(buildCount, equals(1));
+
+        cubit.increment(); // 1: buildWhen false, listenWhen false
+        await tester.pump();
+        expect(find.text('Count: 0'), findsOneComponent);
+        expect(buildCount, equals(1));
+        expect(listenedStates, isEmpty);
+
+        cubit.increment(); // 2: buildWhen true, listenWhen true
+        await tester.pump();
+        expect(find.text('Count: 2'), findsOneComponent);
+        expect(buildCount, equals(2));
+        expect(listenedStates, equals([2]));
+
+        await cubit.close();
+      },
+    );
+
+    testComponents(
+      'MultiBlocSignalProvider accepts List<dynamic> with different generic '
+      'types',
+      (tester) async {
+        late CounterCubit cubit;
+        late ThemeCubit themeCubit;
+
+        tester.pumpComponent(
+          MultiBlocSignalProvider(
+            providers: [
+              BlocSignalProvider<CounterCubit>(
+                create: (context) => cubit = CounterCubit(),
+              ),
+              BlocSignalProvider<ThemeCubit>(
+                create: (context) => themeCubit = ThemeCubit(),
+              ),
+            ],
+            child: Builder(
+              builder: (context) {
+                final retrievedCubit = context.read<CounterCubit>();
+                final retrievedTheme = context.read<ThemeCubit>();
+                expect(retrievedCubit, equals(cubit));
+                expect(retrievedTheme, equals(themeCubit));
+                return const div([Component.text('MultiSuccess')]);
+              },
+            ),
+          ),
+        );
+
+        expect(find.text('MultiSuccess'), findsOneComponent);
+      },
+    );
+
+    testComponents(
+      'MultiBlocSignalListener executes multiple listeners in list literal',
+      (tester) async {
+        final counterCubit = CounterCubit();
+        final themeCubit = ThemeCubit();
+        final counterStates = <int>[];
+        final themeStates = <String>[];
+
+        tester.pumpComponent(
+          MultiBlocSignalListener(
+            listeners: [
+              BlocSignalListener<CounterCubit, int>(
+                bloc: counterCubit,
+                listener: (context, state) => counterStates.add(state),
+              ),
+              BlocSignalListener<ThemeCubit, String>(
+                bloc: themeCubit,
+                listener: (context, state) => themeStates.add(state),
+              ),
+            ],
+            child: const div([Component.text('MultiListener')]),
+          ),
+        );
+
+        counterCubit.increment();
+        themeCubit.toggle();
+        await tester.pump();
+
+        expect(counterStates, equals([1]));
+        expect(themeStates, equals(['dark']));
+
+        await counterCubit.close();
+        await themeCubit.close();
+      },
+    );
   });
 }
 
@@ -428,5 +656,118 @@ class _ConstSelectComponent extends StatelessComponent {
   Component build(BuildContext context) {
     final count = context.select<CounterCubit, int>((c) => c.stateValue);
     return div([Component.text('Count: $count')]);
+  }
+}
+
+class _JasprSwapListenerProvider extends StatefulComponent {
+  const _JasprSwapListenerProvider({
+    required this.initialCubit,
+    required this.onCreated,
+    required this.onState,
+  });
+
+  final CounterCubit initialCubit;
+  final void Function(_JasprSwapListenerProviderState state) onCreated;
+  final void Function(int state) onState;
+
+  @override
+  State<_JasprSwapListenerProvider> createState() =>
+      _JasprSwapListenerProviderState();
+}
+
+class _JasprSwapListenerProviderState
+    extends State<_JasprSwapListenerProvider> {
+  late CounterCubit _cubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _cubit = component.initialCubit;
+    component.onCreated(this);
+  }
+
+  void setCubit(CounterCubit newCubit) {
+    setState(() {
+      _cubit = newCubit;
+    });
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalProvider<CounterCubit>.value(
+      value: _cubit,
+      child: _ConstListenerComponent(onState: component.onState),
+    );
+  }
+}
+
+class _ConstListenerComponent extends StatelessComponent {
+  const _ConstListenerComponent({required this.onState});
+
+  final void Function(int state) onState;
+
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalListener<CounterCubit, int>(
+      listener: (context, state) => onState(state),
+      child: const div([Component.text('ConstListener')]),
+    );
+  }
+}
+
+class _JasprSwapConsumerProvider extends StatefulComponent {
+  const _JasprSwapConsumerProvider({
+    required this.initialCubit,
+    required this.onCreated,
+    required this.onState,
+  });
+
+  final CounterCubit initialCubit;
+  final void Function(_JasprSwapConsumerProviderState state) onCreated;
+  final void Function(int state) onState;
+
+  @override
+  State<_JasprSwapConsumerProvider> createState() =>
+      _JasprSwapConsumerProviderState();
+}
+
+class _JasprSwapConsumerProviderState
+    extends State<_JasprSwapConsumerProvider> {
+  late CounterCubit _cubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _cubit = component.initialCubit;
+    component.onCreated(this);
+  }
+
+  void setCubit(CounterCubit newCubit) {
+    setState(() {
+      _cubit = newCubit;
+    });
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalProvider<CounterCubit>.value(
+      value: _cubit,
+      child: _ConstConsumerComponent(onState: component.onState),
+    );
+  }
+}
+
+class _ConstConsumerComponent extends StatelessComponent {
+  const _ConstConsumerComponent({required this.onState});
+
+  final void Function(int state) onState;
+
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalConsumer<CounterCubit, int>(
+      listener: (context, state) => onState(state),
+      builder: (context, state) =>
+          div([Component.text('ConsumerCount: $state')]),
+    );
   }
 }

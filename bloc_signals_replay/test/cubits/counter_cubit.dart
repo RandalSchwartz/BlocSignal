@@ -11,6 +11,15 @@ class CounterCubit extends ReplayCubit<int> {
 
   void increment() => emit(stateValue + 1);
   void decrement() => emit(stateValue - 1);
+  void emitSelf() => emit(stateValue);
+
+  void Function() attachAutoIncrementEffect(int triggerState) {
+    return createEffect(() {
+      if (stateValue == triggerState) {
+        increment();
+      }
+    });
+  }
 
   @override
   bool shouldReplay(int state) {
@@ -31,6 +40,7 @@ class CounterCubitMixin extends CubitSignal<int> with ReplayCubitMixin<int> {
 
   void increment() => emit(stateValue + 1);
   void decrement() => emit(stateValue - 1);
+  void emitSelf() => emit(stateValue);
 
   @override
   bool shouldReplay(int state) {

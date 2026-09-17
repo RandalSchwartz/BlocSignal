@@ -56,6 +56,29 @@ void main() {
         expect(cubit.canRedo, isFalse);
         await cubit.close();
       });
+
+      test('does not clear redos when equal state is emitted', () async {
+        final cubit = CounterCubit()
+          ..increment()
+          ..undo();
+        expect(cubit.canRedo, isTrue);
+        cubit.emitSelf();
+        expect(cubit.canRedo, isTrue);
+        await cubit.close();
+      });
+
+      test('does not add undo entry when equal state is emitted', () async {
+        final cubit = CounterCubit()..emitSelf();
+        expect(cubit.canUndo, isFalse);
+        await cubit.close();
+      });
+
+      test('does not record history after close', () async {
+        final cubit = CounterCubit();
+        await cubit.close();
+        cubit.increment();
+        expect(cubit.canUndo, isFalse);
+      });
     });
 
     group('clearHistory', () {
@@ -168,6 +191,27 @@ void main() {
         await cubit.close();
         dispose();
         expect(states, [0, 1, 2, 1]);
+      });
+
+      test('preserves undo order under synchronous nested effect emissions',
+          () async {
+        final cubit = CounterCubit();
+        // A reactive effect listening to state 1 synchronously emits state 2.
+        final disposeEffect = cubit.attachAutoIncrementEffect(1);
+
+        cubit.increment(); // triggers effect -> emits 2
+        expect(cubit.stateValue, 2);
+
+        // Dispose reactive effect so restoring state 1 doesn't re-trigger it.
+        disposeEffect();
+
+        // Undo 2 -> 1 -> 0
+        cubit.undo();
+        expect(cubit.stateValue, 1);
+        cubit.undo();
+        expect(cubit.stateValue, 0);
+
+        await cubit.close();
       });
     });
 

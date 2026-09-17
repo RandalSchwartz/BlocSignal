@@ -93,6 +93,22 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
   set limit(int limit) => _changeStack.limit = limit;
 
   @override
+  @protected
+  void handleTransition(Object event, State oldState, State newState) {
+    if (event is ReplayEvent) {
+      onTransition(
+        Transition<ReplayEvent, State>(
+          currentState: oldState,
+          event: event,
+          nextState: newState,
+        ),
+      );
+    } else {
+      super.handleTransition(event, oldState, newState);
+    }
+  }
+
+  @override
   @mustCallSuper
   void onTransition(covariant Transition<ReplayEvent, State> transition) {
     if (transition.event is Event) {
@@ -120,46 +136,65 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
     }
   }
 
+  bool _isReplaying = false;
+
   @override
   void emit(State newState) {
-    _changeStack.add(
-      _Change<State>(
-        stateValue,
-        newState,
-        () {
-          final event = _Redo();
-          unawaited(Future.value(onEvent(event)));
-          onTransition(
-            Transition<ReplayEvent, State>(
-              currentState: stateValue,
-              event: event,
-              nextState: newState,
-            ),
-          );
-          super.emit(newState);
-        },
-        (val) {
-          final event = _Undo();
-          unawaited(Future.value(onEvent(event)));
-          onTransition(
-            Transition<ReplayEvent, State>(
-              currentState: stateValue,
-              event: event,
-              nextState: val,
-            ),
-          );
-          super.emit(val);
-        },
-      ),
-    );
+    if (isClosed) return;
+    if (equals(stateValue, newState)) return;
+
+    if (!_isReplaying) {
+      _changeStack.add(
+        _Change<State>(
+          stateValue,
+          newState,
+          () {
+            final event = _Redo();
+            unawaited(Future.value(onEvent(event)));
+            runZoned(
+              () => super.emit(newState),
+              zoneValues: {
+                zoneEventKey: event,
+                zoneBlocKey: this,
+              },
+            );
+          },
+          (val) {
+            final event = _Undo();
+            unawaited(Future.value(onEvent(event)));
+            runZoned(
+              () => super.emit(val),
+              zoneValues: {
+                zoneEventKey: event,
+                zoneBlocKey: this,
+              },
+            );
+          },
+        ),
+      );
+    }
     super.emit(newState);
   }
 
   /// Undo the last change.
-  void undo() => _changeStack.undo();
+  void undo() {
+    _isReplaying = true;
+    try {
+      _changeStack.undo();
+    } finally {
+      _isReplaying = false;
+    }
+  }
 
   /// Redo the previous change.
-  void redo() => _changeStack.redo();
+  void redo() {
+    _isReplaying = true;
+    try {
+      _changeStack.redo();
+    } finally {
+      _isReplaying = false;
+    }
+  }
 
   /// Checks whether the undo/redo stack can perform an undo operation.
   bool get canUndo => _changeStack.canUndo;

@@ -72,24 +72,46 @@ mixin ReplayCubitMixin<State> on BlocSignalBase<State> {
   /// By default there is no limit.
   set limit(int limit) => _changeStack.limit = limit;
 
+  bool _isReplaying = false;
+
   @override
   void emit(State newState) {
-    _changeStack.add(
-      _Change<State>(
-        stateValue,
-        newState,
-        () => super.emit(newState),
-        (val) => super.emit(val),
-      ),
-    );
+    if (isClosed) return;
+    if (equals(stateValue, newState)) return;
+
+    final oldState = stateValue;
+    if (!_isReplaying) {
+      _changeStack.add(
+        _Change<State>(
+          oldState,
+          newState,
+          () => super.emit(newState),
+          (val) => super.emit(val),
+        ),
+      );
+    }
     super.emit(newState);
   }
 
   /// Undo the last change.
-  void undo() => _changeStack.undo();
+  void undo() {
+    _isReplaying = true;
+    try {
+      _changeStack.undo();
+    } finally {
+      _isReplaying = false;
+    }
+  }
 
   /// Redo the previous change.
-  void redo() => _changeStack.redo();
+  void redo() {
+    _isReplaying = true;
+    try {
+      _changeStack.redo();
+    } finally {
+      _isReplaying = false;
+    }
+  }
 
   /// Checks whether the undo/redo stack can perform an undo operation.
   bool get canUndo => _changeStack.canUndo;

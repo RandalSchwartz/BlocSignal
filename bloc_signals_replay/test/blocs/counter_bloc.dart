@@ -18,6 +18,13 @@ final class CounterDecrementPressed extends CounterEvent {
   String toString() => 'CounterDecrementPressed';
 }
 
+final class CounterNoOpPressed extends CounterEvent {
+  const CounterNoOpPressed();
+
+  @override
+  String toString() => 'CounterNoOpPressed';
+}
+
 class CounterBloc extends ReplayBloc<CounterEvent, int> {
   CounterBloc({
     super.limit,
@@ -26,6 +33,7 @@ class CounterBloc extends ReplayBloc<CounterEvent, int> {
         super(initialState: 0) {
     on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
     on<CounterDecrementPressed>((event, emit) => emit(stateValue - 1));
+    on<CounterNoOpPressed>((event, emit) => emit(stateValue));
   }
 
   final bool Function(int state)? _shouldReplayCallback;
@@ -46,6 +54,7 @@ class CounterBlocMixin extends BlocSignal<CounterEvent, int>
     if (limit != null) this.limit = limit;
     on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
     on<CounterDecrementPressed>((event, emit) => emit(stateValue - 1));
+    on<CounterNoOpPressed>((event, emit) => emit(stateValue));
   }
 
   final bool Function(int state)? _shouldReplayCallback;

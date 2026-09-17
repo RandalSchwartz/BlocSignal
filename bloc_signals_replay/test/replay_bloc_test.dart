@@ -20,15 +20,13 @@ class TestBlocObserver extends BlocSignalObserver {
     Object? state,
   ) {
     super.onTransition(bloc, event, state);
-    if (event != null) {
-      transitions.add(
-        Transition<dynamic, dynamic>(
-          currentState: bloc.stateValue,
-          event: event,
-          nextState: state,
-        ),
-      );
-    }
+    transitions.add(
+      Transition<dynamic, dynamic>(
+        currentState: bloc.stateValue,
+        event: event,
+        nextState: state,
+      ),
+    );
   }
 }
 
@@ -84,6 +82,29 @@ void main() {
           ..redo();
         expect(bloc.canRedo, isFalse);
         await bloc.close();
+      });
+
+      test('does not clear redos when equal state is emitted', () async {
+        final bloc = CounterBloc()
+          ..add(const CounterIncrementPressed())
+          ..undo();
+        expect(bloc.canRedo, isTrue);
+        bloc.add(const CounterNoOpPressed());
+        expect(bloc.canRedo, isTrue);
+        await bloc.close();
+      });
+
+      test('does not add undo entry when equal state is emitted', () async {
+        final bloc = CounterBloc()..add(const CounterNoOpPressed());
+        expect(bloc.canUndo, isFalse);
+        await bloc.close();
+      });
+
+      test('does not record history after close', () async {
+        final bloc = CounterBloc();
+        await bloc.close();
+        bloc.add(const CounterIncrementPressed());
+        expect(bloc.canUndo, isFalse);
       });
     });
 
@@ -213,6 +234,7 @@ void main() {
           'Undo',
           'Redo',
         ]);
+        expect(observer.transitions.length, 4);
       });
 
       test('does nothing when undos have been exhausted', () async {

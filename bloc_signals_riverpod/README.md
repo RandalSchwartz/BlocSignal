@@ -41,8 +41,8 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 ## ⚡ Key Features
 
 - 🔄 **Bidirectional `toBlocSignal(refOrContainer)`**: Convert any Riverpod `NotifierProvider`, `AsyncNotifierProvider`, `StateNotifierProvider`, `StateProvider`, or `StreamNotifierProvider` into a `RiverpodNotifierBlocSignal` exposing the typed `.notifier` to trigger mutations directly from BlocSignal consumers.
-- 🔀 **Bidirectional `BlocSignalBase.toProvider()`**: Expose any `BlocSignal` or `CubitSignal` as a Riverpod `NotifierProvider`, giving Riverpod widgets direct read access and typed `.notifier.cubit` / `.notifier.bloc` mutation handles.
-- 🔒 **Automatic `ref.onDispose` Registration**: Passing `ref` or Flutter Riverpod `WidgetRef` into `toBlocSignal(ref)` automatically binds `ref.onDispose(bloc.close)` for zero-boilerplate lifecycle management.
+- 🔀 **Bidirectional `BlocSignalBase.toProvider()`**: Expose any `BlocSignal` or `CubitSignal` as a cached Riverpod `NotifierProvider`, giving Riverpod widgets direct read access and typed `.notifier.cubit` / `.notifier.bloc` mutation handles with optional `autoClose` lifecycle management.
+- 🔒 **Automatic `ref.onDispose` Registration**: Passing `ref` into `toBlocSignal(ref)` inside Riverpod providers automatically binds `ref.onDispose(bloc.close)` for zero-boilerplate lifecycle management.
 - ⚡ **Universal Riverpod Support**: Built for `riverpod: ">=2.5.0 <4.0.0"`, supporting Riverpod 2.x and Riverpod 3.x seamlessly.
 
 ---
@@ -136,7 +136,8 @@ ref.read(counterProvider.notifier).cubit.increment();
 
 | Direction | Mechanism | Lifecycle Coupling |
 | :--- | :--- | :--- |
-| **Riverpod → `BlocSignal`** <br> (`toBlocSignal`) | Creates an active `ProviderSubscription` via `container.listen()`. | **Coupled**: Holding `RiverpodBlocSignal` open retains an `autoDispose` Riverpod provider. Calling `toBlocSignal(ref)` automatically registers `ref.onDispose(bloc.close)` to release the Riverpod provider when the scope unmounts. |
+| **Riverpod → `BlocSignal`** <br> (`toBlocSignal`) | Creates an active `ProviderSubscription` via `container.listen()`. | **Coupled**: Holding `RiverpodBlocSignal` open retains an `autoDispose` Riverpod provider. Calling `toBlocSignal(ref)` with a Riverpod `Ref` automatically registers `ref.onDispose(bloc.close)` to release the Riverpod provider and close the bloc when the scope unmounts. |
+| **`BlocSignal` → Riverpod** <br> (`toProvider`) | Subscribes to container state and caches the provider via `Expando`. | **Configurable**: Passing `autoClose: true` to `toProvider(autoClose: true)` binds `ref.onDispose(bloc.close)` so the underlying container is automatically closed when the Riverpod provider scope is disposed. |
 ---
 
 ## 🤖 AI Coding Assistant Skill

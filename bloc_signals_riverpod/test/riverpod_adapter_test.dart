@@ -57,17 +57,11 @@ class TestCubit extends CubitSignal<int> {
   void increment() => emit(stateValue + 1);
 }
 
-class MockWidgetRef {
-  MockWidgetRef(this.container);
+class CustomEqualsCubit extends CubitSignal<int> {
+  CustomEqualsCubit({super.initialState = 0})
+      : super(equals: (prev, curr) => (prev ~/ 2) == (curr ~/ 2));
 
-  final ProviderContainer container;
-  void Function()? disposeCallback;
-
-  // Mimics Riverpod WidgetRef interface.
-  // ignore: use_setters_to_change_properties
-  void onDispose(void Function() cb) {
-    disposeCallback = cb;
-  }
+  void setValue(int val) => emit(val);
 }
 
 void main() {
@@ -131,24 +125,22 @@ void main() {
       expect(adapter.isClosed, isTrue);
     });
 
-    test('toBlocSignal(widgetRef) works with objects exposing onDispose', () {
-      final mockRef = MockWidgetRef(container);
-      final adapter = counterProvider.toBlocSignal(mockRef);
-
-      expect(adapter.stateValue, equals(0));
-      expect(adapter.isClosed, isFalse);
-
-      mockRef.disposeCallback?.call();
-
-      expect(adapter.isClosed, isTrue);
-    });
-
-    test('toBlocSignal throws ArgumentError on unsupported object', () {
-      expect(
-        () => counterProvider.toBlocSignal('invalid_target'),
-        throwsA(isA<ArgumentError>()),
-      );
-    });
+    test(
+      'toBlocSignal throws ArgumentError on unsupported object including '
+      'WidgetRef',
+      () {
+        expect(
+          () => counterProvider.toBlocSignal('invalid_target'),
+          throwsA(
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              contains('refOrContainer must be a Ref or ProviderContainer'),
+            ),
+          ),
+        );
+      },
+    );
 
     test('converts BlocSignal to Riverpod NotifierProvider via toProvider',
         () async {
@@ -392,7 +384,7 @@ void main() {
 
     test(
       'ProviderListenable.toBlocSignal works for plain Provider with '
-      'container, ref, and widgetRef',
+      'container and ref',
       () async {
         final plainProvider = Provider<int>((ref) => 42);
 
@@ -410,17 +402,16 @@ void main() {
         container.invalidate(bridge);
         expect(blocFromRef.isClosed, isTrue);
 
-        // MockWidgetRef
-        final mockRef = MockWidgetRef(container);
-        final blocFromWidget = plainProvider.toBlocSignal(mockRef);
-        expect(blocFromWidget.stateValue, equals(42));
-        mockRef.disposeCallback?.call();
-        expect(blocFromWidget.isClosed, isTrue);
-
         // Invalid target
         expect(
           () => plainProvider.toBlocSignal('invalid'),
-          throwsA(isA<ArgumentError>()),
+          throwsA(
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              contains('refOrContainer must be a Ref or ProviderContainer'),
+            ),
+          ),
         );
       },
     );
@@ -475,6 +466,75 @@ void main() {
 
       expect(riverpodBloc.isClosed, isTrue);
       expect(riverpodBloc.stateValue, equals(0));
+    });
+
+    test(
+      'toProvider caches NotifierProvider instances per container and '
+      'autoClose',
+      () {
+        final testCubit = TestCubit(initialState: 10);
+        final p1 = testCubit.toProvider();
+        final p2 = testCubit.toProvider();
+        expect(identical(p1, p2), isTrue);
+
+        final pAuto1 = testCubit.toProvider(autoClose: true);
+        final pAuto2 = testCubit.toProvider(autoClose: true);
+        expect(identical(pAuto1, pAuto2), isTrue);
+        expect(identical(p1, pAuto1), isFalse);
+      },
+    );
+
+    test(
+      'toProvider(autoClose: true) closes the underlying bloc when provider is '
+      'disposed',
+      () {
+        final testCubit = TestCubit(initialState: 5);
+        final provider = testCubit.toProvider(autoClose: true);
+
+        expect(container.read(provider), equals(5));
+        expect(testCubit.isClosed, isFalse);
+
+        container.invalidate(provider);
+        expect(testCubit.isClosed, isTrue);
+      },
+    );
+
+    test(
+      'toProvider(autoClose: false) does not close the underlying bloc when '
+      'provider is disposed',
+      () {
+        final testCubit = TestCubit(initialState: 5);
+        final provider = testCubit.toProvider();
+
+        expect(container.read(provider), equals(5));
+        expect(testCubit.isClosed, isFalse);
+
+        container.invalidate(provider);
+        expect(testCubit.isClosed, isFalse);
+      },
+    );
+
+    test('BlocSignalNotifier.updateShouldNotify respects custom equals on bloc',
+        () {
+      final cubit = CustomEqualsCubit();
+      final provider = cubit.toProvider();
+
+      var notifications = 0;
+      final sub = container.listen(provider, (prev, next) {
+        notifications++;
+      });
+
+      expect(container.read(provider), equals(0));
+
+      // 0 ~/ 2 == 1 ~/ 2 (0 == 0) -> equal per custom equals, should NOT notify
+      cubit.setValue(1);
+      expect(notifications, equals(0));
+
+      // 1 ~/ 2 != 2 ~/ 2 (0 != 1) -> not equal, should notify
+      cubit.setValue(2);
+      expect(notifications, equals(1));
+
+      sub.close();
     });
   });
 }

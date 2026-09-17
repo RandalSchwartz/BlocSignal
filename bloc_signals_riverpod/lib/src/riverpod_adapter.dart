@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:riverpod/riverpod.dart'
     hide AsyncData, AsyncError, AsyncLoading;
@@ -105,30 +107,16 @@ ProviderContainer _resolveContainer(Object refOrContainer) {
   } else if (refOrContainer is ProviderContainer) {
     return refOrContainer;
   } else {
-    try {
-      final dynamic obj = refOrContainer;
-      // Duck-typing support for flutter_riverpod WidgetRef container.
-      // ignore: avoid_dynamic_calls
-      return obj.container as ProviderContainer;
-    } on Object catch (_) {
-      throw ArgumentError(
-        'refOrContainer must be a Ref, WidgetRef, or ProviderContainer, '
-        'but was ${refOrContainer.runtimeType}.',
-      );
-    }
+    throw ArgumentError(
+      'refOrContainer must be a Ref or ProviderContainer, '
+      'but was ${refOrContainer.runtimeType}.',
+    );
   }
 }
 
 void _bindDispose(Object refOrContainer, void Function() dispose) {
   if (refOrContainer is Ref) {
     refOrContainer.onDispose(dispose);
-  } else if (refOrContainer is! ProviderContainer) {
-    try {
-      final dynamic obj = refOrContainer;
-      // Duck-typing support for flutter_riverpod WidgetRef onDispose.
-      // ignore: avoid_dynamic_calls
-      obj.onDispose(dispose);
-    } on Object catch (_) {}
   }
 }
 
@@ -261,65 +249,44 @@ extension ProviderListenableBlocSignalX<T> on ProviderListenable<T> {
   /// Adapts this Riverpod [ProviderListenable] into a [BlocSignalBase]
   /// container.
   ///
-  /// The [refOrContainer] parameter must be either a [Ref], `WidgetRef`, or a
-  /// [ProviderContainer]. If a [Ref] or object exposing `onDispose` is
-  /// provided, `onDispose` is automatically registered to close the container
-  /// when the provider/widget is disposed.
+  /// The [refOrContainer] parameter must be either a [Ref] or a
+  /// [ProviderContainer]. If a [Ref] is provided, `onDispose` is
+  /// automatically registered to close the container when the provider is
+  /// disposed.
   BlocSignalBase<T> toBlocSignal(
     Object refOrContainer, {
     bool Function(T previous, T current)? equals,
     SignalOptions<T>? options,
   }) {
-    if (refOrContainer is Ref) {
-      return RiverpodBlocSignal<T>.fromRef(
-        refOrContainer,
-        this,
-        equals: equals,
-        options: options,
-      );
-    } else if (refOrContainer is ProviderContainer) {
-      return RiverpodBlocSignal<T>(
-        refOrContainer,
-        this,
-        equals: equals,
-        options: options,
-      );
-    } else {
-      try {
-        final dynamic obj = refOrContainer;
-        // Duck-typing support for flutter_riverpod WidgetRef container.
-        // ignore: avoid_dynamic_calls
-        final container = obj.container as ProviderContainer;
-        final bloc = RiverpodBlocSignal<T>(
-          container,
-          this,
-          equals: equals,
-          options: options,
-        );
-        try {
-          // Duck-typing support for flutter_riverpod WidgetRef onDispose.
-          // ignore: avoid_dynamic_calls
-          obj.onDispose(bloc.close);
-        } on Object catch (_) {}
-        return bloc;
-      } on Object catch (_) {
-        throw ArgumentError(
-          'refOrContainer must be a Ref, WidgetRef, or ProviderContainer, '
-          'but was ${refOrContainer.runtimeType}.',
-        );
-      }
-    }
+    final container = _resolveContainer(refOrContainer);
+    final bloc = RiverpodBlocSignal<T>(
+      container,
+      this,
+      equals: equals,
+      options: options,
+    );
+    _bindDispose(refOrContainer, bloc.close);
+    return bloc;
   }
 }
+
+final Expando<Map<bool, NotifierProvider<dynamic, dynamic>>> _providerCache =
+    Expando<Map<bool, NotifierProvider<dynamic, dynamic>>>();
 
 /// A Riverpod [Notifier] that wraps an underlying [BlocSignalBase] and exposes
 /// it via [bloc] (and [cubit]).
 class BlocSignalNotifier<B extends BlocSignalBase<T>, T> extends Notifier<T> {
   /// Creates a [BlocSignalNotifier] wrapping [bloc].
-  BlocSignalNotifier(this.bloc);
+  ///
+  /// If [autoClose] is `true`, closing or disposing the Riverpod provider scope
+  /// will also call `close()` on the underlying [bloc]. Defaults to `false`.
+  BlocSignalNotifier(this.bloc, {this.autoClose = false});
 
   /// The underlying [BlocSignalBase] instance.
   final B bloc;
+
+  /// Whether to close [bloc] when this notifier is disposed.
+  final bool autoClose;
 
   /// Alias for [bloc] when wrapping a cubit container.
   B get cubit => bloc;
@@ -329,8 +296,20 @@ class BlocSignalNotifier<B extends BlocSignalBase<T>, T> extends Notifier<T> {
     final unsubscribe = bloc.state.subscribe((newValue) {
       state = newValue;
     });
-    ref.onDispose(unsubscribe);
+    ref.onDispose(() {
+      unsubscribe();
+      if (autoClose) {
+        unawaited(bloc.close());
+      }
+    });
     return bloc.state.value;
+  }
+
+  @override
+  bool updateShouldNotify(T previous, T next) {
+    // Interop adapter delegates state equality checks to the wrapped container.
+    // ignore: invalid_use_of_protected_member
+    return !bloc.equals(previous, next);
   }
 }
 
@@ -341,12 +320,30 @@ extension BlocSignalRiverpodX<B extends BlocSignalBase<T>, T> on B {
   /// Subscribes to `state` updates and automatically unbinds the subscription
   /// when the Riverpod provider is disposed via `ref.onDispose`.
   ///
+  /// If [autoClose] is `true`, closing or disposing the Riverpod provider scope
+  /// will also call `close()` on the underlying [BlocSignalBase]. Defaults to
+  /// `false`.
+  ///
+  /// Multiple invocations on the same [BlocSignalBase] container with the same
+  /// [autoClose] configuration return the identical cached [NotifierProvider]
+  /// instance.
+  ///
   /// The resulting provider's notifier exposes typed access to the underlying
   /// [BlocSignalNotifier.bloc] (and [BlocSignalNotifier.cubit]).
-  NotifierProvider<BlocSignalNotifier<B, T>, T> toProvider() {
-    return NotifierProvider<BlocSignalNotifier<B, T>, T>(
-      () => BlocSignalNotifier<B, T>(this),
+  NotifierProvider<BlocSignalNotifier<B, T>, T> toProvider({
+    bool autoClose = false,
+  }) {
+    final cache =
+        _providerCache[this] ??= <bool, NotifierProvider<dynamic, dynamic>>{};
+    final existing = cache[autoClose];
+    if (existing != null) {
+      return existing as NotifierProvider<BlocSignalNotifier<B, T>, T>;
+    }
+    final provider = NotifierProvider<BlocSignalNotifier<B, T>, T>(
+      () => BlocSignalNotifier<B, T>(this, autoClose: autoClose),
     );
+    cache[autoClose] = provider;
+    return provider;
   }
 }
 

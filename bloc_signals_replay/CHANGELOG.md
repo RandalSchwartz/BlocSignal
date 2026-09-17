@@ -1,3 +1,9 @@
+## 1.1.1
+
+- **Fix (replay)**: Gate history recording against core emission rejection (`isClosed` and `equals(stateValue, newState)`) so unchanged states or emissions after closure do not add undo entries or wipe active redo stacks (#268).
+- **Fix (replay)**: Guard undo and redo executions with `_isReplaying` flag to prevent state replay from pushing redundant history entries (#268).
+- **Fix (replay)**: Eliminate duplicate `onTransition` notifications on `ReplayBloc` undo/redo by routing synthetic replay events through `handleTransition` (#268).
+
 ## 1.1.0
 
 - **Constructor Alignment**: Support named parameter `required State initialState` on `ReplayCubit` and `ReplayBloc` constructors to align with framework-wide conventions (#224).

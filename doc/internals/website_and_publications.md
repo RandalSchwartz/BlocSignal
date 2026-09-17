@@ -64,6 +64,9 @@ When authoring code snippets and documentation in the website:
   - Command: `dart run tool/sync_all_articles.dart`
   Run these tools whenever new DEV.to articles or media are published.
 
+### Immutable Published Archive Rule (`doc/articles/`)
+- **Published Article Invariant**: Never edit or patch markdown files under `doc/articles/` as part of feature or bugfix tickets unless you are explicitly preparing to update and republish those changes to DEV.to. `doc/articles/` serves as a mirrored snapshot of live published articles fetched by `tool/sync_all_articles.dart`. Modifying local files without republishing to DEV.to causes silent synchronization drift that gets overwritten on the next sync.
+
 ### DEV.to Article Frontmatter & Series Protocol
 When generating or updating DEV.to draft articles:
 1. **Series Frontmatter**: Always include `series: "BlocSignal Architecture & Practice"` (or the designated series title) as the **very first line** inside the YAML frontmatter right under `---`. Placing `series:` at the top of frontmatter ensures DEV.to's API & background parser index the article into the correct series automatically.

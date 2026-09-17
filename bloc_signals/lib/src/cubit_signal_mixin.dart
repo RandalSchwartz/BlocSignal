@@ -108,7 +108,11 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
       return null;
     });
     _lifecycleModel = modelConstructor();
-    BlocSignalObserver.observer?.onCreate(this);
+    try {
+      BlocSignalObserver.observer?.onCreate(this);
+    } on Object catch (e, stackTrace) {
+      onError(e, stackTrace);
+    }
   }
 
   @override
@@ -174,9 +178,17 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
 
     final event = Zone.current[zoneEventKey];
     if (event != null) {
-      handleTransition(event as Object, oldState, newState);
+      try {
+        handleTransition(event as Object, oldState, newState);
+      } on Object catch (e, stackTrace) {
+        onError(e, stackTrace);
+      }
     } else {
-      BlocSignalObserver.observer?.onTransition(this, null, newState);
+      try {
+        BlocSignalObserver.observer?.onTransition(this, null, newState);
+      } on Object catch (e, stackTrace) {
+        onError(e, stackTrace);
+      }
     }
 
     _state.value = newState;
@@ -185,7 +197,11 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
       currentState: oldState,
       nextState: newState,
     );
-    onChange(change);
+    try {
+      onChange(change);
+    } on Object catch (e, stackTrace) {
+      onError(e, stackTrace);
+    }
   }
 
   @override
@@ -196,7 +212,11 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   @protected
   @mustCallSuper
   void onChange(Change<StateType> change) {
-    BlocSignalObserver.observer?.onChange(this, change);
+    try {
+      BlocSignalObserver.observer?.onChange(this, change);
+    } on Object catch (e, stackTrace) {
+      onError(e, stackTrace);
+    }
   }
 
   @override
@@ -205,7 +225,11 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   void onError(Object error, StackTrace stackTrace) {
     final currentObserver = BlocSignalObserver.observer;
     if (currentObserver != null) {
-      currentObserver.onError(this, error, stackTrace);
+      try {
+        currentObserver.onError(this, error, stackTrace);
+      } on Object catch (_) {
+        // Prevent observer error in onError from causing infinite recursion
+      }
     }
   }
 
@@ -289,9 +313,45 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
     if (_isInitialized) {
       _lifecycleModel.dispose();
     }
-    BlocSignalObserver.observer?.onClose(this);
+    try {
+      BlocSignalObserver.observer?.onClose(this);
+    } on Object catch (e, stackTrace) {
+      onError(e, stackTrace);
+    }
   }
 
   @override
   String toString() => '$runtimeType($stateValue)';
+}
+
+/// A clean base class for method-driven state management.
+///
+/// Exposes state and [emit] directly for subclass methods.
+abstract class CubitSignal<StateType> extends BlocSignalBase<StateType>
+    with CubitSignalMixin<StateType> {
+  /// Creates a [CubitSignal] with the specified [initialState].
+  ///
+  /// Accepts an optional [equals] comparator callback (for example
+  /// `equals: identical` to force reference-identity equality updates), and
+  /// optional [options] to configure signal debug names ([SignalOptions.name])
+  /// or custom [SignalEquality].
+  ///
+  /// ```dart
+  /// class CounterCubit extends CubitSignal<int> {
+  ///   CounterCubit() : super(initialState: 0);
+  ///
+  ///   void increment() => emit(stateValue + 1);
+  /// }
+  /// ```
+  CubitSignal({
+    required StateType initialState,
+    bool Function(StateType previous, StateType current)? equals,
+    SignalOptions<StateType>? options,
+  }) {
+    initCubitSignal(
+      initialState: initialState,
+      equals: equals,
+      options: options,
+    );
+  }
 }

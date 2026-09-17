@@ -1,15 +1,10 @@
 import 'dart:async';
 
-import 'package:bloc_signals/src/bloc_signal_mixin.dart';
 import 'package:bloc_signals/src/change.dart';
-import 'package:bloc_signals/src/cubit_signal_mixin.dart';
 import 'package:meta/meta.dart';
-import 'package:preact_signals/preact_signals.dart' show SignalEquality;
 import 'package:signals_core/signals_core.dart';
 
-export 'bloc_signal_mixin.dart';
 export 'change.dart';
-export 'cubit_signal_mixin.dart';
 export 'transition.dart';
 
 /// An observer interface to watch all [BlocSignalBase] instances' lifecycles,
@@ -25,11 +20,49 @@ abstract class BlocSignalObserver {
   /// activity.
   static BlocSignalObserver? observer;
 
+  /// Adds an [observer] to the global observation pipeline.
+  ///
+  /// If no observer is currently set, [observer] becomes the active global
+  /// observer. If an observer is already set, it is upgraded into a
+  /// [CompositeBlocSignalObserver] containing both observers without
+  /// disconnecting existing diagnostic sinks.
+  static void addObserver(BlocSignalObserver observer) {
+    final current = BlocSignalObserver.observer;
+    if (current == null) {
+      BlocSignalObserver.observer = observer;
+    } else if (current is CompositeBlocSignalObserver) {
+      current.add(observer);
+    } else {
+      BlocSignalObserver.observer =
+          CompositeBlocSignalObserver([current, observer]);
+    }
+  }
+
+  /// Removes an [observer] from the global observation pipeline.
+  ///
+  /// Returns `true` if the observer was found and removed.
+  static bool removeObserver(BlocSignalObserver observer) {
+    final current = BlocSignalObserver.observer;
+    if (current == null) return false;
+    if (identical(current, observer)) {
+      BlocSignalObserver.observer = null;
+      return true;
+    }
+    if (current is CompositeBlocSignalObserver) {
+      final removed = current.remove(observer);
+      if (current.observers.isEmpty) {
+        BlocSignalObserver.observer = null;
+      }
+      return removed;
+    }
+    return false;
+  }
+
   /// Called when a [BlocSignalBase] is created.
   void onCreate(BlocSignalBase<dynamic> bloc) {}
 
-  /// Called when an event is dispatched to any [BlocSignal]
-  /// via [BlocSignal.add].
+  /// Called when an event is dispatched to any event-driven container
+  /// via `add`.
   void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {}
 
   /// Called when any [BlocSignalBase] transitions to a new state
@@ -63,6 +96,135 @@ abstract class BlocSignalObserver {
 
   /// Called when a [BlocSignalBase] is closed.
   void onClose(BlocSignalBase<dynamic> bloc) {}
+}
+
+/// A composite [BlocSignalObserver] that broadcasts lifecycle notifications
+/// to multiple inner observers in the order they were registered.
+///
+/// Exceptions thrown by individual observers are isolated: an error thrown by
+/// one observer will not prevent subsequent observers from receiving the hook,
+/// and the failure is forwarded to [BlocSignalBase.onError].
+class CompositeBlocSignalObserver extends BlocSignalObserver {
+  /// Creates a [CompositeBlocSignalObserver] with the provided [observers].
+  CompositeBlocSignalObserver([Iterable<BlocSignalObserver>? observers])
+      : _observers = List<BlocSignalObserver>.from(observers ?? const []);
+
+  final List<BlocSignalObserver> _observers;
+
+  /// An unmodifiable view of the currently registered observers.
+  List<BlocSignalObserver> get observers => List.unmodifiable(_observers);
+
+  /// Registers an [observer] at the end of the composite pipeline.
+  void add(BlocSignalObserver observer) {
+    _observers.add(observer);
+  }
+
+  /// Removes the first occurrence of [observer] from the composite pipeline.
+  ///
+  /// Returns `true` if an observer was removed.
+  bool remove(BlocSignalObserver observer) {
+    return _observers.remove(observer);
+  }
+
+  /// Removes all observers from this composite pipeline.
+  void clear() {
+    _observers.clear();
+  }
+
+  @override
+  void onCreate(BlocSignalBase<dynamic> bloc) {
+    for (final observer in _observers) {
+      try {
+        observer.onCreate(bloc);
+      } on Object catch (e, stackTrace) {
+        bloc.onError(e, stackTrace);
+      }
+    }
+  }
+
+  @override
+  void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {
+    for (final observer in _observers) {
+      try {
+        observer.onEvent(bloc, event);
+      } on Object catch (e, stackTrace) {
+        bloc.onError(e, stackTrace);
+      }
+    }
+  }
+
+  @override
+  void onTransition(
+    BlocSignalBase<dynamic> bloc,
+    Object? event,
+    Object? state,
+  ) {
+    for (final observer in _observers) {
+      try {
+        observer.onTransition(bloc, event, state);
+      } on Object catch (e, stackTrace) {
+        bloc.onError(e, stackTrace);
+      }
+    }
+  }
+
+  @override
+  void onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change) {
+    for (final observer in _observers) {
+      try {
+        observer.onChange(bloc, change);
+      } on Object catch (e, stackTrace) {
+        bloc.onError(e, stackTrace);
+      }
+    }
+  }
+
+  @override
+  void onError(
+    BlocSignalBase<dynamic> bloc,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    for (final observer in _observers) {
+      try {
+        observer.onError(bloc, error, stackTrace);
+      } on Object catch (_) {
+        // Prevent observer error in onError from causing infinite recursion
+      }
+    }
+  }
+
+  @override
+  void onTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {
+    for (final observer in _observers) {
+      try {
+        observer.onTelemetry(
+          bloc,
+          name,
+          event: event,
+          metadata: metadata,
+        );
+      } on Object catch (e, stackTrace) {
+        bloc.onError(e, stackTrace);
+      }
+    }
+  }
+
+  @override
+  void onClose(BlocSignalBase<dynamic> bloc) {
+    for (final observer in _observers) {
+      try {
+        observer.onClose(bloc);
+      } on Object catch (e, stackTrace) {
+        bloc.onError(e, stackTrace);
+      }
+    }
+  }
 }
 
 /// Internal dispatcher allowing built-in concurrency transformers to emit
@@ -139,7 +301,7 @@ abstract class BlocSignalBase<StateType> {
   @visibleForTesting
   void emit(StateType newState);
 
-  /// Internal helper to dispatch transitions to the type-safe [BlocSignal].
+  /// Internal helper to dispatch transitions to event-driven containers.
   @protected
   void handleTransition(Object event, StateType oldState, StateType newState);
 
@@ -215,70 +377,4 @@ abstract class BlocSignalBase<StateType> {
   /// underlying [SignalModel].
   @mustCallSuper
   Future<void> close();
-}
-
-/// A clean base class for method-driven state management.
-///
-/// Exposes state and [emit] directly for subclass methods.
-abstract class CubitSignal<StateType> extends BlocSignalBase<StateType>
-    with CubitSignalMixin<StateType> {
-  /// Creates a [CubitSignal] with the specified [initialState].
-  ///
-  /// Accepts an optional [equals] comparator callback (for example
-  /// `equals: identical` to force reference-identity equality updates), and
-  /// optional [options] to configure signal debug names ([SignalOptions.name])
-  /// or custom [SignalEquality].
-  ///
-  /// ```dart
-  /// class CounterCubit extends CubitSignal<int> {
-  ///   CounterCubit() : super(initialState: 0);
-  ///
-  ///   void increment() => emit(stateValue + 1);
-  /// }
-  /// ```
-  CubitSignal({
-    required StateType initialState,
-    bool Function(StateType previous, StateType current)? equals,
-    SignalOptions<StateType>? options,
-  }) {
-    initCubitSignal(
-      initialState: initialState,
-      equals: equals,
-      options: options,
-    );
-  }
-}
-
-/// A synchronous state management container integrating BLoC design patterns
-/// with Rody Davis's signals v7.
-///
-/// State updates are immediate and synchronous, ensuring glitch-free rendering
-/// and seamless integration with reactive contexts.
-abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType>
-    with CubitSignalMixin<StateType>, BlocSignalMixin<Event, StateType> {
-  /// Creates a [BlocSignal] with the specified [initialState].
-  ///
-  /// Accepts an optional [equals] comparator callback (for example
-  /// `equals: identical` to force reference-identity equality updates), and
-  /// optional [options] to configure signal debug names ([SignalOptions.name])
-  /// or custom [SignalEquality].
-  ///
-  /// ```dart
-  /// class CounterBloc extends BlocSignal<CounterEvent, int> {
-  ///   CounterBloc() : super(initialState: 0) {
-  ///     on<Increment>((event, emit) => emit(stateValue + 1));
-  ///   }
-  /// }
-  /// ```
-  BlocSignal({
-    required StateType initialState,
-    bool Function(StateType previous, StateType current)? equals,
-    SignalOptions<StateType>? options,
-  }) {
-    initCubitSignal(
-      initialState: initialState,
-      equals: equals,
-      options: options,
-    );
-  }
 }

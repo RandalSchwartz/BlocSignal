@@ -1,5 +1,3 @@
-import 'package:bloc_signals/src/concurrency/event_transformers.dart';
-
 /// Standard telemetry event names emitted by built-in concurrency transformers
 /// and operational diagnostic pipelines.
 ///
@@ -16,11 +14,11 @@ import 'package:bloc_signals/src/concurrency/event_transformers.dart';
 /// ];
 /// ```
 abstract final class BlocTelemetryKeys {
-  /// Emitted when a concurrency transformer (such as [droppable]) discards an
+  /// Emitted when a concurrency transformer (such as droppable) discards an
   /// incoming event because an existing handler is currently executing.
   static const String eventDropped = 'event_dropped';
 
-  /// Emitted when a concurrency transformer (such as [restartable]) cancels or
+  /// Emitted when a concurrency transformer (such as restartable) cancels or
   /// supersedes an in-flight execution upon the arrival of a newer event.
   static const String taskPreempted = 'task_preempted';
 
@@ -29,6 +27,6 @@ abstract final class BlocTelemetryKeys {
   static const String taskCanceled = 'task_canceled';
 
   /// Emitted when an incoming event is enqueued by a sequential or buffered
-  /// concurrency transformer (such as [sequential]).
+  /// concurrency transformer (such as sequential).
   static const String eventQueued = 'event_queued';
 }

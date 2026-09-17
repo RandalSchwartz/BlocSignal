@@ -517,11 +517,35 @@ when possible, or check request freshness and `isClosed` after each async gap be
 - `onTelemetry(BlocSignalBase<dynamic> bloc, String name, {Object? event, Map<String, dynamic>? metadata})` for operational telemetry and concurrency diagnostics;
 - `onClose(BlocSignalBase<dynamic> bloc)` after owned effects and the internal model are disposed.
 
-There is no built-in observer chain. Write a composite observer when logging and telemetry must run
-together. `onCreate` runs before the subclass constructor body and late fields are initialized, so
+Use `CompositeBlocSignalObserver` or `BlocSignalObserver.addObserver()` when logging, DevTools,
+and telemetry must run together:
+
+```dart
+// Register multiple observers dynamically:
+BlocSignalObserver.addObserver(MyLoggerObserver());
+BlocSignalObserver.addObserver(DevToolsBlocSignalObserver());
+BlocSignalObserver.addObserver(OtelBlocSignalObserver());
+
+// Or instantiate explicitly:
+BlocSignalObserver.observer = CompositeBlocSignalObserver([
+  MyLoggerObserver(),
+  DevToolsBlocSignalObserver(),
+  OtelBlocSignalObserver(),
+]);
+```
+
+### Observer Exception Isolation
+All observer hooks (`onCreate`, `onEvent`, `onTransition`, `onChange`, `onTelemetry`, and `onClose`)
+are wrapped in defensive isolation boundaries. Exceptions thrown by an observer are automatically
+captured and forwarded to `bloc.onError()`, ensuring that a failing observer cannot abort synchronous
+state emissions (`_state.value = newState`) or corrupt container lifecycles. In composite observers,
+failure in one observer does not prevent subsequent observers from receiving the notification.
+
+`onCreate` runs before the subclass constructor body and late fields are initialized, so
 observers should not read subtype-specific fields there. Local `onTransition`, `onChange`,
 `onError`, and `close` are annotated `@mustCallSuper`; keep the superclass call in overrides.
 
 Await `close()` when completion or observer errors matter. The cleanup body runs
 synchronously before the returned future completes, but callers should code to the `Future<void>`
 contract.
+

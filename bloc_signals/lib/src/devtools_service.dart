@@ -66,6 +66,15 @@ class DevToolsService {
   ///
   /// This allows the DevTools `dispatch` RPC to reconstruct typed events from
   /// JSON maps or strings when interacting with strongly-typed blocs.
+  ///
+  /// ```dart
+  /// DevToolsService.instance.registerEventDeserializer<CounterBloc>((raw) {
+  ///   if (raw is Map && raw['action'] == 'increment') {
+  ///     return IncrementEvent();
+  ///   }
+  ///   return raw;
+  /// });
+  /// ```
   void registerEventDeserializer<T extends BlocSignalBase<dynamic>>(
     Object? Function(dynamic raw) deserializer,
   ) {

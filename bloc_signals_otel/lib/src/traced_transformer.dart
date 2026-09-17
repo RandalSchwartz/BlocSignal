@@ -79,7 +79,6 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
 
     var exceptionRecorded = false;
     var spanEnded = false;
-    var handlerInvoked = false;
 
     void recordError(Object error, StackTrace stackTrace) {
       if (!exceptionRecorded) {
@@ -112,7 +111,6 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
         bloc,
         event,
         (e, em) {
-          handlerInvoked = true;
           try {
             final res = handler(e, em);
             if (res is Future) {
@@ -142,9 +140,7 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
         });
       }
 
-      if (handlerInvoked) {
-        endSpanOk();
-      }
+      endSpanOk();
     } catch (error, stackTrace) {
       endSpanError(error, stackTrace);
       rethrow;

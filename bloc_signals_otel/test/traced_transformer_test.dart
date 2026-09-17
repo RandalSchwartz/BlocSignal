@@ -297,45 +297,65 @@ void main() {
     });
 
     test(
-        'keeps span open for transformers that defer execution without '
-        'returning a Future', () async {
-      final bloc = TracedTestBloc(
-        workTransformer: sequential(),
-        tracer: tracer,
-      );
+      'keeps span open for async transformers returning a Future',
+      () async {
+        final bloc = TracedTestBloc(
+          workTransformer: sequential(),
+          tracer: tracer,
+        );
 
-      final completer = Completer<void>();
-      // A transformer that schedules handler execution asynchronously
-      // without returning a Future.
-      final deferredTx = tracedBloc<DoWorkEvent, String>(
-        (b, event, handler, emit) {
-          Timer(const Duration(milliseconds: 20), () async {
+        final asyncTx = tracedBloc<DoWorkEvent, String>(
+          (b, event, handler, emit) async {
+            await Future<void>.delayed(const Duration(milliseconds: 20));
             await handler(event, emit);
-            completer.complete();
-          });
-        },
+          },
+          tracer: tracer,
+        );
+
+        final future = asyncTx(
+          bloc,
+          DoWorkEvent('deferred'),
+          (e, emit) async {
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+            emit('deferred_done');
+          },
+          bloc.emit,
+        );
+
+        // While asyncTx is in flight, span must NOT be exported yet!
+        expect(exporter.exportedSpans, isEmpty);
+
+        await future;
+
+        expect(exporter.exportedSpans, hasLength(1));
+        final span = exporter.exportedSpans.first;
+        expect(span.status.code, equals(otel.StatusCode.ok));
+
+        await bloc.close();
+      },
+    );
+
+    test('ends span immediately for dropped events without leaking', () async {
+      final bloc = TracedTestBloc(
+        workTransformer: droppable(),
         tracer: tracer,
       );
 
-      deferredTx(
-        bloc,
-        DoWorkEvent('deferred'),
-        (e, emit) async {
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-          emit('deferred_done');
-        },
-        bloc.emit,
-      );
+      // First event starts work and takes 10ms.
+      bloc.add(DoWorkEvent('first'));
+      // Second event added immediately while first is in flight;
+      // droppable drops it.
+      bloc.add(DoWorkEvent('dropped'));
 
-      // Immediately after invoking deferredTx, span must NOT be exported yet!
-      expect(exporter.exportedSpans, isEmpty);
-
-      // Wait for timer and handler to complete
-      await completer.future;
-
+      // The dropped event returned synchronously and its span must be
+      // completed.
       expect(exporter.exportedSpans, hasLength(1));
-      final span = exporter.exportedSpans.first;
-      expect(span.status.code, equals(otel.StatusCode.ok));
+      final droppedSpan = exporter.exportedSpans.first;
+      expect(droppedSpan.status.code, equals(otel.StatusCode.ok));
+
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+      // Now the first event has also finished.
+      expect(exporter.exportedSpans, hasLength(2));
 
       await bloc.close();
     });

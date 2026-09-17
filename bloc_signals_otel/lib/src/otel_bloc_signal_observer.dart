@@ -29,6 +29,17 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
 
   /// Optional callback to redact or format state values before recording them
   /// on OpenTelemetry spans.
+  ///
+  /// ```dart
+  /// final observer = OtelBlocSignalObserver(
+  ///   stateRedactor: (bloc, state) {
+  ///     if (state is UserProfileState) {
+  ///       return 'UserProfile(id: ${state.id}, email: [REDACTED])';
+  ///     }
+  ///     return state?.toString();
+  ///   },
+  /// );
+  /// ```
   final String? Function(BlocSignalBase<dynamic> bloc, Object? state)?
       stateRedactor;
 

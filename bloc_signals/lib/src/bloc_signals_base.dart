@@ -67,6 +67,19 @@ abstract class BlocSignalObserver {
 
   /// Called when processing of an event has completed (synchronously or
   /// asynchronously).
+  ///
+  /// Useful for telemetry and profiling observers to conclude event lifecycle
+  /// spans even when an event handler does not emit a state transition.
+  ///
+  /// ```dart
+  /// class MetricObserver extends BlocSignalObserver {
+  ///   @override
+  ///   void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+  ///     super.onEventCompleted(bloc, event);
+  ///     // Conclude span or measure total event processing latency.
+  ///   }
+  /// }
+  /// ```
   void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {}
 
   /// Called when any [BlocSignalBase] transitions to a new state

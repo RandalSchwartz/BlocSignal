@@ -245,5 +245,28 @@ void main() {
       expect(bloc.stateValue, equals(1));
       await bloc.close();
     });
+
+    test('handleDispatch returns error when registered deserializer throws',
+        () async {
+      final bloc = CounterBloc();
+      DevToolsService.instance.registerEventDeserializer<CounterBloc>((raw) {
+        throw const FormatException('Corrupted event payload');
+      });
+
+      final response = await DevToolsService.instance.handleDispatch(
+        'ext.bloc_signal.dispatch',
+        {
+          'hashCode': bloc.hashCode.toString(),
+          'event': '{"action":"plus"}',
+        },
+      );
+
+      expect(response.errorCode, equals(-32602));
+      expect(
+        response.errorDetail,
+        contains('Failed to deserialize event for CounterBloc'),
+      );
+      await bloc.close();
+    });
   });
 }

@@ -35,8 +35,18 @@ jobs:
       - name: Static Analysis
         run: dart analyze --fatal-infos
 
+      - name: Downgrade Dependencies & Validate Lower Bounds
+        run: |
+          dart pub downgrade
+          dart analyze --fatal-infos
+          git checkout -- pubspec.lock
+          dart pub get
+
       - name: Validate Agent Plugin & Skills
         run: dart run tool/validate_agent_plugin.dart
 
       - name: Run Workspace Tests
-        run: dart run tool/run_workspace_tests.dart
+        run: dart run tool/run_workspace_tests.dart --coverage
+
+      - name: Enforce Coverage Thresholds
+        run: dart run tool/calculate_coverage.dart --min=75

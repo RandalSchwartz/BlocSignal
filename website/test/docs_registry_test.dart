@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/components/docs/docs_content.dart';
 import 'package:blocsignal_website/src/models/app_route.dart';
 import 'package:blocsignal_website/src/models/docs_registry.dart';
 import 'package:test/test.dart';
@@ -252,4 +253,62 @@ void main() {
       );
     });
   });
+
+  group(
+    'DocsContent Section Mapping & Source Path Verification (scars.md:71)',
+    () {
+      test('all registered sections have non-empty TOC headings and '
+          'existing source paths', () {
+        final allSections = DocsRegistry.categories
+            .expand((c) => c.sections)
+            .toList();
+        expect(allSections, isNotEmpty);
+
+        for (final section in allSections) {
+          final headings = DocsContent.getHeadingsForSection(section.id);
+          expect(
+            headings,
+            isNotEmpty,
+            reason:
+                'Section "${section.id}" (${section.title}) must have '
+                'non-empty TOC headings in DocsContent.getHeadingsForSection',
+          );
+
+          final sourcePath = DocsContent.getSourcePathForSection(section.id);
+          expect(
+            sourcePath,
+            isNotEmpty,
+            reason:
+                'Section "${section.id}" (${section.title}) must have '
+                'a non-empty source file path in DocsContent.getSourcePathForSection',
+          );
+          expect(
+            sourcePath,
+            startsWith('website/lib/src/components/docs/pages/docs_'),
+            reason:
+                'Source path for section "${section.id}" must point to a docs '
+                'page component: $sourcePath',
+          );
+          expect(
+            sourcePath,
+            endsWith('.dart'),
+            reason:
+                'Source path for section "${section.id}" must be a Dart file: '
+                '$sourcePath',
+          );
+        }
+      });
+
+      test('unknown section returns empty headings and fallback path', () {
+        expect(
+          DocsContent.getHeadingsForSection('nonexistent_section'),
+          isEmpty,
+        );
+        expect(
+          DocsContent.getSourcePathForSection('nonexistent_section'),
+          equals('website/lib/src/models/docs_registry.dart'),
+        );
+      });
+    },
+  );
 }

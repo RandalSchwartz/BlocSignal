@@ -51,8 +51,8 @@ class const DocsContent({super.key}) extends StatelessComponent {
         );
         final cubit = context.read<DocsCubit>();
 
-        final headings = _getHeadingsForSection(currentSection.id);
-        final sourcePath = _getSourcePathForSection(currentSection.id);
+        final headings = getHeadingsForSection(currentSection.id);
+        final sourcePath = getSourcePathForSection(currentSection.id);
 
         return div(classes: 'docs-content-layout', [
           div(classes: 'docs-main-wrapper', [
@@ -128,7 +128,9 @@ class const DocsContent({super.key}) extends StatelessComponent {
     );
   }
 
-  static List<TocHeading> _getHeadingsForSection(String sectionId) {
+  /// Resolves the Table of Contents anchor headings for a given [sectionId].
+  @visibleForTesting
+  static List<TocHeading> getHeadingsForSection(String sectionId) {
     switch (sectionId) {
       case 'overview':
         return DocsOverviewPage.headings;
@@ -195,7 +197,9 @@ class const DocsContent({super.key}) extends StatelessComponent {
     }
   }
 
-  static String _getSourcePathForSection(String sectionId) {
+  /// Resolves the GitHub repository source file path for a given [sectionId].
+  @visibleForTesting
+  static String getSourcePathForSection(String sectionId) {
     switch (sectionId) {
       case 'overview':
         return 'website/lib/src/components/docs/pages/docs_overview.dart';

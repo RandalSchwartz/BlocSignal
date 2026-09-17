@@ -29,9 +29,14 @@ void main(List<String> args) {
 
   for (final pkg in packages) {
     final isWebsite = pkg == 'website';
-    final executable = 'flutter';
+    final executable = isWebsite ? 'dart' : 'flutter';
     final commandArgs = isWebsite
-        ? ['pub', 'run', 'test', '-p', 'chrome', ...args]
+        ? [
+            'test',
+            '-p',
+            'chrome',
+            ...args.where((a) => !a.startsWith('--coverage')),
+          ]
         : ['test', ...args];
 
     print('➡️ Running tests in $pkg ($executable test ${args.join(' ')})');

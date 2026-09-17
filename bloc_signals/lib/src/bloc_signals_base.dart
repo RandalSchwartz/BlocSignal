@@ -65,6 +65,23 @@ abstract class BlocSignalObserver {
   /// via `add`.
   void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {}
 
+  /// Called when processing of an event has completed (synchronously or
+  /// asynchronously).
+  ///
+  /// Useful for telemetry and profiling observers to conclude event lifecycle
+  /// spans even when an event handler does not emit a state transition.
+  ///
+  /// ```dart
+  /// class MetricObserver extends BlocSignalObserver {
+  ///   @override
+  ///   void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+  ///     super.onEventCompleted(bloc, event);
+  ///     // Conclude span or measure total event processing latency.
+  ///   }
+  /// }
+  /// ```
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {}
+
   /// Called when any [BlocSignalBase] transitions to a new state
   /// via [BlocSignalBase.emit].
   void onTransition(
@@ -154,6 +171,17 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
   }
 
   @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+    for (final observer in _observers) {
+      try {
+        observer.onEventCompleted(bloc, event);
+      } on Object catch (e, stackTrace) {
+        bloc.onError(e, stackTrace);
+      }
+    }
+  }
+
+  @override
   void onTransition(
     BlocSignalBase<dynamic> bloc,
     Object? event,
@@ -227,8 +255,12 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
   }
 }
 
-/// Internal dispatcher allowing built-in concurrency transformers to emit
-/// operational telemetry on [bloc].
+/// Emits operational telemetry diagnostics on [bloc] from custom or built-in
+/// concurrency transformers.
+///
+/// Use this public entrypoint to attach telemetry events (such as dropped
+/// events, preemption, or queue latencies) from custom concurrency
+/// transformers without requiring subclassing or protected method access.
 void emitContainerTelemetry(
   BlocSignalBase<dynamic> bloc,
   String name, {

@@ -7,7 +7,17 @@ import 'package:opentelemetry/api.dart' as otel;
 import 'package:opentelemetry/sdk.dart' as otel_sdk;
 import 'package:test/test.dart';
 
-class Increment {}
+class Increment {
+  const Increment();
+}
+
+class ZeroEmitBloc extends BlocSignal<String, int> {
+  ZeroEmitBloc() : super(initialState: 0) {
+    on<String>((event, emit) {
+      // 0 emissions
+    });
+  }
+}
 
 class TestBloc extends BlocSignal<Increment, int> {
   TestBloc({super.initialState = 0}) {
@@ -80,7 +90,7 @@ void main() {
       final bloc = TestBloc();
       expect(bloc.stateValue, equals(0));
 
-      bloc.add(Increment());
+      bloc.add(const Increment());
       expect(bloc.stateValue, equals(1));
       await bloc.close();
 
@@ -105,7 +115,7 @@ void main() {
       final bloc = TestBloc(initialState: -1);
 
       expect(
-        () => bloc.add(Increment()),
+        () => bloc.add(const Increment()),
         throwsArgumentError,
       );
       await bloc.close();
@@ -177,7 +187,7 @@ void main() {
         'instruments onTelemetry on active span with span event and contention '
         'and ends span on eventDropped', () async {
       final bloc = TestBloc();
-      final event = Increment();
+      const event = Increment();
       observer.onEvent(bloc, event);
 
       observer.onTelemetry(
@@ -213,7 +223,7 @@ void main() {
     test('instruments onTelemetry on active span and ends on taskPreempted',
         () async {
       final bloc = TestBloc();
-      final event = Increment();
+      const event = Increment();
       observer.onEvent(bloc, event);
 
       observer.onTelemetry(
@@ -236,9 +246,10 @@ void main() {
       await bloc.close();
     });
 
-    test('instruments onTelemetry outside active span to discrete span',
+    test('instruments onTelemetry without active span creating ad-hoc span',
         () async {
       final cubit = TestCubit();
+
       observer.onTelemetry(
         cubit,
         'cache_hit',
@@ -248,7 +259,6 @@ void main() {
           'cached': true,
         },
       );
-      await cubit.close();
 
       expect(exporter.exportedSpans, hasLength(1));
       final span = exporter.exportedSpans.first;
@@ -257,6 +267,64 @@ void main() {
       expect(span.attributes.get('key'), equals('item_42'));
       expect(span.attributes.get('latency_ms'), equals(5));
       expect(span.attributes.get('cached'), equals(true));
+    });
+
+    test(
+      'repeated identical const events generate distinct spans without '
+      'collisions',
+      () async {
+        final bloc = TestBloc();
+        const event = Increment();
+
+        bloc.add(event);
+        bloc.add(event);
+
+        expect(bloc.stateValue, equals(2));
+        await bloc.close();
+
+        expect(exporter.exportedSpans, hasLength(2));
+        expect(
+          exporter.exportedSpans[0].name,
+          equals('TestBloc.add(Increment)'),
+        );
+        expect(
+          exporter.exportedSpans[1].name,
+          equals('TestBloc.add(Increment)'),
+        );
+      },
+    );
+
+    test(
+      'handlers with 0 emissions complete and close span via onEventCompleted '
+      'without leaks',
+      () async {
+        final bloc = ZeroEmitBloc();
+
+        bloc.add('noop');
+        expect(exporter.exportedSpans, hasLength(1));
+        final span = exporter.exportedSpans.first;
+        expect(span.name, equals('ZeroEmitBloc.add(String)'));
+        expect(span.status.code, equals(otel.StatusCode.ok));
+
+        await bloc.close();
+      },
+    );
+
+    test('stateRedactor formats or redacts state.value span attribute',
+        () async {
+      final customObserver = OtelBlocSignalObserver(
+        tracer: tracer,
+        stateRedactor: (bloc, state) => '[REDACTED]',
+      );
+      BlocSignalObserver.observer = customObserver;
+
+      final bloc = TestBloc();
+      bloc.add(const Increment());
+      await bloc.close();
+
+      expect(exporter.exportedSpans, hasLength(1));
+      final span = exporter.exportedSpans.first;
+      expect(span.attributes.get('state.value'), equals('[REDACTED]'));
     });
   });
 }

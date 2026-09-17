@@ -137,5 +137,40 @@ void main() {
       expect(find.text('Event: increment'), findsOneWidget);
       expect(find.text('Error: NetworkException'), findsNothing);
     });
+
+    testWidgets(
+        'tapping history entry in TimelineTracePanel updates '
+        'StateDiffInspector', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocSignalsDevToolsExtension(
+            instances: sampleInstances,
+            history: const [
+              {
+                'hashCode': 1001,
+                'type': 'transition',
+                'timestamp': '2026-07-23T12:00:00.000',
+                'data': {
+                  'event': 'increment',
+                  'currentState': '41',
+                  'nextState': '42',
+                },
+              },
+            ],
+          ),
+        ),
+      );
+
+      // Select container
+      await tester.tap(find.text('CounterCubit'));
+      await tester.pump();
+
+      // Tap history entry
+      await tester.tap(find.byKey(const Key('history_entry_0')));
+      await tester.pump();
+
+      expect(find.text('41'), findsOneWidget);
+      expect(find.text('42'), findsOneWidget);
+    });
   });
 }

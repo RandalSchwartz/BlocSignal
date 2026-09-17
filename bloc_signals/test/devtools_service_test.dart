@@ -182,5 +182,91 @@ void main() {
         expect(errRes.errorCode, equals(-32602));
       },
     );
+
+    test(
+        'handleGetHistory includes hashCode, instanceHashCode, and '
+        'currentState', () async {
+      final bloc = CounterBloc()..add('inc');
+
+      final response = await DevToolsService.instance.handleGetHistory(
+        'ext.bloc_signal.getHistory',
+        {'hashCode': bloc.hashCode.toString()},
+      );
+
+      final json = jsonDecode(response.result!) as Map<String, dynamic>;
+      final history = json['history'] as List<dynamic>;
+      final transition = history.firstWhere(
+        (e) => (e as Map<String, dynamic>)['type'] == 'transition',
+      ) as Map<String, dynamic>;
+
+      expect(transition['hashCode'], equals(bloc.hashCode));
+      expect(transition['instanceHashCode'], equals(bloc.hashCode));
+      final data = transition['data'] as Map<String, dynamic>;
+      expect(data['currentState'], equals('0'));
+      expect(data['nextState'], equals('1'));
+
+      await bloc.close();
+    });
+
+    test('handleDispatch returns error on malformed JSON payload', () async {
+      final bloc = JsonBloc();
+
+      final errRes = await DevToolsService.instance.handleDispatch(
+        'ext.bloc_signal.dispatch',
+        {
+          'hashCode': bloc.hashCode.toString(),
+          'event': '{"malformed":',
+        },
+      );
+
+      expect(errRes.errorCode, equals(-32602));
+      expect(errRes.errorDetail, contains('Invalid JSON'));
+      await bloc.close();
+    });
+
+    test('handleDispatch supports registered typed event deserializers',
+        () async {
+      final bloc = CounterBloc();
+      DevToolsService.instance.registerEventDeserializer<CounterBloc>((raw) {
+        if (raw is Map && raw['action'] == 'plus') return 'inc';
+        return raw;
+      });
+
+      final response = await DevToolsService.instance.handleDispatch(
+        'ext.bloc_signal.dispatch',
+        {
+          'hashCode': bloc.hashCode.toString(),
+          'event': '{"action":"plus"}',
+        },
+      );
+
+      final json = jsonDecode(response.result!) as Map<String, dynamic>;
+      expect(json['success'], isTrue);
+      expect(bloc.stateValue, equals(1));
+      await bloc.close();
+    });
+
+    test('handleDispatch returns error when registered deserializer throws',
+        () async {
+      final bloc = CounterBloc();
+      DevToolsService.instance.registerEventDeserializer<CounterBloc>((raw) {
+        throw const FormatException('Corrupted event payload');
+      });
+
+      final response = await DevToolsService.instance.handleDispatch(
+        'ext.bloc_signal.dispatch',
+        {
+          'hashCode': bloc.hashCode.toString(),
+          'event': '{"action":"plus"}',
+        },
+      );
+
+      expect(response.errorCode, equals(-32602));
+      expect(
+        response.errorDetail,
+        contains('Failed to deserialize event for CounterBloc'),
+      );
+      await bloc.close();
+    });
   });
 }

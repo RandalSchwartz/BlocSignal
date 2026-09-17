@@ -19,11 +19,19 @@ class TimelineTracePanel extends StatelessWidget {
   /// Creates a [TimelineTracePanel].
   const TimelineTracePanel({
     required this.history,
+    this.selectedEntry,
+    this.onSelectEntry,
     super.key,
   });
 
   /// Raw history entries list from `ext.bloc_signal.getHistory`.
   final List<Map<String, dynamic>> history;
+
+  /// Currently selected history entry map.
+  final Map<String, dynamic>? selectedEntry;
+
+  /// Callback when a history entry row is tapped.
+  final ValueChanged<Map<String, dynamic>>? onSelectEntry;
 
   @override
   Widget build(BuildContext context) {
@@ -43,63 +51,71 @@ class TimelineTracePanel extends StatelessWidget {
         final timestamp = entry['timestamp']?.toString() ?? '';
         final data = (entry['data'] as Map<String, dynamic>?) ?? {};
         final isError = type == 'error';
+        final isSelected = entry == selectedEntry;
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                isError ? Icons.error_outline : Icons.swap_horiz,
-                color: isError ? Colors.red : Colors.blue,
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          type.toUpperCase(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            color: isError ? Colors.red : Colors.blue,
+        return InkWell(
+          key: Key('history_entry_$index'),
+          onTap: onSelectEntry != null ? () => onSelectEntry!(entry) : null,
+          child: Container(
+            color: isSelected
+                ? Theme.of(context).primaryColor.withAlpha(25)
+                : null,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  isError ? Icons.error_outline : Icons.swap_horiz,
+                  color: isError ? Colors.red : Colors.blue,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            type.toUpperCase(),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              color: isError ? Colors.red : Colors.blue,
+                            ),
                           ),
+                          Text(
+                            timestamp,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      if (isError) ...[
+                        Text(
+                          'Error: ${data['error']}',
+                          style: const TextStyle(color: Colors.red),
                         ),
-                        Text(
-                          timestamp,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
+                      ] else ...[
+                        if (data['event'] != null)
+                          Text(
+                            'Event: ${data['event']}',
+                            style: const TextStyle(fontWeight: FontWeight.w500),
                           ),
+                        Text(
+                          'Next State: ${data['nextState']}',
+                          style: const TextStyle(color: Colors.black87),
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 4),
-                    if (isError) ...[
-                      Text(
-                        'Error: ${data['error']}',
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    ] else ...[
-                      if (data['event'] != null)
-                        Text(
-                          'Event: ${data['event']}',
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      Text(
-                        'Next State: ${data['nextState']}',
-                        style: const TextStyle(color: Colors.black87),
-                      ),
                     ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

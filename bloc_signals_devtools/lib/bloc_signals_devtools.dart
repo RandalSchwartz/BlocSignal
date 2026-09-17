@@ -119,7 +119,15 @@ class _BlocSignalsDevToolsExtensionState
                         ),
                       ),
                       Expanded(
-                        child: TimelineTracePanel(history: filteredHistory),
+                        child: TimelineTracePanel(
+                          history: filteredHistory,
+                          selectedEntry: _selectedHistoryEntry,
+                          onSelectEntry: (entry) {
+                            setState(() {
+                              _selectedHistoryEntry = entry;
+                            });
+                          },
+                        ),
                       ),
                     ],
                   ),

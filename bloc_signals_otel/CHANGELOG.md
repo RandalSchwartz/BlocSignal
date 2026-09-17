@@ -2,6 +2,10 @@
 
 ## 1.1.0
 
+- Add `stateRedactor` option to `OtelBlocSignalObserver` for sensitive state value redaction and attribute masking.
+- Queue open spans in FIFO order in `OtelBlocSignalObserver` to prevent span matching collisions for repeated `const` events.
+- Close open spans on `onEventCompleted` to eliminate span leaks for event handlers emitting zero state transitions.
+- Deduplicate exception recording in `tracedBloc` and support deferred transformer execution without premature span completion.
 - Add `traced` transformer decorator wrapping standard `EventTransformer` instances with OpenTelemetry distributed trace span instrumentation.
 - Add `tracedBloc` transformer decorator wrapping contextual `BlocEventTransformer` instances with OpenTelemetry distributed trace span instrumentation.
 - Automatically record unhandled errors on active spans and set status to `StatusCode.error`.

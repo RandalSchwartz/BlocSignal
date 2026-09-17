@@ -262,5 +262,102 @@ void main() {
 
       await bloc.close();
     });
+
+    test('records exception exactly once without duplicate exception events',
+        () async {
+      final bloc = TracedTestBloc(
+        workTransformer: sequential(),
+        tracer: tracer,
+      );
+
+      final tracedTx = traced<DoWorkEvent, String>(
+        (event, handler, emit) => handler(event, emit),
+        tracer: tracer,
+      );
+
+      try {
+        final res = tracedTx(
+          bloc,
+          DoWorkEvent('single_error'),
+          (e, emit) async {
+            throw StateError('Single error failure');
+          },
+          bloc.emit,
+        );
+        if (res is Future) await res;
+      } on Object catch (_) {}
+
+      expect(exporter.exportedSpans, hasLength(1));
+      final span = exporter.exportedSpans.first;
+      final exceptionEvents =
+          span.events.where((e) => e.name == 'exception').toList();
+      expect(exceptionEvents, hasLength(1));
+
+      await bloc.close();
+    });
+
+    test(
+      'keeps span open for async transformers returning a Future',
+      () async {
+        final bloc = TracedTestBloc(
+          workTransformer: sequential(),
+          tracer: tracer,
+        );
+
+        final asyncTx = tracedBloc<DoWorkEvent, String>(
+          (b, event, handler, emit) async {
+            await Future<void>.delayed(const Duration(milliseconds: 20));
+            await handler(event, emit);
+          },
+          tracer: tracer,
+        );
+
+        final future = asyncTx(
+          bloc,
+          DoWorkEvent('deferred'),
+          (e, emit) async {
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+            emit('deferred_done');
+          },
+          bloc.emit,
+        );
+
+        // While asyncTx is in flight, span must NOT be exported yet!
+        expect(exporter.exportedSpans, isEmpty);
+
+        await future;
+
+        expect(exporter.exportedSpans, hasLength(1));
+        final span = exporter.exportedSpans.first;
+        expect(span.status.code, equals(otel.StatusCode.ok));
+
+        await bloc.close();
+      },
+    );
+
+    test('ends span immediately for dropped events without leaking', () async {
+      final bloc = TracedTestBloc(
+        workTransformer: droppable(),
+        tracer: tracer,
+      );
+
+      // First event starts work and takes 10ms.
+      bloc.add(DoWorkEvent('first'));
+      // Second event added immediately while first is in flight;
+      // droppable drops it.
+      bloc.add(DoWorkEvent('dropped'));
+
+      // The dropped event returned synchronously and its span must be
+      // completed.
+      expect(exporter.exportedSpans, hasLength(1));
+      final droppedSpan = exporter.exportedSpans.first;
+      expect(droppedSpan.status.code, equals(otel.StatusCode.ok));
+
+      await Future<void>.delayed(const Duration(milliseconds: 25));
+      // Now the first event has also finished.
+      expect(exporter.exportedSpans, hasLength(2));
+
+      await bloc.close();
+    });
   });
 }

@@ -7,6 +7,8 @@ class FakeSharedPreferences {
 
   String? getString(String key) => _storage[key];
 
+  Set<String> getKeys() => _storage.keys.toSet();
+
   Future<bool> setString(String key, String value) async {
     _storage[key] = value;
     return true;
@@ -45,10 +47,21 @@ void main() {
   });
 
   group('SharedPreferencesHydratedStorage', () {
-    test('reads and writes primitive values', () async {
+    test('reads and writes primitive values with default prefix', () async {
       await storage.write('counter', 42);
       expect(storage.read('counter'), equals(42));
       expect(prefs.getString('counter'), equals('42'));
+    });
+
+    test('supports custom prefix scoping', () async {
+      final scopedStorage = SharedPreferencesHydratedStorage(
+        prefs,
+        prefix: 'scoped_',
+      );
+
+      await scopedStorage.write('token', 'abc-123');
+      expect(scopedStorage.read('token'), equals('abc-123'));
+      expect(prefs.getString('scoped_token'), equals('"abc-123"'));
     });
 
     test('reads and writes collections (lists & maps)', () async {
@@ -68,20 +81,35 @@ void main() {
       expect(prefs.getString('key'), isNull);
     });
 
-    test('clears all storage', () async {
-      await storage.write('k1', 'v1');
-      await storage.write('k2', 'v2');
+    test('clears only scoped keys when prefix is configured', () async {
+      final scopedStorage = SharedPreferencesHydratedStorage(
+        prefs,
+        prefix: 'app_',
+      );
 
-      await storage.clear();
-      expect(storage.read('k1'), isNull);
-      expect(storage.read('k2'), isNull);
+      // Seed unrelated host app preference
+      await prefs.setString('user_theme_preference', 'dark');
+
+      await scopedStorage.write('k1', 'v1');
+      await scopedStorage.write('k2', 'v2');
+
+      await scopedStorage.clear();
+      expect(scopedStorage.read('k1'), isNull);
+      expect(scopedStorage.read('k2'), isNull);
+      expect(prefs.getString('app_k1'), isNull);
+      expect(prefs.getString('app_k2'), isNull);
+
+      // Unrelated preference is preserved!
+      expect(prefs.getString('user_theme_preference'), equals('dark'));
     });
 
-    test('handles exceptions and non-json raw strings gracefully in read()',
+    test('propagates jsonDecode exception on corrupt storage string in read()',
         () async {
-      final throwingPrefs = _ThrowingSharedPreferences();
-      final throwingStorage = SharedPreferencesHydratedStorage(throwingPrefs);
-      expect(throwingStorage.read('key'), isNull);
+      await prefs.setString('corrupt_key', '{invalid_json');
+      expect(
+        () => storage.read('corrupt_key'),
+        throwsA(isA<FormatException>()),
+      );
     });
 
     test('integrates seamlessly with HydratedCubitSignal', () async {
@@ -95,8 +123,4 @@ void main() {
       expect(prefs.getString('TestCounterCubit'), equals('11'));
     });
   });
-}
-
-class _ThrowingSharedPreferences {
-  String? getString(String key) => throw Exception('Storage failure');
 }

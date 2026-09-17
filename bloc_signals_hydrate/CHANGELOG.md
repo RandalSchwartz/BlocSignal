@@ -1,3 +1,13 @@
+## 1.0.2
+
+- Fix async persistence errors escaping `onError`: Attach unhandled future error handlers on `storage.write` and `storage.delete` to route disk and serialization failures to `onError` and `BlocSignalObserver`.
+- Fix memory and disk cache divergence in `SecureHydratedStorage`: Update in-memory cache only after successful serialization and storage writes.
+- Gate rejected and duplicate state emissions: Ensure persistence only writes when container is active and state actually changed; preserve monotonic state order under nested emits.
+- Constructor hydration write-back prevention: Avoid redundant storage rewrites when adopting restored state during constructor execution.
+- Add explicit uninitialized storage diagnostics: Eliminate silent production data loss when `HydratedStorage.storage` is not initialized by routing `StateError` to `onError`.
+- Surface decode and corrupt payload errors: Route `FormatException` to `onError` when stored JSON cannot be deserialized into `StateType`.
+- Namespaced storage & non-destructive `clear()`: Add optional `prefix:` parameter to `SharedPreferencesHydratedStorage` and `SecureHydratedStorage`, ensuring `clear()` removes only scoped keys rather than purging unrelated application data, with 100% backward compatibility (`prefix: ''` by default).
+
 ## 1.0.1
 
 - Clarify in documentation and README that primitive and collection state containers (`int`, `double`, `String`, `bool`, `Map`, `List`) require zero method overrides for `fromJson` or `toJson`.

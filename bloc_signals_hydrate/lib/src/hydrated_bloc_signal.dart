@@ -102,12 +102,31 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
   @protected
   StateType initHydratedState(StateType initial) {
     final storage = activeStorage;
-    if (storage == null) return initial;
+    if (storage == null) {
+      onError(
+        StateError(
+          'HydratedStorage.storage must be initialized before creating '
+          '$runtimeType or provide a storageOverride.',
+        ),
+        StackTrace.current,
+      );
+      return initial;
+    }
     try {
-      final json = storage.read(storageToken);
+      final dynamic json = storage.read(storageToken);
       if (json != null) {
         final restored = fromJson(json);
-        if (restored != null) return restored;
+        if (restored != null) {
+          return restored;
+        } else {
+          onError(
+            FormatException(
+              'Failed to deserialize stored JSON for $storageToken into '
+              '$StateType: $json',
+            ),
+            StackTrace.current,
+          );
+        }
       }
     } on Object catch (error, stackTrace) {
       onError(error, stackTrace);
@@ -119,13 +138,23 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
   @protected
   void persist(StateType state) {
     final storage = activeStorage;
-    if (storage == null) return;
+    if (storage == null) {
+      onError(
+        StateError(
+          'HydratedStorage.storage must be initialized before persisting '
+          'state in $runtimeType.',
+        ),
+        StackTrace.current,
+      );
+      return;
+    }
     try {
-      final json = toJson(state);
-      if (json != null) {
-        unawaited(Future.value(storage.write(storageToken, json)));
-      } else {
-        unawaited(Future.value(storage.delete(storageToken)));
+      final dynamic json = toJson(state);
+      final result = json != null
+          ? storage.write(storageToken, json)
+          : storage.delete(storageToken);
+      if (result is Future<void>) {
+        unawaited(result.catchError(onError));
       }
     } on Object catch (error, stackTrace) {
       onError(error, stackTrace);
@@ -137,7 +166,14 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
   Future<void> clear() async {
     final storage = activeStorage;
     if (storage != null) {
-      await storage.delete(storageToken);
+      try {
+        final result = storage.delete(storageToken);
+        if (result is Future<void>) {
+          await result;
+        }
+      } on Object catch (error, stackTrace) {
+        onError(error, stackTrace);
+      }
     }
     super.emit(initialState);
   }
@@ -180,15 +216,19 @@ abstract class HydratedCubitSignal<StateType> extends CubitSignal<StateType>
 
   void _hydrateState() {
     final restored = initHydratedState(initialState);
-    if (restored != initialState) {
-      emit(restored);
+    if (!equals(initialState, restored)) {
+      super.emit(restored);
     }
   }
 
   @override
   void emit(StateType newState) {
+    if (isClosed) return;
+    final previousState = stateValue;
     super.emit(newState);
-    persist(newState);
+    if (!isClosed && !equals(previousState, stateValue)) {
+      persist(stateValue);
+    }
   }
 }
 
@@ -230,14 +270,18 @@ abstract class HydratedBlocSignal<Event, StateType>
 
   void _hydrateState() {
     final restored = initHydratedState(initialState);
-    if (restored != initialState) {
-      emit(restored);
+    if (!equals(initialState, restored)) {
+      super.emit(restored);
     }
   }
 
   @override
   void emit(StateType newState) {
+    if (isClosed) return;
+    final previousState = stateValue;
     super.emit(newState);
-    persist(newState);
+    if (!isClosed && !equals(previousState, stateValue)) {
+      persist(stateValue);
+    }
   }
 }

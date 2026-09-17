@@ -7,11 +7,14 @@
 library;
 
 // Imported to resolve library doc comment references.
+import 'package:bloc_signals/src/bloc_signal_mixin.dart';
 import 'package:bloc_signals/src/bloc_signals_base.dart';
+import 'package:bloc_signals/src/cubit_signal_mixin.dart';
 
 export 'src/bloc_signal_mixin.dart';
 export 'src/bloc_signals_base.dart';
 export 'src/bloc_telemetry_keys.dart';
+export 'src/change.dart';
 export 'src/concurrency/event_transformers.dart';
 export 'src/concurrency/mutex.dart';
 export 'src/cubit_signal_mixin.dart';
@@ -19,3 +22,4 @@ export 'src/devtools_observer.dart';
 export 'src/devtools_service.dart';
 export 'src/signal_adapter.dart';
 export 'src/stream_adapter.dart';
+export 'src/transition.dart';

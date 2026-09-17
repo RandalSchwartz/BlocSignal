@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_signals/src/bloc_signals_base.dart';
+import 'package:bloc_signals/src/cubit_signal_mixin.dart';
 import 'package:signals_core/signals_core.dart';
 
 /// A reactive state container wrapper that adapts an underlying

@@ -1,3 +1,12 @@
+## 1.5.0
+
+- Isolate observer exceptions across `onCreate`, `onEvent`, `onTransition`, `onChange`, and `onClose` in `try/catch` blocks so that throwing observers cannot abort state updates (`_state.value = newState`) or lifecycle hooks. All observer exceptions are routed to `onError`.
+- Protect `onError` against recursive crashes if an observer throws inside its error handler.
+- Introduce `CompositeBlocSignalObserver` and static helpers `BlocSignalObserver.addObserver()` and `BlocSignalObserver.removeObserver()` for first-class multi-observer chaining without breaking existing single-observer assignments.
+- Eliminate release-mode overhead in `DevToolsService` and `DevToolsBlocSignalObserver`: elide map allocations and history retention in release builds, and key containers by `identityHashCode(bloc)` rather than mutable `bloc.hashCode`.
+- Guard `sequential()` concurrency event transformers against container closure, automatically discarding pending queued events when `isClosed` is true.
+- Break internal circular import cycles within `lib/src/`, transforming internal package structure into a clean Directed Acyclic Graph (DAG).
+
 ## 1.4.0
 
 - Add `container.value` getter as an alias for `container.stateValue` on `BlocSignalBase` and `CubitSignalMixin` to provide complete 1:1 symmetry with `container.state`, Flutter context extensions (`context.state` / `context.value`), and Flutter's `ValueListenable.value`.

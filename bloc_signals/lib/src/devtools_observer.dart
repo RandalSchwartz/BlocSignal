@@ -40,12 +40,14 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     DevToolsService.instance.trackCreate(bloc);
     previousObserver?.onCreate(bloc);
 
-    _post('bloc_signal.onCreate', {
-      'blocType': bloc.runtimeType.toString(),
-      'hashCode': bloc.hashCode,
-      'initialState': bloc.stateValue.toString(),
-      'timestamp': DateTime.now().microsecondsSinceEpoch,
-    });
+    if (DevToolsService.instance.isEnabled) {
+      _post('bloc_signal.onCreate', {
+        'blocType': bloc.runtimeType.toString(),
+        'hashCode': identityHashCode(bloc),
+        'initialState': bloc.stateValue.toString(),
+        'timestamp': DateTime.now().microsecondsSinceEpoch,
+      });
+    }
   }
 
   @override
@@ -53,12 +55,14 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     super.onEvent(bloc, event);
     previousObserver?.onEvent(bloc, event);
 
-    _post('bloc_signal.onEvent', {
-      'blocType': bloc.runtimeType.toString(),
-      'hashCode': bloc.hashCode,
-      'event': event.toString(),
-      'timestamp': DateTime.now().microsecondsSinceEpoch,
-    });
+    if (DevToolsService.instance.isEnabled) {
+      _post('bloc_signal.onEvent', {
+        'blocType': bloc.runtimeType.toString(),
+        'hashCode': identityHashCode(bloc),
+        'event': event.toString(),
+        'timestamp': DateTime.now().microsecondsSinceEpoch,
+      });
+    }
   }
 
   @override
@@ -71,13 +75,15 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     DevToolsService.instance.trackTransition(bloc, event, state);
     previousObserver?.onTransition(bloc, event, state);
 
-    _post('bloc_signal.onTransition', {
-      'blocType': bloc.runtimeType.toString(),
-      'hashCode': bloc.hashCode,
-      'event': event?.toString(),
-      'nextState': state.toString(),
-      'timestamp': DateTime.now().microsecondsSinceEpoch,
-    });
+    if (DevToolsService.instance.isEnabled) {
+      _post('bloc_signal.onTransition', {
+        'blocType': bloc.runtimeType.toString(),
+        'hashCode': identityHashCode(bloc),
+        'event': event?.toString(),
+        'nextState': state.toString(),
+        'timestamp': DateTime.now().microsecondsSinceEpoch,
+      });
+    }
   }
 
   @override
@@ -88,13 +94,15 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     super.onChange(bloc, change);
     previousObserver?.onChange(bloc, change);
 
-    _post('bloc_signal.onChange', {
-      'blocType': bloc.runtimeType.toString(),
-      'hashCode': bloc.hashCode,
-      'currentState': change.currentState.toString(),
-      'nextState': change.nextState.toString(),
-      'timestamp': DateTime.now().microsecondsSinceEpoch,
-    });
+    if (DevToolsService.instance.isEnabled) {
+      _post('bloc_signal.onChange', {
+        'blocType': bloc.runtimeType.toString(),
+        'hashCode': identityHashCode(bloc),
+        'currentState': change.currentState.toString(),
+        'nextState': change.nextState.toString(),
+        'timestamp': DateTime.now().microsecondsSinceEpoch,
+      });
+    }
   }
 
   @override
@@ -107,13 +115,15 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     DevToolsService.instance.trackError(bloc, error, stackTrace);
     previousObserver?.onError(bloc, error, stackTrace);
 
-    _post('bloc_signal.onError', {
-      'blocType': bloc.runtimeType.toString(),
-      'hashCode': bloc.hashCode,
-      'error': error.toString(),
-      'stackTrace': stackTrace.toString(),
-      'timestamp': DateTime.now().microsecondsSinceEpoch,
-    });
+    if (DevToolsService.instance.isEnabled) {
+      _post('bloc_signal.onError', {
+        'blocType': bloc.runtimeType.toString(),
+        'hashCode': identityHashCode(bloc),
+        'error': error.toString(),
+        'stackTrace': stackTrace.toString(),
+        'timestamp': DateTime.now().microsecondsSinceEpoch,
+      });
+    }
   }
 
   @override
@@ -122,11 +132,13 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     DevToolsService.instance.trackClose(bloc);
     previousObserver?.onClose(bloc);
 
-    _post('bloc_signal.onClose', {
-      'blocType': bloc.runtimeType.toString(),
-      'hashCode': bloc.hashCode,
-      'timestamp': DateTime.now().microsecondsSinceEpoch,
-    });
+    if (DevToolsService.instance.isEnabled) {
+      _post('bloc_signal.onClose', {
+        'blocType': bloc.runtimeType.toString(),
+        'hashCode': identityHashCode(bloc),
+        'timestamp': DateTime.now().microsecondsSinceEpoch,
+      });
+    }
   }
 
   @override
@@ -137,6 +149,15 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     Map<String, dynamic>? metadata,
   }) {
     super.onTelemetry(bloc, name, event: event, metadata: metadata);
+    if (!DevToolsService.instance.isEnabled) {
+      previousObserver?.onTelemetry(
+        bloc,
+        name,
+        event: event,
+        metadata: metadata,
+      );
+      return;
+    }
     final sanitizedMeta = metadata != null ? _sanitizeMetadata(metadata) : null;
     DevToolsService.instance.trackTelemetry(
       bloc,
@@ -148,7 +169,7 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
 
     _post('bloc_signal.onTelemetry', {
       'blocType': bloc.runtimeType.toString(),
-      'hashCode': bloc.hashCode,
+      'hashCode': identityHashCode(bloc),
       'name': name,
       'event': event?.toString(),
       'metadata': sanitizedMeta,

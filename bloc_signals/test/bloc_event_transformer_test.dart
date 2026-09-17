@@ -77,7 +77,7 @@ void main() {
   group('BlocEventTransformer & blocTransformer Tests', () {
     test('passes host bloc instance, event, handler, and emit to transformer',
         () async {
-      BlocSignalMixin<dynamic, String>? capturedBloc;
+      BlocSignalBase<String>? capturedBloc;
       PlainEvent? capturedEvent;
       final observer = _TestTelemetryObserver();
       BlocSignalObserver.observer = observer;
@@ -128,7 +128,7 @@ void main() {
 
     test('withBloc adapts BlocEventTransformer to standard EventTransformer',
         () async {
-      BlocSignalMixin<dynamic, String>? capturedBloc;
+      BlocSignalBase<String>? capturedBloc;
 
       final bloc = ContextualTestBloc();
       final adapted = bloc.adaptWithBloc((hostBloc, event, handler, emit) {

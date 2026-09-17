@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:bloc_signals/src/bloc_signals_base.dart';
 import 'package:bloc_signals/src/concurrency/event_transformers.dart';
+import 'package:bloc_signals/src/cubit_signal_mixin.dart';
 import 'package:meta/meta.dart';
+import 'package:preact_signals/preact_signals.dart' show SignalEquality;
+import 'package:signals_core/signals_core.dart';
 
 /// A mixin providing event-driven state container capabilities for any
 /// [BlocSignalBase] class.
@@ -41,8 +44,12 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
   @protected
   @mustCallSuper
   void onTransition(Transition<Event, StateType> transition) {
-    BlocSignalObserver.observer
-        ?.onTransition(this, transition.event, transition.nextState);
+    try {
+      BlocSignalObserver.observer
+          ?.onTransition(this, transition.event, transition.nextState);
+    } on Object catch (e, stackTrace) {
+      onError(e, stackTrace);
+    }
   }
 
   @override
@@ -65,7 +72,11 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
     if (isClosed) return;
     final currentObserver = BlocSignalObserver.observer;
     if (currentObserver != null) {
-      currentObserver.onEvent(this, event);
+      try {
+        currentObserver.onEvent(this, event);
+      } on Object catch (e, stackTrace) {
+        onError(e, stackTrace);
+      }
     }
 
     runZoned(
@@ -232,4 +243,38 @@ class _HandlerRegistry<Event, StateType> {
     dynamic event,
     void Function(StateType state) emit,
   ) handler;
+}
+
+/// A synchronous state management container integrating BLoC design patterns
+/// with Rody Davis's signals v7.
+///
+/// State updates are immediate and synchronous, ensuring glitch-free rendering
+/// and seamless integration with reactive contexts.
+abstract class BlocSignal<Event, StateType> extends BlocSignalBase<StateType>
+    with CubitSignalMixin<StateType>, BlocSignalMixin<Event, StateType> {
+  /// Creates a [BlocSignal] with the specified [initialState].
+  ///
+  /// Accepts an optional [equals] comparator callback (for example
+  /// `equals: identical` to force reference-identity equality updates), and
+  /// optional [options] to configure signal debug names ([SignalOptions.name])
+  /// or custom [SignalEquality].
+  ///
+  /// ```dart
+  /// class CounterBloc extends BlocSignal<CounterEvent, int> {
+  ///   CounterBloc() : super(initialState: 0) {
+  ///     on<Increment>((event, emit) => emit(stateValue + 1));
+  ///   }
+  /// }
+  /// ```
+  BlocSignal({
+    required StateType initialState,
+    bool Function(StateType previous, StateType current)? equals,
+    SignalOptions<StateType>? options,
+  }) {
+    initCubitSignal(
+      initialState: initialState,
+      equals: equals,
+      options: options,
+    );
+  }
 }

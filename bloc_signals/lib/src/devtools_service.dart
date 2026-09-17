@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
 
+import 'package:bloc_signals/src/bloc_signal_mixin.dart';
 import 'package:bloc_signals/src/bloc_signals_base.dart';
+import 'package:meta/meta.dart';
 
 /// A recorded history entry for a container transition or error.
 class DevToolsHistoryEntry {
@@ -51,10 +53,34 @@ class DevToolsService {
   final Map<int, List<DevToolsHistoryEntry>> _history = {};
   bool _extensionsRegistered = false;
 
+  static bool get _inDebugMode {
+    var inDebug = false;
+    assert(
+      () {
+        inDebug = true;
+        return true;
+      }(),
+      'Detecting debug mode',
+    );
+    return inDebug;
+  }
+
+  bool? _isEnabled;
+
+  /// Whether DevTools history tracking and extension registration are enabled.
+  ///
+  /// Defaults to `true` in debug mode (asserts enabled) and `false` in release
+  /// builds to eliminate runtime history retention and allocation overhead.
+  bool get isEnabled => _isEnabled ?? _inDebugMode;
+
+  set isEnabled(bool value) {
+    _isEnabled = value;
+  }
+
   /// Registers VM Service RPC extensions if running under VM service
   /// inspection.
   void registerExtensions() {
-    if (_extensionsRegistered) return;
+    if (_extensionsRegistered || !isEnabled) return;
     assert(
       () {
         developer.registerExtension(
@@ -78,9 +104,11 @@ class DevToolsService {
 
   /// Tracks container creation.
   void trackCreate(BlocSignalBase<dynamic> bloc) {
+    if (!isEnabled) return;
     registerExtensions();
-    _containers[bloc.hashCode] = WeakReference(bloc);
-    _history[bloc.hashCode] ??= [];
+    final id = identityHashCode(bloc);
+    _containers[id] = WeakReference(bloc);
+    _history[id] ??= [];
   }
 
   /// Tracks container transition.
@@ -89,8 +117,9 @@ class DevToolsService {
     Object? event,
     Object? state,
   ) {
+    if (!isEnabled) return;
     _record(
-      bloc.hashCode,
+      identityHashCode(bloc),
       DevToolsHistoryEntry(
         type: 'transition',
         timestamp: DateTime.now().toIso8601String(),
@@ -108,8 +137,9 @@ class DevToolsService {
     Object error,
     StackTrace stackTrace,
   ) {
+    if (!isEnabled) return;
     _record(
-      bloc.hashCode,
+      identityHashCode(bloc),
       DevToolsHistoryEntry(
         type: 'error',
         timestamp: DateTime.now().toIso8601String(),
@@ -128,8 +158,9 @@ class DevToolsService {
     Object? event,
     Map<String, dynamic>? metadata,
   }) {
+    if (!isEnabled) return;
     _record(
-      bloc.hashCode,
+      identityHashCode(bloc),
       DevToolsHistoryEntry(
         type: 'telemetry',
         timestamp: DateTime.now().toIso8601String(),
@@ -144,9 +175,15 @@ class DevToolsService {
 
   /// Tracks container closure.
   void trackClose(BlocSignalBase<dynamic> bloc) {
-    _containers.remove(bloc.hashCode);
-    _history.remove(bloc.hashCode);
+    if (!isEnabled) return;
+    final id = identityHashCode(bloc);
+    _containers.remove(id);
+    _history.remove(id);
   }
+
+  /// Returns recorded history entries for [id] in unit tests.
+  @visibleForTesting
+  List<DevToolsHistoryEntry>? getHistoryForTest(int id) => _history[id];
 
   void _record(int hashCode, DevToolsHistoryEntry entry) {
     final list = _history[hashCode];

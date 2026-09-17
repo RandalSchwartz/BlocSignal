@@ -119,10 +119,10 @@ typedef EventTransformer<E, StateType> = FutureOr<void> Function(
 /// - [EventTransformer], the standard 3-parameter transformer signature.
 /// - [EventTransformerExtension.toBlocTransformer], which lifts an
 ///   [EventTransformer] into a [BlocEventTransformer].
-/// - [BlocSignalMixin.withBloc], which adapts a [BlocEventTransformer] to a
+/// - `withBloc`, which adapts a [BlocEventTransformer] to a
 ///   standard [EventTransformer].
 typedef BlocEventTransformer<E, StateType> = FutureOr<void> Function(
-  BlocSignalMixin<dynamic, StateType> bloc,
+  BlocSignalBase<StateType> bloc,
   E event,
   EventHandler<E, StateType> handler,
   void Function(StateType state) emit,
@@ -235,17 +235,23 @@ EventTransformer<E, StateType> sequential<E, StateType>({
 }) {
   final mutex = Mutex();
   return (event, handler, emit) {
+    final host = bloc ??
+        (Zone.current[BlocSignalBase.ambientZoneBlocKey]
+            as BlocSignalBase<dynamic>?);
+    if (host != null && host.isClosed) {
+      return null;
+    }
     final isQueued = mutex.isLocked;
     final stopwatch = isQueued && BlocSignalObserver.observer != null
         ? (Stopwatch()..start())
         : null;
 
     return mutex.protect(() async {
+      if (host != null && host.isClosed) {
+        return;
+      }
       if (stopwatch != null) {
         stopwatch.stop();
-        final host = bloc ??
-            (Zone.current[BlocSignalBase.ambientZoneBlocKey]
-                as BlocSignalBase<dynamic>?);
         if (host != null) {
           emitContainerTelemetry(
             host,
@@ -258,7 +264,13 @@ EventTransformer<E, StateType> sequential<E, StateType>({
           );
         }
       }
-      final result = handler(event, emit);
+      final result = handler(
+        event,
+        (state) {
+          if (host != null && host.isClosed) return;
+          emit(state);
+        },
+      );
       if (result is Future) {
         await result;
       }

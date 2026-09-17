@@ -503,6 +503,8 @@ Guard custom disposal with `isClosed` when it cannot safely run twice.
 
 Closing a bloc does not cancel handler futures that already started. Cancel the underlying work
 when possible, or check request freshness and `isClosed` after each async gap before emitting.
+In debug mode, calling `emit()` after `close()` asserts (`assert(!isClosed)`); in release mode,
+post-close emissions are safely dropped without crashing.
 
 ## Observers
 

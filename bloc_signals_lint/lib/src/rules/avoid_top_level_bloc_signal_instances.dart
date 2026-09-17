@@ -73,7 +73,8 @@ class AvoidTopLevelBlocSignalInstances extends DartLintRule {
     }
 
     if (initializer is InstanceCreationExpression) {
-      final className = initializer.constructorName.type.name2.lexeme;
+      final className =
+          initializer.constructorName.type.toSource().split('<').first;
       if (className.endsWith('Bloc') ||
           className.endsWith('Cubit') ||
           className.contains('BlocSignal')) {

@@ -34,5 +34,32 @@ void main() {
         expect(content, contains('bloc_signals_flutter'));
       },
     );
+
+    test(
+      'all docs source files referenced in docs_content.dart exist on disk',
+      () {
+        final docsContentFile = File(
+          'website/lib/src/components/docs/docs_content.dart',
+        );
+        expect(docsContentFile.existsSync(), isTrue);
+
+        final content = docsContentFile.readAsStringSync();
+        final pathRegex = RegExp(
+          r"'website/lib/src/components/docs/pages/[^']+\.dart'",
+        );
+        final matches = pathRegex.allMatches(content);
+        expect(matches, isNotEmpty);
+
+        for (final match in matches) {
+          final matchedPath = match.group(0)!.replaceAll("'", '');
+          final file = File(matchedPath);
+          expect(
+            file.existsSync(),
+            isTrue,
+            reason: 'Docs source file does not exist on disk: $matchedPath',
+          );
+        }
+      },
+    );
   });
 }

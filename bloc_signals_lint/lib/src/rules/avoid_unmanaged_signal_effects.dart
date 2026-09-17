@@ -35,7 +35,8 @@ class AvoidUnmanagedSignalEffects extends DartLintRule {
 
       final extendsClause = enclosingClass.extendsClause;
       if (extendsClause == null) return;
-      final supertypeName = extendsClause.superclass.name2.lexeme;
+      final supertypeName =
+          extendsClause.superclass.toSource().split('<').first;
 
       if (supertypeName == 'State' ||
           supertypeName == 'StatelessWidget' ||

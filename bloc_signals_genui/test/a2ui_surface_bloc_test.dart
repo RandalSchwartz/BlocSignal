@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:a2ui_core/a2ui_core.dart';
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_test/bloc_signals_test.dart';
 import 'package:test/test.dart';

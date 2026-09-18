@@ -2,6 +2,16 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
+## 0.1.2
+
+- Remediated runtime error handling and validation findings (#269):
+  - Fixed error observability by notifying `onError()` and rethrowing fatal `Error` instances.
+  - Added form validation contract enforcement (`_validateForm()`) before dispatching `A2uiActionResponse`.
+  - Added polymorphic `surfaceId` on `A2uiSurfaceState` hierarchy and included `payload` in `SurfaceSubmitting.==`.
+  - Replaced unbuffered action responses broadcast stream with race-free buffered replay stream.
+  - Added `StandardCatalog` declaring `Card` and `Divider` schemas, and dynamic child/action normalization.
+  - Selectively re-exported curated `a2ui_core` public types in `bloc_signals_genui.dart`.
+
 ## 0.1.1
 
 - Added `A2uiActionResponse.getFormValue<T>(String path)` for ergonomic retrieval of form data supporting flat keys, leading-slash paths, and nested dot-notation access.

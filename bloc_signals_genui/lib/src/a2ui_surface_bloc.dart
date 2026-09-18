@@ -6,6 +6,7 @@ import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_genui/src/a2ui_action_response.dart';
 import 'package:bloc_signals_genui/src/a2ui_surface_event.dart';
 import 'package:bloc_signals_genui/src/a2ui_surface_state.dart';
+import 'package:bloc_signals_genui/src/standard_catalog.dart';
 
 /// A pure-Dart reactive state container that bridges Google's A2UI declarative
 /// protocol with [BlocSignal] architecture.
@@ -20,10 +21,16 @@ import 'package:bloc_signals_genui/src/a2ui_surface_state.dart';
 class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// Creates an [A2uiSurfaceBloc].
   ///
-  /// If [catalogs] is omitted, defaults to registering the standard [MinimalCatalog].
+  /// If [catalogs] is omitted, defaults to registering the standard [StandardCatalog].
   A2uiSurfaceBloc({
-    List<Catalog<ComponentApi>>? catalogs,
-  })  : catalogs = catalogs ?? [MinimalCatalog()],
+    List<Catalog<ComponentApi, FunctionImplementation>>? catalogs,
+  })  : catalogs = catalogs ??
+            [
+              StandardCatalog(),
+              StandardCatalog(
+                id: 'https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json',
+              ),
+            ],
         super(initialState: const SurfaceInitial()) {
     _processor = MessageProcessor<ComponentApi>(
       catalogs: this.catalogs,
@@ -44,12 +51,17 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   }
 
   /// The active component catalogs registered with this surface bloc.
-  final List<Catalog<ComponentApi>> catalogs;
+  final List<Catalog<ComponentApi, FunctionImplementation>> catalogs;
 
   late final MessageProcessor<ComponentApi> _processor;
 
   /// The primary active surface ID being tracked by this bloc.
   String? _activeSurfaceId;
+
+  /// Returns the current active surface ID, derived from state or tracked session.
+  String? get activeSurfaceId => stateValue.surfaceId ?? _activeSurfaceId;
+
+  final List<A2uiActionResponse> _responseHistory = [];
 
   /// Stream controller broadcasting validated user action responses back
   /// to external agent orchestrators.
@@ -57,8 +69,41 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       StreamController<A2uiActionResponse>.broadcast();
 
   /// Stream of validated [A2uiActionResponse] objects ready for upstream tool calls.
-  Stream<A2uiActionResponse> get actionResponses =>
-      _actionResponsesController.stream;
+  ///
+  /// Buffers past responses so that subscribers attaching after an action is dispatched
+  /// still receive previously emitted action responses without races.
+  Stream<A2uiActionResponse> get actionResponses {
+    late final StreamController<A2uiActionResponse> controller;
+    StreamSubscription<A2uiActionResponse>? sub;
+    controller = StreamController<A2uiActionResponse>(
+      onListen: () {
+        final liveQueue = <A2uiActionResponse>[];
+        var replaying = true;
+
+        sub = _actionResponsesController.stream.listen(
+          (event) {
+            if (replaying) {
+              liveQueue.add(event);
+            } else {
+              controller.add(event);
+            }
+          },
+          onError: controller.addError,
+          onDone: controller.close,
+        );
+
+        _responseHistory.forEach(controller.add);
+        replaying = false;
+
+        liveQueue.forEach(controller.add);
+        liveQueue.clear();
+      },
+      onCancel: () async {
+        await sub?.cancel();
+      },
+    );
+    return controller.stream;
+  }
 
   /// The underlying [MessageProcessor] maintaining the A2UI surface graph.
   MessageProcessor<ComponentApi> get processor => _processor;
@@ -120,6 +165,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
             _emitSurfaceSnapshot(emit, messageCount: messageCount);
           }
         } catch (error, stackTrace) {
+          onError(error, stackTrace);
+          if (error is Error) rethrow;
           if (!isClosed) {
             emit(
               SurfaceError(
@@ -135,6 +182,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         }
       },
       onError: (Object error, StackTrace stackTrace) async {
+        onError(error, stackTrace);
         if (!isClosed) {
           emit(
             SurfaceError(
@@ -147,6 +195,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         await _activeStreamSubscription?.cancel();
         _activeStreamSubscription = null;
         if (!completer.isCompleted) completer.complete();
+        if (error is Error) throw error;
       },
       onDone: () {
         _activeStreamSubscription = null;
@@ -166,13 +215,16 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     void Function(A2uiSurfaceState) emit,
   ) {
     try {
-      if (event.message is CreateSurfaceMessage) {
-        _activeSurfaceId = (event.message as CreateSurfaceMessage).surfaceId;
+      final message = _normalizeMessage(event.message);
+      if (message is CreateSurfaceMessage) {
+        _activeSurfaceId = message.surfaceId;
       }
-      _processor.processMessages([event.message]);
+      _processor.processMessages([message]);
       _surfaceVersion++;
       _emitFinalReadyOrInitial(emit);
     } catch (error, stackTrace) {
+      onError(error, stackTrace);
+      if (error is Error) rethrow;
       emit(
         SurfaceError(
           error: error,
@@ -188,7 +240,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     void Function(A2uiSurfaceState) emit,
   ) {
     try {
-      final message = A2uiMessage.fromJson(event.json);
+      final message = A2uiMessage.fromJson(_normalizeJson(event.json));
       if (message is CreateSurfaceMessage) {
         _activeSurfaceId = message.surfaceId;
       }
@@ -196,6 +248,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       _surfaceVersion++;
       _emitFinalReadyOrInitial(emit);
     } catch (error, stackTrace) {
+      onError(error, stackTrace);
+      if (error is Error) rethrow;
       emit(
         SurfaceError(
           error: error,
@@ -211,15 +265,18 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     void Function(A2uiSurfaceState) emit,
   ) {
     try {
-      for (final msg in event.messages) {
+      final normalizedMessages = event.messages.map(_normalizeMessage).toList();
+      for (final msg in normalizedMessages) {
         if (msg is CreateSurfaceMessage) {
           _activeSurfaceId = msg.surfaceId;
         }
       }
-      _processor.processMessages(event.messages);
+      _processor.processMessages(normalizedMessages);
       _surfaceVersion++;
       _emitFinalReadyOrInitial(emit);
     } catch (error, stackTrace) {
+      onError(error, stackTrace);
+      if (error is Error) rethrow;
       emit(
         SurfaceError(
           error: error,
@@ -287,8 +344,23 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       return;
     }
 
-    // Capture form values
+    // Capture form values and enforce validation contract
     final formValues = _extractFormData(surface);
+    final validationErrors = _validateForm(surface, formValues);
+    if (validationErrors.isNotEmpty) {
+      _surfaceVersion++;
+      emit(
+        SurfaceReady(
+          surfaceId: surfaceId,
+          surface: surface,
+          formValues: formValues,
+          isValid: false,
+          validationErrors: validationErrors,
+          version: _surfaceVersion,
+        ),
+      );
+      return;
+    }
 
     final response = A2uiActionResponse(
       actionName: event.actionName,
@@ -308,6 +380,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       ),
     );
 
+    _responseHistory.add(response);
     _actionResponsesController.add(response);
   }
 
@@ -315,6 +388,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     ResetSurface event,
     void Function(A2uiSurfaceState) emit,
   ) {
+    _responseHistory.clear();
     final surfaceId = event.surfaceId ?? _activeSurfaceId;
     if (surfaceId != null) {
       _processor.groupModel.deleteSurface(surfaceId);
@@ -338,10 +412,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   List<A2uiMessage> _parseChunkToMessages(dynamic chunk) {
     if (chunk is A2uiMessage) {
-      return [chunk];
+      return [_normalizeMessage(chunk)];
     }
     if (chunk is Map<String, dynamic>) {
-      return [A2uiMessage.fromJson(chunk)];
+      return [A2uiMessage.fromJson(_normalizeJson(chunk))];
     }
     if (chunk is String) {
       final trimmed = chunk.trim();
@@ -350,13 +424,109 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       if (decoded is List) {
         return decoded
             .cast<Map<String, dynamic>>()
-            .map(A2uiMessage.fromJson)
+            .map((c) => A2uiMessage.fromJson(_normalizeJson(c)))
             .toList();
       } else if (decoded is Map<String, dynamic>) {
-        return [A2uiMessage.fromJson(decoded)];
+        return [A2uiMessage.fromJson(_normalizeJson(decoded))];
       }
     }
     return const [];
+  }
+
+  A2uiMessage _normalizeMessage(A2uiMessage msg) {
+    if (msg is UpdateComponentsMessage) {
+      final normalizedComps =
+          msg.components.map(_normalizeComponentMap).toList();
+      return UpdateComponentsMessage(
+        surfaceId: msg.surfaceId,
+        components: normalizedComps,
+      );
+    }
+    return msg;
+  }
+
+  Map<String, dynamic> _normalizeJson(Map<String, dynamic> json) {
+    if (json.containsKey('updateComponents')) {
+      final update = json['updateComponents'];
+      if (update is Map && update.containsKey('components')) {
+        final comps = update['components'];
+        if (comps is List) {
+          final normalizedComps = comps.map((c) {
+            if (c is Map<String, dynamic>) {
+              return _normalizeComponentMap(c);
+            } else if (c is Map) {
+              return _normalizeComponentMap(c.cast<String, dynamic>());
+            }
+            return c;
+          }).toList();
+          return {
+            ...json,
+            'updateComponents': {
+              ...update,
+              'components': normalizedComps,
+            },
+          };
+        }
+      }
+    }
+    return json;
+  }
+
+  Map<String, dynamic> _normalizeComponentMap(Map<String, dynamic> comp) {
+    var result = comp;
+    if (comp.containsKey('properties') && comp['properties'] is Map) {
+      final props = (comp['properties'] as Map).cast<String, dynamic>();
+      final copy = Map<String, dynamic>.from(comp)..remove('properties');
+      result = {...copy, ...props};
+    }
+    if (result.containsKey('child')) {
+      final child = result['child'];
+      if (child is Map &&
+          child.containsKey('id') &&
+          !child.containsKey('path')) {
+        result = {
+          ...result,
+          'child': child['id'],
+        };
+      }
+    }
+    if (result.containsKey('children')) {
+      final children = result['children'];
+      if (children is List) {
+        final normalizedChildren = children.map((c) {
+          if (c is Map && c.containsKey('id')) {
+            return c['id'];
+          }
+          return c;
+        }).toList();
+        result = {
+          ...result,
+          'children': normalizedChildren,
+        };
+      }
+    }
+    if (result.containsKey('action')) {
+      final action = result['action'];
+      if (action is Map) {
+        if (!action.containsKey('event') &&
+            !action.containsKey('functionCall')) {
+          result = {
+            ...result,
+            'action': {
+              'event': action,
+            },
+          };
+        }
+      } else if (action is String) {
+        result = {
+          ...result,
+          'action': {
+            'event': {'name': action},
+          },
+        };
+      }
+    }
+    return result;
   }
 
   void _emitSurfaceSnapshot(
@@ -367,11 +537,14 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       final surface = _processor.groupModel.getSurface(_activeSurfaceId!);
       if (surface != null && surface.componentsModel.all.isNotEmpty) {
         final formValues = _extractFormData(surface);
+        final validationErrors = _validateForm(surface, formValues);
         emit(
           SurfaceReady(
             surfaceId: _activeSurfaceId!,
             surface: surface,
             formValues: formValues,
+            isValid: validationErrors.isEmpty,
+            validationErrors: validationErrors,
             version: _surfaceVersion,
           ),
         );
@@ -392,11 +565,14 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       final surface = _processor.groupModel.getSurface(_activeSurfaceId!);
       if (surface != null) {
         final formValues = _extractFormData(surface);
+        final validationErrors = _validateForm(surface, formValues);
         emit(
           SurfaceReady(
             surfaceId: _activeSurfaceId!,
             surface: surface,
             formValues: formValues,
+            isValid: validationErrors.isEmpty,
+            validationErrors: validationErrors,
             version: _surfaceVersion,
           ),
         );
@@ -409,11 +585,14 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       final first = allSurfaces.first;
       _activeSurfaceId = first.id;
       final formValues = _extractFormData(first);
+      final validationErrors = _validateForm(first, formValues);
       emit(
         SurfaceReady(
           surfaceId: first.id,
           surface: first,
           formValues: formValues,
+          isValid: validationErrors.isEmpty,
+          validationErrors: validationErrors,
           version: _surfaceVersion,
         ),
       );
@@ -421,6 +600,82 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     }
 
     emit(const SurfaceInitial());
+  }
+
+  List<String> _validateForm(
+    SurfaceModel<ComponentApi> surface,
+    Map<String, dynamic> formValues,
+  ) {
+    final errors = <String>[];
+    for (final component in surface.componentsModel.all) {
+      final props = component.properties;
+      final isRequired =
+          props['required'] == true || props['isRequired'] == true;
+      final label = props['label']?.toString() ?? component.id;
+
+      String? fieldPath;
+      final valueProp = props['value'];
+      if (valueProp is Map && valueProp.containsKey('path')) {
+        fieldPath = valueProp['path']?.toString();
+      } else if (props.containsKey('name')) {
+        fieldPath = props['name']?.toString();
+      } else {
+        fieldPath = '/${component.id}';
+      }
+
+      dynamic fieldValue;
+      if (fieldPath != null) {
+        final normalized =
+            fieldPath.startsWith('/') ? fieldPath.substring(1) : fieldPath;
+        if (formValues.containsKey(fieldPath)) {
+          fieldValue = formValues[fieldPath];
+        } else if (formValues.containsKey(normalized)) {
+          fieldValue = formValues[normalized];
+        } else {
+          dynamic current = formValues;
+          final segments = normalized.split('/').where((s) => s.isNotEmpty);
+          for (final seg in segments) {
+            if (current is Map && current.containsKey(seg)) {
+              current = current[seg];
+            } else {
+              current = null;
+              break;
+            }
+          }
+          fieldValue = current;
+        }
+      }
+
+      if (isRequired) {
+        if (fieldValue == null ||
+            (fieldValue is String && fieldValue.trim().isEmpty) ||
+            (fieldValue is Iterable && fieldValue.isEmpty) ||
+            (fieldValue is Map && fieldValue.isEmpty)) {
+          errors.add('Field "$label" is required.');
+        }
+      }
+
+      if (fieldValue is String && fieldValue.isNotEmpty) {
+        final pattern = props['pattern']?.toString() ??
+            props['validationRegexp']?.toString();
+        if (pattern != null) {
+          try {
+            if (!RegExp(pattern).hasMatch(fieldValue)) {
+              errors.add('Field "$label" does not match the required pattern.');
+            }
+          } catch (_) {}
+        }
+        final minLength = (props['minLength'] as num?)?.toInt();
+        if (minLength != null && fieldValue.length < minLength) {
+          errors.add('Field "$label" must be at least $minLength characters.');
+        }
+        final maxLength = (props['maxLength'] as num?)?.toInt();
+        if (maxLength != null && fieldValue.length > maxLength) {
+          errors.add('Field "$label" must be at most $maxLength characters.');
+        }
+      }
+    }
+    return errors;
   }
 
   Map<String, dynamic> _extractFormData(SurfaceModel<ComponentApi> surface) {
@@ -435,6 +690,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   @override
   Future<void> close() async {
+    _responseHistory.clear();
     final oldCompleter = _activeStreamCompleter;
     _activeStreamCompleter = null;
     if (oldCompleter != null && !oldCompleter.isCompleted) {

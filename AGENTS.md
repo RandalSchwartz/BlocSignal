@@ -21,6 +21,8 @@ We use a native Dart workspace (supported in Dart 3.5+) instead of Melos.
   - `bloc_signals_replay` (State history & undo/redo tracking)
   - `bloc_signals_jaspr` (Jaspr web component bindings)
   - `bloc_signals_devtools` (DevTools extension & VM Service RPC)
+  - `bloc_signals_genui` (Generative UI & streaming A2UI state machine)
+  - `bloc_signals_genui_flutter` (Flutter widgets & interactive catalog for A2UI)
 
 ### Intra-Workspace Dependency Management
 To satisfy pub.dev publishing requirements while maintaining local developer workspaces, **always use version constraints rather than path dependencies for intra-workspace dependencies** (for example `bloc_signals: ^1.0.0` in `bloc_signals_flutter/pubspec.yaml`). The Dart workspace compiler routes this constraint to the local workspace folder automatically during development.

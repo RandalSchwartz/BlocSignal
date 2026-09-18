@@ -9,12 +9,18 @@ import 'package:meta/meta.dart';
 sealed class A2uiSurfaceState {
   /// Const base constructor for [A2uiSurfaceState].
   const A2uiSurfaceState();
+
+  /// The surface identifier associated with this state snapshot, if any.
+  String? get surfaceId;
 }
 
 /// Initial resting state before any A2UI stream or surface message has been received.
 final class SurfaceInitial extends A2uiSurfaceState {
   /// Creates a [SurfaceInitial] state.
   const SurfaceInitial();
+
+  @override
+  String? get surfaceId => null;
 
   @override
   bool operator ==(Object other) =>
@@ -38,6 +44,7 @@ final class SurfaceStreaming extends A2uiSurfaceState {
   });
 
   /// The identifier of the active surface being streamed, if known.
+  @override
   final String? surfaceId;
 
   /// The cumulative count of A2UI messages processed so far during this stream.
@@ -76,6 +83,7 @@ final class SurfaceReady extends A2uiSurfaceState {
   });
 
   /// The unique identifier of this active surface.
+  @override
   final String surfaceId;
 
   /// The underlying [SurfaceModel] instance from `a2ui_core`.
@@ -105,33 +113,6 @@ final class SurfaceReady extends A2uiSurfaceState {
           _mapsEqual(formValues, other.formValues) &&
           _listsEqual(validationErrors, other.validationErrors);
 
-  static bool _mapsEqual(Map<dynamic, dynamic> a, Map<dynamic, dynamic> b) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (final key in a.keys) {
-      if (!b.containsKey(key)) return false;
-      final valA = a[key];
-      final valB = b[key];
-      if (valA is Map && valB is Map) {
-        if (!_mapsEqual(valA, valB)) return false;
-      } else if (valA is List && valB is List) {
-        if (!_listsEqual(valA, valB)) return false;
-      } else if (valA != valB) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  static bool _listsEqual(List<dynamic> a, List<dynamic> b) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-
   @override
   int get hashCode =>
       Object.hash(surfaceId, surface, isValid, version, formValues.length);
@@ -153,6 +134,7 @@ final class SurfaceSubmitting extends A2uiSurfaceState {
   });
 
   /// The identifier of the surface where the action was submitted.
+  @override
   final String surfaceId;
 
   /// The name of the action submitted.
@@ -170,10 +152,16 @@ final class SurfaceSubmitting extends A2uiSurfaceState {
       other is SurfaceSubmitting &&
           surfaceId == other.surfaceId &&
           actionName == other.actionName &&
-          sourceComponentId == other.sourceComponentId;
+          sourceComponentId == other.sourceComponentId &&
+          _mapsEqual(payload, other.payload);
 
   @override
-  int get hashCode => Object.hash(surfaceId, actionName, sourceComponentId);
+  int get hashCode => Object.hash(
+        surfaceId,
+        actionName,
+        sourceComponentId,
+        payload.length,
+      );
 
   @override
   String toString() =>
@@ -197,6 +185,7 @@ final class SurfaceError extends A2uiSurfaceState {
   final StackTrace? stackTrace;
 
   /// The identifier of the surface where the error occurred, if known.
+  @override
   final String? surfaceId;
 
   @override
@@ -211,4 +200,31 @@ final class SurfaceError extends A2uiSurfaceState {
 
   @override
   String toString() => 'SurfaceError(surfaceId: $surfaceId, error: $error)';
+}
+
+bool _mapsEqual(Map<dynamic, dynamic> a, Map<dynamic, dynamic> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (final key in a.keys) {
+    if (!b.containsKey(key)) return false;
+    final valA = a[key];
+    final valB = b[key];
+    if (valA is Map && valB is Map) {
+      if (!_mapsEqual(valA, valB)) return false;
+    } else if (valA is List && valB is List) {
+      if (!_listsEqual(valA, valB)) return false;
+    } else if (valA != valB) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool _listsEqual(List<dynamic> a, List<dynamic> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

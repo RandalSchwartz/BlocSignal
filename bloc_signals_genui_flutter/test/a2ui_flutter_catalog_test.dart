@@ -1,4 +1,3 @@
-import 'package:a2ui_core/a2ui_core.dart';
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_flutter/bloc_signals_genui_flutter.dart';
 import 'package:flutter/material.dart';
@@ -138,25 +137,25 @@ void main() {
     });
 
     testWidgets('renders Card and Divider in extended catalog', (tester) async {
-      final customCoreCatalog = Catalog<ComponentApi>(
+      final customCoreCatalog = Catalog<ComponentApi, FunctionImplementation>(
         id: 'https://custom.catalog/custom.json',
         components: [
           ...MinimalCatalog().components.values,
           _CustomComponentApi(
             name: 'Card',
-            schema: Schema.fromMap(const {
-              'properties': {
-                'child': {'type': 'string'},
-                'elevation': {'type': 'number'},
+            schema: Schema.fromMap(const <String, Object?>{
+              'properties': <String, Object?>{
+                'child': <String, Object?>{'type': 'string'},
+                'elevation': <String, Object?>{'type': 'number'},
               },
             }),
           ),
           _CustomComponentApi(
             name: 'Divider',
-            schema: Schema.fromMap(const {
-              'properties': {
-                'height': {'type': 'number'},
-                'thickness': {'type': 'number'},
+            schema: Schema.fromMap(const <String, Object?>{
+              'properties': <String, Object?>{
+                'height': <String, Object?>{'type': 'number'},
+                'thickness': <String, Object?>{'type': 'number'},
               },
             }),
           ),
@@ -226,13 +225,13 @@ void main() {
 
     testWidgets('renders fallback widget on unknown component type',
         (tester) async {
-      final customCoreCatalog = Catalog<ComponentApi>(
+      final customCoreCatalog = Catalog<ComponentApi, FunctionImplementation>(
         id: 'https://custom.catalog/custom.json',
         components: [
           ...MinimalCatalog().components.values,
           _CustomComponentApi(
             name: 'HologramDisplay',
-            schema: Schema.fromMap(const {}),
+            schema: Schema.fromMap(const <String, Object?>{}),
           ),
         ],
       );
@@ -285,15 +284,15 @@ void main() {
     });
 
     testWidgets('allows custom component registration', (tester) async {
-      final customCoreCatalog = Catalog<ComponentApi>(
+      final customCoreCatalog = Catalog<ComponentApi, FunctionImplementation>(
         id: 'https://custom.catalog/custom.json',
         components: [
           ...MinimalCatalog().components.values,
           _CustomComponentApi(
             name: 'Badge',
-            schema: Schema.fromMap(const {
-              'properties': {
-                'label': {'type': 'string'},
+            schema: Schema.fromMap(const <String, Object?>{
+              'properties': <String, Object?>{
+                'label': <String, Object?>{'type': 'string'},
               },
             }),
           ),
@@ -352,7 +351,21 @@ void main() {
 
     testWidgets('renders all Text variants (h2, h3, title, caption, body)',
         (tester) async {
-      final bloc = A2uiSurfaceBloc();
+      final customCoreCatalog = Catalog<ComponentApi, FunctionImplementation>(
+        id: 'https://custom.catalog/text_variants.json',
+        components: [
+          _CustomComponentApi(
+            name: 'Text',
+            schema: Schema.fromMap(const <String, Object?>{
+              'properties': <String, Object?>{
+                'text': <String, Object?>{'type': 'string'},
+                'variant': <String, Object?>{'type': 'string'},
+              },
+            }),
+          ),
+        ],
+      );
+      final bloc = A2uiSurfaceBloc(catalogs: [customCoreCatalog]);
       final catalog = A2uiFlutterCatalog.standard();
 
       bloc
@@ -361,7 +374,7 @@ void main() {
             'version': 'v0.9',
             'createSurface': {
               'surfaceId': 'surf-variants',
-              'catalogId': minimalCatalogId,
+              'catalogId': 'https://custom.catalog/text_variants.json',
             },
           }),
         )

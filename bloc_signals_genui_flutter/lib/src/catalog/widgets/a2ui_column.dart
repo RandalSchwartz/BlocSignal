@@ -1,5 +1,5 @@
-import 'package:a2ui_core/a2ui_core.dart';
 import 'package:bloc_signals_genui_flutter/src/a2ui_component_context.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
 import 'package:flutter/material.dart';
 
 /// Renders an A2UI `Column` container with layout alignment.
@@ -8,20 +8,7 @@ Widget buildA2uiColumn(
   A2uiComponentContext componentContext,
 ) {
   final props = componentContext.props;
-  final rawChildren = props['children'];
-  final childIds = <String>[];
-
-  if (rawChildren is List) {
-    for (final child in rawChildren) {
-      if (child is ChildNode) {
-        childIds.add(child.id);
-      } else if (child is Map && child.containsKey('id')) {
-        childIds.add(child['id'].toString());
-      } else if (child != null) {
-        childIds.add(child.toString());
-      }
-    }
-  }
+  final childIds = extractChildIds(props['children']);
 
   final mainAxisAlignmentStr = props['mainAxisAlignment']?.toString();
   final crossAxisAlignmentStr = props['crossAxisAlignment']?.toString();

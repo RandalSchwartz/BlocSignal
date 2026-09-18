@@ -57,4 +57,9 @@ dev_dependencies:
   very_good_analysis: ^11.0.0-rc.1
 
 dependency_overrides:
+  a2ui_core:
+    git:
+      url: https://github.com/RandalSchwartz/a2ui.git
+      ref: fix/widen-preact-signals-a2ui-core
+      path: dart/a2ui_core
   preact_signals: ^7.0.0

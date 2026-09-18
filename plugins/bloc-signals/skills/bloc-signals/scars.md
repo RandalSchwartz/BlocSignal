@@ -118,5 +118,31 @@ This document details the codified failure modes, architectural wounds, traps, a
   2. Use a nullable value supplier closure (for example `String? Function()? activeSurfaceId`).
   Always write a dedicated unit test verifying that calling `copyWith` with the reset flag cleanly nullifies the property on a populated state instance.
 
+### 🩹 Scar: Observer Exception Bleed (`SCAR-CORE-12`)
+- **The Pathogen / Wound**: Unhandled exceptions thrown inside user-defined `BlocSignalObserver` lifecycle hooks (`onCreate`, `onEvent`, `onTransition`, `onChange`, `onTelemetry`, `onClose`) bubble directly into the synchronous state dispatch loop, aborting valid state mutations and causing unexpected UI freezes.
+- **The Antigen / Vulnerability Vector**: Assuming observer callbacks are infallible and allowing observer exceptions to escape unchecked into core container dispatch methods.
+- **The Antibody / Permanent Reflex**: Wrap every individual observer hook invocation in a `try/catch` block. Catch any thrown exception, route it to `onError()` (which itself is isolated), and log a diagnostic trace without aborting or unwinding the state transition. Guard with unit tests asserting state updates commit successfully even when all observer hooks throw.
+
+### 🩹 Scar: Replay History Duplication & Post-Close Mutation (`SCAR-REPLAY-2`)
+- **The Pathogen / Wound**: In `bloc_signals_replay`, invoking `undo()` or `redo()` executed an internal state restoration that re-emitted state and pushed duplicate entries onto the history stack, creating infinite loops or corrupted redo stacks. Additionally, state emissions after container `close()` pushed zombie entries into the history stack.
+- **The Antigen / Vulnerability Vector**: Recording every state mutation unconditionally in `onChange` without inspecting whether the container is currently replaying or closed.
+- **The Antibody / Permanent Reflex**: Maintain a private boolean `_isReplaying` flag during `undo()`/`redo()`. Gate history pushes on `_isReplaying == false`, `!isClosed`, and `!equals(stateValue, newState)`. Filter synthetic `_Undo` and `_Redo` events when validating transition hooks on `ReplayBloc`. Guard with unit tests verifying undo stack counts stay constant across undo/redo cycles.
+
+### 🩹 Scar: Hydration Cache Inversion & Constructor Write-Back Loop (`SCAR-HYDRATE-2`)
+- **The Pathogen / Wound**: Calling hydration in `HydratedCubitSignal` constructor triggered an initial `emit()` that immediately attempted to write the just-restored state back to storage, creating redundant disk I/O and potential race conditions. Furthermore, storage write failures in asynchronous adapters (`SecureHydratedStorage`) failed silently without notifying error handlers, and storage cache mutations occurred in memory before disk writes succeeded.
+- **The Antigen / Vulnerability Vector**: Assuming constructor hydration is identical to a user state change, and updating in-memory cache maps before disk write operations resolve.
+- **The Antibody / Permanent Reflex**: Write directly to underlying disk/storage before updating the in-memory cache. Gate state persistence on active containers and distinct state changes (`!equals`). Route asynchronous storage write and delete failures directly to `onError()` and `BlocSignalObserver`. Guard with unit tests asserting errors fire on disk write failures and no write-backs occur during initial restoration.
+
+### 🩹 Scar: DevTools / OTel Trace Span Collisions & Dropped Event Leaks (`SCAR-OTEL-3`)
+- **The Pathogen / Wound**: In `bloc_signals_otel`, tracking active spans using only the event type name as the map key caused collisions when identical events were dispatched in rapid succession before previous spans resolved, overwriting and leaking parent spans. In addition, when events were filtered or dropped by concurrency transformers in `tracedBloc`, active spans remained open indefinitely.
+- **The Antigen / Vulnerability Vector**: Using single-slot map keys for in-flight event spans and assuming every traced event yields an `onEventCompleted` or `onError`.
+- **The Antibody / Permanent Reflex**: Use a FIFO queue of active spans per event key (`Map<String, ListQueue<Span>>`) to disambiguate concurrent invocations of the same event type. Conclude OTel spans immediately upon synchronous transformer return in `tracedBloc` to catch dropped/filtered events under concurrency. Guard with tests verifying zero active spans remain after dropped events.
+
+### 🩹 Scar: GenUI Streaming State Deduplication & Child Extraction (`SCAR-GENUI-2`)
+- **The Pathogen / Wound**: Streaming SSE chunks delivering incremental A2UI updates often had identical top-level properties or unchanged component IDs, causing `BlocSignal`'s built-in de-duplication to drop emissions. Consequently, the Flutter widget tree failed to rebuild streaming tokens or incremental layout nodes.
+- **The Antigen / Vulnerability Vector**: Comparing streaming states solely on component tree reference equality without a sequence guarantee.
+- **The Antibody / Permanent Reflex**: Include a monotonic integer `_surfaceVersion` on `A2uiSurfaceState` that increments with each arriving chunk or message event. In Flutter catalog widgets, use defensive property parsers (`SafePropParser`) and dynamic child extraction so malformed LLM outputs do not throw render crashes.
+
+
 
 

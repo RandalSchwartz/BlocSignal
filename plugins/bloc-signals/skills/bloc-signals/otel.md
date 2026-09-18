@@ -53,14 +53,23 @@ carry a null event, its operational metrics flow through `emitTelemetry()`, and 
 In standard flows, an event that emits only an equal state or waits indefinitely does not produce
 `onTransition`. However, concurrency transformer contention (`droppable` drops and `restartable` preemptions) is automatically closed via `onTelemetry` with `'bloc.contention': true`. Lingering spans from equal emissions remain in the observer's active map until an error occurs, the container closes, or capacity eviction triggers.
 
-## Data safety
+## Data safety & Redaction
 
-`state.value` records `state.toString()`. Review state types for personal data, tokens, large
-payloads, and high-cardinality identifiers before enabling export. Prefer a custom observer or a
-safe state representation when the default string is unsuitable.
+`state.value` records `state.toString()` by default. To sanitize PII, secrets, or high-cardinality tokens, configure a custom `stateRedactor`:
 
-Errors close all active spans for the same bloc, not only the event that failed. Concurrent async
-events therefore need a focused trace test if exact event-to-error correlation matters.
+```dart
+BlocSignalObserver.observer = OtelBlocSignalObserver(
+  stateRedactor: (state) {
+    if (state is UserProfileState) {
+      return 'UserProfile(id: ${state.id}, email: [REDACTED])';
+    }
+    return state.toString();
+  },
+);
+```
+
+Spans are disambiguated using a FIFO queue per event key (`Map<String, ListQueue<Span>>`), preventing span collisions when identical events are dispatched back-to-back. Spans are also concluded on `onEventCompleted` for zero-emit handlers, and in `tracedBloc` when events are dropped under concurrency.
+
 
 ## Test expectations
 

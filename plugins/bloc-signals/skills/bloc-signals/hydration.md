@@ -240,3 +240,24 @@ class CounterCubit extends CubitSignal<int> {
   void increment() => persistent.value++;
 }
 ```
+
+---
+
+## 8. Storage Scoping & Asynchronous Reliability
+
+### Scoped Storage Prefixes
+For multi-tenant applications or multi-user sessions, both `SharedPreferencesHydratedStorage` and `SecureHydratedStorage` accept an optional `prefix:` parameter to isolate keys:
+
+```dart
+final tenantStorage = SharedPreferencesHydratedStorage(
+  prefs,
+  prefix: 'tenant_${activeTenantId}_',
+);
+HydratedStorage.storage = tenantStorage;
+```
+
+### Disk-First Atomic Writes & Error Routing
+- **Atomic Disk Commits**: Storage adapters write directly to persistent disk before updating internal in-memory caches, guaranteeing cache consistency during unexpected process termination.
+- **Asynchronous Error Routing**: Any background storage write or delete error is automatically captured and routed to `onError()` on the active container and notified through `BlocSignalObserver.onError()`.
+- **Constructor Write-Back Prevention**: State restoration during constructor initialization is recognized as hydration rather than a mutation, eliminating redundant disk write cycles on startup.
+

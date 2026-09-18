@@ -21,7 +21,9 @@
   <a href="https://github.com/RandalSchwartz/BlocSignal"><img src="https://img.shields.io/badge/coverage-100%25-brightgreen.svg" alt="100% Test Coverage" /></a>
 </p>
 
-The `BlocSignal` monorepo consists of 11 modular packages:
+The `BlocSignal` monorepo consists of 11 published packages on pub.dev, plus 2 pre-release Generative UI packages:
+
+### 📦 Published Packages
 
 | Package                     | Version                                                                                                          | Description                                                       |
 | :-------------------------- | :--------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------- |
@@ -34,9 +36,17 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 | **`bloc_signals_replay`**   | [![pub](https://img.shields.io/pub/v/bloc_signals_replay.svg)](https://pub.dev/packages/bloc_signals_replay)     | Undo & redo state history tracking for CubitSignal and BlocSignal |
 | **`bloc_signals_otel`**     | [![pub](https://img.shields.io/pub/v/bloc_signals_otel.svg)](https://pub.dev/packages/bloc_signals_otel)         | OpenTelemetry tracing and span generation for state transitions   |
 | **`bloc_signals_devtools`** | [![pub](https://img.shields.io/pub/v/bloc_signals_devtools.svg)](https://pub.dev/packages/bloc_signals_devtools) | Universal DevTools telemetry observer using `dart:developer`      |
-| **`bloc_signals_genui`**    | [![pub](https://img.shields.io/pub/v/bloc_signals_genui.svg)](https://pub.dev/packages/bloc_signals_genui)       | A2UI protocol state machine & Generative UI runtime adapter       |
 | **`bloc_signals_test`**     | [![pub](https://img.shields.io/pub/v/bloc_signals_test.svg)](https://pub.dev/packages/bloc_signals_test)         | Declarative unit testing utilities (`blocSignalTest`)             |
 | **`bloc_signals_lint`**     | [![pub](https://img.shields.io/pub/v/bloc_signals_lint.svg)](https://pub.dev/packages/bloc_signals_lint)         | Custom analyzer lint rules & automated IDE quick-fixes            |
+
+### 🤖 Pre-Release Generative UI Packages (Git / Early Preview)
+
+These packages provide streaming state machines and Flutter widgets for Google's **A2UI** protocol. They depend on an unreleased upstream fork of `a2ui_core` and are not yet published to pub.dev:
+
+| Package | Status | Description |
+| :--- | :--- | :--- |
+| **`bloc_signals_genui`** | [![preview](https://img.shields.io/badge/status-developer--preview-blue.svg)](https://github.com/RandalSchwartz/BlocSignal/tree/main/bloc_signals_genui) | Pure-Dart A2UI streaming state machine & Generative UI runtime adapter |
+| **`bloc_signals_genui_flutter`** | [![preview](https://img.shields.io/badge/status-developer--preview-blue.svg)](https://github.com/RandalSchwartz/BlocSignal/tree/main/bloc_signals_genui_flutter) | Declarative Flutter surface containers & A2UI catalog widget adapters |
 
 ---
 
@@ -52,6 +62,7 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 - ↩️ **Undo & Redo Replay**: Automatic state history tracking, stack limits, and state filtering via `bloc_signals_replay`.
 - 📊 **OpenTelemetry Tracing**: Built-in support for distributed tracing with standard OpenTelemetry spans via `bloc_signals_otel`.
 - 🌁 **Universal Interoperability**: Seamlessly adapt between BLoC, Riverpod, Provider, and Flutter Listenable primitives.
+- 🤖 **Generative UI & A2UI**: Streaming LLM surface rendering with frame-0 form reactivity.
 
 ---
 
@@ -74,6 +85,7 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 ## 📚 Documentation
 
 - **[Architectural Decision Matrix](./plugins/bloc-signals/skills/bloc-signals/decision_matrix.md)**: State modeling rubric comparing raw Signals, `CubitSignal`, `BlocSignal`, and mixins.
+- **[Generative UI & A2UI Protocol](./plugins/bloc-signals/skills/bloc-signals/genui.md)**: Streaming A2UI state machine, surface views, and Flutter catalog.
 - **[Migration Guide](./plugins/bloc-signals/skills/bloc-signals/migration.md)**: Moving from classic `package:bloc` / `package:flutter_bloc` to `BlocSignal`.
 - **[Riverpod Interop & Migration](./plugins/bloc-signals/skills/bloc-signals/riverpod_migration.md)**: Converting between Riverpod providers and `BlocSignal`.
 - **[Universal Interoperability Guide](./plugins/bloc-signals/skills/bloc-signals/interoperability.md)**: State bridge across BLoC, Riverpod, and Provider.

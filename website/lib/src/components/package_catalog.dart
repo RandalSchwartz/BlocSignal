@@ -17,7 +17,7 @@ class const PackageItem({
 const List<PackageItem> _allPackages = [
   PackageItem(
     name: 'bloc_signals',
-    version: '1.4.0',
+    version: '1.5.0',
     desc: 'Core pure Dart reactive state container bridging BLoC semantics with Preact Signals v7 primitives.',
     icon: '⚡',
     category: 'Core & UI',
@@ -53,7 +53,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_riverpod',
-    version: '1.1.1',
+    version: '1.1.2',
     desc: 'Bidirectional read-and-mutate Riverpod 2 & 3 interop adapters (toBlocSignal / toProvider / typed Notifier access).',
     icon: '🌊',
     category: 'State & Interop',
@@ -71,7 +71,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_replay',
-    version: '1.1.0',
+    version: '1.1.1',
     desc: 'Replay, undo, and redo state tracking utilities (ReplayCubit, ReplayBloc, ReplayEvent).',
     icon: '↩️',
     category: 'State & Interop',
@@ -97,6 +97,24 @@ const List<PackageItem> _allPackages = [
     installCmd: 'dart pub add bloc_signals_devtools',
   ),
   PackageItem(
+    name: 'bloc_signals_genui',
+    version: '0.1.2 (Preview)',
+    desc: 'Pure-Dart A2UI streaming state machine and Generative UI adapter for the BlocSignal ecosystem.',
+    icon: '🤖',
+    category: 'Generative UI',
+    pubUrl: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/bloc_signals_genui',
+    installCmd: 'git: https://github.com/RandalSchwartz/BlocSignal.git path: bloc_signals_genui',
+  ),
+  PackageItem(
+    name: 'bloc_signals_genui_flutter',
+    version: '0.1.1 (Preview)',
+    desc: 'Declarative Flutter surface containers and A2UI catalog widget adapters for generative user interfaces.',
+    icon: '🎨',
+    category: 'Generative UI',
+    pubUrl: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/bloc_signals_genui_flutter',
+    installCmd: 'git: https://github.com/RandalSchwartz/BlocSignal.git path: bloc_signals_genui_flutter',
+  ),
+  PackageItem(
     name: 'bloc_signals_test',
     version: '1.0.0+1',
     desc: 'Declarative unit testing utilities and test observers for BlocSignal and CubitSignal.',
@@ -108,8 +126,8 @@ const List<PackageItem> _allPackages = [
   PackageItem(
     name: 'bloc_signals_lint',
     version: '1.3.0',
-    desc: 'Custom analyzer lints and automated IDE quick-fixes for enforcing BlocSignal best practices.',
-    icon: '🔍',
+    desc: 'Analyzer plugin with 20 static analysis lint rules and 8 automated IDE quick-fixes.',
+    icon: '🛡️',
     category: 'DevTools & Tooling',
     pubUrl: 'https://pub.dev/packages/bloc_signals_lint',
     installCmd: 'dart pub add --dev bloc_signals_lint',
@@ -132,6 +150,7 @@ class _PackageCatalogState() extends State<PackageCatalog> {
     'Core & UI',
     'State & Interop',
     'DevTools & Tooling',
+    'Generative UI',
   ];
 
   @override
@@ -294,7 +313,13 @@ class _PackageCatalogState() extends State<PackageCatalog> {
                     href: pkg.pubUrl,
                     target: Target.blank,
                     classes: 'package-link',
-                    [Component.text('pub.dev ↗')],
+                    [
+                      Component.text(
+                        pkg.pubUrl.contains('github.com')
+                            ? 'GitHub ↗'
+                            : 'pub.dev ↗',
+                      ),
+                    ],
                   ),
                 ]),
               ]),

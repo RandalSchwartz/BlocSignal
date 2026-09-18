@@ -54,9 +54,21 @@ When `DevToolsBlocSignalObserver` is registered, the following VM Service RPC en
 
 | Method | Parameters | Description |
 | :--- | :--- | :--- |
-| `ext.bloc_signal.getInstances` | None | Returns a JSON list of all active container instances (`hashCode`, `type`, `stateValue`, `isClosed`). |
-| `ext.bloc_signal.getHistory` | `{"hashCode": 123}` | `{ "history": [...] }` | Fetches transition history ring buffer. |
-| `ext.bloc_signal.dispatch` | `{"hashCode": 123, "event": "inc"}` | `{ "success": true }` | Synthetically dispatches event over RPC. |
+| `ext.bloc_signal.getInstances` | None | Returns a JSON list of all active container instances (`instanceHashCode`, `blocType`, `currentState`, `isClosed`). |
+| `ext.bloc_signal.getHistory` | `{"instanceHashCode": 123}` | Returns transition history ring buffer for the target container. |
+| `ext.bloc_signal.dispatch` | `{"instanceHashCode": 123, "event": {...}}` | Synthetically dispatches an event over RPC (handles JSON-RPC -32602 on bad format). |
+
+### Custom Event Deserialization
+For complex event objects dispatched from DevTools, register deserializers in your app bootstrap:
+
+```dart
+DevToolsService.registerEventDeserializer('AddToCartEvent', (json) {
+  return AddToCartEvent(itemId: json['itemId'] as String);
+});
+```
+
+### Zero Release Overhead (`DevToolsService.isEnabled`)
+In release builds (`kReleaseMode`), `DevToolsService.isEnabled` is set to `false`. All instance tracking, transition history buffers, and payload serialization are completely skipped for zero runtime memory overhead.
 
 ---
 
@@ -74,3 +86,4 @@ Widget buildInspector(List<Map<String, dynamic>> instances, List<Map<String, dyn
   );
 }
 ```
+

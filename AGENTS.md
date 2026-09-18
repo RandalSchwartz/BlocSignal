@@ -21,11 +21,11 @@ We use a native Dart workspace (supported in Dart 3.5+) instead of Melos.
   - `bloc_signals_replay` (State history & undo/redo tracking)
   - `bloc_signals_jaspr` (Jaspr web component bindings)
   - `bloc_signals_devtools` (DevTools extension & VM Service RPC)
-  - `bloc_signals_genui` (Generative UI & streaming A2UI state machine)
-  - `bloc_signals_genui_flutter` (Flutter widgets & interactive catalog for A2UI)
+  - `bloc_signals_genui` (Generative UI & streaming A2UI state machine; pre-release / unpublished — depends on git a2ui_core)
+  - `bloc_signals_genui_flutter` (Flutter widgets & interactive catalog for A2UI; pre-release / unpublished — depends on git a2ui_core)
 
 ### Intra-Workspace Dependency Management
-To satisfy pub.dev publishing requirements while maintaining local developer workspaces, **always use version constraints rather than path dependencies for intra-workspace dependencies** (for example `bloc_signals: ^1.0.0` in `bloc_signals_flutter/pubspec.yaml`). The Dart workspace compiler routes this constraint to the local workspace folder automatically during development.
+To satisfy pub.dev publishing requirements while maintaining local developer workspaces, **always use version constraints rather than path dependencies for intra-workspace dependencies** (for example `bloc_signals: ^1.0.0` in `bloc_signals_flutter/pubspec.yaml`). The Dart workspace compiler routes this constraint to the local workspace folder automatically during development. Note that `bloc_signals_genui` and `bloc_signals_genui_flutter` rely on a git dependency override for `a2ui_core` and must not be published to pub.dev until `a2ui_core` is released on pub.dev.
 
 ### SDK & Language Versioning Policy
 - **Monorepo Workspace, Tooling & Website (`/`, `tool/`, `website/`, `benchmarks/`)**:
@@ -76,6 +76,7 @@ Detailed architecture guides and maintainer operations are maintained in dedicat
 - [core.md](plugins/bloc-signals/skills/bloc-signals/core.md): Core event dispatch, equality, `@mustCallSuper`, error handling, and reactive ownership.
 - [flutter.md](plugins/bloc-signals/skills/bloc-signals/flutter.md): Providers, listeners, builders, consumers, `context.select<B, R>`, and widget rebuild optimizations.
 - [testing.md](plugins/bloc-signals/skills/bloc-signals/testing.md): Declarative unit testing (`blocSignalTest`), observer scoping, and test runners.
+- [genui.md](plugins/bloc-signals/skills/bloc-signals/genui.md): Generative UI, A2UI protocol state machines, SSE streaming, surface views, and catalog widgets.
 - [jaspr.md](plugins/bloc-signals/skills/bloc-signals/jaspr.md): Jaspr web components, reactivity, and HTML bindings.
 - [hydration.md](plugins/bloc-signals/skills/bloc-signals/hydration.md): Hydrated state persistence and JSON serialization.
 - [replay.md](plugins/bloc-signals/skills/bloc-signals/replay.md): Undo/redo state history and replay architecture.
@@ -118,7 +119,13 @@ To protect developer context while preventing catastrophic regressions, full sca
 | **Mutable Model Deduplication** | In-place mutations dropped by `identical()` | Maintain a monotonic `version` counter and deep map/list equality in state `==` operators. |
 | **Stream Preemption Leaks** | Abandoned completer futures hanging in memory | Class-scope `_activeStreamCompleter` and explicitly resolve it on preemption or `close()`. |
 | **Nullable `copyWith` Bypasses** | `??` operator ignoring explicit `null` arguments | Use boolean reset flags (for example `clearActiveSurfaceId`) or closures to unseat nullable state fields. |
+| **Observer Exception Bleed** | Observer hook exceptions aborting user state transitions | Wrap observer invocations in `try/catch` and forward errors to `onError()` without interrupting the transition. |
+| **Replay History Duplication** | Replay `undo()`/`redo()` calls pushing duplicate states or post-close mutations | Gate history recording on `_isReplaying == false`, `!isClosed`, and `!equals(stateValue, newState)`. |
+| **Hydration Cache Inversion** | Redundant storage write-back during constructor hydration and silent disk write drops | Flush to disk before memory cache, gate on state change, and route async write errors to `onError()`. |
+| **DevTools / OTel Contention** | Span collisions on identical event names and leaks on dropped events | Use FIFO queue per event key, terminate spans on dropped events in `tracedBloc`, and provide `registerEventDeserializer`. |
+| **GenUI Stream Deduplication** | Identical partial JSON AST chunks dropped by state `equals()` | Increment monotonic `_surfaceVersion` on each chunk to guarantee widget tree re-evaluates streaming updates. |
 
 For the complete post-mortems, stack traces, and historical case studies for any scar above, inspect [`plugins/bloc-signals/skills/bloc-signals/scars.md`](plugins/bloc-signals/skills/bloc-signals/scars.md).
+
 
 

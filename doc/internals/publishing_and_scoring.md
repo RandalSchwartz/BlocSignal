@@ -1,6 +1,6 @@
 # Monorepo Package Publishing & Pub Points Scoring Guide
 
-This document details the internal requirements, release checklists, and scoring standards needed to achieve maximum quality scores (160/160 pub points) across all 11 packages in the `BlocSignal` monorepo.
+This document details the internal requirements, release checklists, and scoring standards needed to achieve maximum quality scores (160/160 pub points) across all 11 published packages in the `BlocSignal` monorepo.
 
 ---
 
@@ -39,7 +39,7 @@ When publishing packages to pub.dev:
 ## 📋 2. Monorepo Documentation Consistency
 
 ### Uniform Package Catalog Table
-Ensure all 11 workspace package `README.md` files feature the exact same uniform 11-package ecosystem catalog table with pub version badges, pub points badges, and descriptions:
+Ensure all 11 published workspace package `README.md` files feature the exact same uniform 11-package ecosystem catalog table with pub version badges, pub points badges, and descriptions:
 1. `bloc_signals`
 2. `bloc_signals_flutter`
 3. `bloc_signals_bloc`
@@ -58,10 +58,27 @@ Ensure all 11 workspace package `README.md` files feature the exact same uniform
 
 ---
 
-## 🚀 3. Pre-Publishing Checklist
+## 🚫 3. Pre-Release & Unpublished Packages (GenUI & A2UI)
+
+### Why GenUI Packages Cannot Be Published to pub.dev
+The monorepo contains two Generative UI packages:
+- `bloc_signals_genui` (pure-Dart A2UI streaming state machine)
+- `bloc_signals_genui_flutter` (Flutter catalog widgets and surface containers)
+
+These packages currently depend on an unreleased, git-overridden fork of Google's `a2ui_core` package (`ref: fix/widen-preact-signals-a2ui-core`). Because pub.dev strictly disallows packages with git dependencies or dependency overrides, **`bloc_signals_genui` and `bloc_signals_genui_flutter` cannot and must not be published to pub.dev**.
+
+### Operational Rules for GenUI Packages:
+1. **Never Run `flutter pub publish` on GenUI Packages**: Do not attempt to publish `bloc_signals_genui` or `bloc_signals_genui_flutter` to pub.dev until Google officially publishes `a2ui_core` on pub.dev and the git dependency override is removed.
+2. **Never Add pub.dev Badges to GenUI Packages**: In documentation, websites, and readmes, display "Developer Preview" or "Git Only" badges linking to GitHub rather than generating broken `pub.dev/packages/` links.
+3. **Workspace Release Scripts**: Monorepo release scripts must explicitly skip `bloc_signals_genui` and `bloc_signals_genui_flutter` during batch publishing passes.
+
+---
+
+## 🚀 4. Pre-Publishing Checklist
 
 Before running `flutter pub publish` on any member package:
 1. **Workspace Tests**: Run `dart run tool/run_workspace_tests.dart` (must pass 100%).
 2. **Coverage**: Ensure 100% line coverage across modified packages.
 3. **Format**: Run `dart format .`.
-4. **Dry Run**: Run `flutter pub publish --dry-run` in the package root to check for any scoring or packaging warnings.
+4. **Dry Run**: Run `flutter pub publish --dry-run` in the package root to check for any scoring or packaging warnings (verify package is one of the 11 published packages, not a GenUI package).
+

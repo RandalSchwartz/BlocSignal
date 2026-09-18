@@ -329,6 +329,10 @@ Widget build(BuildContext context, WidgetRef ref) {
 }
 ```
 
+### 3. Container Lifecycle & State Equality Invariants
+- **Ref & WidgetRef Resolution**: `.toBlocSignal(ref)` transparently extracts the underlying `ProviderContainer` whether passed a `Ref`, `WidgetRef`, or raw `ProviderContainer`, binding lifecycle teardown directly to container disposal.
+- **Custom Equality Delegation**: `BlocSignalNotifier` overrides `updateShouldNotify` to delegate directly to `bloc.equals` (or `operator ==`), ensuring custom equality strategies on state classes are consistently respected within Riverpod widget trees.
+
 ## Reference Benchmark Ports (from rrousselGit/riverpod)
 
 The repository provides three canonical standalone Flutter benchmark ports translated directly from [`rrousselGit/riverpod/examples`](https://github.com/rrousselGit/riverpod/tree/master/examples):

@@ -96,3 +96,16 @@ class SelectiveCubit extends ReplayCubit<MyState> {
   }
 }
 ```
+
+---
+
+## 🛡️ Replay Execution Protection & Lifecycle Gating
+
+### Duplicate Emission Protection
+Calling `undo()` or `redo()` internally triggers an `emit()` to restore the selected state. To prevent these internal restorations from pushing duplicate entries into the undo stack or erasing the redo stack, `ReplayCubitMixin` and `ReplayBlocMixin` use internal reentrancy flags (`_isReplaying`).
+
+### Lifecycle Gating
+- **Post-Close Safety**: Once `close()` has been called, subsequent emissions (for example from pending asynchronous tasks) are strictly prevented from mutating or appending to the undo/redo history stack.
+- **De-duplication**: When an `emit()` produces a value identical to the current state (`equals(stateValue, newState)`), it is skipped and does not pollute the history stack.
+- **Synthetic Event Routing**: In `ReplayBloc`, internal `_Undo` and `_Redo` events are routed with replay tags so external `onTransition` observers do not receive duplicate notifications.
+

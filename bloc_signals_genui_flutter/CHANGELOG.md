@@ -1,0 +1,17 @@
+# Changelog
+
+All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
+
+## 0.1.1
+
+- Remediated defensive parsing and error boundaries (#269):
+  - Added `safe_prop_parser.dart` (`asDouble`, `asInt`, `asString`, `extractChildId`, `extractChildIds`) for robust handling of dynamic LLM JSON properties.
+  - Wrapped `A2uiSurfaceView` component rendering in safe error boundary fallback widgets.
+  - Upgraded widget models (`A2uiButton`, `A2uiCard`, `A2uiColumn`, `A2uiRow`, `A2uiTextField`, `A2uiDivider`) to tolerate stringified numeric inputs and object-shaped child IDs.
+
+## 0.1.0
+
+- Initial release of `bloc_signals_genui_flutter`.
+- Flutter catalog widgets for standard A2UI primitives (`A2uiButton`, `A2uiCard`, `A2uiColumn`, `A2uiDivider`, `A2uiRow`, `A2uiText`, `A2uiTextField`).
+- Declarative `A2uiSurfaceView` widget with animated component transitions.
+- Synchronous two-way data binding and form state propagation.

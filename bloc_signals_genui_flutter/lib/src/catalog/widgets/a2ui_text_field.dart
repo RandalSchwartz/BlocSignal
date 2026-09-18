@@ -63,7 +63,8 @@ class _A2uiTextFieldState extends State<A2uiTextField> {
     final rawProps = widget.componentContext.component.properties;
     final valueProp = rawProps['value'];
     if (valueProp is Map && valueProp.containsKey('path')) {
-      final path = valueProp['path'] as String;
+      final path = valueProp['path']?.toString() ??
+          '/${widget.componentContext.component.id}';
       widget.componentContext.updateFormField(path, newValue);
     } else {
       // Fallback path based on component ID

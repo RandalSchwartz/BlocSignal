@@ -1,5 +1,5 @@
-import 'package:a2ui_core/a2ui_core.dart';
 import 'package:bloc_signals_genui_flutter/src/a2ui_component_context.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
 import 'package:flutter/material.dart';
 
 /// Renders an A2UI `Button` component.
@@ -8,15 +8,8 @@ Widget buildA2uiButton(
   A2uiComponentContext componentContext,
 ) {
   final props = componentContext.props;
-  final rawChild = props['child'];
-  final childId = switch (rawChild) {
-    final ChildNode node => node.id,
-    final Map<String, dynamic> map => map['id']?.toString(),
-    final Object obj => obj.toString(),
-    null => null,
-  };
-
-  final variant = props['variant']?.toString() ?? 'primary';
+  final childId = extractChildId(props['child']);
+  final variant = asString(props['variant'], 'primary');
   final rawAction = props['action'];
   final modelAction = componentContext.component.properties['action'];
 

@@ -50,6 +50,10 @@ void main() {
 
     testWidgets('tapping search button streams discovery flight card',
         (tester) async {
+      tester.view.physicalSize = const Size(1000, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
       await tester.pumpWidget(createTestWidget());
 
       final searchBtn = find.text('Search Flights (SFO ➔ HND)');

@@ -1,8 +1,37 @@
-import 'package:a2ui_core/a2ui_core.dart';
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_flutter/bloc_signals_genui_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:json_schema_builder/json_schema_builder.dart';
+
+class _CustomComponentApi implements ComponentApi {
+  _CustomComponentApi({required this.name, required this.schema});
+
+  @override
+  final String name;
+
+  @override
+  final Schema schema;
+}
+
+final _cardCatalog = Catalog<ComponentApi, FunctionImplementation>(
+  id: 'https://custom.catalog/card.json',
+  components: [
+    ...MinimalCatalog().components.values,
+    _CustomComponentApi(
+      name: 'Card',
+      schema: Schema.fromMap(const <String, Object?>{
+        'properties': <String, Object?>{
+          'child': <String, Object?>{},
+          'children': <String, Object?>{
+            'type': 'array',
+          },
+          'title': <String, Object?>{'type': 'string'},
+        },
+      }),
+    ),
+  ],
+);
 
 void main() {
   const minimalCatalogId =
@@ -349,22 +378,22 @@ void main() {
               'catalogId': minimalCatalogId,
             },
           }),
-        )
-        ..add(
-          const ProcessJsonMessage({
-            'version': 'v0.9',
-            'updateComponents': {
-              'surfaceId': 'surf-missing-child',
-              'components': [
-                {
-                  'id': 'row-missing',
-                  'component': 'Row',
-                  'children': ['ghost-child'],
-                },
-              ],
-            },
-          }),
         );
+
+      await tester.pump();
+      final surface =
+          bloc.processor.groupModel.getSurface('surf-missing-child')!;
+      surface.componentsModel.addComponent(
+        ComponentModel('row-missing', 'Row', {
+          'children': ['ghost-child'],
+        }),
+      );
+      bloc.emitForTest(
+        SurfaceReady(
+          surfaceId: 'surf-missing-child',
+          surface: surface,
+        ),
+      );
 
       await tester.pumpWidget(
         MaterialApp(
@@ -516,13 +545,13 @@ void main() {
     testWidgets(
       'resolves children when items are Maps with id or ChildNode references',
       (tester) async {
-        final bloc = A2uiSurfaceBloc()
+        final bloc = A2uiSurfaceBloc(catalogs: [_cardCatalog])
           ..add(
             const ProcessJsonMessage({
               'version': 'v0.9',
               'createSurface': {
                 'surfaceId': 'surf-map-children',
-                'catalogId': minimalCatalogId,
+                'catalogId': 'https://custom.catalog/card.json',
               },
             }),
           )
@@ -646,6 +675,7 @@ void main() {
                   {
                     'id': 'tf-input',
                     'component': 'TextField',
+                    'label': 'Query',
                     'value': {'path': '/query'},
                   },
                 ],
@@ -700,13 +730,13 @@ void main() {
       'reproduction blocker 2: dynamic child resolution via resolvedProps '
       'avoids duplicate root renders',
       (tester) async {
-        final bloc = A2uiSurfaceBloc()
+        final bloc = A2uiSurfaceBloc(catalogs: [_cardCatalog])
           ..add(
             const ProcessJsonMessage({
               'version': 'v0.9',
               'createSurface': {
                 'surfaceId': 'surf-dynamic-child',
-                'catalogId': minimalCatalogId,
+                'catalogId': 'https://custom.catalog/card.json',
               },
             }),
           )
@@ -902,27 +932,26 @@ void main() {
                 'catalogId': minimalCatalogId,
               },
             }),
-          )
-          ..add(
-            const ProcessJsonMessage({
-              'version': 'v0.9',
-              'updateComponents': {
-                'surfaceId': 'surf-circular',
-                'components': [
-                  {
-                    'id': 'col-a',
-                    'component': 'Column',
-                    'children': ['col-b'],
-                  },
-                  {
-                    'id': 'col-b',
-                    'component': 'Column',
-                    'children': ['col-a'],
-                  },
-                ],
-              },
-            }),
           );
+
+        await tester.pump();
+        final surface = bloc.processor.groupModel.getSurface('surf-circular')!;
+        surface.componentsModel.addComponent(
+          ComponentModel('col-a', 'Column', {
+            'children': ['col-b'],
+          }),
+        );
+        surface.componentsModel.addComponent(
+          ComponentModel('col-b', 'Column', {
+            'children': ['col-a'],
+          }),
+        );
+        bloc.emitForTest(
+          SurfaceReady(
+            surfaceId: 'surf-circular',
+            surface: surface,
+          ),
+        );
 
         await tester.pumpWidget(
           MaterialApp(

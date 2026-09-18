@@ -1,4 +1,3 @@
-import 'package:a2ui_core/a2ui_core.dart';
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_flutter/src/a2ui_flutter_catalog.dart';
 import 'package:flutter/widgets.dart';

@@ -312,9 +312,54 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
         key: ValueKey('a2ui_$componentId'),
         child: childWidget,
       );
+    } on Object catch (error) {
+      return KeyedSubtree(
+        key: ValueKey('a2ui_error_$componentId'),
+        child: _buildComponentErrorFallback(context, componentId, error),
+      );
     } finally {
       _activeBuildPath.remove(componentId);
     }
+  }
+
+  Widget _buildComponentErrorFallback(
+    BuildContext context,
+    String componentId,
+    Object error,
+  ) {
+    return Container(
+      key: ValueKey('error_fallback_$componentId'),
+      padding: const EdgeInsets.all(8),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer.withAlpha(128),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.error,
+          width: 0.5,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.warning_amber_rounded,
+            size: 16,
+            color: Theme.of(context).colorScheme.error,
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'Failed to render component "$componentId"',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

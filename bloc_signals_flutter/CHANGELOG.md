@@ -1,3 +1,7 @@
+## 1.3.2
+
+- Fix `BlocSignalListener` and `BlocSignalConsumer` subscription transfer when ancestor provider container instance is swapped above `const` subtrees (#273).
+
 ## 1.3.1
 
 - Update `context.value<T, S>()` implementation to delegate to `bloc.value` (#251).

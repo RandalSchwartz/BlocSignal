@@ -26,7 +26,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_flutter',
-    version: '1.3.1',
+    version: '1.3.2',
     desc: 'Flutter UI bindings, InheritedWidget providers, builders, listeners, selectors, and Listenable interop.',
     icon: '💙',
     category: 'Core & UI',
@@ -62,7 +62,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_hydrate',
-    version: '1.0.1',
+    version: '1.0.2',
     desc: 'Synchronous state persistence across app restarts with primitive and collection storage support.',
     icon: '💾',
     category: 'State & Interop',
@@ -80,7 +80,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_otel',
-    version: '1.1.0',
+    version: '1.1.1',
     desc: 'OpenTelemetry lifecycle tracing, transition metrics, and distributed span correlation.',
     icon: '🔭',
     category: 'DevTools & Tooling',
@@ -89,7 +89,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_devtools',
-    version: '1.0.0+1',
+    version: '1.0.1',
     desc: 'Custom Flutter DevTools extension for timeline tracing, state diffing, and memory leak detection.',
     icon: '🛠️',
     category: 'DevTools & Tooling',

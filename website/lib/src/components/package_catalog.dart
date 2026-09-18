@@ -44,7 +44,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_jaspr',
-    version: '1.1.0',
+    version: '1.1.1',
     desc: 'Jaspr web component integration, InheritedComponent providers, builders, listeners, and selectors.',
     icon: '🌐',
     category: 'Core & UI',

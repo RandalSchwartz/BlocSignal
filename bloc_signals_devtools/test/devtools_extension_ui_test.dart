@@ -172,5 +172,81 @@ void main() {
       expect(find.text('41'), findsOneWidget);
       expect(find.text('42'), findsOneWidget);
     });
+
+    testWidgets('BlocSignalsDevToolsExtension displays progress when isLoading',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: BlocSignalsDevToolsExtension(
+            isLoading: true,
+          ),
+        ),
+      );
+
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets(
+        'BlocSignalsDevToolsExtension displays error banner and handles RETRY',
+        (tester) async {
+      var refreshed = false;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocSignalsDevToolsExtension(
+            errorMessage: 'Connection lost to VM Service',
+            onRefresh: () => refreshed = true,
+          ),
+        ),
+      );
+
+      expect(find.text('Connection lost to VM Service'), findsOneWidget);
+      expect(find.text('RETRY'), findsOneWidget);
+
+      await tester.tap(find.text('RETRY'));
+      await tester.pump();
+
+      expect(refreshed, isTrue);
+    });
+
+    testWidgets('BlocSignalsDevToolsExtension displays empty container message',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: BlocSignalsDevToolsExtension(),
+        ),
+      );
+
+      expect(
+        find.textContaining('No active BlocSignal containers detected.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+        'BlocSignalsDevToolsExtension triggers onRefresh and onSelectInstance',
+        (tester) async {
+      var refreshed = false;
+      Map<String, dynamic>? selected;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: BlocSignalsDevToolsExtension(
+            instances: sampleInstances,
+            onRefresh: () => refreshed = true,
+            onSelectInstance: (item) => selected = item,
+          ),
+        ),
+      );
+
+      expect(find.byTooltip('Refresh Containers'), findsOneWidget);
+      await tester.tap(find.byTooltip('Refresh Containers'));
+      await tester.pump();
+      expect(refreshed, isTrue);
+
+      await tester.tap(find.text('CounterCubit'));
+      await tester.pump();
+      expect(selected?['hashCode'], equals(1001));
+    });
   });
 }

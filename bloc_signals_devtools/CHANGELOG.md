@@ -1,3 +1,10 @@
+## 1.0.2
+
+- Package and distribute dedicated DevTools extension with `extension/devtools/config.yaml` and precompiled web assets (`extension/devtools/build/`).
+- Add live VM Service integration in `lib/main.dart` connecting to `serviceManager` to stream `bloc_signal.*` events and query `ext.bloc_signal.getInstances` and `ext.bloc_signal.getHistory`.
+- Support `isLoading`, `errorMessage`, `onRefresh`, and `onSelectInstance` hooks on `BlocSignalsDevToolsExtension`.
+- Add DevTools extension validation to workspace test runner.
+
 ## 1.0.1
 
 - Support interactive history entry selection in `TimelineTracePanel` and wire selection state to `StateDiffInspector` in `BlocSignalsDevToolsExtension`.

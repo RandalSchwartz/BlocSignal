@@ -62,6 +62,28 @@ void main(List<String> args) {
     }
   }
 
+  print(
+    '🔍 Validating DevTools extension packaging in bloc_signals_devtools...',
+  );
+  final devtoolsValidation = Process.runSync('dart', [
+    'run',
+    'devtools_extensions',
+    'validate',
+    '--package=bloc_signals_devtools',
+  ]);
+  if (devtoolsValidation.stdout.toString().isNotEmpty) {
+    stdout.write(devtoolsValidation.stdout);
+  }
+  if (devtoolsValidation.stderr.toString().isNotEmpty) {
+    stderr.write(devtoolsValidation.stderr);
+  }
+  if (devtoolsValidation.exitCode != 0) {
+    print('❌ DevTools extension validation failed.');
+    failed = true;
+  } else {
+    print('✅ DevTools extension validation passed.\n');
+  }
+
   if (failed) {
     print('💥 One or more package test suites failed.');
     exit(1);

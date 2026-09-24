@@ -72,12 +72,31 @@ In release builds (`kReleaseMode`), `DevToolsService.isEnabled` is set to `false
 
 ---
 
-## 🎨 Dedicated DevTools Extension UI (`bloc_signals_devtools`)
+## 🎨 Dedicated DevTools Extension (`bloc_signals_devtools`)
 
-For visual inspection inside Flutter DevTools, import `package:bloc_signals_devtools/bloc_signals_devtools.dart`:
+`bloc_signals_devtools` is packaged as an official Flutter DevTools extension conforming to the Dart DevTools extension specification.
+
+### 1. Installation
+Add `bloc_signals_devtools` to your application's `dev_dependencies`:
+
+```yaml
+dev_dependencies:
+  bloc_signals_devtools: ^1.0.2
+```
+
+### 2. Automatic Discovery
+When running your Flutter application in debug mode with `DevToolsBlocSignalObserver` registered, open DevTools via your IDE or terminal (`flutter run`). DevTools automatically discovers `bloc_signals_devtools` through `extension/devtools/config.yaml` and renders the dedicated **BlocSignal** tab in the top navigation bar.
+
+### 3. Architecture & Standalone Embedding
+The package is designed with a decoupled architecture:
+- `lib/bloc_signals_devtools.dart`: Pure Flutter UI widgets (`BlocSignalsDevToolsExtension`, `InstanceTreeView`, `StateDiffInspector`, `TimelineTracePanel`, `LeakDetectorBadge`) and `BlocSignalsDevToolsController` testable on the Dart VM with zero web-only imports.
+- `lib/main.dart`: Web entrypoint wrapping `DevToolsExtension` and bridging `serviceManager`, precompiled into `extension/devtools/build/` for distribution.
+
+For custom embedding or standalone tooling outside DevTools:
 
 ```dart
 import 'package:bloc_signals_devtools/bloc_signals_devtools.dart';
+import 'package:flutter/material.dart';
 
 Widget buildInspector(List<Map<String, dynamic>> instances, List<Map<String, dynamic>> history) {
   return BlocSignalsDevToolsExtension(

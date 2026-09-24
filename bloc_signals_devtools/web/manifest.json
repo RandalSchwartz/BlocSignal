@@ -1,0 +1,12 @@
+{
+  "name": "bloc_signals_devtools",
+  "short_name": "bloc_signals_devtools",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0175C2",
+  "theme_color": "#0175C2",
+  "description": "Dedicated Flutter DevTools extension UI for inspecting BlocSignal containers.",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false,
+  "icons": []
+}

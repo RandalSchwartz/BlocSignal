@@ -7,6 +7,8 @@ coverage/
 lcov.info
 build/
 **/build/
+!**/extension/devtools/build/
+!**/extension/devtools/build/**
 .firebase/
 .flutter-plugins*
 .agents/

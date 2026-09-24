@@ -1,0 +1,5 @@
+name: bloc_signals_devtools
+issueTracker: https://github.com/RandalSchwartz/BlocSignal/issues
+version: 1.0.2
+materialIconCodePoint: '0xe566'
+requiresConnection: true

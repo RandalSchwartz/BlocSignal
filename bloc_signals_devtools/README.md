@@ -47,30 +47,42 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 
 ## 🚀 Getting Started
 
-Add `bloc_signals_devtools` to your `pubspec.yaml`:
+### 1. Add Dependency
+Add `bloc_signals_devtools` to your application's `dev_dependencies`:
 
 ```yaml
 dev_dependencies:
-  bloc_signals_devtools: ^1.0.0
+  bloc_signals_devtools: ^1.0.2
 ```
+
+### 2. Register DevTools Observer
+In your application's debug initialization, register the `DevToolsBlocSignalObserver`:
+
+```dart
+void main() {
+  BlocSignalObserver.observer = const DevToolsBlocSignalObserver();
+  runApp(const MyApp());
+}
+```
+
+### 3. Open Flutter DevTools
+When running your Flutter application in debug mode, open DevTools via your IDE or terminal. Flutter DevTools automatically discovers `bloc_signals_devtools` and displays the **BlocSignal** tab in the DevTools navigation bar.
 
 ---
 
-## 💡 Usage Example
+## 🏗️ Extension Architecture & Contributor Workflow
 
-```dart
-import 'package:bloc_signals_devtools/bloc_signals_devtools.dart';
-import 'package:flutter/material.dart';
+`bloc_signals_devtools` conforms to the official Dart & Flutter DevTools extension specification:
+- **Extension Manifest (`extension/devtools/config.yaml`)**: Defines extension metadata, icon code point (`0xe566`), connection requirements, and issue tracker links.
+- **Precompiled Web Bundle (`extension/devtools/build/`)**: Flutter DevTools loads extension tools as web iframes from precompiled web artifacts. This bundle is included in the pub release (preserved via `extension/devtools/.pubignore`) and tracked in git (via `.gitignore` exception) so cloned repositories validate and pass test suites immediately out of the box.
 
-Widget buildInspector(
-  List<Map<String, dynamic>> instances,
-  List<Map<String, dynamic>> history,
-) {
-  return BlocSignalsDevToolsExtension(
-    instances: instances,
-    history: history,
-  );
-}
+### Rebuilding Web Assets for Contributors
+If you modify `lib/main.dart`, UI views, or controller logic, recompile the web distribution bundle and validate:
+
+```bash
+cd bloc_signals_devtools
+dart run devtools_extensions build_and_copy --source=. --dest=extension/devtools
+dart run devtools_extensions validate --package=.
 ```
 
 ---

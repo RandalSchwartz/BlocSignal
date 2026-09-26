@@ -189,10 +189,13 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
   Duration streamDelay = const Duration(milliseconds: 10);
 
   /// Initiates the flight search discovery turn.
+  ///
+  /// Optionally accepts [streamOverride] for testing or custom stream sources.
   Future<void> startDiscoverySearch({
     String query = 'Find flights from San Francisco to Tokyo',
     Duration? delay,
     bool clearMessages = false,
+    Stream<Map<String, dynamic>>? streamOverride,
   }) async {
     final operationId = ++_activeOperationId;
     final effectiveDelay = delay ?? streamDelay;
@@ -213,15 +216,43 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
       ),
     );
 
-    // Stream the flight discovery surface
-    final stream =
+    // Stream the flight discovery surface while monitoring chunk arrival count
+    var chunkCount = 0;
+    final rawStream = streamOverride ??
         FlightMockStreamer.streamDiscoverySurface(delay: effectiveDelay);
+    final stream = rawStream.transform(
+      StreamTransformer<Map<String, dynamic>,
+          Map<String, dynamic>>.fromHandlers(
+        handleData: (chunk, sink) {
+          chunkCount++;
+          sink.add(chunk);
+        },
+        handleError: (error, stackTrace, sink) {
+          sink.addError(error, stackTrace);
+        },
+      ),
+    );
     surfaceBloc.add(IngestStream(stream));
 
     // Wait briefly for ingestion to settle
     await Future<void>.delayed(
         effectiveDelay * 3 + const Duration(milliseconds: 20));
     if (isClosed || _activeOperationId != operationId) return;
+
+    // Defense against zero-chunk stream failure (SCAR-GENUI-3):
+    // If the stream errored or terminated before delivering any chunks,
+    // prune the optimistic user turn so subsequent retries do not trigger
+    // "INVALID_ARGUMENT: Consecutive user turns are not allowed".
+    if (surfaceBloc.stateValue is SurfaceError ||
+        (chunkCount == 0 && surfaceBloc.stateValue is! SurfaceReady)) {
+      emit(
+        value.copyWith(
+          messages: List<ChatMessage>.from(value.messages)..remove(userMsg),
+          isStreaming: false,
+        ),
+      );
+      return;
+    }
 
     final assistantMsg = ChatMessage.assistant(
       'Here is the best flight match I found for SFO ➔ HND on Pacific Rim Airways:',

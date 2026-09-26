@@ -201,5 +201,36 @@ void main() {
       final cleared = state.copyWith(clearActiveSurfaceId: true);
       expect(cleared.activeSurfaceId, isNull);
     });
+
+    test(
+        'zero-chunk stream failure prunes optimistic user turn to prevent consecutive user turns on retry',
+        () async {
+      final errorStream = Stream<Map<String, dynamic>>.error(
+        Exception('Network connection failed before any chunks arrived'),
+      );
+
+      await cubit.startDiscoverySearch(
+        query: 'First attempt',
+        delay: Duration.zero,
+        streamOverride: errorStream,
+      );
+
+      // Verify optimistic user message was pruned on zero-chunk failure
+      expect(cubit.value.messages, isEmpty);
+      expect(cubit.value.isStreaming, isFalse);
+      expect(surfaceBloc.value, isA<SurfaceError>());
+
+      // Subsequent retry should succeed cleanly without consecutive user turns
+      await cubit.startDiscoverySearch(
+        query: 'Retry attempt',
+        delay: Duration.zero,
+      );
+
+      expect(cubit.value.messages.length, equals(2));
+      expect(cubit.value.messages.first.role, equals(ChatRole.user));
+      expect(cubit.value.messages.first.text, equals('Retry attempt'));
+      expect(cubit.value.messages.last.role, equals(ChatRole.assistant));
+      expect(surfaceBloc.value, isA<SurfaceReady>());
+    });
   });
 }

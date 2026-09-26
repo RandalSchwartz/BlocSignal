@@ -179,15 +179,18 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         try {
           final messages = _parseChunkToMessages(chunk);
           if (messages.isNotEmpty) {
-            _processor.processMessages(messages);
-            messageCount += messages.length;
-            _surfaceVersion++;
-
             for (final msg in messages) {
               if (msg is CreateSurfaceMessage) {
+                if (_processor.groupModel.getSurface(msg.surfaceId) != null) {
+                  _processor.groupModel.deleteSurface(msg.surfaceId);
+                }
                 _activeSurfaceId = msg.surfaceId;
               }
             }
+
+            _processor.processMessages(messages);
+            messageCount += messages.length;
+            _surfaceVersion++;
 
             _emitSurfaceSnapshot(emit, messageCount: messageCount);
           }
@@ -244,6 +247,9 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     try {
       final message = _normalizeMessage(event.message);
       if (message is CreateSurfaceMessage) {
+        if (_processor.groupModel.getSurface(message.surfaceId) != null) {
+          _processor.groupModel.deleteSurface(message.surfaceId);
+        }
         _activeSurfaceId = message.surfaceId;
       }
       _processor.processMessages([message]);
@@ -269,6 +275,9 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     try {
       final message = A2uiMessage.fromJson(_normalizeJson(event.json));
       if (message is CreateSurfaceMessage) {
+        if (_processor.groupModel.getSurface(message.surfaceId) != null) {
+          _processor.groupModel.deleteSurface(message.surfaceId);
+        }
         _activeSurfaceId = message.surfaceId;
       }
       _processor.processMessages([message]);
@@ -295,6 +304,9 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       final normalizedMessages = event.messages.map(_normalizeMessage).toList();
       for (final msg in normalizedMessages) {
         if (msg is CreateSurfaceMessage) {
+          if (_processor.groupModel.getSurface(msg.surfaceId) != null) {
+            _processor.groupModel.deleteSurface(msg.surfaceId);
+          }
           _activeSurfaceId = msg.surfaceId;
         }
       }

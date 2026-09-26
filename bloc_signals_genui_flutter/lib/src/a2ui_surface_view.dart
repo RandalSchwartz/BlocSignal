@@ -29,6 +29,13 @@ typedef A2uiErrorBuilder = Widget Function(
   SurfaceError error,
 );
 
+/// Callback signature for rendering validation errors when
+/// [SurfaceReady.isValid] is false.
+typedef A2uiValidationErrorsBuilder = Widget Function(
+  BuildContext context,
+  List<String> errors,
+);
+
 /// A reactive Flutter widget that connects an [A2uiSurfaceBloc] to Flutter's
 /// widget hierarchy.
 ///
@@ -36,7 +43,8 @@ typedef A2uiErrorBuilder = Widget Function(
 /// - [SurfaceInitial]: Renders [placeholderBuilder] or empty container.
 /// - [SurfaceStreaming]: Renders [streamingBuilder] or a skeleton indicator.
 /// - [SurfaceReady]: Recursively evaluates component models and renders
-///   catalog widgets.
+///   catalog widgets. Displays validation errors via [validationErrorsBuilder]
+///   or default error banner when [SurfaceReady.isValid] is false.
 /// - [SurfaceSubmitting]: Renders [submittingBuilder] or interaction barrier.
 /// - [SurfaceError]: Renders [errorBuilder] or a default error alert.
 class A2uiSurfaceView extends StatelessWidget {
@@ -50,6 +58,7 @@ class A2uiSurfaceView extends StatelessWidget {
     this.streamingBuilder,
     this.submittingBuilder,
     this.errorBuilder,
+    this.validationErrorsBuilder,
     super.key,
   }) : catalog = catalog ?? A2uiFlutterCatalog.standard();
 
@@ -71,6 +80,9 @@ class A2uiSurfaceView extends StatelessWidget {
   /// Optional custom builder rendered during [SurfaceError].
   final A2uiErrorBuilder? errorBuilder;
 
+  /// Optional custom builder rendered when [SurfaceReady.isValid] is false.
+  final A2uiValidationErrorsBuilder? validationErrorsBuilder;
+
   @override
   Widget build(BuildContext context) {
     return BlocSignalBuilder<A2uiSurfaceBloc, A2uiSurfaceState>(
@@ -84,6 +96,7 @@ class A2uiSurfaceView extends StatelessWidget {
               surfaceReady: ready,
               catalog: catalog,
               bloc: bloc,
+              validationErrorsBuilder: validationErrorsBuilder,
             ),
           final SurfaceSubmitting submitting =>
             _buildSubmitting(context, submitting),
@@ -130,7 +143,11 @@ class A2uiSurfaceView extends StatelessWidget {
       children: [
         const Opacity(
           opacity: 0.5,
-          child: ModalBarrier(dismissible: false, color: Colors.black12),
+          child: ModalBarrier(
+            key: ValueKey('a2ui_submitting_barrier'),
+            dismissible: false,
+            color: Colors.black12,
+          ),
         ),
         Center(
           child: Card(
@@ -206,11 +223,13 @@ class _SurfaceTreeRenderer extends StatefulWidget {
     required this.surfaceReady,
     required this.catalog,
     required this.bloc,
+    this.validationErrorsBuilder,
   });
 
   final SurfaceReady surfaceReady;
   final A2uiFlutterCatalog catalog;
   final A2uiSurfaceBloc bloc;
+  final A2uiValidationErrorsBuilder? validationErrorsBuilder;
 
   @override
   State<_SurfaceTreeRenderer> createState() => _SurfaceTreeRendererState();
@@ -364,9 +383,69 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
 
   @override
   Widget build(BuildContext context) {
+    final hasErrors = !widget.surfaceReady.isValid &&
+        widget.surfaceReady.validationErrors.isNotEmpty;
+
+    Widget? errorBanner;
+    if (hasErrors) {
+      if (widget.validationErrorsBuilder != null) {
+        errorBanner = widget.validationErrorsBuilder!(
+          context,
+          widget.surfaceReady.validationErrors,
+        );
+      } else {
+        errorBanner = Container(
+          key: const ValueKey('a2ui_validation_errors_banner'),
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.errorContainer,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.error,
+              width: 0.5,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final error in widget.surfaceReady.validationErrors)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          error,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onErrorContainer,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      }
+    }
+
     final components = widget.surfaceReady.surface.componentsModel.all;
     if (components.isEmpty) {
-      return const SizedBox.shrink();
+      return errorBanner ?? const SizedBox.shrink();
     }
 
     // Identify root components not referenced as a child by any other component
@@ -396,20 +475,32 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
     final rootComponents =
         components.where((c) => !childIds.contains(c.id)).toList();
 
+    Widget content;
     if (rootComponents.isEmpty) {
-      return Column(
+      content = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: components.map((c) => _buildComponent(c.id)).toList(),
       );
+    } else if (rootComponents.length == 1) {
+      content = _buildComponent(rootComponents.first.id);
+    } else {
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: rootComponents.map((c) => _buildComponent(c.id)).toList(),
+      );
     }
 
-    if (rootComponents.length == 1) {
-      return _buildComponent(rootComponents.first.id);
+    if (errorBanner != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          errorBanner,
+          content,
+        ],
+      );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: rootComponents.map((c) => _buildComponent(c.id)).toList(),
-    );
+    return content;
   }
 }

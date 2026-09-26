@@ -47,6 +47,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     on<StreamCompleted>(_onStreamCompleted);
     on<UpdateFormField>(_onUpdateFormField);
     on<SubmitAction>(_onSubmitAction);
+    on<CancelSubmission>(_onCancelSubmission);
+    on<CompleteAction>(_onCompleteAction);
     on<ResetSurface>(_onResetSurface);
   }
 
@@ -382,6 +384,62 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
     _responseHistory.add(response);
     _actionResponsesController.add(response);
+  }
+
+  void _onCancelSubmission(
+    CancelSubmission event,
+    void Function(A2uiSurfaceState) emit,
+  ) {
+    _emitRecoveredSubmissionState(
+      surfaceId: event.surfaceId,
+      error: event.error,
+      emit: emit,
+    );
+  }
+
+  void _onCompleteAction(
+    CompleteAction event,
+    void Function(A2uiSurfaceState) emit,
+  ) {
+    _emitRecoveredSubmissionState(
+      surfaceId: event.surfaceId,
+      error: event.error,
+      emit: emit,
+    );
+  }
+
+  void _emitRecoveredSubmissionState({
+    required String? surfaceId,
+    required String? error,
+    required void Function(A2uiSurfaceState) emit,
+  }) {
+    final targetSurfaceId = surfaceId ?? activeSurfaceId;
+    if (targetSurfaceId == null) return;
+
+    final surface = _processor.groupModel.getSurface(targetSurfaceId);
+    if (surface == null) return;
+
+    final formValues = _extractFormData(surface);
+    final formErrors = _validateForm(surface, formValues);
+    final validationErrors = List<String>.from(formErrors);
+    if (error != null && error.trim().isNotEmpty) {
+      final trimmed = error.trim();
+      if (!validationErrors.contains(trimmed)) {
+        validationErrors.add(trimmed);
+      }
+    }
+
+    _surfaceVersion++;
+    emit(
+      SurfaceReady(
+        surfaceId: targetSurfaceId,
+        surface: surface,
+        formValues: formValues,
+        isValid: validationErrors.isEmpty,
+        validationErrors: validationErrors,
+        version: _surfaceVersion,
+      ),
+    );
   }
 
   void _onResetSurface(

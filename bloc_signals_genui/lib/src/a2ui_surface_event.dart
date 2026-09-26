@@ -118,3 +118,75 @@ final class ResetSurface extends A2uiSurfaceEvent {
   /// The optional identifier of a specific surface to reset, or null for all.
   final String? surfaceId;
 }
+
+/// Cancels an in-flight action submission, restoring the surface to [SurfaceReady]
+/// while preserving entered form inputs.
+///
+/// If [error] is provided, it is added to [SurfaceReady.validationErrors] and
+/// [SurfaceReady.isValid] is set to `false`.
+///
+/// ```dart
+/// // Example: aborting submission due to timeout or network drop
+/// surfaceBloc.add(
+///   const CancelSubmission(
+///     error: 'Submission timed out. Please try again.',
+///   ),
+/// );
+/// ```
+final class CancelSubmission extends A2uiSurfaceEvent {
+  /// Creates a [CancelSubmission] event.
+  const CancelSubmission({this.error, this.surfaceId});
+
+  /// An optional error or cancellation message to display on the surface.
+  final String? error;
+
+  /// The identifier of the surface to recover, or null to target the active surface.
+  final String? surfaceId;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CancelSubmission &&
+          error == other.error &&
+          surfaceId == other.surfaceId;
+
+  @override
+  int get hashCode => Object.hash(error, surfaceId);
+
+  @override
+  String toString() => 'CancelSubmission(surfaceId: $surfaceId, error: $error)';
+}
+
+/// Completes an in-flight action submission, returning the surface to [SurfaceReady].
+///
+/// If [error] is provided, the action is treated as failed: [SurfaceReady.isValid]
+/// becomes `false` and [error] is appended to [SurfaceReady.validationErrors].
+/// If [error] is null, the action completed successfully without streaming new UI.
+///
+/// ```dart
+/// // Example: agent tool completed without changing the UI
+/// surfaceBloc.add(const CompleteAction());
+/// ```
+final class CompleteAction extends A2uiSurfaceEvent {
+  /// Creates a [CompleteAction] event.
+  const CompleteAction({this.error, this.surfaceId});
+
+  /// An optional error message if the action execution failed.
+  final String? error;
+
+  /// The identifier of the surface to recover, or null to target the active surface.
+  final String? surfaceId;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CompleteAction &&
+          error == other.error &&
+          surfaceId == other.surfaceId;
+
+  @override
+  int get hashCode => Object.hash(error, surfaceId);
+
+  @override
+  String toString() => 'CompleteAction(surfaceId: $surfaceId, error: $error)';
+}

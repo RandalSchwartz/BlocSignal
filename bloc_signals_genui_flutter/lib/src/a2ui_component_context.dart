@@ -68,4 +68,46 @@ class A2uiComponentContext {
       ),
     );
   }
+
+  /// Cancels an in-flight action submission, restoring the surface to
+  /// [SurfaceReady] and preserving entered form field inputs.
+  ///
+  /// If [error] is provided, it is appended to [SurfaceReady.validationErrors]
+  /// and [SurfaceReady.isValid] is set to `false`.
+  ///
+  /// ```dart
+  /// // Example: aborting action from a cancellation button or timeout
+  /// componentContext.cancelSubmission(
+  ///   error: 'Submission cancelled by user.',
+  /// );
+  /// ```
+  void cancelSubmission({String? error}) {
+    surfaceBloc.add(
+      CancelSubmission(
+        error: error,
+        surfaceId: surfaceId,
+      ),
+    );
+  }
+
+  /// Completes an in-flight action submission, returning the surface to
+  /// [SurfaceReady].
+  ///
+  /// If [error] is provided, the action is marked as failed:
+  /// [SurfaceReady.isValid] becomes `false` and [error] is appended to
+  /// [SurfaceReady.validationErrors].
+  /// If [error] is null, the action succeeded without streaming new UI.
+  ///
+  /// ```dart
+  /// // Example: completing action after backend acknowledgment
+  /// componentContext.completeAction();
+  /// ```
+  void completeAction({String? error}) {
+    surfaceBloc.add(
+      CompleteAction(
+        error: error,
+        surfaceId: surfaceId,
+      ),
+    );
+  }
 }

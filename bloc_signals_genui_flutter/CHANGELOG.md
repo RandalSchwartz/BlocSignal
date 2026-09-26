@@ -4,6 +4,10 @@ All notable changes to `bloc_signals_genui_flutter` will be documented in this f
 
 ## Unreleased
 
+- Added action submission recovery and error presentation (#284):
+  - Added `cancelSubmission({String? error})` and `completeAction({String? error})` convenience methods on `A2uiComponentContext`.
+  - Dismissed `ModalBarrier` overlay automatically upon submission cancellation or completion.
+  - Added `validationErrorsBuilder` property to `A2uiSurfaceView` with a default Material error banner when validation errors are present.
 - Added declarative composition methods to `A2uiFlutterCatalog` (#285):
   - `copyWith(Map<String, A2uiComponentWidgetBuilder> builders)` for extending or overriding component builders with isolated copies.
   - `copyWithout(Iterable<String> typesToRemove)` for pruning unwanted or restricted component types.

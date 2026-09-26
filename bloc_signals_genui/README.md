@@ -88,6 +88,55 @@ void main() async {
 
 ---
 
+## 💡 Production Architecture: Safe Stream Wiring & Zero-Chunk Rollback
+
+In LLM-driven generative UI architectures (for example Google Gemini or Firebase Genkit/AI), conversation turns strictly alternate between `user` and `model`. When an application optimistically adds a user message to chat history before initiating a stream, a failure *before any chunks arrive* (zero chunks) leaves a dangling user message. On retry, appending another user message creates two consecutive user turns, causing backend APIs to reject the request with `INVALID_ARGUMENT: Consecutive user turns are not allowed`.
+
+To prevent this tripwire, monitor chunk arrivals and transactionally prune the optimistic user turn if the stream aborts with zero chunks:
+
+```dart
+Future<void> sendTurn({
+  required String query,
+  required A2uiSurfaceBloc surfaceBloc,
+  required Stream<Map<String, dynamic>> Function() streamFactory,
+}) async {
+  final userTurn = ChatMessage.user(query);
+  messages.add(userTurn);
+
+  var chunkCount = 0;
+  final monitoredStream = streamFactory().transform(
+    StreamTransformer<Map<String, dynamic>,
+        Map<String, dynamic>>.fromHandlers(
+      handleData: (chunk, sink) {
+        chunkCount++;
+        sink.add(chunk);
+      },
+      handleError: (error, stackTrace, sink) {
+        sink.addError(error, stackTrace);
+      },
+    ),
+  );
+
+  surfaceBloc.add(IngestStream(monitoredStream));
+
+  try {
+    await surfaceBloc.stream.firstWhere(
+      (state) => state is SurfaceReady || state is SurfaceError,
+    );
+    if (surfaceBloc.stateValue is SurfaceError && chunkCount == 0) {
+      // Transactionally rollback optimistic user turn on zero-chunk stream failure
+      messages.remove(userTurn);
+    }
+  } catch (_) {
+    if (chunkCount == 0) {
+      messages.remove(userTurn);
+    }
+  }
+}
+```
+
+---
+
 ## 💻 CLI Showcase (`agy-cli` Style)
 
 Explore the interactive terminal client in [`examples/genui_tui_agent`](https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/genui_tui_agent):

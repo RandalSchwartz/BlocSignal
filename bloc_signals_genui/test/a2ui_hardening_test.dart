@@ -491,5 +491,66 @@ void main() {
 
       await bloc.close();
     });
+
+    test(
+        'recreating an existing surfaceId safely resets and replaces surface without state error',
+        () async {
+      final bloc = A2uiSurfaceBloc();
+      const minimalCatalogId =
+          'https://a2ui.org/specification/v0_9/catalogs/minimal/minimal_catalog.json';
+
+      // First creation
+      bloc.add(
+        ProcessMessages([
+          CreateSurfaceMessage(
+            surfaceId: 'surf_recreate',
+            catalogId: minimalCatalogId,
+          ),
+          UpdateComponentsMessage(
+            surfaceId: 'surf_recreate',
+            components: [
+              {
+                'id': 'txt_first',
+                'component': 'Text',
+                'text': 'First version',
+              },
+            ],
+          ),
+        ]),
+      );
+
+      expect(bloc.stateValue, isA<SurfaceReady>());
+      expect(bloc.stateValue.surfaceId, equals('surf_recreate'));
+
+      // Re-create same surfaceId (for example on stream re-prompting or retry)
+      bloc.add(
+        ProcessMessages([
+          CreateSurfaceMessage(
+            surfaceId: 'surf_recreate',
+            catalogId: minimalCatalogId,
+          ),
+          UpdateComponentsMessage(
+            surfaceId: 'surf_recreate',
+            components: [
+              {
+                'id': 'txt_second',
+                'component': 'Text',
+                'text': 'Recreated version',
+              },
+            ],
+          ),
+        ]),
+      );
+
+      expect(bloc.stateValue, isA<SurfaceReady>());
+      expect(bloc.stateValue.surfaceId, equals('surf_recreate'));
+      final ready = bloc.stateValue as SurfaceReady;
+      expect(
+        ready.surface.componentsModel.all.any((c) => c.id == 'txt_second'),
+        isTrue,
+      );
+
+      await bloc.close();
+    });
   });
 }

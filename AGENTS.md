@@ -124,6 +124,7 @@ To protect developer context while preventing catastrophic regressions, full sca
 | **Hydration Cache Inversion** | Redundant storage write-back during constructor hydration and silent disk write drops | Flush to disk before memory cache, gate on state change, and route async write errors to `onError()`. |
 | **DevTools / OTel Contention** | Span collisions on identical event names and leaks on dropped events | Use FIFO queue per event key, terminate spans on dropped events in `tracedBloc`, and provide `registerEventDeserializer`. |
 | **GenUI Stream Deduplication** | Identical partial JSON AST chunks dropped by state `equals()` | Increment monotonic `_surfaceVersion` on each chunk to guarantee widget tree re-evaluates streaming updates. |
+| **GenUI Zero-Chunk Failures** | Dangling user turn causing `INVALID_ARGUMENT` on retry | Prune optimistic user turn from history if stream fails before receiving any chunks, preserving turn alternation. |
 | **Live Map Key Exposure** | `ConcurrentModificationError` on concurrent loop mutation | Return `List<T>.unmodifiable(_map.keys)` for registries and catalogs. |
 
 For the complete post-mortems, stack traces, and historical case studies for any scar above, inspect [`plugins/bloc-signals/skills/bloc-signals/scars.md`](plugins/bloc-signals/skills/bloc-signals/scars.md).

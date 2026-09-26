@@ -143,6 +143,12 @@ This document details the codified failure modes, architectural wounds, traps, a
 - **The Antigen / Vulnerability Vector**: Comparing streaming states solely on component tree reference equality without a sequence guarantee.
 - **The Antibody / Permanent Reflex**: Include a monotonic integer `_surfaceVersion` on `A2uiSurfaceState` that increments with each arriving chunk or message event. In Flutter catalog widgets, use defensive property parsers (`SafePropParser`) and dynamic child extraction so malformed LLM outputs do not throw render crashes.
 
+### 🩹 Scar: Live Map Key Exposure & Concurrent Iteration Mutation (`SCAR-STATE-19`)
+- **The Pathogen / Wound**: Exposing internal map key iterables directly (such as `Iterable<String> get registeredTypes => _builders.keys;`) creates `ConcurrentModificationError` when callers iterate over registered types while dynamically registering or pruning entries during the loop.
+- **The Antigen / Vulnerability Vector**: Returning live collection views (`_map.keys`) rather than unmodifiable snapshots (`List<T>.unmodifiable(_map.keys)`).
+- **The Antibody / Permanent Reflex**: In state containers, catalogs, and registries exposing collection keys or values, always return an unmodifiable snapshot (`List<T>.unmodifiable(_map.keys)` or `Set.unmodifiable(...)`) to guarantee snapshot isolation and prevent concurrent modification crashes.
+
+
 
 
 

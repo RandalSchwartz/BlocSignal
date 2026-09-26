@@ -530,5 +530,183 @@ void main() {
       expect(resp.getFormValue<String>('/unknown'), isNull);
       expect(resp.getFormValue<String>(''), isNull);
     });
+
+    group('Submission Recovery & Lifecycle (Issue #284)', () {
+      test('CancelSubmission restores SurfaceReady and preserves form values',
+          () {
+        final bloc = A2uiSurfaceBloc();
+        bloc.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              surfaceId: 'surf_recover',
+              catalogId: minimalCatalogId,
+            ),
+          ),
+        );
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'updateComponents': {
+              'surfaceId': 'surf_recover',
+              'components': [
+                {
+                  'id': 'txt_name',
+                  'component': 'Text',
+                  'text': 'Name',
+                },
+              ],
+            },
+          }),
+        );
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_recover',
+            path: '/username',
+            value: 'Alice',
+          ),
+        );
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        expect(
+          (bloc.stateValue as SurfaceReady).formValues['username'],
+          equals('Alice'),
+        );
+
+        // Submit action transitions to SurfaceSubmitting
+        bloc.add(
+          const SubmitAction(
+            actionName: 'saveProfile',
+            sourceComponentId: 'btn_save',
+            surfaceId: 'surf_recover',
+          ),
+        );
+        expect(bloc.stateValue, isA<SurfaceSubmitting>());
+
+        // Cancel submission with error
+        bloc.add(
+          const CancelSubmission(
+            surfaceId: 'surf_recover',
+            error: 'Network timeout contacting profile service',
+          ),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        final recovered = bloc.stateValue as SurfaceReady;
+        expect(recovered.surfaceId, equals('surf_recover'));
+        expect(recovered.isValid, isFalse);
+        expect(
+          recovered.validationErrors,
+          contains('Network timeout contacting profile service'),
+        );
+        expect(recovered.formValues['username'], equals('Alice'));
+      });
+
+      test('CancelSubmission without error restores SurfaceReady as valid', () {
+        final bloc = A2uiSurfaceBloc();
+        bloc.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              surfaceId: 'surf_cancel_no_err',
+              catalogId: minimalCatalogId,
+            ),
+          ),
+        );
+        bloc.add(
+          const SubmitAction(
+            actionName: 'doSomething',
+            sourceComponentId: 'btn1',
+            surfaceId: 'surf_cancel_no_err',
+          ),
+        );
+        expect(bloc.stateValue, isA<SurfaceSubmitting>());
+
+        bloc.add(const CancelSubmission());
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        final ready = bloc.stateValue as SurfaceReady;
+        expect(ready.surfaceId, equals('surf_cancel_no_err'));
+        expect(ready.isValid, isTrue);
+        expect(ready.validationErrors, isEmpty);
+      });
+
+      test('CompleteAction restores SurfaceReady on success or failure', () {
+        final bloc = A2uiSurfaceBloc();
+        bloc.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              surfaceId: 'surf_complete',
+              catalogId: minimalCatalogId,
+            ),
+          ),
+        );
+
+        // Successful completion without streaming new UI
+        bloc.add(
+          const SubmitAction(
+            actionName: 'syncData',
+            sourceComponentId: 'btn_sync',
+            surfaceId: 'surf_complete',
+          ),
+        );
+        expect(bloc.stateValue, isA<SurfaceSubmitting>());
+
+        bloc.add(const CompleteAction());
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        final successReady = bloc.stateValue as SurfaceReady;
+        expect(successReady.isValid, isTrue);
+        expect(successReady.validationErrors, isEmpty);
+
+        // Failed completion with error
+        bloc.add(
+          const SubmitAction(
+            actionName: 'syncData',
+            sourceComponentId: 'btn_sync',
+            surfaceId: 'surf_complete',
+          ),
+        );
+        expect(bloc.stateValue, isA<SurfaceSubmitting>());
+
+        bloc.add(
+          const CompleteAction(
+            surfaceId: 'surf_complete',
+            error: 'Backend transaction rejected',
+          ),
+        );
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        final failedReady = bloc.stateValue as SurfaceReady;
+        expect(failedReady.isValid, isFalse);
+        expect(
+          failedReady.validationErrors,
+          contains('Backend transaction rejected'),
+        );
+      });
+
+      test('CancelSubmission and CompleteAction value equality and toString',
+          () {
+        const cancel1 = CancelSubmission(surfaceId: 's1', error: 'err1');
+        const cancel2 = CancelSubmission(surfaceId: 's1', error: 'err1');
+        const cancelDiff = CancelSubmission(surfaceId: 's2', error: 'err2');
+        const cancelDiffSurface =
+            CancelSubmission(surfaceId: 's2', error: 'err1');
+
+        expect(cancel1 == cancel2, isTrue);
+        expect(cancel1 == cancelDiff, isFalse);
+        expect(cancel1 == cancelDiffSurface, isFalse);
+        expect(cancel1 == Object(), isFalse);
+        expect(cancel1.hashCode, equals(cancel2.hashCode));
+        expect(cancel1.toString(), contains('CancelSubmission'));
+
+        const complete1 = CompleteAction(surfaceId: 's1', error: 'err1');
+        const complete2 = CompleteAction(surfaceId: 's1', error: 'err1');
+        const completeDiff = CompleteAction(surfaceId: 's2', error: 'err2');
+        const completeDiffSurface =
+            CompleteAction(surfaceId: 's2', error: 'err1');
+
+        expect(complete1 == complete2, isTrue);
+        expect(complete1 == completeDiff, isFalse);
+        expect(complete1 == completeDiffSurface, isFalse);
+        expect(complete1 == Object(), isFalse);
+        expect(complete1.hashCode, equals(complete2.hashCode));
+        expect(complete1.toString(), contains('CompleteAction'));
+      });
+    });
   });
 }

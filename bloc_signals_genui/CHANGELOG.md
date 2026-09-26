@@ -2,6 +2,14 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
+## Unreleased
+
+- Added action submission recovery and completion lifecycle events (#284):
+  - Added `CancelSubmission({String? error, String? surfaceId})` event to safely abort in-flight submissions and return state to `SurfaceReady`.
+  - Added `CompleteAction({String? error, String? surfaceId})` event to conclude successful or erroneous action processing.
+  - Form state, inputs, and components are preserved across submission cancellation and completion.
+  - Automatically appends error messages to `validationErrors` and marks `isValid: false` when an error is provided.
+
 ## 0.1.2
 
 - Remediated runtime error handling and validation findings (#269):

@@ -974,6 +974,191 @@ void main() {
         await bloc.close();
       },
     );
+
+    testWidgets(
+      'dismisses submitting barrier and renders error banner on '
+      'CancelSubmission',
+      (tester) async {
+        final bloc = A2uiSurfaceBloc()
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'createSurface': {
+                'surfaceId': 'surf-cancel-ui',
+                'catalogId': minimalCatalogId,
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'updateComponents': {
+                'surfaceId': 'surf-cancel-ui',
+                'components': [
+                  {
+                    'id': 'field_user',
+                    'component': 'TextField',
+                    'label': 'Username',
+                    'value': {'path': '/username'},
+                  },
+                  {
+                    'id': 'btn_submit',
+                    'component': 'Button',
+                    'child': 'txt_submit',
+                    'action': 'save_user',
+                  },
+                  {
+                    'id': 'txt_submit',
+                    'component': 'Text',
+                    'text': 'Submit',
+                  },
+                ],
+              },
+            }),
+          );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: A2uiSurfaceView(
+                bloc: bloc,
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        // Enter text into the TextField
+        await tester.enterText(find.byType(TextField), 'John Doe');
+        await tester.pump();
+
+        // Tap submit button to trigger SubmitAction -> transitions to
+        // SurfaceSubmitting.
+        await tester.tap(find.text('Submit'));
+        await tester.pump();
+
+        expect(bloc.value, isA<SurfaceSubmitting>());
+        expect(
+          find.byKey(const ValueKey('a2ui_submitting_barrier')),
+          findsOneWidget,
+        );
+        expect(find.text('Submitting save_user...'), findsOneWidget);
+
+        // Now cancel submission with error
+        bloc.add(
+          const CancelSubmission(
+            surfaceId: 'surf-cancel-ui',
+            error: 'Database transaction aborted',
+          ),
+        );
+        await tester.pump();
+
+        // Verify barrier is dismissed
+        expect(
+          find.byKey(const ValueKey('a2ui_submitting_barrier')),
+          findsNothing,
+        );
+        expect(find.text('Submitting save_user...'), findsNothing);
+
+        // Verify validation error banner is displayed
+        expect(find.text('Database transaction aborted'), findsOneWidget);
+
+        // Verify entered text is preserved
+        expect(find.text('John Doe'), findsOneWidget);
+
+        await bloc.close();
+      },
+    );
+
+    testWidgets(
+      'renders custom validationErrorsBuilder when provided',
+      (tester) async {
+        final bloc = A2uiSurfaceBloc()
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'createSurface': {
+                'surfaceId': 'surf-custom-err',
+                'catalogId': minimalCatalogId,
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'updateComponents': {
+                'surfaceId': 'surf-custom-err',
+                'components': [
+                  {
+                    'id': 'txt_item',
+                    'component': 'Text',
+                    'text': 'Item',
+                  },
+                ],
+              },
+            }),
+          );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: A2uiSurfaceView(
+                bloc: bloc,
+                validationErrorsBuilder: (context, errors) => Container(
+                  key: const ValueKey('custom_error_box'),
+                  child: Text('Custom Error Count: ${errors.length}'),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        // Initially valid, no errors
+        expect(find.byKey(const ValueKey('custom_error_box')), findsNothing);
+
+        // Emit recovery with errors
+        bloc.add(
+          const CancelSubmission(
+            surfaceId: 'surf-custom-err',
+            error: 'Invalid token',
+          ),
+        );
+        await tester.pump();
+
+        expect(find.byKey(const ValueKey('custom_error_box')), findsOneWidget);
+        expect(find.text('Custom Error Count: 1'), findsOneWidget);
+
+        await bloc.close();
+      },
+    );
+
+    testWidgets(
+      'A2uiComponentContext cancelSubmission and completeAction '
+      'dispatch events',
+      (tester) async {
+        final bloc = A2uiSurfaceBloc();
+        final component = ComponentModel(
+          'comp-1',
+          'Text',
+          const {},
+        );
+
+        A2uiComponentContext(
+          component: component,
+          props: const {},
+          surfaceBloc: bloc,
+          buildChildCallback: (id) => const SizedBox(),
+          buildChildrenCallback: (ids) => const [],
+          surfaceId: 'surf-ctx',
+        )
+          ..cancelSubmission(error: 'User cancelled')
+          ..completeAction();
+
+        // Verify bloc handles them without crash
+        await bloc.close();
+      },
+    );
   });
 }
 

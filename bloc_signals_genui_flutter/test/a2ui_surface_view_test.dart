@@ -1159,6 +1159,363 @@ void main() {
         await bloc.close();
       },
     );
+
+    testWidgets(
+      'renders targeted surface when surfaceId is specified, even if another '
+      'surface is active',
+      (tester) async {
+        final bloc = A2uiSurfaceBloc()
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'createSurface': {
+                'surfaceId': 'surf-1',
+                'catalogId': minimalCatalogId,
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'updateComponents': {
+                'surfaceId': 'surf-1',
+                'components': [
+                  {
+                    'id': 'txt-1',
+                    'component': 'Text',
+                    'text': 'Surface 1 Content',
+                  },
+                ],
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'createSurface': {
+                'surfaceId': 'surf-2',
+                'catalogId': minimalCatalogId,
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'updateComponents': {
+                'surfaceId': 'surf-2',
+                'components': [
+                  {
+                    'id': 'txt-2',
+                    'component': 'Text',
+                    'text': 'Surface 2 Content',
+                  },
+                ],
+              },
+            }),
+          );
+
+        // Global active surface is surf-2
+        expect(bloc.value.surfaceId, equals('surf-2'));
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: A2uiSurfaceView(
+                bloc: bloc,
+                surfaceId: 'surf-1',
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('Surface 1 Content'), findsOneWidget);
+        expect(find.text('Surface 2 Content'), findsNothing);
+
+        await bloc.close();
+      },
+    );
+
+    testWidgets(
+      'renders initial placeholder when targeted surfaceId does not exist',
+      (tester) async {
+        final bloc = A2uiSurfaceBloc()
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'createSurface': {
+                'surfaceId': 'surf-1',
+                'catalogId': minimalCatalogId,
+              },
+            }),
+          );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: A2uiSurfaceView(
+                bloc: bloc,
+                surfaceId: 'surf-nonexistent',
+                placeholderBuilder: (context) =>
+                    const Text('Custom Target Placeholder'),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('Custom Target Placeholder'), findsOneWidget);
+
+        await bloc.close();
+      },
+    );
+
+    testWidgets(
+      'renders concurrent multi-surface views side by side in a Row',
+      (tester) async {
+        final bloc = A2uiSurfaceBloc()
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'createSurface': {
+                'surfaceId': 'surf-left',
+                'catalogId': minimalCatalogId,
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'updateComponents': {
+                'surfaceId': 'surf-left',
+                'components': [
+                  {
+                    'id': 'left-txt',
+                    'component': 'Text',
+                    'text': 'Left Pane',
+                  },
+                ],
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'createSurface': {
+                'surfaceId': 'surf-right',
+                'catalogId': minimalCatalogId,
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'updateComponents': {
+                'surfaceId': 'surf-right',
+                'components': [
+                  {
+                    'id': 'right-txt',
+                    'component': 'Text',
+                    'text': 'Right Pane',
+                  },
+                ],
+              },
+            }),
+          );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Row(
+                children: [
+                  Expanded(
+                    child: A2uiSurfaceView(
+                      bloc: bloc,
+                      surfaceId: 'surf-left',
+                    ),
+                  ),
+                  Expanded(
+                    child: A2uiSurfaceView(
+                      bloc: bloc,
+                      surfaceId: 'surf-right',
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('Left Pane'), findsOneWidget);
+        expect(find.text('Right Pane'), findsOneWidget);
+
+        await bloc.close();
+      },
+    );
+
+    testWidgets(
+      'renders targeted streaming, submitting, and error states when '
+      'surfaceId matches',
+      (tester) async {
+        final bloc = A2uiSurfaceBloc();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: A2uiSurfaceView(
+                bloc: bloc,
+                surfaceId: 'surf-target',
+                streamingBuilder: (context, streaming) =>
+                    Text('Streaming ${streaming.surfaceId}'),
+                submittingBuilder: (context, submitting) =>
+                    Text('Submitting ${submitting.surfaceId}'),
+                errorBuilder: (context, error) =>
+                    Text('Error ${error.surfaceId}: ${error.error}'),
+              ),
+            ),
+          ),
+        );
+
+        // Streaming for targeted surface
+        bloc.emitForTest(
+          const SurfaceStreaming(
+            surfaceId: 'surf-target',
+            messageCount: 3,
+          ),
+        );
+        await tester.pump();
+        expect(find.text('Streaming surf-target'), findsOneWidget);
+
+        // Streaming for another surface: targeted view falls back to initial/ready
+        bloc.emitForTest(
+          const SurfaceStreaming(
+            surfaceId: 'surf-other',
+            messageCount: 1,
+          ),
+        );
+        await tester.pump();
+        expect(find.text('Streaming surf-target'), findsNothing);
+
+        // Submitting for targeted surface
+        bloc.emitForTest(
+          const SurfaceSubmitting(
+            surfaceId: 'surf-target',
+            actionName: 'checkout',
+            sourceComponentId: 'btn-1',
+          ),
+        );
+        await tester.pump();
+        expect(find.text('Submitting surf-target'), findsOneWidget);
+
+        // Error for targeted surface
+        bloc.emitForTest(
+          const SurfaceError(
+            surfaceId: 'surf-target',
+            error: 'Failed to submit',
+          ),
+        );
+        await tester.pump();
+        expect(
+          find.text('Error surf-target: Failed to submit'),
+          findsOneWidget,
+        );
+
+        await bloc.close();
+      },
+    );
+
+    testWidgets(
+      'A2uiComponentContext selectSurface dispatches SelectSurface to bloc',
+      (tester) async {
+        final bloc = A2uiSurfaceBloc()
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'createSurface': {
+                'surfaceId': 'surf-tab-1',
+                'catalogId': minimalCatalogId,
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'updateComponents': {
+                'surfaceId': 'surf-tab-1',
+                'components': [
+                  {
+                    'id': 'tab-1-txt',
+                    'component': 'Text',
+                    'text': 'Tab 1 View',
+                  },
+                ],
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'createSurface': {
+                'surfaceId': 'surf-tab-2',
+                'catalogId': minimalCatalogId,
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'updateComponents': {
+                'surfaceId': 'surf-tab-2',
+                'components': [
+                  {
+                    'id': 'tab-2-txt',
+                    'component': 'Text',
+                    'text': 'Tab 2 View',
+                  },
+                ],
+              },
+            }),
+          );
+
+        // Default view renders active surface
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: A2uiSurfaceView(
+                bloc: bloc,
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(find.text('Tab 2 View'), findsOneWidget);
+        expect(find.text('Tab 1 View'), findsNothing);
+
+        final component = ComponentModel(
+          'btn-tab',
+          'Button',
+          const {},
+        );
+
+        A2uiComponentContext(
+          component: component,
+          props: const {},
+          surfaceBloc: bloc,
+          buildChildCallback: (id) => const SizedBox(),
+          buildChildrenCallback: (ids) => const [],
+          surfaceId: 'surf-tab-2',
+        ).selectSurface('surf-tab-1');
+        await tester.pump();
+
+        expect(find.text('Tab 1 View'), findsOneWidget);
+        expect(find.text('Tab 2 View'), findsNothing);
+        expect(bloc.value.surfaceId, equals('surf-tab-1'));
+
+        await bloc.close();
+      },
+    );
   });
 }
 

@@ -4,6 +4,9 @@ All notable changes to `bloc_signals_genui_flutter` will be documented in this f
 
 ## Unreleased
 
+- Added multi-surface navigation and concurrent targeted rendering support (#283):
+  - Added optional `surfaceId` parameter to `A2uiSurfaceView` enabling targeted rendering of specific surfaces independently of the globally active surface (supporting split views, tabs, and PageViews).
+  - Added `selectSurface(String targetSurfaceId)` helper on `A2uiComponentContext` allowing catalog components (for example tab buttons or links) to switch active surfaces.
 - Added action submission recovery and error presentation (#284):
   - Added `cancelSubmission({String? error})` and `completeAction({String? error})` convenience methods on `A2uiComponentContext`.
   - Dismissed `ModalBarrier` overlay automatically upon submission cancellation or completion.

@@ -569,5 +569,218 @@ void main() {
       expect(rowWidget, isA<Row>());
       await bloc.close();
     });
+
+    group('declarative composition methods (#285)', () {
+      test('registeredTypes returns all registered component types', () {
+        final emptyCatalog = A2uiFlutterCatalog();
+        expect(emptyCatalog.registeredTypes, isEmpty);
+
+        final standardCatalog = A2uiFlutterCatalog.standard();
+        expect(
+          standardCatalog.registeredTypes,
+          containsAll(<String>[
+            'Text',
+            'Row',
+            'Column',
+            'Button',
+            'TextField',
+            'Card',
+            'Divider',
+          ]),
+        );
+      });
+
+      test(
+          'BLOCKER-1 reproduction: registeredTypes returns an unmodifiable '
+          'snapshot immune to ConcurrentModificationError during mutation', () {
+        final catalog = A2uiFlutterCatalog.standard();
+        final types = catalog.registeredTypes;
+
+        expect(
+          () => (types as List<String>).add('Illegal'),
+          throwsUnsupportedError,
+        );
+
+        expect(
+          () {
+            for (final type in catalog.registeredTypes) {
+              catalog.register(
+                'Prefix_$type',
+                (context, compCtx) => const SizedBox(),
+              );
+            }
+          },
+          returnsNormally,
+        );
+      });
+
+      test(
+          'registerAll bulk registers multiple builders and overrides existing',
+          () {
+        final catalog = A2uiFlutterCatalog();
+        Widget dummyBuilder1(BuildContext _, A2uiComponentContext __) =>
+            const SizedBox();
+        Widget dummyBuilder2(BuildContext _, A2uiComponentContext __) =>
+            const SizedBox();
+        Widget dummyBuilder3(BuildContext _, A2uiComponentContext __) =>
+            const SizedBox();
+
+        catalog.registerAll({
+          'CustomA': dummyBuilder1,
+          'CustomB': dummyBuilder2,
+        });
+
+        expect(catalog.hasBuilder('CustomA'), isTrue);
+        expect(catalog.hasBuilder('CustomB'), isTrue);
+        expect(catalog.registeredTypes, containsAll(['CustomA', 'CustomB']));
+
+        catalog.registerAll({
+          'CustomB': dummyBuilder3,
+          'CustomC': dummyBuilder1,
+        });
+        expect(catalog.hasBuilder('CustomC'), isTrue);
+        expect(catalog.registeredTypes.length, 3);
+      });
+
+      test('copyWith produces a new isolated catalog with additions/overrides',
+          () {
+        final original = A2uiFlutterCatalog();
+        Widget dummyBuilderA(BuildContext _, A2uiComponentContext __) =>
+            const Text('A');
+        Widget dummyBuilderB(BuildContext _, A2uiComponentContext __) =>
+            const Text('B');
+
+        original.register('CompA', dummyBuilderA);
+
+        final extended = original.copyWith({
+          'CompB': dummyBuilderB,
+        });
+
+        expect(extended.hasBuilder('CompA'), isTrue);
+        expect(extended.hasBuilder('CompB'), isTrue);
+        expect(extended.registeredTypes, containsAll(['CompA', 'CompB']));
+
+        expect(original.hasBuilder('CompB'), isFalse);
+        expect(original.registeredTypes, ['CompA']);
+
+        Widget dummyBuilderA2(BuildContext _, A2uiComponentContext __) =>
+            const Text('A2');
+        final overridden = original.copyWith({'CompA': dummyBuilderA2});
+        expect(overridden.hasBuilder('CompA'), isTrue);
+        expect(original.hasBuilder('CompA'), isTrue);
+      });
+
+      test(
+          'copyWithout produces a new isolated catalog excluding specified '
+          'types', () {
+        final standard = A2uiFlutterCatalog.standard();
+        expect(standard.hasBuilder('Button'), isTrue);
+        expect(standard.hasBuilder('Divider'), isTrue);
+        expect(standard.hasBuilder('Text'), isTrue);
+
+        final pruned = standard.copyWithout(['Button', 'Divider']);
+
+        expect(pruned.hasBuilder('Button'), isFalse);
+        expect(pruned.hasBuilder('Divider'), isFalse);
+        expect(pruned.hasBuilder('Text'), isTrue);
+        expect(pruned.hasBuilder('Row'), isTrue);
+        expect(pruned.hasBuilder('Column'), isTrue);
+
+        expect(standard.hasBuilder('Button'), isTrue);
+        expect(standard.hasBuilder('Divider'), isTrue);
+      });
+
+      testWidgets(
+          'fluent chaining copyWithout and copyWith renders custom and '
+          'fallback widgets correctly', (tester) async {
+        final customCoreCatalog = Catalog<ComponentApi, FunctionImplementation>(
+          id: 'https://custom.catalog/chained.json',
+          components: [
+            ...MinimalCatalog().components.values,
+            _CustomComponentApi(
+              name: 'Button',
+              schema: Schema.fromMap(const <String, Object?>{
+                'properties': <String, Object?>{
+                  'text': <String, Object?>{'type': 'string'},
+                },
+              }),
+            ),
+            _CustomComponentApi(
+              name: 'MetricCard',
+              schema: Schema.fromMap(const <String, Object?>{
+                'properties': <String, Object?>{
+                  'value': <String, Object?>{'type': 'string'},
+                },
+              }),
+            ),
+          ],
+        );
+        final bloc = A2uiSurfaceBloc(catalogs: [customCoreCatalog]);
+
+        final chainedCatalog = A2uiFlutterCatalog.standard()
+            .copyWithout(['Button', 'Divider']).copyWith({
+          'MetricCard': (context, compCtx) {
+            final val = compCtx.props['value']?.toString() ?? '';
+            return Text('Metric: $val');
+          },
+        });
+
+        expect(chainedCatalog.hasBuilder('Button'), isFalse);
+        expect(chainedCatalog.hasBuilder('Divider'), isFalse);
+        expect(chainedCatalog.hasBuilder('MetricCard'), isTrue);
+        expect(chainedCatalog.hasBuilder('Text'), isTrue);
+
+        bloc
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'createSurface': {
+                'surfaceId': 'surf-chained',
+                'catalogId': 'https://custom.catalog/chained.json',
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'updateComponents': {
+                'surfaceId': 'surf-chained',
+                'components': [
+                  {
+                    'id': 'm-1',
+                    'component': 'MetricCard',
+                    'value': '99.9%',
+                  },
+                  {
+                    'id': 'b-1',
+                    'component': 'Button',
+                    'text': 'Pruned Button',
+                  },
+                ],
+              },
+            }),
+          );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: A2uiSurfaceView(
+                bloc: bloc,
+                catalog: chainedCatalog,
+              ),
+            ),
+          ),
+        );
+
+        await tester.pump();
+        expect(find.text('Metric: 99.9%'), findsOneWidget);
+        expect(
+          find.text('Unknown A2UI Component: <Button>'),
+          findsOneWidget,
+        );
+
+        await bloc.close();
+      });
+    });
   });
 }

@@ -2,6 +2,14 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
+## Unreleased
+
+- Added declarative composition methods to `A2uiFlutterCatalog` (#285):
+  - `copyWith(Map<String, A2uiComponentWidgetBuilder> builders)` for extending or overriding component builders with isolated copies.
+  - `copyWithout(Iterable<String> typesToRemove)` for pruning unwanted or restricted component types.
+  - `registerAll(Map<String, A2uiComponentWidgetBuilder> builders)` for bulk builder registration.
+  - `registeredTypes` getter exposing all currently registered component type names.
+
 ## 0.1.1
 
 - Remediated defensive parsing and error boundaries (#269):

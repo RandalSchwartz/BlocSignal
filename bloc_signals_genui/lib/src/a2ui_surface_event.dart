@@ -4,7 +4,7 @@ import 'package:bloc_signals_genui/src/a2ui_action_response.dart'
 import 'package:bloc_signals_genui/src/a2ui_surface_bloc.dart'
     show A2uiSurfaceBloc;
 import 'package:bloc_signals_genui/src/a2ui_surface_state.dart'
-    show SurfaceInitial, SurfaceReady;
+    show SurfaceError, SurfaceInitial, SurfaceReady;
 import 'package:meta/meta.dart';
 
 /// Sealed hierarchy defining events dispatched to [A2uiSurfaceBloc].
@@ -189,4 +189,33 @@ final class CompleteAction extends A2uiSurfaceEvent {
 
   @override
   String toString() => 'CompleteAction(surfaceId: $surfaceId, error: $error)';
+}
+
+/// Selects and switches the active surface to [surfaceId].
+///
+/// Emits a new [SurfaceReady] state for [surfaceId] if the surface exists,
+/// or [SurfaceError] if the surface does not exist in the active message
+/// processor.
+///
+/// ```dart
+/// // Example: navigating between conversation surfaces
+/// surfaceBloc.add(const SelectSurface(surfaceId: 'surf_budget'));
+/// ```
+final class SelectSurface extends A2uiSurfaceEvent {
+  /// Creates a [SelectSurface] event.
+  const SelectSurface({required this.surfaceId});
+
+  /// The identifier of the surface to activate and display.
+  final String surfaceId;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SelectSurface && surfaceId == other.surfaceId;
+
+  @override
+  int get hashCode => surfaceId.hashCode;
+
+  @override
+  String toString() => 'SelectSurface(surfaceId: $surfaceId)';
 }

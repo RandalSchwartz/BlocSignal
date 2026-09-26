@@ -51,8 +51,11 @@ class A2uiSurfaceView extends StatelessWidget {
   /// Creates an [A2uiSurfaceView].
   ///
   /// If [catalog] is omitted, defaults to [A2uiFlutterCatalog.standard].
+  /// If [surfaceId] is specified, targets and renders that specific surface
+  /// rather than the globally active surface in [bloc].
   A2uiSurfaceView({
     required this.bloc,
+    this.surfaceId,
     A2uiFlutterCatalog? catalog,
     this.placeholderBuilder,
     this.streamingBuilder,
@@ -64,6 +67,12 @@ class A2uiSurfaceView extends StatelessWidget {
 
   /// The underlying [A2uiSurfaceBloc] orchestrating generative state.
   final A2uiSurfaceBloc bloc;
+
+  /// An optional specific surface identifier to target and render.
+  ///
+  /// When provided, this view will exclusively render components belonging to
+  /// [surfaceId], even if another surface is currently active in [bloc].
+  final String? surfaceId;
 
   /// The widget catalog providing UI builders for each A2UI component type.
   final A2uiFlutterCatalog catalog;
@@ -88,6 +97,40 @@ class A2uiSurfaceView extends StatelessWidget {
     return BlocSignalBuilder<A2uiSurfaceBloc, A2uiSurfaceState>(
       bloc: bloc,
       builder: (context, state) {
+        final targetId = surfaceId;
+        if (targetId != null) {
+          if (state is SurfaceSubmitting && state.surfaceId == targetId) {
+            return _buildSubmitting(context, state);
+          }
+          if (state is SurfaceError &&
+              (state.surfaceId == targetId || state.surfaceId == null)) {
+            return _buildError(context, state);
+          }
+          if (state is SurfaceStreaming && state.surfaceId == targetId) {
+            return _buildStreaming(context, state);
+          }
+          if (state is SurfaceReady && state.surfaceId == targetId) {
+            return _SurfaceTreeRenderer(
+              surfaceReady: state,
+              catalog: catalog,
+              bloc: bloc,
+              validationErrorsBuilder: validationErrorsBuilder,
+            );
+          }
+
+          final targetedReady = bloc.getSurfaceReady(targetId);
+          if (targetedReady != null) {
+            return _SurfaceTreeRenderer(
+              surfaceReady: targetedReady,
+              catalog: catalog,
+              bloc: bloc,
+              validationErrorsBuilder: validationErrorsBuilder,
+            );
+          }
+
+          return _buildInitial(context);
+        }
+
         return switch (state) {
           final SurfaceInitial _ => _buildInitial(context),
           final SurfaceStreaming streaming =>

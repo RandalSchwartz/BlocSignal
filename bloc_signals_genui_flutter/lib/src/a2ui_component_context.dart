@@ -110,4 +110,19 @@ class A2uiComponentContext {
       ),
     );
   }
+
+  /// Dispatches a surface selection event to [surfaceBloc], activating
+  /// [targetSurfaceId].
+  ///
+  /// ```dart
+  /// // Example: navigating from a catalog tab button
+  /// componentContext.selectSurface('surf_budget');
+  /// ```
+  void selectSurface(String targetSurfaceId) {
+    surfaceBloc.add(
+      SelectSurface(
+        surfaceId: targetSurfaceId,
+      ),
+    );
+  }
 }

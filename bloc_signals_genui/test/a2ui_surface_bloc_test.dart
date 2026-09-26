@@ -4,6 +4,18 @@ import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_test/bloc_signals_test.dart';
 import 'package:test/test.dart';
 
+class _TrackingMultiSurfaceBloc extends A2uiSurfaceBloc {
+  _TrackingMultiSurfaceBloc({this.onErrorCallback});
+
+  final void Function(Object error)? onErrorCallback;
+
+  @override
+  void onError(Object error, StackTrace stackTrace) {
+    onErrorCallback?.call(error);
+    super.onError(error, stackTrace);
+  }
+}
+
 void main() {
   const minimalCatalogId =
       'https://a2ui.org/specification/v0_9/catalogs/minimal/minimal_catalog.json';
@@ -706,6 +718,122 @@ void main() {
         expect(complete1 == Object(), isFalse);
         expect(complete1.hashCode, equals(complete2.hashCode));
         expect(complete1.toString(), contains('CompleteAction'));
+      });
+    });
+
+    group('Multi-surface navigation & discovery (Issue #283)', () {
+      test('SelectSurface switches active surface and emits SurfaceReady', () {
+        final bloc = A2uiSurfaceBloc();
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 'surf_1',
+              catalogId: minimalCatalogId,
+            ),
+            CreateSurfaceMessage(
+              surfaceId: 'surf_2',
+              catalogId: minimalCatalogId,
+            ),
+          ]),
+        );
+
+        // After batch, surf_2 is latest
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        expect((bloc.stateValue as SurfaceReady).surfaceId, equals('surf_2'));
+        expect(
+          (bloc.stateValue as SurfaceReady).availableSurfaceIds,
+          containsAll(['surf_1', 'surf_2']),
+        );
+        expect(bloc.availableSurfaceIds, containsAll(['surf_1', 'surf_2']));
+
+        // Select surf_1
+        bloc.add(const SelectSurface(surfaceId: 'surf_1'));
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        final ready1 = bloc.stateValue as SurfaceReady;
+        expect(ready1.surfaceId, equals('surf_1'));
+        expect(ready1.availableSurfaceIds, containsAll(['surf_1', 'surf_2']));
+        expect(bloc.activeSurfaceId, equals('surf_1'));
+      });
+
+      test(
+          'SelectSurface emits SurfaceError and notifies onError for unknown surface',
+          () {
+        final errors = <Object>[];
+        final bloc = _TrackingMultiSurfaceBloc(onErrorCallback: errors.add);
+
+        bloc.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              surfaceId: 'surf_known',
+              catalogId: minimalCatalogId,
+            ),
+          ),
+        );
+
+        bloc.add(const SelectSurface(surfaceId: 'surf_unknown'));
+        expect(bloc.stateValue, isA<SurfaceError>());
+        final errorState = bloc.stateValue as SurfaceError;
+        expect(errorState.surfaceId, equals('surf_unknown'));
+        expect(errors, isNotEmpty);
+        expect(errors.first, isA<ArgumentError>());
+      });
+
+      test('availableSurfaceIds is unmodifiable and prevents mutation', () {
+        final bloc = A2uiSurfaceBloc();
+        bloc.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              surfaceId: 'surf_immut',
+              catalogId: minimalCatalogId,
+            ),
+          ),
+        );
+
+        final ready = bloc.stateValue as SurfaceReady;
+        expect(
+          () => ready.availableSurfaceIds.add('surf_illegal'),
+          throwsUnsupportedError,
+        );
+        expect(
+          () => bloc.availableSurfaceIds.add('surf_illegal'),
+          throwsUnsupportedError,
+        );
+      });
+
+      test('getSurfaceReady returns snapshot for existing surface or null', () {
+        final bloc = A2uiSurfaceBloc();
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 'surf_a',
+              catalogId: minimalCatalogId,
+            ),
+            CreateSurfaceMessage(
+              surfaceId: 'surf_b',
+              catalogId: minimalCatalogId,
+            ),
+          ]),
+        );
+
+        final readyA = bloc.getSurfaceReady('surf_a');
+        expect(readyA, isNotNull);
+        expect(readyA!.surfaceId, equals('surf_a'));
+        expect(readyA.availableSurfaceIds, containsAll(['surf_a', 'surf_b']));
+
+        final readyUnknown = bloc.getSurfaceReady('surf_missing');
+        expect(readyUnknown, isNull);
+      });
+
+      test('SelectSurface value equality, hashCode, and toString', () {
+        const s1 = SelectSurface(surfaceId: 'surf_1');
+        const s2 = SelectSurface(surfaceId: 'surf_1');
+        const s3 = SelectSurface(surfaceId: 'surf_2');
+
+        expect(s1 == s2, isTrue);
+        expect(s1 == s3, isFalse);
+        expect(s1 == Object(), isFalse);
+        expect(s1.hashCode, equals(s2.hashCode));
+        expect(s1.toString(), contains('SelectSurface(surfaceId: surf_1)'));
       });
     });
   });

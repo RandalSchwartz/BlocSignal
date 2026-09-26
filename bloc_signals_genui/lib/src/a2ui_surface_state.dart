@@ -76,6 +76,7 @@ final class SurfaceReady extends A2uiSurfaceState {
   const SurfaceReady({
     required this.surfaceId,
     required this.surface,
+    this.availableSurfaceIds = const [],
     this.formValues = const {},
     this.isValid = true,
     this.validationErrors = const [],
@@ -88,6 +89,9 @@ final class SurfaceReady extends A2uiSurfaceState {
 
   /// The underlying [SurfaceModel] instance from `a2ui_core`.
   final SurfaceModel<ComponentApi> surface;
+
+  /// All surface identifiers currently discovered and available in the message processor.
+  final List<String> availableSurfaceIds;
 
   /// Synchronously captured key-value form field inputs.
   final Map<String, dynamic> formValues;
@@ -110,16 +114,23 @@ final class SurfaceReady extends A2uiSurfaceState {
           identical(surface, other.surface) &&
           isValid == other.isValid &&
           version == other.version &&
+          _listsEqual(availableSurfaceIds, other.availableSurfaceIds) &&
           _mapsEqual(formValues, other.formValues) &&
           _listsEqual(validationErrors, other.validationErrors);
 
   @override
-  int get hashCode =>
-      Object.hash(surfaceId, surface, isValid, version, formValues.length);
+  int get hashCode => Object.hash(
+        surfaceId,
+        surface,
+        isValid,
+        version,
+        formValues.length,
+        availableSurfaceIds.length,
+      );
 
   @override
   String toString() =>
-      'SurfaceReady(surfaceId: $surfaceId, isValid: $isValid, errors: ${validationErrors.length})';
+      'SurfaceReady(surfaceId: $surfaceId, isValid: $isValid, errors: ${validationErrors.length}, surfaces: ${availableSurfaceIds.length})';
 }
 
 /// State emitted when the user triggers a submission or action on the surface,

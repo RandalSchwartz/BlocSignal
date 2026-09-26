@@ -49,6 +49,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     on<SubmitAction>(_onSubmitAction);
     on<CancelSubmission>(_onCancelSubmission);
     on<CompleteAction>(_onCompleteAction);
+    on<SelectSurface>(_onSelectSurface);
     on<ResetSurface>(_onResetSurface);
   }
 
@@ -62,6 +63,30 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   /// Returns the current active surface ID, derived from state or tracked session.
   String? get activeSurfaceId => stateValue.surfaceId ?? _activeSurfaceId;
+
+  /// Returns an unmodifiable list of all surface identifiers currently discovered
+  /// and registered in the underlying message processor.
+  List<String> get availableSurfaceIds => List<String>.unmodifiable(
+        _processor.groupModel.allSurfaces.map((s) => s.id),
+      );
+
+  /// Returns a [SurfaceReady] snapshot for [surfaceId] if it exists in the
+  /// message processor, or `null` if the surface has not been created.
+  SurfaceReady? getSurfaceReady(String surfaceId) {
+    final surface = _processor.groupModel.getSurface(surfaceId);
+    if (surface == null) return null;
+    final formValues = _extractFormData(surface);
+    final validationErrors = _validateForm(surface, formValues);
+    return SurfaceReady(
+      surfaceId: surfaceId,
+      surface: surface,
+      availableSurfaceIds: availableSurfaceIds,
+      formValues: formValues,
+      isValid: validationErrors.isEmpty,
+      validationErrors: validationErrors,
+      version: _surfaceVersion,
+    );
+  }
 
   final List<A2uiActionResponse> _responseHistory = [];
 
@@ -355,6 +380,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         SurfaceReady(
           surfaceId: surfaceId,
           surface: surface,
+          availableSurfaceIds: availableSurfaceIds,
           formValues: formValues,
           isValid: false,
           validationErrors: validationErrors,
@@ -434,6 +460,43 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       SurfaceReady(
         surfaceId: targetSurfaceId,
         surface: surface,
+        availableSurfaceIds: availableSurfaceIds,
+        formValues: formValues,
+        isValid: validationErrors.isEmpty,
+        validationErrors: validationErrors,
+        version: _surfaceVersion,
+      ),
+    );
+  }
+
+  void _onSelectSurface(
+    SelectSurface event,
+    void Function(A2uiSurfaceState) emit,
+  ) {
+    final surface = _processor.groupModel.getSurface(event.surfaceId);
+    if (surface == null) {
+      final error =
+          ArgumentError('Surface "${event.surfaceId}" does not exist.');
+      onError(error, StackTrace.current);
+      emit(
+        SurfaceError(
+          error: error,
+          surfaceId: event.surfaceId,
+        ),
+      );
+      return;
+    }
+
+    _activeSurfaceId = event.surfaceId;
+    _surfaceVersion++;
+    final formValues = _extractFormData(surface);
+    final validationErrors = _validateForm(surface, formValues);
+
+    emit(
+      SurfaceReady(
+        surfaceId: event.surfaceId,
+        surface: surface,
+        availableSurfaceIds: availableSurfaceIds,
         formValues: formValues,
         isValid: validationErrors.isEmpty,
         validationErrors: validationErrors,
@@ -600,6 +663,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           SurfaceReady(
             surfaceId: _activeSurfaceId!,
             surface: surface,
+            availableSurfaceIds: availableSurfaceIds,
             formValues: formValues,
             isValid: validationErrors.isEmpty,
             validationErrors: validationErrors,
@@ -628,6 +692,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           SurfaceReady(
             surfaceId: _activeSurfaceId!,
             surface: surface,
+            availableSurfaceIds: availableSurfaceIds,
             formValues: formValues,
             isValid: validationErrors.isEmpty,
             validationErrors: validationErrors,
@@ -648,6 +713,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         SurfaceReady(
           surfaceId: first.id,
           surface: first,
+          availableSurfaceIds: availableSurfaceIds,
           formValues: formValues,
           isValid: validationErrors.isEmpty,
           validationErrors: validationErrors,

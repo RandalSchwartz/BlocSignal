@@ -4,6 +4,12 @@ All notable changes to `bloc_signals_genui` will be documented in this file.
 
 ## Unreleased
 
+- Added multi-surface navigation, discovery, and targeted rendering support (#283):
+  - Added `SelectSurface({required String surfaceId})` event to switch active surface and trigger immediate state transitions.
+  - Added `availableSurfaceIds` getter on `A2uiSurfaceBloc` and `SurfaceReady` returning an unmodifiable list of registered surfaces.
+  - Added `getSurfaceReady(String surfaceId)` on `A2uiSurfaceBloc` to query state for any existing surface without mutating the active surface.
+  - Protected against deduplication drops via monotonic version increments upon surface switching.
+  - Added defensive validation routing missing surface errors to `onError()` and emitting `SurfaceError`.
 - Added action submission recovery and completion lifecycle events (#284):
   - Added `CancelSubmission({String? error, String? surfaceId})` event to safely abort in-flight submissions and return state to `SurfaceReady`.
   - Added `CompleteAction({String? error, String? surfaceId})` event to conclude successful or erroneous action processing.

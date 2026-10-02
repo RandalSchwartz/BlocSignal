@@ -26,14 +26,12 @@ Here is the definitive rubric for picking the exact right container for your sta
 
 Rather than forcing every piece of state into the same mold, view your application as a 4-tier hierarchy:
 
-```plaintext
-[Raw Signal / computed()]        --> Local widget micro-state & derived calculations
-       │
-[CubitSignal<State>]             --> Feature domain logic & CRUD with direct method calls
-       │
-[BlocSignal<Event, State>]       --> Mission-critical pipelines with reified event concurrency
-       │
-[HydratedMixin / ReplayMixin]    --> Synchronous persistence (Frame 1) & Undo/Redo history
+```mermaid
+flowchart TD
+    Sig["Raw Signal / computed()\nLocal widget micro-state & derived calculations"]
+    --> Cubit["CubitSignal(State)\nFeature domain logic & CRUD with direct method calls"]
+    --> Bloc["BlocSignal(Event, State)\nMission-critical pipelines with reified event concurrency"]
+    --> Mixins["HydratedMixin / ReplayMixin\nSynchronous persistence (Frame 1) & Undo/Redo history"]
 ```
 
 ---

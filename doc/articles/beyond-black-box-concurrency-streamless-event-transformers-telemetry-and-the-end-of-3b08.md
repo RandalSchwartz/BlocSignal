@@ -22,14 +22,12 @@ To understand the hidden cost of classic event concurrency in Flutter, consider 
 
 A user gives the list a rapid swipe with their thumb. On a 120 Hz ProMotion display, Flutter's gesture layer dispatches a continuous cascade of scroll position notifications. In an infinite scroll setup, this often translates to **20 to 30 pagination events fired in less than 250 milliseconds**:
 
-```plaintext
-User Thumb Fling (250 ms)
-─────────────────────────────────────────────────────────────────────────────
-Event 1   ──> FetchNextPage(page: 2)  [Starts HTTP/3 Request]
-Event 2   ──> FetchNextPage(page: 2)  [Redundant Scroll Tick]
-Event 3   ──> FetchNextPage(page: 2)  [Redundant Scroll Tick]
-...
-Event 30  ──> FetchNextPage(page: 2)  [Redundant Scroll Tick]
+```mermaid
+flowchart TD
+    User["User Thumb Fling (250ms)"] --> E1["Event 1: FetchNextPage(page: 2)\n⚡ Starts HTTP/3 Request"]
+    User --> E2["Event 2: FetchNextPage(page: 2)\n⚠️ Redundant Scroll Tick"]
+    User --> E3["Event 3: FetchNextPage(page: 2)\n⚠️ Redundant Scroll Tick"]
+    User -.-> E30["Event 30: FetchNextPage(page: 2)\n⚠️ Redundant Scroll Tick"]
 ```
 
 To prevent 30 concurrent duplicate network requests for Page 2, developers reach for a concurrency transformer. In classic `package:bloc`, they write:
@@ -48,13 +46,14 @@ While `droppable` correctly prevents duplicate network calls, let us inspect wha
 
 In classic reactive frameworks, `droppable` is implemented as an Rx operator—typically wrapping `events.exhaustMap(...)` or an equivalent stream transformer:
 
-```plaintext
-RxDart Stream Pipeline Under the Hood:
-Incoming Event ──> StreamController (Event Source)
-                    └──> StreamSubscription (exhaustMap)
-                          └──> StreamController (Inner Event Stream)
-                                └──> Future/Stream Mapping
-                                      └──> Microtask Queue Hop ──> Handler
+```mermaid
+flowchart LR
+    Incoming["Incoming Event"] --> SC1["StreamController\n(Event Source)"]
+    SC1 --> Sub["StreamSubscription\n(exhaustMap)"]
+    Sub --> SC2["StreamController\n(Inner Event Stream)"]
+    SC2 --> Map["Future/Stream Mapping"]
+    Map --> Hop["Microtask Queue Hop"]
+    Hop --> Handler["Handler"]
 ```
 
 When those 30 scroll ticks arrive in 250 ms:
@@ -307,23 +306,11 @@ When `onTelemetry` fires, where does it go?
 
 Because telemetry is cleanly separated from presentation state, it can be routed simultaneously to local developer tooling and production cloud observability without touching your Flutter widgets:
 
-```plaintext
-┌────────────────────────────────────────────────────────────────────────┐
-│                        Transformer Drops / Preempts                    │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ emitTelemetry('event_dropped')
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│                        BlocSignalObserver                              │
-└───────────────────┬────────────────────────────────┬───────────────────┘
-                    │                                │
-                    ▼                                ▼
-┌──────────────────────────────────────┐ ┌───────────────────────────────┐
-│     DevToolsBlocSignalObserver       │ │     OtelBlocSignalObserver    │
-│  - Posts to Dart VM Service RPC      │ │  - OpenTelemetry Span Events  │
-│  - Renders drop badge on Timeline    │ │  - Increments Prometheus Drops│
-│  - Visualizes queue latency spikes   │ │  - Latency Histograms         │
-└──────────────────────────────────────┘ └───────────────────────────────┘
+```mermaid
+flowchart TD
+    TDP["Transformer Drops / Preempts"] -->|emitTelemetry('event_dropped')| BSO["BlocSignalObserver"]
+    BSO --> DevTools["DevToolsBlocSignalObserver\n· Posts to Dart VM Service RPC\n· Renders drop badge on Timeline\n· Visualizes queue latency spikes"]
+    BSO --> Otel["OtelBlocSignalObserver\n· OpenTelemetry Span Events\n· Increments Prometheus Drops\n· Latency Histograms"]
 ```
 
 #### 1. Flutter DevTools Integration ([`bloc_signals_devtools`](https://pub.dev/packages/bloc_signals_devtools))

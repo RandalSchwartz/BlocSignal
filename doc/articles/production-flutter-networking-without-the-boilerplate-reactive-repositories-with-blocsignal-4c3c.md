@@ -10,13 +10,9 @@ published: true
 
 If you survey ten seasoned Flutter developers about how they structure networking in production, you will almost certainly see the same multi-tiered pipeline:
 
-```plaintext
-┌────────────────────────────────────────────────────────────────────────┐
-│               Traditional Flutter Networking Pipeline                  │
-├────────────────────────────────────────────────────────────────────────┤
-│ [Dio / HTTP Client] ─▶ [API Service] ─▶ [Repository Layer] ─▶          │
-│                      [Cubit / BLoC] ─▶ [UI Builders & Banners]         │
-└────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    A["Dio / HTTP Client"] --> B["API Service"] --> C["Repository Layer"] --> D["Cubit / BLoC"] --> E["UI Builders & Banners"]
 ```
 
 The underlying architectural principles are sound: separation of concerns, testability, and isolating network transport details from UI widgets.
@@ -211,17 +207,13 @@ class SearchRepository extends BaseApiClient
 
 ## 🏛️ Summary Architecture Comparison
 
-```plaintext
-┌──────────────────────────────┬────────────────────────┬────────────────────────┐
-│ Architectural Concern        │ Traditional Flutter    │ BlocSignal Ecosystem   │
-├──────────────────────────────┼────────────────────────┼────────────────────────┤
-│ Async State Representation   │ 4 custom classes/enums │ AsyncState<T> sealed   │
-│ In-Flight Race Conditions    │ Dio CancelToken / Rx   │ restartable() builtin  │
-│ Duplicate Tap Protection     │ Custom boolean flags   │ droppable() builtin    │
-│ Frame-1 Offline Persistence  │ SQLite / SharedPreferences│ HydratedMixin frame-1│
-│ Existing Base Class Interop  │ Proxy/Wrapper classes  │ CubitSignalMixin       │
-└──────────────────────────────┴────────────────────────┴────────────────────────┘
-```
+| Architectural Concern | Traditional Flutter | BlocSignal Ecosystem |
+| :--- | :--- | :--- |
+| Async State Representation | 4 custom classes/enums | `AsyncState<T>` sealed |
+| In-Flight Race Conditions | Dio CancelToken / Rx | `restartable()` builtin |
+| Duplicate Tap Protection | Custom boolean flags | `droppable()` builtin |
+| Frame-1 Offline Persistence | SQLite / SharedPreferences | `HydratedMixin` frame-1 |
+| Existing Base Class Interop | Proxy/Wrapper classes | `CubitSignalMixin` |
 
 By pairing pure Dart reactive signal primitives with composable mixins and higher-order concurrency transformers, your networking layer remains clean, testable, and robust—with a fraction of the traditional ceremony.
 

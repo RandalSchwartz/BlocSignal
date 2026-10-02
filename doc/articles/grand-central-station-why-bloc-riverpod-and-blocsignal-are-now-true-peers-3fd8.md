@@ -31,12 +31,12 @@ Imagine walking into a majestic railway terminal—vaulted glass arches overhead
 
 Pulling up to the platforms side by side on three parallel steel tracks are three distinct locomotives:
 
-```plaintext
-  🚂 Track 1: Classic BLoC (The Steam Locomotive) ─────┐
-                                                        │
-  🚚 Track 2: Riverpod (The Heavy Freight Hauler) ──────┼──► [ Grand Central State Terminal ] ◄──► Synchronous Signals
-                                                        │
-  🚄 Track 3: BlocSignal (The High-Speed Maglev) ───────┘
+```mermaid
+flowchart LR
+    T1["🚂 Track 1: Classic BLoC\n(The Steam Locomotive)"] --> Terminal["Grand Central State Terminal"]
+    T2["🚚 Track 2: Riverpod\n(The Heavy Freight Hauler)"] --> Terminal
+    T3["🚄 Track 3: BlocSignal\n(The High-Speed Maglev)"] --> Terminal
+    Terminal <--> Sig["⚡ Synchronous Signals"]
 ```
 
 1. **The Steam Locomotive (Classic BLoC)**: The venerable, heavy-duty iron horse. Explicit event-to-state contracts, distinct mechanical pistons, and a proven safety record powering thousands of enterprise apps.

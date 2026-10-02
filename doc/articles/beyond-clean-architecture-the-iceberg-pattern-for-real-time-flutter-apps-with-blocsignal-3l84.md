@@ -37,40 +37,23 @@ Firebase / Supabase ➔ Live Stream ➔ ??? ➔ Flutter UI (Push-heavy, Async Gl
 
 In the Iceberg Pattern, every layer has a distinct lifecycle, operates on different data structures, and addresses an indispensable, non-overlapping responsibility:
 
-```plaintext
-┌────────────────────────────────────────────────────────────────────────┐
-│                      1. PRESENTATION LAYER (FLUTTER)                   │
-│   • Lifecycle: Transient render passes                                 │
-│   • Responsibilities: Pure synchronous projection (UI = ƒ(State))      │
-│   • BlocSignalBuilder for UI rendering; BlocSignalListener for toasts  │
-│   • Non-blocking banner when hasSyncError == true (Stale-While-Reval)  │
-└───────────────────────────────────▲────────────────────────────────────┘
-                                    │ Projects State & Forwards Errors
-┌───────────────────────────────────┴────────────────────────────────────┐
-│                  2. APPLICATION FACADE (TaskBoardCubit)                │
-│   • Lifecycle: Screen-scoped (created on push, disposed on pop)        │
-│   • Responsibilities: View-specific filtering, sorting, & search       │
-│   • Ephemeral interaction tracking (for example isDeletingTaskId)      │
-│   • Error translation: Catches repository sync errors ➔ onError()      │
-└───────────────────────────────────▲────────────────────────────────────┘
-                                    │ Observes ReadonlySignal<List<Task>>
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~│~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~~~~~~~~~~~~~~~~ WATERLINE (SURFACE LEVEL) ~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~│~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-┌───────────────────────────────────┴────────────────────────────────────┐
-│             3. DOMAIN ENGINE & CACHE (TaskRepository)                  │
-│   • Lifecycle: App/Session-scoped (survives screen navigation)         │
-│   • Responsibilities: Async-to-sync collapse via private signals       │
-│   • Data normalization: Maps cloud DTOs to pure Dart 3 records         │
-│   • Global optimistic mutation engine with automatic rollback          │
-│   • Public Edge: Exposes ReadonlySignal<List<Task>> & hasSyncError     │
-└───────────────────────────────────▲────────────────────────────────────┘
-                                    │ Live Snapshots & Background Writes
-┌───────────────────────────────────┴────────────────────────────────────┐
-│                    4. EXTERNAL DATASTORE (FIREBASE / CLOUD)            │
-│   • Lifecycle: Remote cloud persistence & server security rules        │
-│   • Raw asynchronous event streams (collection.snapshots())            │
-└────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Visible ["Above the Waterline (UI & Transient State)"]
+        direction TD
+        L1["1. PRESENTATION LAYER (FLUTTER)\n· Lifecycle: Transient render passes\n· Responsibilities: Pure synchronous projection (UI = ƒ(State))\n· BlocSignalBuilder for UI rendering; BlocSignalListener for toasts\n· Non-blocking banner when hasSyncError == true"]
+        L2["2. APPLICATION FACADE (TaskBoardCubit)\n· Lifecycle: Screen-scoped (created on push, disposed on pop)\n· Responsibilities: View-specific filtering, sorting, & search\n· Ephemeral interaction tracking (e.g. isDeletingTaskId)\n· Error translation: Catches repository sync errors → onError()"]
+        L2 -->|Projects State & Forwards Errors| L1
+    end
+
+    subgraph Submerged ["Below the Waterline (Persistent Core & Engine)"]
+        direction TD
+        L3["3. DOMAIN ENGINE & CACHE (TaskRepository)\n· Lifecycle: App/Session-scoped (survives screen navigation)\n· Responsibilities: Async-to-sync collapse via private signals\n· Data normalization: Maps cloud DTOs to pure Dart 3 records\n· Global optimistic mutation engine with automatic rollback\n· Public Edge: Exposes ReadonlySignal and hasSyncError"]
+        L4["4. EXTERNAL DATASTORE (Firebase / Cloud)\n· Lifecycle: Remote cloud persistence & server security rules\n· Raw asynchronous event streams (collection.snapshots())"]
+        L4 -->|Live Snapshots & Background Writes| L3
+    end
+
+    L3 -->|Observes ReadonlySignal · Waterline Boundary| L2
 ```
 
 Notice the waterline:

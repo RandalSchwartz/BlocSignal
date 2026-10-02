@@ -41,19 +41,17 @@ We have introduced **`CubitSignalMixin`** and **`BlocSignalMixin`**, enabling an
 
 Because `BlocSignal` has a lean, highly disciplined API surface, mixing it into arbitrary classes introduces zero namespace pollution.
 
-```plaintext
-┌────────────────────────────────────────────────────────────────────────┐
-│                        BlocSignal Mixin Architecture                   │
-├────────────────────────────────┬───────────────────────────────────────┤
-│ Mixin                          │ Capabilities Added                    │
-├────────────────────────────────┼───────────────────────────────────────┤
-│ CubitSignalMixin<StateType>    │ state, stateValue, emit(newState),    │
-│                                │ equals(), createEffect(), close()     │
-├────────────────────────────────┼───────────────────────────────────────┤
-│ BlocSignalMixin<Event, State>  │ on<E>(), concurrency transformers     │
-│                                │ (restartable, droppable), add(event)  │
-└────────────────────────────────┴───────────────────────────────────────┘
+```mermaid
+flowchart TD
+    BaseClass["Existing Domain Base Class\n(BaseRepository, ChangeNotifier, ViewModel)"]
+    BaseClass -->|with CubitSignalMixin| Cubit["CubitSignal Capabilities\n· state and stateValue\n· emit(newState)\n· equals(), createEffect(), close()"]
+    BaseClass -->|with BlocSignalMixin| Bloc["BlocSignal Capabilities\n· on(Event)\n· Concurrency transformers (droppable, restartable)\n· add(event)"]
 ```
+
+| Mixin | Capabilities Added |
+| :--- | :--- |
+| `CubitSignalMixin<StateType>` | `state`, `stateValue`, `emit(newState)`, `equals()`, `createEffect()`, `close()` |
+| `BlocSignalMixin<Event, State>` | `on<E>()`, concurrency transformers (`restartable`, `droppable`), `add(event)` |
 
 ### 1. `CubitSignalMixin<StateType>`
 `CubitSignalMixin` implements `BlocSignalBase<StateType>`. All you do is mix it in and invoke `initCubitSignal(initialState: ...)` in your constructor:

@@ -33,17 +33,24 @@ In contrast, UI presentation actions are **ephemeral pulses**:
 
 These actions answer: **"What just happened that requires a one-time reaction?"**
 
-```plaintext
- ┌────────────────────────────────────────────────────────┐
- │                   State vs. Effects                    │
- ├────────────────────────────┬───────────────────────────┤
- │ Persistent State           │ Ephemeral Side-Effect     │
- ├────────────────────────────┼───────────────────────────┤
- │ • Survived by UI rebuilds  │ • Consumed once & gone    │
- │ • Represented in signals   │ • Triggered by an event   │
- │ • Backed by equality diffs │ • Zero domain state footprint │
- └────────────────────────────┴───────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Persistent ["Persistent State"]
+        direction TD
+        P1["· Survived by UI rebuilds\n· Represented in signals\n· Backed by equality diffs"]
+    end
+
+    subgraph Ephemeral ["Ephemeral Side-Effect"]
+        direction TD
+        E1["· Consumed once and gone\n· Triggered by an event\n· Zero domain state footprint"]
+    end
 ```
+
+| Persistent State | Ephemeral Side-Effect |
+| :--- | :--- |
+| • Survived by UI rebuilds | • Consumed once & gone |
+| • Represented in signals | • Triggered by an event |
+| • Backed by equality diffs | • Zero domain state footprint |
 
 ---
 

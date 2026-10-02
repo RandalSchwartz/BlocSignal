@@ -26,20 +26,11 @@ In this article, we’ll explore how `BlocSignal` unlocks universal state manage
 
 `BlocSignal` is designed around strict package separation:
 
-```plaintext
-┌─────────────────────────────────────────────────────────────┐
-│               bloc_signals (100% Pure Dart)                 │
-│  - BlocSignalBase, CubitSignal, BlocSignal                     │
-│  - Signal<T>, ReadonlySignal<T>, computed()                   │
-│  - Streamless Transformers (droppable, restartable, Mutex)  │
-│  - DevTools & Observer Hooks (dart:developer)              │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-       ┌───────────────────────┴───────────────────────┐
-       ▼                                               ▼
-bloc_signals_flutter                            bloc_signals_riverpod
-(Widget bindings, SignalBuilder,                 (Bidirectional Riverpod
- BlocSignalProvider, context.select)              Interop Adapters)
+```mermaid
+flowchart TD
+    Core["bloc_signals (100% Pure Dart)\n· BlocSignalBase, CubitSignal, BlocSignal\n· Signal, ReadonlySignal, computed()\n· Streamless Transformers (droppable, restartable, Mutex)\n· DevTools & Observer Hooks (dart:developer)"]
+    Core --> Flutter["bloc_signals_flutter\n(Widget bindings, SignalBuilder,\nBlocSignalProvider, context.select)"]
+    Core --> Riverpod["bloc_signals_riverpod\n(Bidirectional Riverpod\nInterop Adapters)"]
 ```
 
 1. **`package:bloc_signals` (Core)**: Has **zero dependencies on the Flutter SDK**. It compiles natively for Dart VM, Dart Web (`dart2js` / `dart2wasm`), and CLI executables.

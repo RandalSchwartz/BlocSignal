@@ -16,9 +16,10 @@ tags: flutter, dart, riverpod, architecture
 
 In a popular Stack Overflow question ([#79988023](https://stackoverflow.com/questions/79988023/how-to-avoid-stale-data-across-multiple-riverpod-family-providers-that-fetch-ove)), a developer encountered a common architectural bottleneck when using **Riverpod 3 family providers** alongside a backend REST API (e.g. FastAPI/Pydantic):
 
-```plaintext
-Column 1 (Planned & In Progress)  ---> ref.watch(tasksProvider(Filter([planned, inProgress])))
-Column 2 (In Progress & Done)     ---> ref.watch(tasksProvider(Filter([inProgress, done])))
+```mermaid
+flowchart LR
+    Col1["Column 1\n(Planned & In Progress)"] -->|ref.watch| FP1["tasksProvider(Filter: planned, inProgress)"]
+    Col2["Column 2\n(In Progress & Done)"] -->|ref.watch| FP2["tasksProvider(Filter: inProgress, done)"]
 ```
 
 Notice that **Task B** (`inProgress`) is displayed in **both** columns simultaneously.
@@ -39,9 +40,14 @@ Notice that **Task B** (`inProgress`) is displayed in **both** columns simultane
 
 The root cause of this problem is not unique to Riverpod—it happens in standard BLoC, Redux, or Provider whenever **parameterized fetchers double as local state containers**.
 
-```plaintext
-[ Family Key: Filter A ]  --->  Stores [ Task A, Task B ]  (Isolated Silo 1)
-[ Family Key: Filter B ]  --->  Stores [ Task B, Task C ]  (Isolated Silo 2)
+```mermaid
+flowchart LR
+    subgraph Silo1 ["Isolated Silo 1"]
+        K1["Family Key: Filter A"] --> D1["Stores: [ Task A, Task B ]"]
+    end
+    subgraph Silo2 ["Isolated Silo 2"]
+        K2["Family Key: Filter B"] --> D2["Stores: [ Task B, Task C ]\n⚠️ Duplicate Task B in memory!"]
+    end
 ```
 
 Because `Task B` exists as two separate, duplicated objects across two isolated provider instances:
@@ -60,15 +66,11 @@ Instead of each family provider managing its own list of entities, we establish 
 1. **Normalized Single Source of Truth**: All entities live in key-value entity maps (`mapSignal`).
 2. **Derived Projections**: Filtered views become lightweight `computed` signals that derive their lists directly from the normalized store.
 
-```plaintext
-                  +-----------------------------------+
-                  |   mapSignal<String, Task> tasks   |  <--- Single Source of Truth
-                  +-----------------------------------+
-                                /       \
-                               /         \
-   +---------------------------------+  +---------------------------------+
-   | computed() Column 1 (Planned/In) |  | computed() Column 2 (In/Done)  |
-   +---------------------------------+  +---------------------------------+
+```mermaid
+flowchart TD
+    Root["mapSignal(String, Task) tasks\n⚡ Single Source of Truth"]
+    Root --> C1["computed() Column 1\n(Planned / In Progress)"]
+    Root --> C2["computed() Column 2\n(In Progress / Done)"]
 ```
 
 ---

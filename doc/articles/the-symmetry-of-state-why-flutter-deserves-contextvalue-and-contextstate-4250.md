@@ -126,17 +126,31 @@ In modern reactive architectures, you interact with state in two distinct forms:
 
 Historically, state management libraries mixed and matched inconsistent naming conventions across the container and the widget context. BlocSignal creates strict, predictable symmetry across both levels:
 
+```mermaid
+flowchart TD
+    subgraph Container ["Container Level"]
+        direction LR
+        CS["cubit.state\n(Reactive Signal)"] <---> CV["cubit.value\n(Unwrapped Value)"]
+    end
+
+    subgraph Widget ["Widget Context (BuildContext)"]
+        direction LR
+        WS["context.state(B, S)\n(Reactive Signal)"] <---> WV["context.value(B, S)\n(Unwrapped Value)"]
+    end
+
+    subgraph Web ["Jaspr Web Context"]
+        direction LR
+        JS["context.state(B, S)\n(Reactive Signal)"] <---> JV["context.value(B, S)\n(Unwrapped Value)"]
+    end
+
+    Container --- Widget --- Web
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        ARCHITECTURAL SYMMETRY                          │
-├───────────────────┬──────────────────────────┬─────────────────────────┤
-│ Scope             │ Reactive Signal          │ Unwrapped State Value   │
-├───────────────────┼──────────────────────────┼─────────────────────────┤
-│ Container Level   │ cubit.state              │ cubit.value             │
-│ Widget Context    │ context.state<B, S>()    │ context.value<B, S>()   │
-│ Web / Jaspr       │ context.state<B, S>()    │ context.value<B, S>()   │
-└───────────────────┴──────────────────────────┴─────────────────────────┘
-```
+
+| Scope | Reactive Signal | Unwrapped State Value |
+| :--- | :--- | :--- |
+| **Container Level** | `cubit.state` | `cubit.value` |
+| **Widget Context** | `context.state<B, S>()` | `context.value<B, S>()` |
+| **Web / Jaspr** | `context.state<B, S>()` | `context.value<B, S>()` |
 
 Notice the simplicity:
 - On your state container:
@@ -389,7 +403,7 @@ MultiBlocSignalProvider(
 
 To demonstrate these patterns in a production-style application, we added a complete, runnable showcase to the BlocSignal monorepo: [`examples/flutter_context_ergonomics`](file:///Users/merlyn/Projects/Flutter/BlocSignal/examples/flutter_context_ergonomics).
 
-```
+```plaintext
 examples/flutter_context_ergonomics/
 ├── lib/
 │   └── main.dart            # Complete 3-tab interactive showcase

@@ -48,10 +48,15 @@ It seemed like a great shortcut. But over time, coupling BLoC to `package:provid
 
 ## 2. The Two Fatal Flaws of the Provider Foundation
 
-```plaintext
-[ Your Application ] ──► [ flutter_bloc ]
-                            │
-                            └──► [ package:provider ] ──► [ Transitive Version Lock ]
+```mermaid
+flowchart LR
+    App["Your Application"] --> FB["flutter_bloc"]
+    FB --> Prov["package:provider"] --> Lock["Transitive Version Lock\n(Upgrade Deadlocks)"]
+
+    style App fill:#1e293b,stroke:#38bdf8,color:#f8fafc
+    style FB fill:#1e293b,stroke:#38bdf8,color:#f8fafc
+    style Prov fill:#7f1d1d,stroke:#f87171,color:#fee2e2
+    style Lock fill:#7f1d1d,stroke:#ef4444,stroke-width:2px,color:#fee2e2
 ```
 
 ### Flaw #1: "Dependency Hell" & Version Lockouts
@@ -122,18 +127,24 @@ While Riverpod solved the `BuildContext` coupling, it created a new set of chall
 
 ## 4. The BlocSignal Resolution: Zero Provider, Zero Code-Gen
 
-```plaintext
-┌────────────────────────────────────────────────────────────────────────┐
-│                              BlocSignal                                │
-│                                                                        │
-│   ┌────────────────────────┐              ┌────────────────────────┐   │
-│   │   The Rigor of BLoC    │              │  The Speed of Signals  │   │
-│   │  • Unidirectional flow │              │  • Synchronous DAG     │   │
-│   │  • Explicit Events     │      ➕      │  • Dynamic Pruning     │   │
-│   │  • Strict Transitions  │              │  • Zero Streams        │   │
-│   │  • 100% Traceability   │              │  • Zero Code-Gen       │   │
-│   └────────────────────────┘              └────────────────────────┘   │
-└────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    subgraph Rigor ["The Rigor of BLoC"]
+        direction TB
+        R1["• Unidirectional flow\n• Explicit Events\n• Strict Transitions\n• 100% Traceability"]
+    end
+
+    subgraph Speed ["The Speed of Signals"]
+        direction TB
+        S1["• Synchronous DAG\n• Dynamic Pruning\n• Zero Streams\n• Zero Code-Gen"]
+    end
+
+    Rigor <--->|Unified Reactive Architecture| Speed
+
+    style Rigor fill:#1e293b,stroke:#38bdf8,stroke-width:1.5px,color:#f8fafc
+    style Speed fill:#1e293b,stroke:#38bdf8,stroke-width:1.5px,color:#f8fafc
+    style R1 fill:#0f172a,stroke:#64748b,color:#f8fafc
+    style S1 fill:#0f172a,stroke:#64748b,color:#f8fafc
 ```
 
 **[BlocSignal](https://blocsignal.dev)** resolves this historical progression by rethinking the state primitive from the ground up:

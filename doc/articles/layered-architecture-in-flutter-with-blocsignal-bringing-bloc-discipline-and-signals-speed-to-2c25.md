@@ -25,29 +25,12 @@ In this article, we adapt Andrea’s proven 4-layer architecture to `BlocSignal`
 
 In a clean layered architecture, dependencies point strictly **inward** toward the Domain layer, while data flows in a clean unidirectional loop:
 
-```plaintext
-┌─────────────────────────────────────────────────────────┐
-│                   Presentation Layer                    │
-│    (Widgets, Screens, CubitSignal / BlocSignal)        │
-└────────────────────────────┬────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│                    Application Layer                    │
-│      (Service Classes, Derived computed() Signals)      │
-└────────────────────────────┬────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│                       Data Layer                        │
-│   (Repositories, Data Sources, Hydrated Storage)        │
-└────────────────────────────┬────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│                      Domain Layer                       │
-│    (Entities, Value Objects, AsyncState<T>, Rules)      │
-└────────────────────────────┴────────────────────────────┘
+```mermaid
+flowchart TD
+    Pres["Presentation Layer\n(Widgets, Screens, CubitSignal / BlocSignal)"]
+    --> App["Application Layer\n(Service Classes, Derived computed() Signals)"]
+    --> Data["Data Layer\n(Repositories, Data Sources, Hydrated Storage)"]
+    --> Domain["Domain Layer\n(Entities, Value Objects, AsyncState, Rules)"]
 ```
 
 Each layer has a single, well-defined responsibility:

@@ -76,22 +76,19 @@ In the CISC era, compiler writers struggled to optimize machine code because com
 
 In 2026, **AI coding agents are the new optimizing compilers**.
 
-```
-CISC Architecture (High Agent Friction)
-┌────────────────────────────────────────────────────────┐
-│ - 7 files per feature (Context window exhaustion)      │
-│ - Asynchronous stream races in test harnesses          │
-│ - Frequent build_runner pauses & cache corruptions     │
-│ - In-place mutation hallucinations on mutable lists    │
-└────────────────────────────────────────────────────────┘
-                           vs.
-RISC Architecture (High Agent Velocity)
-┌────────────────────────────────────────────────────────┐
-│ - Single-file domain cohesion (The Iceberg Pattern)    │
-│ - Deterministic synchronous TDD loops (0ms test runs)  │
-│ - Zero build_runner steps (Instant compiler analysis)  │
-│ - Compiler-enforced immutability via Fast Collections  │
-└────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph CISC ["CISC Architecture (High Agent Friction)"]
+        direction TD
+        C1["· 7 files per feature (Context window exhaustion)\n· Asynchronous stream races in test harnesses\n· Frequent build_runner pauses & cache corruptions\n· In-place mutation hallucinations on mutable lists"]
+    end
+
+    subgraph RISC ["RISC Architecture (High Agent Velocity)"]
+        direction TD
+        R1["· Single-file domain cohesion (The Iceberg Pattern)\n· Deterministic synchronous TDD loops (0ms test runs)\n· Zero build_runner steps (Instant compiler analysis)\n· Compiler-enforced immutability via Fast Collections"]
+    end
+
+    CISC -.->|Shift to Reactive Primitives| RISC
 ```
 
 Engineering teams that adopt architectures optimized for AI agent collaboration operate at a massive velocity advantage. When evaluated against AI agent workflows, the contrast between CISC architectures and BlocSignal is stark:
@@ -220,21 +217,16 @@ Engineering leadership routinely rejects framework proposals that require rewrit
 
 BlocSignal was engineered from day one as a **"no-hostage" architecture**. It does not demand that you discard your existing codebase. Through first-class, bidirectional interop packages, BlocSignal integrates seamlessly into legacy applications.
 
-```
-                  Legacy Ecosystem Bridging
-                  
-     Classic BLoC 8/9                    Riverpod (v2/v3)
-┌─────────────────────────┐         ┌─────────────────────────┐
-│ flutter_bloc Providers  │         │  ProviderScope & ref    │
-│  & BlocBuilder Widgets  │         │      Notifiers          │
-└────────────┬────────────┘         └────────────┬────────────┘
-             │                                   │
-             │   bloc_signals_bloc               │   bloc_signals_riverpod
-             ▼                                   ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Modern BlocSignal Core                   │
-│   (Synchronous Signals Engine + Unidirectional Boundary)   │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Legacy ["Legacy Ecosystem Bridging"]
+        direction LR
+        B["Classic BLoC 8/9\nflutter_bloc Providers & BlocBuilder Widgets"]
+        R["Riverpod (v2/v3)\nProviderScope & ref Notifiers"]
+    end
+
+    B -->|bloc_signals_bloc| Core["Modern BlocSignal Core\n(Synchronous Signals Engine + Unidirectional Boundary)"]
+    R -->|bloc_signals_riverpod| Core
 ```
 
 ### 1. Classic BLoC Interoperability (`bloc_signals_bloc`)
@@ -274,26 +266,19 @@ When evaluating modern reactivity, engineering leads often ask: *"How does this 
 
 The answer lies in the deep mechanical difference between **Eager-Push** and **Eager-Dirty / Lazy-Pull (Push-Pull)** algorithms.
 
-```
-Riverpod: Eager-Push Architecture
-Upstream Provider Changes
-         │
-         ▼ (Pushes calculation immediately)
-Downstream Provider Evaluates
-         │
-         ▼ (Pushes calculation immediately)
-All Intermediate Providers Recompute
-(Drawback: Re-evaluates off-screen / unmounted nodes, risking diamond-glitches)
+```mermaid
+flowchart TD
+    subgraph Riverpod ["Riverpod: Eager-Push Architecture"]
+        direction TD
+        RP1["Upstream Provider Changes"] -->|Pushes calculation immediately| RP2["Downstream Provider Evaluates"]
+        RP2 -->|Pushes calculation immediately| RP3["All Intermediate Providers Recompute\n(Drawback: Re-evaluates unmounted nodes, risking glitches)"]
+    end
 
-Signals: Eager-Dirty / Lazy-Pull (Push-Pull) Architecture
-Upstream Signal Changes
-         │
-         ▼ (Phase 1: Lightweight push marks graph dirty)
-Downstream computed() nodes marked STALE (No math runs!)
-         │
-         ▼ (Phase 2: Lazy pull when UI renders frame)
-Active Widget reads .value ➔ Calculates at most once in topological order!
-(Benefit: Zero wasted CPU cycles on unread data; mathematically glitch-free)
+    subgraph Signals ["Signals: Eager-Dirty / Lazy-Pull (Push-Pull) Architecture"]
+        direction TD
+        SP1["Upstream Signal Changes"] -->|Phase 1: Lightweight push| SP2["Downstream computed() nodes marked STALE\n(No math runs!)"]
+        SP2 -->|Phase 2: Lazy pull when UI renders frame| SP3["Active Widget reads .value\n⚡ Calculates at most once in topological order!"]
+    end
 ```
 
 ### Why Riverpod's Eager-Push Architecture Causes Friction
@@ -465,21 +450,11 @@ A state management framework is only as good as its tooling ecosystem. BlocSigna
 
 If you are ready to introduce BlocSignal to your engineering organization, follow this proven four-phase rollout playbook:
 
-```
-                          The 4-Phase Rollout Plan
-                          
-  Phase 1: Zero-Risk Pilot        Phase 2: Eliminate Codegen
-┌──────────────────────────┐    ┌──────────────────────────┐
-│ Pilot on 1 new feature   │ ➔  │ Adopt Fast Immutable     │
-│ using interop adapters   │    │ Collections (FIC)        │
-└──────────────────────────┘    └──────────────────────────┘
-             │                               │
-             ▼                               ▼
-  Phase 3: AI Velocity Leap       Phase 4: Enterprise Tooling
-┌──────────────────────────┐    ┌──────────────────────────┐
-│ Migrate TDD workflows to │ ➔  │ Enable DevTools, OTel    │
-│ synchronous frame-0 loops│    │ tracing, & custom lints  │
-└──────────────────────────┘    └──────────────────────────┘
+```mermaid
+flowchart TD
+    P1["Phase 1: Zero-Risk Pilot\n· Pilot on 1 new feature\n· Use interop adapters"] --> P2["Phase 2: Eliminate Codegen\n· Adopt Fast Immutable\n· Collections (FIC)"]
+    P2 --> P3["Phase 3: AI Velocity Leap\n· Migrate TDD workflows to\n· synchronous frame-0 loops"]
+    P3 --> P4["Phase 4: Enterprise Tooling\n· Enable DevTools, OTel\n· tracing, & custom lints"]
 ```
 
 ### Phase 1: The Zero-Risk Pilot (1 Feature Module)

@@ -172,8 +172,10 @@ In classic `package:bloc`, state updates travel over asynchronous `Stream` micro
 
 In `BlocSignal`, the underlying state engine uses **Signals**:
 
-```plaintext
-emit(newState) ──(Synchronous)──> Signal.value = newState ──(Immediate)──> SignalBuilder.markNeedsBuild()
+```mermaid
+flowchart LR
+    Emit["emit(newState)"] -->|Synchronous| Sig["Signal.value = newState"]
+    Sig -->|Immediate| Build["SignalBuilder.markNeedsBuild()"]
 ```
 
 When you call `emit(newState)` in `BlocSignal`:
@@ -201,13 +203,11 @@ Because `BlocSignalBase` maintains a unified architectural contract, you get ent
 
 You no longer have to choose between **BLoC's structural discipline** and **Signals' lightning performance**.
 
-```plaintext
-Raw Signals
-   │ (Lacks Encapsulation & Dispatch Rigor)
-   ▼
-BlocSignal
-├── BLoC Discipline (Single-direction emit, Event Hierarchies, Observability)
-└── Signal Performance (Fine-grained computed graphs, 0ms Synchronous Speed)
+```mermaid
+flowchart TD
+    Raw["Raw Signals\n(Lacks Encapsulation & Dispatch Rigor)"] -->|Evolutionary Leap| BS["BlocSignal"]
+    BS --> BLoC["BLoC Discipline\n· Single-direction emit\n· Event Hierarchies\n· Observability"]
+    BS --> Sig["Signal Performance\n· Fine-grained computed graphs\n· 0ms Synchronous Speed"]
 ```
 
 By moving from raw Signals to `BlocSignal`:

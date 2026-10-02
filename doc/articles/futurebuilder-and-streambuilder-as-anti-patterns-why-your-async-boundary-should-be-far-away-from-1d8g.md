@@ -39,17 +39,15 @@ When you drop a `FutureBuilder` or `StreamBuilder` directly into your widget tre
 
 Let us break down the four fatal flaws that emerge from this architectural choice.
 
-```plaintext
-┌─────────────────────────────────────────────────────────┐
-│               The In-View Asynchrony Trap               │
-│                                                         │
-│  Widget.build()                                         │
-│    │                                                    │
-│    ├──> Instantiates Future on every build frame ⚠️      │
-│    ├──> Orchestrates ConnectionState & HTTP errors ⚠️   │
-│    ├──> Triggers uncoordinated layout shifts ⚠️          │
-│    └──> Requires multi-pump async widget tests ⚠️       │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Trap ["The In-View Asynchrony Trap"]
+        direction TD
+        WB["Widget.build()"] --> F1["⚠️ Instantiates Future on every build frame"]
+        WB --> F2["⚠️ Orchestrates ConnectionState & HTTP errors"]
+        WB --> F3["⚠️ Triggers uncoordinated layout shifts"]
+        WB --> F4["⚠️ Requires multi-pump async widget tests"]
+    end
 ```
 
 ---
@@ -158,11 +156,12 @@ Real-world applications rarely fetch a single piece of data on a screen. A dashb
 
 When each of these sections manages its own `FutureBuilder` or `StreamBuilder`, they resolve asynchronously at unpredictable microtask intervals.
 
-```plaintext
-Frame 1:  [ Profile Spinner ]   [ Notifications Spinner ]   [ Orders Spinner ]
-Frame 12: [ Profile Header  ]   [ Notifications Spinner ]   [ Orders Spinner ]  <-- Layout Shift!
-Frame 19: [ Profile Header  ]   [ Notifications (0)     ]   [ Orders Spinner ]  <-- Layout Shift!
-Frame 34: [ Profile Header  ]   [ Notifications (0)     ]   [ Orders List    ]  <-- Layout Shift!
+```mermaid
+flowchart TD
+    F1["Frame 1: [ Profile Spinner ] [ Notifications Spinner ] [ Orders Spinner ]"]
+    -->|Frame 12 · Layout Shift!| F12["Frame 12: [ Profile Header ] [ Notifications Spinner ] [ Orders Spinner ]"]
+    -->|Frame 19 · Layout Shift!| F19["Frame 19: [ Profile Header ] [ Notifications (0) ] [ Orders Spinner ]"]
+    -->|Frame 34 · Layout Shift!| F34["Frame 34: [ Profile Header ] [ Notifications (0) ] [ Orders List ]"]
 ```
 
 This causes what designers call **The Spinner Storm**:
@@ -209,29 +208,12 @@ The solution to in-view asynchrony is straightforward:
 
 > **Push the asynchronous boundary as far away from the presentation layer as possible. Quarantine raw I/O strictly at the infrastructure perimeter, coordinate state in pure domain controllers, and deliver deterministic, synchronous states to the views.**
 
-```plaintext
-┌─────────────────────────────────────────────────────────┐
-│               External I/O Perimeter                    │
-│   (REST APIs, WebSockets, Databases, Hardware Sensors)  │
-└────────────────────────────┬────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│              Data & Repository Layer                    │
-│   (AsyncSignal / FutureSignal / StreamSignal / .$)      │
-└────────────────────────────┬────────────────────────────┘
-                             │
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│                Domain & Logic Layer                     │
-│    (CubitSignal / BlocSignal — Synchronous Core)        │
-└────────────────────────────┬────────────────────────────┘
-                             │
-                             ▼ (Synchronous 0ms Frame Propagation)
-┌─────────────────────────────────────────────────────────┐
-│                 Presentation Layer                      │
-│    (BlocSignalBuilder / context.select() / Pure UI)     │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    IO["External I/O Perimeter\n(REST APIs, WebSockets, Databases, Hardware Sensors)"]
+    --> Repo["Data & Repository Layer\n(AsyncSignal / FutureSignal / StreamSignal / .$)"]
+    --> Domain["Domain & Logic Layer\n(CubitSignal / BlocSignal — Synchronous Core)"]
+    -->|Synchronous 0ms Frame Propagation| UI["Presentation Layer\n(BlocSignalBuilder / context.select() / Pure UI)"]
 ```
 
 In this architecture:

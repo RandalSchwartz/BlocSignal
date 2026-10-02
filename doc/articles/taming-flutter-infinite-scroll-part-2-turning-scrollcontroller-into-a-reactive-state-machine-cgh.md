@@ -63,19 +63,17 @@ With **`CubitSignalMixin`** and **`BlocSignalMixin`** in `bloc_signals`, that si
 
 Because `BlocSignal` has a minimal, highly disciplined API contract, mixing it into arbitrary classes introduces zero namespace collisions:
 
-```plaintext
-┌────────────────────────────────────────────────────────────────────────┐
-│                        BlocSignal Mixin Architecture                   │
-├────────────────────────────────┬───────────────────────────────────────┤
-│ Mixin                          │ Capabilities Added                    │
-├────────────────────────────────┼───────────────────────────────────────┤
-│ CubitSignalMixin<StateType>    │ state, stateValue, emit(newState),    │
-│                                │ equals(), createEffect(), close()     │
-├────────────────────────────────┼───────────────────────────────────────┤
-│ BlocSignalMixin<Event, State>  │ on<E>(), concurrency transformers     │
-│                                │ (droppable, restartable), add(event)  │
-└────────────────────────────────┴───────────────────────────────────────┘
+```mermaid
+flowchart TD
+    BaseClass["Flutter Base Class\n(ScrollController, AnimationController, BaseRepository)"]
+    BaseClass -->|with CubitSignalMixin| Cubit["CubitSignal Capabilities\n· state and stateValue\n· emit(newState)\n· equals(), createEffect(), close()"]
+    BaseClass -->|with BlocSignalMixin| Bloc["BlocSignal Capabilities\n· on(Event)\n· Concurrency transformers (droppable, restartable)\n· add(event)"]
 ```
+
+| Mixin | Capabilities Added |
+| :--- | :--- |
+| `CubitSignalMixin<StateType>` | `state`, `stateValue`, `emit(newState)`, `equals()`, `createEffect()`, `close()` |
+| `BlocSignalMixin<Event, State>` | `on<E>()`, concurrency transformers (`droppable`, `restartable`), `add(event)` |
 
 When a class adopts `CubitSignalMixin<StateType>`, it implements `BlocSignalBase<StateType>`. It gains:
 - 0ms synchronous reactive signals (`state`).

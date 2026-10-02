@@ -31,12 +31,12 @@ In Flutter development, choosing a state management tool often feels like choosi
 
 `BlocSignal` rejects this all-or-nothing trap. Named after the classic railway **block signal**—the system that manages train traffic safely to prevent collisions—`BlocSignal` acts as a **central railway switchyard**.
 
-```plaintext
-  Classic BLoC Line (Streams) ─────────┐
-                                       │
-  Riverpod Express (Providers) ────────┼──► [ BlocSignal Central Switchyard ] ◄──► Pure Reactive Signals
-                                       │
-  Provider Local (Listenables) ────────┘
+```mermaid
+flowchart LR
+    Bloc["Classic BLoC Line\n(Streams)"] --> Switchyard["BlocSignal Central Switchyard"]
+    Riverpod["Riverpod Express\n(Providers)"] --> Switchyard
+    Provider["Provider Local\n(Listenables)"] --> Switchyard
+    Switchyard <--> Signals["⚡ Pure Reactive Signals"]
 ```
 
 You do not need to abandon your existing rail network or halt traffic. Whether your feature runs on the Riverpod Express, BLoC Stream Line, or Flutter's native `ChangeNotifier` local track, you can **switch tracks synchronously** at the `BlocSignal` switchyard and keep your train moving smoothly!

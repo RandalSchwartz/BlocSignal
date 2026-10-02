@@ -62,27 +62,23 @@ print(listA == listB); // FALSE! Standard List checks identity (identical memory
 
 Because standard Dart collections compare memory references (`identical`) rather than their underlying contents, relying on them inside reactive state containers inevitably unleashes what we call **The Four Horsemen of Collection State Bugs**:
 
-```plaintext
-┌────────────────────────────────────────────────────────────────────────┐
-│               THE FOUR HORSEMEN OF COLLECTION STATE BUGS               │
-├──────────────────────────┬─────────────────────────────────────────────┤
-│ 1. The Ghost Rebuild     │ In-place mutation (state.items.add(x)) has  │
-│    (Skipped Rebuild)     │ identical identity: emit() drops the change │
-│                          │ and Flutter's UI stays frozen!              │
-├──────────────────────────┼─────────────────────────────────────────────┤
-│ 2. Corrupted Undo Stack  │ Time-travel history buffers hold pointers   │
-│    (Historical Amnesia)  │ to the same mutable list: mutating present  │
-│                          │ silently corrupts past snapshots!           │
-├──────────────────────────┼─────────────────────────────────────────────┤
-│ 3. Defensive Copy Tax    │ Writing [...state.items, x] copies N items  │
-│    (Garbage Collector)   │ on every keystroke: memory spikes and 120Hz │
-│                          │ frame drops.                                │
-├──────────────────────────┼─────────────────────────────────────────────┤
-│ 4. Concurrent Mutation   │ ListView.builder iterates while an async    │
-│    Crash                 │ handler modifies the list in-place: throws  │
-│                          │ ConcurrentModificationError at runtime.     │
-└──────────────────────────┴─────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Bugs ["The Four Horsemen of Collection State Bugs"]
+        direction TD
+        B1["👻 1. The Ghost Rebuild\nIn-place mutation has identical identity: emit() drops change, UI stays frozen"]
+        B2["🕰️ 2. Corrupted Undo Stack\nTime-travel history buffers hold pointers to same mutable list: mutating present corrupts past"]
+        B3["💸 3. Defensive Copy Tax\nWriting [...items, x] copies N items every keystroke: memory spikes and frame drops"]
+        B4["💥 4. Concurrent Mutation Crash\nListView iterates while async handler modifies list: ConcurrentModificationError"]
+    end
 ```
+
+| Bug | Failure Mode | Runtime Impact |
+| :--- | :--- | :--- |
+| **1. The Ghost Rebuild** (Skipped Rebuild) | In-place mutation (`state.items.add(x)`) has identical identity | `emit()` drops the change and Flutter's UI stays frozen! |
+| **2. Corrupted Undo Stack** (Historical Amnesia) | Time-travel history buffers hold pointers to the same mutable list | Mutating present silently corrupts past snapshots! |
+| **3. Defensive Copy Tax** (Garbage Collector) | Writing `[...state.items, x]` copies N items on every keystroke | Memory spikes and 120Hz frame drops. |
+| **4. Concurrent Mutation Crash** | `ListView.builder` iterates while an async handler modifies the list in-place | Throws `ConcurrentModificationError` at runtime. |
 
 Let us examine these four failure modes before seeing how the solution completely eliminates them.
 
@@ -176,33 +172,23 @@ To permanently cure these issues, we do not need complex code generators, heavyw
 
 Unlike Dart's built-in `List.unmodifiable`—which is merely a runtime wrapper that throws exceptions when you call `.add()` and still evaluates equality by reference identity—FIC collections are built from the ground up on persistent data structure theory:
 
-```plaintext
-                      TRADITIONAL MUTABLE LIST
-           ┌──────────────────────────────────────────────┐
-           │ ['apple', 'banana', 'cherry', 'date', ...]   │
-           └───────────────────────┬──────────────────────┘
-                                   │ [...items, 'egg'] (O(N) full copy)
-                                   ▼
-           ┌─────────────────────────────────────────────────────┐
-           │ ['apple', 'banana', 'cherry', 'date', ..., 'egg']   │
-           └─────────────────────────────────────────────────────┘
-                 (Entire array reallocated in new memory heap)
+```mermaid
+flowchart TD
+    subgraph Mutable ["TRADITIONAL MUTABLE LIST"]
+        direction TD
+        M1["['apple', 'banana', 'cherry', 'date', ...]"] -->|[...items, 'egg'] (O(N) full copy)| M2["['apple', 'banana', 'cherry', 'date', ..., 'egg']\n(Entire array reallocated in new memory heap)"]
+    end
 
-
-                FIC PERSISTENT DATA STRUCTURE (IList)
-                               [Root]
-                              /      \
-                        [Node A]    [Node B]
-                        /      \
-                  ['apple']  ['banana']
-                                   │ .add('cherry') (O(1) / O(log N))
-                                   ▼
-                               [New Root]
-                              /          \
-                       (Shares Node A)  [New Node C]
-                                       /            \
-                                 ['banana']     ['cherry']
-            (Zero defensive copying! Unchanged nodes shared in memory)
+    subgraph FIC ["FIC PERSISTENT DATA STRUCTURE (IList)"]
+        direction TD
+        Root1["Root"]
+        Root1 --> NA["Node A\n['apple']"]
+        Root1 --> NB["Node B\n['banana']"]
+        
+        Root2["New Root\n(.add('cherry') — O(1) / O(log N))"]
+        Root2 --> NA
+        Root2 --> NC["New Node C\n['banana', 'cherry']"]
+    end
 ```
 
 ### Why FIC is the Ideal Partner for BlocSignal:

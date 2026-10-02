@@ -173,12 +173,17 @@ Beyond solving locator pain points, `BlocSignal` changes *when* and *how* state 
 
 ### Classic BLoC vs. `BlocSignal` Execution Pipeline
 
-```plaintext
-[ Classic BLoC Execution Pipeline ]
-User Tap ──> bloc.add() ──> [StreamController] ──> Microtask Queue ──> Event Handler ──> emit() ──> [Stream] ──> Microtask Queue ──> BlocBuilder ──> Frame Render
+```mermaid
+flowchart TD
+    subgraph Classic ["Classic BLoC Execution Pipeline (Asynchronous Delays)"]
+        direction LR
+        cTap["User Tap"] --> cAdd["bloc.add()"] --> cSC1["StreamController"] --> cMQ1["Microtask Queue"] --> cEH["Event Handler"] --> cEmit["emit()"] --> cS["Stream"] --> cMQ2["Microtask Queue"] --> cBB["BlocBuilder"] --> cFrame["Frame Render"]
+    end
 
-[ BlocSignal Execution Pipeline ]
-User Tap ──> cubit.increment() ──> emit() ──> Signal State Updated Synchronously ──> SignalBuilder Marked Dirty ──> Next Frame Render
+    subgraph BlocSignal ["BlocSignal Execution Pipeline (Synchronous 0ms Dispatch)"]
+        direction LR
+        sTap["User Tap"] --> sCall["cubit.increment()"] --> sEmit["emit()"] --> sState["Signal State Updated Synchronously"] --> sDirty["SignalBuilder Marked Dirty"] --> sFrame["Next Frame Render"]
+    end
 ```
 
 In classic BLoC, state updates hop across Dart's asynchronous **microtask queue** twice: once for event dispatching and once for stream emission.

@@ -26,29 +26,25 @@ Historically, Flutter bundled every Material Design and Cupertino widget directl
 
 Under the modern decoupled architecture:
 
-```plaintext
-┌────────────────────────────────────────────────────────────────────────┐
-│ Legacy Flutter (Monolithic)                                            │
-│                                                                        │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ package:flutter/material.dart  &  package:flutter/cupertino.dart │  │
-│  ├──────────────────────────────────────────────────────────────────┤  │
-│  │ package:flutter/widgets.dart   &  package:flutter/rendering.dart │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────────────┘
-                                    ▼
-┌────────────────────────────────────────────────────────────────────────┐
-│ Modern Decoupled Architecture                                          │
-│                                                                        │
-│  ┌───────────────────────────────┐   ┌──────────────────────────────┐  │
-│  │ package:material_ui           │   │ package:cupertino_ui         │  │
-│  └───────────────┬───────────────┘   └──────────────┬───────────────┘  │
-│                  └───────────────┬──────────────────┘                  │
-│                                  ▼                                     │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ Core Flutter SDK (package:flutter/widgets.dart)                  │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Legacy ["Legacy Flutter (Monolithic)"]
+        direction TD
+        L1["package:flutter/material.dart  &  package:flutter/cupertino.dart"]
+        L2["package:flutter/widgets.dart   &  package:flutter/rendering.dart"]
+        L1 --- L2
+    end
+
+    subgraph Modern ["Modern Decoupled Architecture"]
+        direction TD
+        M1["package:material_ui"]
+        M2["package:cupertino_ui"]
+        Core["Core Flutter SDK\n(package:flutter/widgets.dart)"]
+        M1 --> Core
+        M2 --> Core
+    end
+
+    Legacy -->|Split Packages Migration| Modern
 ```
 
 Both design systems are now maintained as independent packages by the official Flutter team on pub.dev:

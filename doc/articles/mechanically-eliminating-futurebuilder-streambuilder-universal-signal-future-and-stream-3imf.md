@@ -31,16 +31,17 @@ When bridging asynchronous sources into synchronous state management, developers
 
 To make the API completely intuitive and predictable, `BlocSignal` adheres to the **Universal Dual-Track Principle**:
 
-```plaintext
-┌────────────────────────────────────────────────────────────────────────┐
-│                   BlocSignal Universal Adapter Matrix                  │
-├───────────────────────────────┬────────────────────────────────────────┤
-│ Method                        │ Resulting Container Type               │
-├───────────────────────────────┼────────────────────────────────────────┤
-│ .toBlocSignal(...)            │ BlocSignalBase<T> (Raw domain state)   │
-│ .toAsyncBlocSignal(...)       │ BlocSignalBase<AsyncState<T>> (Async)  │
-└───────────────────────────────┴────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    Source["Async Source\n(Future, Stream, or Signal)"]
+    Source -->|toBlocSignal| Track1["Track 1: Raw Domain State\n· Yields BlocSignalBase(T)\n· Immediate default or fallback value"]
+    Source -->|toAsyncBlocSignal| Track2["Track 2: Rich Lifecycle State\n· Yields BlocSignalBase(AsyncState)\n· Loading → Data or Error pattern matching"]
 ```
+
+| Method | Resulting Container Type | Description |
+| :--- | :--- | :--- |
+| `.toBlocSignal(...)` | `BlocSignalBase<T>` | Raw domain state |
+| `.toAsyncBlocSignal(...)` | `BlocSignalBase<AsyncState<T>>` | Rich async lifecycle |
 
 Let us examine how each track works.
 

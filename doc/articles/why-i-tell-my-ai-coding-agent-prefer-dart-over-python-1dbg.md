@@ -3,6 +3,7 @@ title: Why I Tell My AI Coding Agent: "Prefer Dart Over Python"
 published: true
 description: The default reflex for AI scripting is Python. Here is why switching your agent's temporary scripting prompt to Dart eliminates environment hell and runtime bugs (and why Rust isn't the alternative).
 tags: dart, python, rust, ai
+series: "Dart and Flutter"
 ---
 
 In my global instructions and memory rules for AI coding assistants (like Google Antigravity / Gemini / Claude), I keep a specific directive:

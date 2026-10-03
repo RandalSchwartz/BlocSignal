@@ -4,6 +4,7 @@ published: true
 description: The insider story on Google's commitment to Flutter, the enterprise hiring paradox, and why Flutter is kicking tail on every measurable scale.
 tags: flutter, dart, programming, mobile
 canonical_url: https://medium.com/@realmerlyn/ive-been-a-flutter-gde-for-8-years-here-s-the-ground-truth-on-flutter-is-dying-6ffc50ca4088
+series: "Dart and Flutter"
 ---
 
 Every few months, like clockwork, the tech blogosphere gets flooded with the same recycled headline: *“Is Flutter Dying?”*, *“Why CTOs Are Quietly Leaving Flutter”*, or *“Why Google is Killing Its Cross-Platform Bet.”*

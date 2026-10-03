@@ -36,7 +36,7 @@ In the 1980s, computer architectures were dominated by Complex Instruction Set C
 
 The RISC (Reduced Instruction Set Computing) revolution triumphed by eliminating the microcode. Instead of multi-cycle ceremonial instructions, RISC provided a small, orthogonal, highly optimized instruction set where instructions executed deterministically in a single clock cycle.
 
-```
+```plaintext
 Classic CISC Frontend Architecture (2019–2023)
 [User Tap] ➔ [Event] ➔ [EventTransformer] ➔ [StreamController] ➔ [Microtask Queue] 
            ➔ [UseCase] ➔ [Repository] ➔ [Mapper] ➔ [State Stream] ➔ [StreamBuilder Rebuild]

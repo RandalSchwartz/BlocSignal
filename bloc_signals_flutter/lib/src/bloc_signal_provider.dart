@@ -96,12 +96,22 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
     extends State<BlocSignalProvider<T>> {
   T? _bloc;
   bool _isInitialized = false;
+  (Object, StackTrace)? _error;
 
   T get bloc {
     if (widget.value != null) return widget.value!;
     if (!_isInitialized) {
-      _bloc = widget.create!(context);
-      _isInitialized = true;
+      try {
+        _bloc = widget.create!(context);
+      } catch (e, s) {
+        _error = (e, s);
+        rethrow;
+      } finally {
+        _isInitialized = true;
+      }
+    }
+    if (_error != null) {
+      Error.throwWithStackTrace(_error!.$1, _error!.$2);
     }
     return _bloc!;
   }
@@ -112,8 +122,14 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
   void initState() {
     super.initState();
     if (!widget.lazy && widget.create != null) {
-      _bloc = widget.create!(context);
-      _isInitialized = true;
+      try {
+        _bloc = widget.create!(context);
+      } catch (e, s) {
+        _error = (e, s);
+        rethrow;
+      } finally {
+        _isInitialized = true;
+      }
     }
   }
 
@@ -147,8 +163,96 @@ class _BlocSignalProviderInherited<T extends BlocSignalBase<dynamic>>
   final _BlocSignalProviderState<T> state;
 
   @override
+  InheritedElement createElement() =>
+      _BlocSignalProviderInheritedElement<T>(this);
+
+  @override
   bool updateShouldNotify(_BlocSignalProviderInherited<T> oldWidget) {
+    if (oldWidget.bloc == null && bloc != null) {
+      return false;
+    }
     return bloc != oldWidget.bloc;
+  }
+
+  bool shouldNotify(_BlocSignalProviderInherited<T> oldWidget) =>
+      updateShouldNotify(oldWidget);
+}
+
+class _BlocSignalProviderInheritedElement<T extends BlocSignalBase<dynamic>>
+    extends InheritedElement {
+  _BlocSignalProviderInheritedElement(super.widget);
+
+  final Set<Element> _dependents = <Element>{};
+  int _generation = 0;
+  bool _didNotifyDependents = false;
+
+  @override
+  void setDependencies(Element dependent, Object? value) {
+    _dependents.add(dependent);
+    super.setDependencies(dependent, value);
+  }
+
+  @override
+  void updateDependencies(Element dependent, Object? aspect) {
+    _dependents.add(dependent);
+    super.updateDependencies(dependent, aspect);
+  }
+
+  @override
+  void removeDependent(Element dependent) {
+    _dependents.remove(dependent);
+    _disposeSelectors(dependent);
+    super.removeDependent(dependent);
+  }
+
+  @override
+  void updated(InheritedWidget oldWidget) {
+    if (widget is _BlocSignalProviderInherited<T> &&
+        oldWidget is _BlocSignalProviderInherited<T>) {
+      _didNotifyDependents =
+          (widget as _BlocSignalProviderInherited<T>).shouldNotify(oldWidget);
+    }
+    super.updated(oldWidget);
+  }
+
+  @override
+  void update(InheritedWidget newWidget) {
+    _generation++;
+    super.update(newWidget);
+    _scheduleSelectorTrim();
+  }
+
+  @override
+  void performRebuild() {
+    _generation++;
+    super.performRebuild();
+    _scheduleSelectorTrim();
+  }
+
+  void _scheduleSelectorTrim() {
+    final targetGen = _generation;
+    final didNotify = _didNotifyDependents;
+    _didNotifyDependents = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _trimDependents(targetGen, didNotify);
+    });
+  }
+
+  void _trimDependents(int targetGen, bool didNotify) {
+    for (final dependent in _dependents.toList()) {
+      if (!dependent.mounted) {
+        _dependents.remove(dependent);
+        _disposeSelectors(dependent);
+        continue;
+      }
+      final selectorState = _elementSelectors[dependent];
+      if (selectorState != null &&
+          selectorState.generation < targetGen &&
+          (didNotify ||
+              !identical(dependent.widget, selectorState.lastWidget))) {
+        _disposeSelectors(dependent);
+      }
+    }
   }
 }
 
@@ -195,9 +299,16 @@ extension BlocSignalProviderExtension on BuildContext {
     R Function(T bloc) selector,
   ) {
     final element = this as Element;
+    final inheritedElement = element.getElementForInheritedWidgetOfExactType<
+            _BlocSignalProviderInherited<T>>()
+        as _BlocSignalProviderInheritedElement<T>?;
     final bloc = BlocSignalProvider.of<T>(this, listen: true);
 
-    final selectorState = _elementSelectors[element] ??= _SelectorState();
+    final selectorState = (_elementSelectors[element] ??= _SelectorState())
+      ..lastWidget = element.widget;
+    if (inheritedElement != null) {
+      selectorState.generation = inheritedElement._generation;
+    }
     final currentIndex = selectorState.index;
     selectorState.index++;
     selectorState.lastAccessedIndex = selectorState.index;
@@ -211,10 +322,12 @@ extension BlocSignalProviderExtension on BuildContext {
             _selectFinalizer.detach(sub);
             sub.dispose();
           }
+          selectorState
+            ..index = 0
+            ..lastAccessedIndex = 0;
+        } else {
+          _disposeSelectors(element);
         }
-        selectorState
-          ..index = 0
-          ..lastAccessedIndex = 0;
       });
     }
 
@@ -324,7 +437,23 @@ final Finalizer<_SelectSubscription<dynamic, dynamic>> _selectFinalizer =
 class _SelectorState {
   int index = 0;
   int lastAccessedIndex = 0;
+  int generation = 0;
+  Widget? lastWidget;
   final List<_SelectSubscription<dynamic, dynamic>> subscriptions = [];
+}
+
+void _disposeSelectors(Element element) {
+  final selectorState = _elementSelectors[element];
+  if (selectorState != null) {
+    for (final sub in selectorState.subscriptions) {
+      _selectFinalizer.detach(sub);
+      sub.dispose();
+    }
+    selectorState.subscriptions.clear();
+    selectorState
+      ..index = 0
+      ..lastAccessedIndex = 0;
+  }
 }
 
 class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
@@ -345,13 +474,16 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
 
     _dispose = effect(
       () {
+        if (_isDisposed) return;
+        final el = _elementRef.target;
+        if (el == null || !el.mounted) {
+          dispose();
+          return;
+        }
         final newValue = _computed.value;
         if (newValue != _selectedValue) {
           _selectedValue = newValue;
-          final el = _elementRef.target;
-          if (el != null && el.mounted) {
-            el.markNeedsBuild();
-          }
+          el.markNeedsBuild();
         }
       },
       options: EffectOptions(
@@ -366,10 +498,12 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   late Computed<R> _computed;
   late R _selectedValue;
   late VoidCallback _dispose;
+  bool _isDisposed = false;
 
   R get value => _selectedValue;
 
   void update(T newBloc, R Function(T) newSelector) {
+    if (_isDisposed) return;
     if (_bloc != newBloc || _selector != newSelector) {
       this
         .._bloc = newBloc
@@ -385,13 +519,16 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
       _selectedValue = _computed.value;
       _dispose = effect(
         () {
+          if (_isDisposed) return;
+          final el = _elementRef.target;
+          if (el == null || !el.mounted) {
+            dispose();
+            return;
+          }
           final newValue = _computed.value;
           if (newValue != _selectedValue) {
             _selectedValue = newValue;
-            final el = _elementRef.target;
-            if (el != null && el.mounted) {
-              el.markNeedsBuild();
-            }
+            el.markNeedsBuild();
           }
         },
         options: EffectOptions(
@@ -402,6 +539,9 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   }
 
   void dispose() {
-    _dispose();
+    if (!_isDisposed) {
+      _isDisposed = true;
+      _dispose();
+    }
   }
 }

@@ -103,12 +103,22 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
     extends State<BlocSignalProvider<T>> {
   T? _bloc;
   bool _isInitialized = false;
+  (Object, StackTrace)? _error;
 
   T get bloc {
     if (component.value != null) return component.value!;
     if (!_isInitialized) {
-      _bloc = component.create!(context);
-      _isInitialized = true;
+      try {
+        _bloc = component.create!(context);
+      } catch (e, s) {
+        _error = (e, s);
+        rethrow;
+      } finally {
+        _isInitialized = true;
+      }
+    }
+    if (_error != null) {
+      Error.throwWithStackTrace(_error!.$1, _error!.$2);
     }
     return _bloc!;
   }
@@ -119,8 +129,14 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
   void initState() {
     super.initState();
     if (!component.lazy && component.create != null) {
-      _bloc = component.create!(context);
-      _isInitialized = true;
+      try {
+        _bloc = component.create!(context);
+      } catch (e, s) {
+        _error = (e, s);
+        rethrow;
+      } finally {
+        _isInitialized = true;
+      }
     }
   }
 
@@ -154,8 +170,55 @@ class _BlocSignalProviderInherited<T extends BlocSignalBase<dynamic>>
   final _BlocSignalProviderState<T> state;
 
   @override
+  InheritedElement createElement() =>
+      _BlocSignalProviderInheritedElement<T>(this);
+
+  @override
   bool updateShouldNotify(_BlocSignalProviderInherited<T> oldComponent) {
+    if (oldComponent.bloc == null && bloc != null) {
+      return false;
+    }
     return bloc != oldComponent.bloc;
+  }
+}
+
+class _BlocSignalProviderInheritedElement<T extends BlocSignalBase<dynamic>>
+    extends InheritedElement {
+  _BlocSignalProviderInheritedElement(super.component);
+
+  T get bloc => (component as _BlocSignalProviderInherited<T>).state.bloc;
+
+  @override
+  void didRebuildDependent(Element dependent) {
+    super.didRebuildDependent(dependent);
+    final selectorState = _elementSelectors[dependent];
+    if (selectorState != null) {
+      while (selectorState.subscriptions.length >
+          selectorState.lastAccessedIndex) {
+        final sub = selectorState.subscriptions.removeLast();
+        _selectFinalizer.detach(sub);
+        sub.dispose();
+      }
+      selectorState
+        ..index = 0
+        ..lastAccessedIndex = 0;
+    }
+  }
+
+  @override
+  void deactivateDependent(Element dependent) {
+    final selectorState = _elementSelectors[dependent];
+    if (selectorState != null) {
+      for (final sub in selectorState.subscriptions) {
+        _selectFinalizer.detach(sub);
+        sub.dispose();
+      }
+      selectorState.subscriptions.clear();
+      selectorState
+        ..index = 0
+        ..lastAccessedIndex = 0;
+    }
+    super.deactivateDependent(dependent);
   }
 }
 
@@ -192,26 +255,22 @@ extension BlocSignalProviderExtension on BuildContext {
     R Function(T bloc) selector,
   ) {
     final element = this as Element;
-    final bloc = BlocSignalProvider.of<T>(this, listen: true);
+    final inheritedElement = element.getElementForInheritedComponentOfExactType<
+            _BlocSignalProviderInherited<T>>()
+        as _BlocSignalProviderInheritedElement<T>?;
+    if (inheritedElement == null) {
+      throw StateError(
+        'BlocSignalProvider.of() called with a context that does not contain '
+        'a BlocSignalProvider of type $T.',
+      );
+    }
+    element.dependOnInheritedElement(inheritedElement);
+    final bloc = inheritedElement.bloc;
 
     final selectorState = _elementSelectors[element] ??= _SelectorState();
     final currentIndex = selectorState.index;
     selectorState.index++;
     selectorState.lastAccessedIndex = selectorState.index;
-
-    if (currentIndex == 0) {
-      scheduleMicrotask(() {
-        while (selectorState.subscriptions.length >
-            selectorState.lastAccessedIndex) {
-          final sub = selectorState.subscriptions.removeLast();
-          _selectFinalizer.detach(sub);
-          sub.dispose();
-        }
-        selectorState
-          ..index = 0
-          ..lastAccessedIndex = 0;
-      });
-    }
 
     _SelectSubscription<T, R> subscription;
     if (currentIndex < selectorState.subscriptions.length) {
@@ -340,12 +399,24 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
 
     _dispose = effect(
       () {
+        if (_isDisposed) return;
+        final el = _elementRef.target;
+        if (el == null) {
+          dispose();
+          return;
+        }
         final newValue = _computed.value;
         if (newValue != _selectedValue) {
           _selectedValue = newValue;
-          final el = _elementRef.target;
-          if (el != null) {
+          try {
             el.markNeedsBuild();
+            // ignore: avoid_catching_errors, Jaspr throws AssertionError on defunct elements.
+          } on AssertionError catch (e) {
+            if (e.toString().contains('defunct')) {
+              dispose();
+            } else {
+              rethrow;
+            }
           }
         }
       },
@@ -361,10 +432,12 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   late Computed<R> _computed;
   late R _selectedValue;
   late void Function() _dispose;
+  bool _isDisposed = false;
 
   R get value => _selectedValue;
 
   void update(T newBloc, R Function(T) newSelector) {
+    if (_isDisposed) return;
     if (_bloc != newBloc || _selector != newSelector) {
       this
         .._bloc = newBloc
@@ -380,12 +453,24 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
       _selectedValue = _computed.value;
       _dispose = effect(
         () {
+          if (_isDisposed) return;
+          final el = _elementRef.target;
+          if (el == null) {
+            dispose();
+            return;
+          }
           final newValue = _computed.value;
           if (newValue != _selectedValue) {
             _selectedValue = newValue;
-            final el = _elementRef.target;
-            if (el != null) {
+            try {
               el.markNeedsBuild();
+              // ignore: avoid_catching_errors, Jaspr throws AssertionError on defunct elements.
+            } on AssertionError catch (e) {
+              if (e.toString().contains('defunct')) {
+                dispose();
+              } else {
+                rethrow;
+              }
             }
           }
         },
@@ -397,6 +482,9 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   }
 
   void dispose() {
-    _dispose();
+    if (!_isDisposed) {
+      _isDisposed = true;
+      _dispose();
+    }
   }
 }

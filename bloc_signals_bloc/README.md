@@ -40,10 +40,10 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 
 ## ⚡ Key Features
 
-- 🔄 **Bidirectional `classicBloc.toBlocSignal()`**: Convert any classic `Bloc` into a `ClassicBlocSignal` exposing synchronous reactive signal reading (`.stateValue` / `.state`) and mutation via `.add(event)`.
+- 🔄 **Bidirectional `classicBloc.toBlocSignal()`**: Convert any classic `Bloc` into a `ClassicBlocSignal` exposing reactive signal reading (`.stateValue` / `.state`) and mutation via `.add(event)`.
 - 🔀 **Bidirectional `classicCubit.toBlocSignal()`**: Convert any classic `Cubit` into a `ClassicCubitSignal` exposing typed `.cubit` method access alongside reactive signals.
 - ⚡ **Reverse `blocSignal.toClassicBloc()` / `.toClassicCubit()`**: Drop modern streamless `BlocSignal` containers directly into legacy `flutter_bloc` UI widgets (`BlocBuilder`, `BlocListener`, `BlocConsumer`, `BlocSelector`) with zero widget rewrites.
-- 🎯 **Eliminate Stream Delay**: Provide instant, glitch-free synchronous UI rebuilds on classic Blocs without microtask queue latency.
+- 🎯 **Reactive Signals for Classic Blocs**: Bridge classic stream-based Blocs into reactive signals for modern Flutter UI bindings (emissions propagate with classic BLoC's microtask stream latency).
 - 🔒 **Lifecycle & AutoClose**: Configurable `autoClose: true` for clean scoped disposal.
 
 ---
@@ -70,10 +70,10 @@ import 'package:bloc_signals_bloc/bloc_signals_bloc.dart';
 
 final classicBloc = CounterBloc();
 
-// Convert classic Bloc into a synchronous BlocSignal:
+// Convert classic Bloc into a reactive BlocSignal:
 final blocSignal = classicBloc.toBlocSignal();
 
-// 1. Synchronous reactive read:
+// 1. Reactive read:
 print(blocSignal.stateValue);
 
 // 2. Dispatch events directly through the signal container:

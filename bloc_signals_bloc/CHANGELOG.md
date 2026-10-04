@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.2
+
+- Correct `ClassicBlocSignal` and `ClassicCubitSignal` documentation and README to accurately describe classic BLoC stream latency contracts (Issue #303).
+- Add integration tests asserting microtask-level stream latency behavior for classic BLoC and Cubit adapters (Issue #303).
+
 ## 1.0.1
 
 - Add `value` getter on `BlocSignalToClassicBloc` and `BlocSignalToClassicCubit` adapters (#251).

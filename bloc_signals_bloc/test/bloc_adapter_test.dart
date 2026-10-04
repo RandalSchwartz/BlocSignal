@@ -472,4 +472,63 @@ void main() {
       await base.close();
     });
   });
+
+  group('Classic Adapter Latency Contract (Issue #303: F11)', () {
+    test(
+      'ClassicBlocSignal exhibits asynchronous stream latency from '
+      'underlying classic bloc stream',
+      () async {
+        final classicBloc = ClassicCounterBloc();
+        final blocSignal = classicBloc.toBlocSignal();
+
+        expect(blocSignal.stateValue, equals(0));
+
+        // Dispatch event:
+        blocSignal.add(const IncrementEvent());
+
+        // Immediately after add(), stateValue still holds old state (0)
+        // because classic Bloc processes events through stream transformers.
+        expect(blocSignal.stateValue, equals(0));
+
+        // After 1 microtask, the event reaches the transformer handler,
+        // but the state emission is queued on the broadcast stream.
+        await Future<void>.microtask(() {});
+        expect(blocSignal.stateValue, equals(0));
+
+        // After the 2nd microtask, the state emission arrives at the adapter.
+        await Future<void>.microtask(() {});
+        expect(blocSignal.stateValue, equals(1));
+
+        await blocSignal.close();
+        await classicBloc.close();
+      },
+    );
+
+    test(
+      'ClassicCubitSignal exhibits 1-microtask propagation latency from '
+      'underlying classic cubit stream',
+      () async {
+        final classicCubit = ClassicCounterCubit();
+        final cubitSignal = classicCubit.toBlocSignal();
+
+        expect(cubitSignal.stateValue, equals(0));
+
+        // Invoke mutation on classic cubit:
+        classicCubit.increment();
+
+        // While cubit.state synchronously changed to 1, cubit.stream delivers
+        // to listeners on the microtask loop, so cubitSignal.stateValue
+        // remains 0 immediately.
+        expect(classicCubit.state, equals(1));
+        expect(cubitSignal.stateValue, equals(0));
+
+        // After an event loop turn, the stream emission updates the signal.
+        await Future<void>.microtask(() {});
+        expect(cubitSignal.stateValue, equals(1));
+
+        await cubitSignal.close();
+        await classicCubit.close();
+      },
+    );
+  });
 }

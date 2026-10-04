@@ -8,7 +8,8 @@ import 'package:signals_core/signals_core.dart';
 /// [bloc_lib.Bloc] from `package:bloc` into a [BlocSignal].
 ///
 /// Dispatches incoming events directly to the wrapped [bloc] instance and
-/// propagates state emissions synchronously through reactive signals.
+/// propagates state emissions through reactive signals with classic BLoC's
+/// asynchronous stream latency.
 ///
 /// Example:
 /// ```dart
@@ -74,7 +75,8 @@ class ClassicBlocSignal<Event, State> extends BlocSignal<Event, State> {
 /// [bloc_lib.Cubit] from `package:bloc` into a [CubitSignal].
 ///
 /// Provides typed access to the underlying [cubit] for method-driven
-/// mutations and exposes state emissions synchronously as signals.
+/// mutations and exposes state emissions through reactive signals with
+/// classic Cubit's one-microtask stream latency.
 ///
 /// Example:
 /// ```dart
@@ -249,8 +251,9 @@ class BlocSignalToClassicCubit<B extends BlocSignalBase<State>, State>
 extension ClassicBlocToBlocSignalX<Event, State>
     on bloc_lib.Bloc<Event, State> {
   /// Adapts this classic [bloc_lib.Bloc] into a [ClassicBlocSignal] container
-  /// providing synchronous reactive signal reading and bidirectional event
-  /// dispatching.
+  /// providing reactive signal reading and bidirectional event dispatching.
+  /// State emissions propagate with classic BLoC's asynchronous stream
+  /// latency.
   ///
   /// Example:
   /// ```dart
@@ -275,8 +278,9 @@ extension ClassicBlocToBlocSignalX<Event, State>
 extension ClassicCubitToBlocSignalX<C extends bloc_lib.Cubit<State>, State>
     on C {
   /// Adapts this classic [bloc_lib.Cubit] into a [ClassicCubitSignal] container
-  /// providing synchronous reactive signal reading and typed access to the
-  /// underlying classic cubit via [ClassicCubitSignal.cubit].
+  /// providing reactive signal reading and typed access to the underlying
+  /// classic cubit via [ClassicCubitSignal.cubit]. State emissions propagate
+  /// with classic Cubit's one-microtask stream latency.
   ///
   /// Example:
   /// ```dart

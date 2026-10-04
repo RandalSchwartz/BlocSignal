@@ -143,7 +143,7 @@ void main() {
           Component.text(
             'In high-throughput systems, some events may be de-duplicated or dropped (for example via droppable() transformers). '
             'To prevent un-ended spans from accumulating in memory indefinitely, OtelBlocSignalObserver caps internal span maps '
-            '(default 100 entries) with automatic LRU eviction and enforces flush on onClose().',
+            '(default 100 entries) with automatic FIFO (oldest-span) eviction and enforces flush on onClose().',
           ),
         ]),
       ]),

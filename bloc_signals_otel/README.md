@@ -41,7 +41,7 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 
 - 📊 **Span Correlation**: Maps incoming BLoC events directly to active OpenTelemetry trace spans.
 - 🚨 **Error Tracing**: Captures exceptions in `onError` and attaches identity hash-matched stack traces to the active span.
-- 🛡️ **Memory-Leak Protection**: Internal active span map capped at 1,000 items with LRU eviction to prevent heap leaks.
+- 🛡️ **Memory-Leak Protection**: Internal active span map capped (default 100 items) with FIFO (oldest-span) eviction to prevent heap leaks.
 
 ---
 

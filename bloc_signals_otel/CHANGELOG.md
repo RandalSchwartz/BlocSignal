@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.2
+
+- Correct `OtelBlocSignalObserver` documentation and README to accurately specify FIFO (oldest-span) eviction instead of LRU (Issue #303).
+- Add unit tests verifying strict FIFO eviction order for active spans (Issue #303).
+
 ## 1.1.1
 
 - Add `stateRedactor` option to `OtelBlocSignalObserver` for sensitive state value redaction and attribute masking.

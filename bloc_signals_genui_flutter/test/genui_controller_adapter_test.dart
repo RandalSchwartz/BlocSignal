@@ -15,13 +15,23 @@ void main() {
 
       expect(adapter.surfaceBloc, equals(bloc));
 
-      adapter.processJson({
-        'version': 'v0.9',
-        'createSurface': {
-          'surfaceId': 'surf-adapter',
-          'catalogId': minimalCatalogId,
-        },
-      });
+      adapter
+        ..processJson({
+          'version': 'v0.9',
+          'createSurface': {
+            'surfaceId': 'surf-adapter',
+            'catalogId': minimalCatalogId,
+          },
+        })
+        ..processJson({
+          'version': 'v0.9',
+          'updateComponents': {
+            'surfaceId': 'surf-adapter',
+            'components': [
+              {'id': 'txt', 'component': 'Text', 'text': 'Adapter Ready'},
+            ],
+          },
+        });
 
       expect(adapter.state, isA<SurfaceReady>());
       final ready = adapter.state as SurfaceReady;
@@ -52,6 +62,16 @@ void main() {
         (adapter.state as SurfaceStreaming).surfaceId,
         equals('surf-stream'),
       );
+
+      controller.add({
+        'version': 'v0.9',
+        'updateComponents': {
+          'surfaceId': 'surf-stream',
+          'components': [
+            {'id': 'txt', 'component': 'Text', 'text': 'Stream Ready'},
+          ],
+        },
+      });
 
       await controller.close();
       await Future<void>.delayed(const Duration(milliseconds: 10));

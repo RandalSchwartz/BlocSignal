@@ -139,6 +139,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   StreamSubscription<dynamic>? _activeStreamSubscription;
   Completer<void>? _activeStreamCompleter;
   int _surfaceVersion = 0;
+  int _messageCount = 0;
 
   Future<void> _onIngestStream(
     IngestStream event,
@@ -194,6 +195,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
               _processor.processMessages(messages);
               messageCount += messages.length;
+              _messageCount += messages.length;
               _surfaceVersion++;
 
               _emitSurfaceSnapshot(emit, messageCount: messageCount);
@@ -243,7 +245,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           if (identical(_activeStreamSubscription, subscription)) {
             _activeStreamSubscription = null;
             if (!isClosed && !_isClosing) {
-              _emitFinalReadyOrInitial(emit);
+              _emitSurfaceSnapshot(emit, messageCount: messageCount);
             }
           }
           if (!completer.isCompleted) completer.complete();
@@ -282,8 +284,9 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         _activeSurfaceId = message.surfaceId;
       }
       _processor.processMessages([message]);
+      _messageCount++;
       _surfaceVersion++;
-      _emitFinalReadyOrInitial(emit);
+      _emitSurfaceSnapshot(emit);
     } catch (error, stackTrace) {
       onError(error, stackTrace);
       if (error is Error) rethrow;
@@ -310,8 +313,9 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         _activeSurfaceId = message.surfaceId;
       }
       _processor.processMessages([message]);
+      _messageCount++;
       _surfaceVersion++;
-      _emitFinalReadyOrInitial(emit);
+      _emitSurfaceSnapshot(emit);
     } catch (error, stackTrace) {
       onError(error, stackTrace);
       if (error is Error) rethrow;
@@ -340,8 +344,9 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         }
       }
       _processor.processMessages(normalizedMessages);
+      _messageCount += normalizedMessages.length;
       _surfaceVersion++;
-      _emitFinalReadyOrInitial(emit);
+      _emitSurfaceSnapshot(emit);
     } catch (error, stackTrace) {
       onError(error, stackTrace);
       if (error is Error) rethrow;
@@ -363,7 +368,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       _activeSurfaceId = event.surfaceId;
     }
     _surfaceVersion++;
-    _emitFinalReadyOrInitial(emit);
+    _emitSurfaceSnapshot(emit);
   }
 
   void _onUpdateFormField(
@@ -382,7 +387,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     });
     _surfaceVersion++;
 
-    _emitFinalReadyOrInitial(emit);
+    _emitSurfaceSnapshot(emit);
   }
 
   void _onSubmitAction(
@@ -530,20 +535,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
     _activeSurfaceId = event.surfaceId;
     _surfaceVersion++;
-    final formValues = _extractFormData(surface);
-    final validationErrors = _validateForm(surface, formValues);
-
-    emit(
-      SurfaceReady(
-        surfaceId: event.surfaceId,
-        surface: surface,
-        availableSurfaceIds: availableSurfaceIds,
-        formValues: formValues,
-        isValid: validationErrors.isEmpty,
-        validationErrors: validationErrors,
-        version: _surfaceVersion,
-      ),
-    );
+    _emitSurfaceSnapshot(emit);
   }
 
   void _onResetSurface(
@@ -570,6 +562,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       }
       _responseHistory.clear();
       _activeSurfaceId = null;
+      _messageCount = 0;
       _surfaceVersion++;
       emit(const SurfaceInitial());
       return;
@@ -583,7 +576,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       if (_activeSurfaceId == targetId) {
         _activeSurfaceId = null;
         _surfaceVersion++;
-        _emitFinalReadyOrInitial(emit);
+        _emitSurfaceSnapshot(emit);
       }
       return;
     }
@@ -593,7 +586,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       _activeSurfaceId = null;
     }
     _surfaceVersion++;
-    _emitFinalReadyOrInitial(emit);
+    _emitSurfaceSnapshot(emit);
   }
 
   void _handleClientAction(A2uiClientAction action) {
@@ -726,74 +719,66 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     return result;
   }
 
+  /// Emits the appropriate surface state snapshot based on active surface and
+  /// component readiness.
+  ///
+  /// Surfaces with populated components emit [SurfaceReady]. Surfaces that are
+  /// created but have not yet received components remain in [SurfaceStreaming]
+  /// to eliminate skeleton-vs-blank UI mismatches between streaming and message
+  /// ingestion paths (F19). If no surfaces exist and an active stream is
+  /// pending, emits [SurfaceStreaming]; otherwise emits [SurfaceInitial].
   void _emitSurfaceSnapshot(
     void Function(A2uiSurfaceState) emit, {
-    required int messageCount,
+    int? messageCount,
   }) {
-    if (_activeSurfaceId != null) {
-      final surface = _processor.groupModel.getSurface(_activeSurfaceId!);
-      if (surface != null && surface.componentsModel.all.isNotEmpty) {
-        final formValues = _extractFormData(surface);
-        final validationErrors = _validateForm(surface, formValues);
-        emit(
-          SurfaceReady(
-            surfaceId: _activeSurfaceId!,
-            surface: surface,
-            availableSurfaceIds: availableSurfaceIds,
-            formValues: formValues,
-            isValid: validationErrors.isEmpty,
-            validationErrors: validationErrors,
-            version: _surfaceVersion,
-          ),
-        );
-        return;
+    final count = messageCount ?? _messageCount;
+    var targetSurfaceId = _activeSurfaceId;
+    SurfaceModel<ComponentApi>? surface;
+
+    if (targetSurfaceId != null) {
+      surface = _processor.groupModel.getSurface(targetSurfaceId);
+    }
+
+    if (surface == null) {
+      final allSurfaces = _processor.groupModel.allSurfaces;
+      if (allSurfaces.isNotEmpty) {
+        surface = allSurfaces.first;
+        targetSurfaceId = surface.id;
+        _activeSurfaceId = targetSurfaceId;
       }
     }
 
-    emit(
-      SurfaceStreaming(
-        surfaceId: _activeSurfaceId,
-        messageCount: messageCount,
-      ),
-    );
-  }
-
-  void _emitFinalReadyOrInitial(void Function(A2uiSurfaceState) emit) {
-    if (_activeSurfaceId != null) {
-      final surface = _processor.groupModel.getSurface(_activeSurfaceId!);
-      if (surface != null) {
-        final formValues = _extractFormData(surface);
-        final validationErrors = _validateForm(surface, formValues);
-        emit(
-          SurfaceReady(
-            surfaceId: _activeSurfaceId!,
-            surface: surface,
-            availableSurfaceIds: availableSurfaceIds,
-            formValues: formValues,
-            isValid: validationErrors.isEmpty,
-            validationErrors: validationErrors,
-            version: _surfaceVersion,
-          ),
-        );
-        return;
-      }
-    }
-
-    final allSurfaces = _processor.groupModel.allSurfaces;
-    if (allSurfaces.isNotEmpty) {
-      final first = allSurfaces.first;
-      _activeSurfaceId = first.id;
-      final formValues = _extractFormData(first);
-      final validationErrors = _validateForm(first, formValues);
+    if (surface != null && surface.componentsModel.all.isNotEmpty) {
+      final formValues = _extractFormData(surface);
+      final validationErrors = _validateForm(surface, formValues);
       emit(
         SurfaceReady(
-          surfaceId: first.id,
-          surface: first,
+          surfaceId: targetSurfaceId!,
+          surface: surface,
           availableSurfaceIds: availableSurfaceIds,
           formValues: formValues,
           isValid: validationErrors.isEmpty,
           validationErrors: validationErrors,
           version: _surfaceVersion,
+        ),
+      );
+      return;
+    }
+
+    if (surface != null) {
+      emit(
+        SurfaceStreaming(
+          surfaceId: targetSurfaceId,
+          messageCount: count,
+        ),
+      );
+      return;
+    }
+
+    if (_activeStreamSubscription != null) {
+      emit(
+        SurfaceStreaming(
+          messageCount: count,
         ),
       );
       return;

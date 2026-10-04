@@ -36,20 +36,96 @@ void main() {
     });
 
     blocSignalTest<A2uiSurfaceBloc, A2uiSurfaceState>(
-      'processes CreateSurfaceMessage and transitions to SurfaceReady',
+      'processes CreateSurfaceMessage and transitions to SurfaceStreaming until components arrive',
       build: A2uiSurfaceBloc.new,
-      act: (bloc) => bloc.add(
-        ProcessMessage(
-          CreateSurfaceMessage(
-            surfaceId: 'surf_1',
-            catalogId: minimalCatalogId,
+      act: (bloc) => bloc
+        ..add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              surfaceId: 'surf_1',
+              catalogId: minimalCatalogId,
+            ),
+          ),
+        )
+        ..add(
+          ProcessMessage(
+            UpdateComponentsMessage(
+              surfaceId: 'surf_1',
+              components: const [
+                {
+                  'id': 'txt_1',
+                  'component': 'Text',
+                  'text': 'Hello Surface',
+                },
+              ],
+            ),
           ),
         ),
-      ),
       expect: () => [
+        isA<SurfaceStreaming>()
+            .having((s) => s.surfaceId, 'surfaceId', 'surf_1'),
         isA<SurfaceReady>().having((s) => s.surfaceId, 'surfaceId', 'surf_1'),
       ],
     );
+
+    test(
+        'F19: bare createSurface produces identical SurfaceStreaming state across ProcessMessage and IngestStream',
+        () async {
+      final blocMsg = A2uiSurfaceBloc();
+      final blocStream = A2uiSurfaceBloc();
+      addTearDown(blocMsg.close);
+      addTearDown(blocStream.close);
+
+      final msgStates = <A2uiSurfaceState>[];
+      final streamStates = <A2uiSurfaceState>[];
+
+      blocMsg.state.subscribe(msgStates.add);
+      blocStream.state.subscribe(streamStates.add);
+
+      final streamCompleter = Completer<void>();
+      final unsubscribe = blocStream.state.subscribe((s) {
+        if (s is SurfaceStreaming &&
+            s.surfaceId == 'surf_parity' &&
+            !streamCompleter.isCompleted) {
+          streamCompleter.complete();
+        }
+      });
+      addTearDown(unsubscribe);
+
+      blocMsg.add(
+        ProcessMessage(
+          CreateSurfaceMessage(
+            surfaceId: 'surf_parity',
+            catalogId: minimalCatalogId,
+          ),
+        ),
+      );
+
+      blocStream.add(
+        IngestStream(
+          Stream.value({
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'surf_parity',
+              'catalogId': minimalCatalogId,
+            },
+          }),
+        ),
+      );
+
+      await streamCompleter.future.timeout(const Duration(seconds: 2));
+
+      expect(blocMsg.value, isA<SurfaceStreaming>());
+      expect(blocStream.value, isA<SurfaceStreaming>());
+      expect(
+        (blocMsg.value as SurfaceStreaming).surfaceId,
+        equals('surf_parity'),
+      );
+      expect(
+        (blocStream.value as SurfaceStreaming).surfaceId,
+        equals('surf_parity'),
+      );
+    });
 
     blocSignalTest<A2uiSurfaceBloc, A2uiSurfaceState>(
       'processes raw JSON message and updates components',
@@ -81,7 +157,7 @@ void main() {
         );
       },
       expect: () => [
-        isA<SurfaceReady>()
+        isA<SurfaceStreaming>()
             .having((s) => s.surfaceId, 'surfaceId', 'surf_json'),
         isA<SurfaceReady>()
             .having((s) => s.surfaceId, 'surfaceId', 'surf_json'),
@@ -181,6 +257,21 @@ void main() {
             CreateSurfaceMessage(
               surfaceId: 'surf_form',
               catalogId: minimalCatalogId,
+            ),
+          ),
+        );
+        bloc.add(
+          ProcessMessage(
+            UpdateComponentsMessage(
+              surfaceId: 'surf_form',
+              components: const [
+                {
+                  'id': 'tf_dest',
+                  'component': 'TextField',
+                  'label': 'Destination',
+                  'value': {'path': '/booking/destination'},
+                },
+              ],
             ),
           ),
         );
@@ -295,12 +386,22 @@ void main() {
       build: A2uiSurfaceBloc.new,
       act: (bloc) {
         bloc.add(
-          ProcessMessage(
+          ProcessMessages([
             CreateSurfaceMessage(
               surfaceId: 'surf_reset',
               catalogId: minimalCatalogId,
             ),
-          ),
+            UpdateComponentsMessage(
+              surfaceId: 'surf_reset',
+              components: const [
+                {
+                  'id': 'txt_reset',
+                  'component': 'Text',
+                  'text': 'To be reset',
+                },
+              ],
+            ),
+          ]),
         );
         bloc.add(const ResetSurface(surfaceId: 'surf_reset'));
         bloc.add(const ResetSurface());
@@ -386,6 +487,15 @@ void main() {
           'catalogId': minimalCatalogId,
         },
       });
+      secondStream.add({
+        'version': 'v0.9',
+        'updateComponents': {
+          'surfaceId': 'surf_second',
+          'components': [
+            {'id': 'txt2', 'component': 'Text', 'text': 'Second stream text'},
+          ],
+        },
+      });
 
       await secondStream.close();
       await firstStream.close();
@@ -400,12 +510,18 @@ void main() {
     test('StreamCompleted explicitly finalizes stream', () {
       final bloc = A2uiSurfaceBloc();
       bloc.add(
-        ProcessMessage(
+        ProcessMessages([
           CreateSurfaceMessage(
             surfaceId: 'surf_complete',
             catalogId: minimalCatalogId,
           ),
-        ),
+          UpdateComponentsMessage(
+            surfaceId: 'surf_complete',
+            components: const [
+              {'id': 'txt_comp', 'component': 'Text', 'text': 'Complete'},
+            ],
+          ),
+        ]),
       );
       bloc.add(const StreamCompleted(surfaceId: 'surf_complete'));
       expect(bloc.value, isA<SurfaceReady>());
@@ -420,6 +536,12 @@ void main() {
         CreateSurfaceMessage(
           surfaceId: 'surf_auto',
           catalogId: minimalCatalogId,
+        ),
+        UpdateComponentsMessage(
+          surfaceId: 'surf_auto',
+          components: const [
+            {'id': 'txt_auto', 'component': 'Text', 'text': 'Auto'},
+          ],
         ),
       ]);
       bloc.add(const StreamCompleted());
@@ -730,9 +852,21 @@ void main() {
               surfaceId: 'surf_1',
               catalogId: minimalCatalogId,
             ),
+            UpdateComponentsMessage(
+              surfaceId: 'surf_1',
+              components: const [
+                {'id': 'txt_1', 'component': 'Text', 'text': 'Surface 1'},
+              ],
+            ),
             CreateSurfaceMessage(
               surfaceId: 'surf_2',
               catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'surf_2',
+              components: const [
+                {'id': 'txt_2', 'component': 'Text', 'text': 'Surface 2'},
+              ],
             ),
           ]),
         );
@@ -781,12 +915,18 @@ void main() {
       test('availableSurfaceIds is unmodifiable and prevents mutation', () {
         final bloc = A2uiSurfaceBloc();
         bloc.add(
-          ProcessMessage(
+          ProcessMessages([
             CreateSurfaceMessage(
               surfaceId: 'surf_immut',
               catalogId: minimalCatalogId,
             ),
-          ),
+            UpdateComponentsMessage(
+              surfaceId: 'surf_immut',
+              components: const [
+                {'id': 'txt_immut', 'component': 'Text', 'text': 'Immutable'},
+              ],
+            ),
+          ]),
         );
 
         final ready = bloc.stateValue as SurfaceReady;

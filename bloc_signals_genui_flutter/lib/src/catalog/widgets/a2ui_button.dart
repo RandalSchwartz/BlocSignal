@@ -25,13 +25,18 @@ Widget buildA2uiButton(
         rawAction is Map || rawAction is String ? rawAction : modelAction;
 
     if (sourceAction is Map) {
-      if (sourceAction['event'] is Map) {
-        actionName =
-            (sourceAction['event'] as Map)['name']?.toString() ?? 'submit';
+      final eventMap =
+          sourceAction['event'] is Map ? sourceAction['event'] as Map : null;
+      if (eventMap != null) {
+        actionName = eventMap['name']?.toString() ?? 'submit';
+        if (eventMap['context'] is Map) {
+          actionContext = Map<String, dynamic>.from(eventMap['context'] as Map);
+        }
       } else if (sourceAction['name'] != null) {
         actionName = sourceAction['name'].toString();
       }
-      if (sourceAction['context'] is Map) {
+
+      if (actionContext.isEmpty && sourceAction['context'] is Map) {
         actionContext =
             Map<String, dynamic>.from(sourceAction['context'] as Map);
       }

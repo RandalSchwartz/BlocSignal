@@ -135,6 +135,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// The underlying [MessageProcessor] maintaining the A2UI surface graph.
   MessageProcessor<ComponentApi> get processor => _processor;
 
+  bool _isClosing = false;
   StreamSubscription<dynamic>? _activeStreamSubscription;
   Completer<void>? _activeStreamCompleter;
   int _surfaceVersion = 0;
@@ -143,7 +144,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     IngestStream event,
     void Function(A2uiSurfaceState) emit,
   ) async {
-    if (isClosed) return;
+    if (isClosed || _isClosing) return;
 
     var messageCount = 0;
     emit(
@@ -160,44 +161,69 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     if (oldCompleter != null && !oldCompleter.isCompleted) {
       oldCompleter.complete();
     }
-    await oldSub?.cancel();
-
-    if (isClosed) return;
 
     final completer = Completer<void>();
     _activeStreamCompleter = completer;
 
-    _activeStreamSubscription = event.stream.listen(
-      (chunk) async {
-        if (isClosed) {
-          await _activeStreamSubscription?.cancel();
-          _activeStreamSubscription = null;
-          if (!completer.isCompleted) completer.complete();
-          return;
-        }
-
-        try {
-          final messages = _parseChunkToMessages(chunk);
-          if (messages.isNotEmpty) {
-            for (final msg in messages) {
-              if (msg is CreateSurfaceMessage) {
-                if (_processor.groupModel.getSurface(msg.surfaceId) != null) {
-                  _processor.groupModel.deleteSurface(msg.surfaceId);
-                }
-                _activeSurfaceId = msg.surfaceId;
-              }
+    late final StreamSubscription<dynamic> subscription;
+    try {
+      subscription = event.stream.listen(
+        (chunk) async {
+          if (isClosed ||
+              _isClosing ||
+              !identical(_activeStreamSubscription, subscription)) {
+            await _safeCancel(subscription);
+            if (identical(_activeStreamSubscription, subscription)) {
+              _activeStreamSubscription = null;
             }
-
-            _processor.processMessages(messages);
-            messageCount += messages.length;
-            _surfaceVersion++;
-
-            _emitSurfaceSnapshot(emit, messageCount: messageCount);
+            if (!completer.isCompleted) completer.complete();
+            return;
           }
-        } catch (error, stackTrace) {
+
+          try {
+            final messages = _parseChunkToMessages(chunk);
+            if (messages.isNotEmpty) {
+              for (final msg in messages) {
+                if (msg is CreateSurfaceMessage) {
+                  if (_processor.groupModel.getSurface(msg.surfaceId) != null) {
+                    _processor.groupModel.deleteSurface(msg.surfaceId);
+                  }
+                  _activeSurfaceId = msg.surfaceId;
+                }
+              }
+
+              _processor.processMessages(messages);
+              messageCount += messages.length;
+              _surfaceVersion++;
+
+              _emitSurfaceSnapshot(emit, messageCount: messageCount);
+            }
+          } catch (error, stackTrace) {
+            onError(error, stackTrace);
+            if (!isClosed &&
+                !_isClosing &&
+                identical(_activeStreamSubscription, subscription)) {
+              emit(
+                SurfaceError(
+                  error: error,
+                  stackTrace: stackTrace,
+                  surfaceId: _activeSurfaceId,
+                ),
+              );
+            }
+            await _safeCancel(subscription);
+            if (identical(_activeStreamSubscription, subscription)) {
+              _activeStreamSubscription = null;
+            }
+            if (!completer.isCompleted) completer.complete();
+            if (error is Error) rethrow;
+          }
+        },
+        onError: (Object error, StackTrace stackTrace) async {
           onError(error, stackTrace);
-          if (error is Error) rethrow;
-          if (!isClosed) {
+          if (!isClosed &&
+              !_isClosing &&
+              identical(_activeStreamSubscription, subscription)) {
             emit(
               SurfaceError(
                 error: error,
@@ -206,36 +232,39 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
               ),
             );
           }
-          await _activeStreamSubscription?.cancel();
-          _activeStreamSubscription = null;
+          await _safeCancel(subscription);
+          if (identical(_activeStreamSubscription, subscription)) {
+            _activeStreamSubscription = null;
+          }
           if (!completer.isCompleted) completer.complete();
-        }
-      },
-      onError: (Object error, StackTrace stackTrace) async {
-        onError(error, stackTrace);
-        if (!isClosed) {
-          emit(
-            SurfaceError(
-              error: error,
-              stackTrace: stackTrace,
-              surfaceId: _activeSurfaceId,
-            ),
-          );
-        }
-        await _activeStreamSubscription?.cancel();
-        _activeStreamSubscription = null;
-        if (!completer.isCompleted) completer.complete();
-        if (error is Error) throw error;
-      },
-      onDone: () {
-        _activeStreamSubscription = null;
-        if (!isClosed) {
-          _emitFinalReadyOrInitial(emit);
-        }
-        if (!completer.isCompleted) completer.complete();
-      },
-      cancelOnError: true,
-    );
+          if (error is Error) throw error;
+        },
+        onDone: () {
+          if (identical(_activeStreamSubscription, subscription)) {
+            _activeStreamSubscription = null;
+            if (!isClosed && !_isClosing) {
+              _emitFinalReadyOrInitial(emit);
+            }
+          }
+          if (!completer.isCompleted) completer.complete();
+        },
+        cancelOnError: true,
+      );
+      _activeStreamSubscription = subscription;
+    } catch (e, st) {
+      if (!completer.isCompleted) completer.complete();
+      _activeStreamCompleter = null;
+      onError(e, st);
+      rethrow;
+    } finally {
+      await _safeCancel(oldSub);
+    }
+
+    if (isClosed ||
+        _isClosing ||
+        !identical(_activeStreamSubscription, subscription)) {
+      return;
+    }
 
     await completer.future;
   }
@@ -521,7 +550,21 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     ResetSurface event,
     void Function(A2uiSurfaceState) emit,
   ) {
-    if (event.surfaceId == null) {
+    final surfaceId = event.surfaceId;
+    if (surfaceId == null || surfaceId == _activeSurfaceId) {
+      final oldCompleter = _activeStreamCompleter;
+      _activeStreamCompleter = null;
+      if (oldCompleter != null && !oldCompleter.isCompleted) {
+        oldCompleter.complete();
+      }
+      final oldSub = _activeStreamSubscription;
+      _activeStreamSubscription = null;
+      if (oldSub != null) {
+        unawaited(_safeCancel(oldSub));
+      }
+    }
+
+    if (surfaceId == null) {
       for (final surface in _processor.groupModel.allSurfaces.toList()) {
         _processor.groupModel.deleteSurface(surface.id);
       }
@@ -532,7 +575,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       return;
     }
 
-    final targetId = event.surfaceId!;
+    final targetId = surfaceId;
     _responseHistory.removeWhere((r) => r.surfaceId == targetId);
 
     final surface = _processor.groupModel.getSurface(targetId);
@@ -847,15 +890,26 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   @override
   Future<void> close() async {
+    _isClosing = true;
     _responseHistory.clear();
     final oldCompleter = _activeStreamCompleter;
     _activeStreamCompleter = null;
     if (oldCompleter != null && !oldCompleter.isCompleted) {
       oldCompleter.complete();
     }
-    await _activeStreamSubscription?.cancel();
+    final oldSub = _activeStreamSubscription;
     _activeStreamSubscription = null;
+    await _safeCancel(oldSub);
     await _actionResponsesController.close();
     await super.close();
+  }
+
+  Future<void> _safeCancel(StreamSubscription<dynamic>? sub) async {
+    if (sub == null) return;
+    try {
+      await sub.cancel();
+    } catch (error, stackTrace) {
+      onError(error, stackTrace);
+    }
   }
 }

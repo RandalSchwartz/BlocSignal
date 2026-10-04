@@ -106,7 +106,8 @@ To protect developer context while preventing catastrophic regressions, full sca
 | **Classic BLoC Bridge** | `emit` visibility warnings & error loss | Use `// ignore: invalid_use_of_visible_for_testing_member`; route stream errors via `onError`. |
 | **Multi-Major Lower Bounds** | Missing exports across major versions on downgrade | Import both `riverpod.dart` and `src/internals.dart` with `hide` clauses; test with `dart pub downgrade && pana`. |
 | **AST Method Lint Visitors** | False positives in nested closures/callbacks | In lifecycle method visitors (for example `build()`), always check and ignore enclosing `FunctionExpression` closures. |
-| **Signal Mixin Init** | Missing `initCubitSignal()` in constructors | Enforced by `require_cubit_signal_mixin_init` lint rule with automated IDE quick-fix. |
+| **Signal Mixin Init** | Missing `initCubitSignal()` in constructors & false positives on factories/redirects | Enforced by `require_cubit_signal_mixin_init` (skipping factories/redirects) with automated IDE quick-fix synthesizing constructors. |
+| **Container Mixin Emission** | False positive flags on `this.emit()` in container mixins & nested class leakage | `AvoidDirectSignalMutationOutsideBloc` checks mixins on `CubitSignal`/`BlocSignal` and enforces strict nearest-declaration scope isolation. |
 | **Kaisel 1.1 Guards** | Infinite redirect loops & initial auth flash | Dynamically compute `initial:` route from current state; route guards must have idempotent self-bypass. |
 | **Constructor Migration** | Breaking changes on positional `super(...)` | Preserve backward compatibility via `@Deprecated` named positional constructors (`ReplayCubit.positional`). |
 | **Website Docs TOC** | Missing switch cases in `docs_content.dart` | Map new sections in `_getHeadingsForSection` and `_getSourcePathForSection`; guarded by CI tests. |

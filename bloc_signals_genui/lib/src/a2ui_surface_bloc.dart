@@ -521,15 +521,36 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     ResetSurface event,
     void Function(A2uiSurfaceState) emit,
   ) {
-    _responseHistory.clear();
-    final surfaceId = event.surfaceId ?? _activeSurfaceId;
-    if (surfaceId != null) {
-      _processor.groupModel.deleteSurface(surfaceId);
-      if (surfaceId == _activeSurfaceId) {
-        _activeSurfaceId = null;
+    if (event.surfaceId == null) {
+      for (final surface in _processor.groupModel.allSurfaces.toList()) {
+        _processor.groupModel.deleteSurface(surface.id);
       }
+      _responseHistory.clear();
+      _activeSurfaceId = null;
+      _surfaceVersion++;
+      emit(const SurfaceInitial());
+      return;
     }
-    emit(const SurfaceInitial());
+
+    final targetId = event.surfaceId!;
+    _responseHistory.removeWhere((r) => r.surfaceId == targetId);
+
+    final surface = _processor.groupModel.getSurface(targetId);
+    if (surface == null) {
+      if (_activeSurfaceId == targetId) {
+        _activeSurfaceId = null;
+        _surfaceVersion++;
+        _emitFinalReadyOrInitial(emit);
+      }
+      return;
+    }
+
+    _processor.groupModel.deleteSurface(targetId);
+    if (_activeSurfaceId == targetId) {
+      _activeSurfaceId = null;
+    }
+    _surfaceVersion++;
+    _emitFinalReadyOrInitial(emit);
   }
 
   void _handleClientAction(A2uiClientAction action) {

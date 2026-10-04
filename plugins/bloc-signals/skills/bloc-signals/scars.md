@@ -162,6 +162,21 @@ This document details the codified failure modes, architectural wounds, traps, a
   3. If the surface does not exist in the model but matches `_activeSurfaceId`, clear `_activeSurfaceId = null` and invoke `_emitFinalReadyOrInitial()` to promote surviving surfaces or safely transition to `SurfaceInitial`.
   4. Always increment the monotonic `_surfaceVersion++` to ensure reactive UI observers invalidate memoized views.
 
+### 🩹 Scar: GenUI Stream Lifecycle Races, Cancellation Atomicity & Close Ordering (`SCAR-GENUI-5`)
+- **The Pathogen / Wound**: In `bloc_signals_genui`, asynchronous gaps during stream ingestion and container teardown created three critical lifecycle failures:
+  1. (F18) Awaiting cancellation of a superseded stream before listening to the replacement stream allows slow cancels to delay the replacement or orphan uncancelled subscriptions. Concurrently, non-atomic pointer assignment allowed late events from the superseded stream to pass identity checks and invoke illegal `emit()` calls after handler completion, triggering isolate crashes (`StateError`).
+  2. (F21) `ResetSurface` failed to cancel the active stream subscription or complete its event completer, allowing trailing stream chunks to undo the reset or trigger errors.
+  3. (F22) `close()` suspended at `await oldSub.cancel()` before `super.close()` flipped `isClosed`, allowing an in-flight ingest to install a new subscription that `close()` immediately orphaned.
+  4. Stream cancellation failures threw unhandled exceptions during handler execution or close.
+- **The Antigen / Vulnerability Vector**: Assuming stream cancellations resolve instantly, omitting eager pointer nullification during resource hand-off, and relying on `super.close()`'s `isClosed` check across asynchronous gaps.
+- **The Antibody / Permanent Reflex**:
+  1. Eagerly nullify `_activeStreamSubscription = null;` and `_activeStreamCompleter = null;` at the entry of ingestion and completion of `oldCompleter`.
+  2. Subscribe to the replacement stream *before* awaiting cancellation of the superseded stream, while isolating cancellation in a `finally { await _safeCancel(oldSub); }` block.
+  3. Capture the instance `subscription` locally in callbacks and gate all chunk processing and pointer cleanup on `identical(_activeStreamSubscription, subscription)`.
+  4. In `_onResetSurface`, cancel `_activeStreamSubscription` and complete `_activeStreamCompleter` when resetting the active surface or all surfaces.
+  5. In `close()`, set a synchronous `_isClosing = true` flag at entry, and reject any `IngestStream` dispatches if `isClosed || _isClosing`.
+  6. Wrap all stream cancellations in a resilient `_safeCancel` helper routing errors to `onError` without interrupting handler flow or shutdown.
+
 
 
 

@@ -53,5 +53,24 @@ class RequireCubitSignalMixinInitFix extends DartFix {
         }
       });
     });
+
+    context.registry.addClassDeclaration((node) {
+      if (node.members.whereType<ConstructorDeclaration>().isNotEmpty) return;
+      if (!analysisError.sourceRange.intersects(node.name.sourceRange)) return;
+
+      reporter
+          .createChangeBuilder(
+        message: "Add constructor with 'initCubitSignal(initialState: ...);'",
+        priority: 100,
+      )
+          .addDartFileEdit((builder) {
+        builder.addSimpleInsertion(
+          node.leftBracket.end,
+          '\n  ${node.name.lexeme}() {\n'
+          '    initCubitSignal(initialState: TODO_INITIAL_STATE);\n'
+          '  }\n',
+        );
+      });
+    });
   }
 }

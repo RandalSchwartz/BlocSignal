@@ -26,6 +26,57 @@ class AvoidDirectSignalMutationOutsideBloc extends DartLintRule {
     packageName: 'bloc_signals',
   );
 
+  /// Returns `true` if the emission call is executed inside a valid state
+  /// container class or mixin on a state container.
+  static bool isAllowedEmission({
+    ClassDeclaration? enclosingClass,
+    MixinDeclaration? enclosingMixin,
+  }) {
+    if (enclosingClass != null) {
+      final element = enclosingClass.declaredFragment?.element;
+      if (element != null && _blocSignalBaseChecker.isSuperOf(element)) {
+        return true;
+      }
+      final extendsSource =
+          enclosingClass.extendsClause?.superclass.toSource() ?? '';
+      final withSource = enclosingClass.withClause?.toSource() ?? '';
+      final implementsSource =
+          enclosingClass.implementsClause?.toSource() ?? '';
+      if (extendsSource.contains('BlocSignal') ||
+          extendsSource.contains('CubitSignal') ||
+          withSource.contains('BlocSignalMixin') ||
+          withSource.contains('CubitSignalMixin') ||
+          implementsSource.contains('BlocSignalBase')) {
+        return true;
+      }
+      return false;
+    }
+
+    if (enclosingMixin != null) {
+      final element = enclosingMixin.declaredFragment?.element;
+      if (element != null && _blocSignalBaseChecker.isSuperOf(element)) {
+        return true;
+      }
+      final onClause = enclosingMixin.onClause;
+      if (onClause != null) {
+        for (final constraint in onClause.superclassConstraints) {
+          final type = constraint.type;
+          if (type != null &&
+              _blocSignalBaseChecker.isAssignableFromType(type)) {
+            return true;
+          }
+          final source = constraint.toSource();
+          if (source.contains('BlocSignal') || source.contains('CubitSignal')) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    return false;
+  }
+
   @override
   void run(
     CustomLintResolver resolver,
@@ -42,11 +93,20 @@ class AvoidDirectSignalMutationOutsideBloc extends DartLintRule {
       if (targetType == null) return;
 
       if (_blocSignalBaseChecker.isAssignableFromType(targetType)) {
-        final enclosingClass = node.thisOrAncestorOfType<ClassDeclaration>();
-        final enclosingElement = enclosingClass?.declaredFragment?.element;
+        final enclosingDeclaration = node.thisOrAncestorMatching(
+          (n) => n is ClassDeclaration || n is MixinDeclaration,
+        );
+        final enclosingClass = enclosingDeclaration is ClassDeclaration
+            ? enclosingDeclaration
+            : null;
+        final enclosingMixin = enclosingDeclaration is MixinDeclaration
+            ? enclosingDeclaration
+            : null;
 
-        if (enclosingElement != null &&
-            _blocSignalBaseChecker.isSuperOf(enclosingElement)) {
+        if (isAllowedEmission(
+          enclosingClass: enclosingClass,
+          enclosingMixin: enclosingMixin,
+        )) {
           return;
         }
 

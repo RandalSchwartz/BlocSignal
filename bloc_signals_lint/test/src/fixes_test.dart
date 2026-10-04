@@ -177,6 +177,62 @@ class MyService with CubitSignalMixin<int> {
       );
     });
 
+    test(
+        'RequireCubitSignalMixinInitFix fires for unnamed constructor at '
+        'constructor token', () {
+      const sourceCode = '''
+class MyService with CubitSignalMixin<int> {
+  MyService() {
+    doInit();
+  }
+}
+''';
+      final parseResult = parseString(content: sourceCode);
+      final ctorOffset = sourceCode.indexOf('MyService()');
+
+      final fix = RequireCubitSignalMixinInitFix();
+      final transformed = _runFix(
+        fix: fix,
+        source: sourceCode,
+        unit: parseResult.unit,
+        targetRange: SourceRange(ctorOffset, 'MyService'.length),
+      );
+
+      expect(
+        transformed,
+        contains('initCubitSignal(initialState: TODO_INITIAL_STATE);'),
+      );
+      expect(transformed, contains('doInit();'));
+    });
+
+    test(
+        'RequireCubitSignalMixinInitFix generates constructor for class '
+        'without constructor', () {
+      const sourceCode = '''
+class MyService with CubitSignalMixin<int> {
+}
+''';
+      final parseResult = parseString(content: sourceCode);
+      final classOffset = sourceCode.indexOf('MyService');
+
+      final fix = RequireCubitSignalMixinInitFix();
+      final transformed = _runFix(
+        fix: fix,
+        source: sourceCode,
+        unit: parseResult.unit,
+        targetRange: SourceRange(classOffset, 'MyService'.length),
+      );
+
+      expect(
+        transformed,
+        contains('MyService() {'),
+      );
+      expect(
+        transformed,
+        contains('initCubitSignal(initialState: TODO_INITIAL_STATE);'),
+      );
+    });
+
     test('ReplaceContextWatchWithReadFix replaces watch with read', () {
       const sourceCode = '''
 Widget build(BuildContext context) {
@@ -226,7 +282,9 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
       expect(transformed, isNot(contains(' effect(() {')));
     });
 
-    test('UseProviderValueFix replaces create: with value:', () {
+    test(
+        'UseProviderValueFix rewrites to BlocSignalProvider.value with '
+        'unwrapped closure', () {
       const sourceCode = '''
 Widget build(BuildContext context) {
   return BlocSignalProvider(
@@ -246,8 +304,39 @@ Widget build(BuildContext context) {
         targetRange: SourceRange(createOffset, 6),
       );
 
-      expect(transformed, contains('value: (_) => existingBloc'));
+      expect(transformed, contains('BlocSignalProvider.value('));
+      expect(transformed, contains('value: existingBloc,'));
       expect(transformed, isNot(contains('create: (_) => existingBloc')));
+      expect(transformed, isNot(contains('value: (_) => existingBloc')));
+    });
+
+    test(
+        'UseProviderValueFix supports generic type arguments and block '
+        'function body', () {
+      const sourceCode = '''
+Widget build(BuildContext context) {
+  return BlocSignalProvider<CounterBloc>(
+    create: (context) {
+      return existingBloc;
+    },
+    child: Container(),
+  );
+}
+''';
+      final parseResult = parseString(content: sourceCode);
+      final createOffset = sourceCode.indexOf('create:');
+
+      final fix = UseProviderValueFix();
+      final transformed = _runFix(
+        fix: fix,
+        source: sourceCode,
+        unit: parseResult.unit,
+        targetRange: SourceRange(createOffset, 6),
+      );
+
+      expect(transformed, contains('BlocSignalProvider<CounterBloc>.value('));
+      expect(transformed, contains('value: existingBloc,'));
+      expect(transformed, isNot(contains('create:')));
     });
 
     test('ReplacePositionalReplayConstructorFix rewrites constructor', () {

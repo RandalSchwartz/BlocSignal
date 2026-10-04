@@ -9,7 +9,7 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
   ///
   /// The [maxActiveSpans] parameter caps the active span cache size
   /// (default 100) to prevent transient memory growth under high-frequency
-  /// event streams.
+  /// event streams via FIFO (oldest-span) eviction.
   ///
   /// An optional [stateRedactor] callback can be provided to format or redact
   /// state values before recording them under the `state.value` span attribute.
@@ -24,7 +24,7 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
 
   final otel.Tracer _tracer;
 
-  /// The maximum number of active unclosed spans retained before LRU eviction.
+  /// The maximum number of active unclosed spans retained before FIFO eviction.
   final int maxActiveSpans;
 
   /// Optional callback to redact or format state values before recording them

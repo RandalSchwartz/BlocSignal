@@ -80,7 +80,7 @@ Use an in-memory exporter and assert:
 - error status and recorded exception;
 - fallback `CubitSignal` error span behavior;
 - fallback error span behavior;
-- eviction behavior when active spans exceed the cap;
+- FIFO (oldest-span) eviction behavior when active spans exceed the cap;
 - the no-transition case when an equal state is emitted.
 
 Reset `BlocSignalObserver.observer` and shut down the tracer provider after each test.

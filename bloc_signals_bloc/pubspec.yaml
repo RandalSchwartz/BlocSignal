@@ -1,7 +1,7 @@
 name: bloc_signals_bloc
 resolution: workspace
 description: Classic BLoC (package:bloc) interoperability adapters for BlocSignal state containers.
-version: 1.0.1
+version: 1.0.2
 repository: https://github.com/RandalSchwartz/BlocSignal
 issue_tracker: https://github.com/RandalSchwartz/BlocSignal/issues
 

@@ -157,6 +157,48 @@ void main() {
       await bloc.close();
     });
 
+    test(
+      'evicts spans strictly FIFO (oldest first) even when earlier spans are '
+      'recently touched (Issue #303: F12)',
+      () async {
+        final customObserver = OtelBlocSignalObserver(
+          tracer: tracer,
+          maxActiveSpans: 2,
+        );
+        BlocSignalObserver.observer = customObserver;
+
+        final bloc = TestBloc();
+
+        // 1. Dispatch event A (first-in), creating span A.
+        customObserver.onEvent(bloc, 'event_A');
+        expect(exporter.exportedSpans, isEmpty);
+
+        // 2. Dispatch event B (second-in), creating span B.
+        customObserver.onEvent(bloc, 'event_B');
+        expect(exporter.exportedSpans, isEmpty);
+
+        // 3. Touch event A via onTransition with a new state.
+        // In an LRU scheme, event A would now be the most recently used.
+        // In FIFO, event A remains the oldest created span.
+        customObserver.onTransition(bloc, 'event_A', 1);
+
+        // 4. Dispatch event C, which exceeds maxActiveSpans (2) and
+        // triggers eviction.
+        customObserver.onEvent(bloc, 'event_C');
+
+        // Exactly 1 span should be evicted and ended.
+        expect(exporter.exportedSpans, hasLength(1));
+
+        // Under FIFO eviction, event A (the oldest inserted span) is evicted,
+        // even though it was touched more recently than event B.
+        final evictedSpan = exporter.exportedSpans.first;
+        expect(evictedSpan.name, equals('TestBloc.add(String)'));
+        expect(evictedSpan.attributes.get('state.value'), equals('1'));
+
+        await bloc.close();
+      },
+    );
+
     test('onClose flushes active spans associated with closed container',
         () async {
       final bloc = TestBloc();

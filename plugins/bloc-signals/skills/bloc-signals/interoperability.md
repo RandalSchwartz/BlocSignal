@@ -81,10 +81,11 @@ import 'package:bloc_signals_bloc/bloc_signals_bloc.dart';
 
 final classicBloc = CounterBloc();
 
-// 1. Convert classic Bloc into a synchronous BlocSignal:
+// 1. Convert classic Bloc into a reactive BlocSignal:
+// (Emissions propagate via classic stream with a 1-microtask event-loop turn)
 final blocSignal = classicBloc.toBlocSignal();
 
-// Synchronous reactive read:
+// Reactive read:
 print(blocSignal.stateValue);
 
 // Direct event dispatch forwarded to underlying classic Bloc:
@@ -95,10 +96,11 @@ blocSignal.add(const IncrementEvent());
 ```dart
 final classicCubit = CounterCubit();
 
-// 1. Convert classic Cubit into a synchronous CubitSignal:
+// 1. Convert classic Cubit into a reactive CubitSignal:
+// (Emissions propagate via classic stream with a 1-microtask event-loop turn)
 final cubitSignal = classicCubit.toBlocSignal();
 
-// Synchronous reactive read:
+// Reactive read:
 print(cubitSignal.stateValue);
 
 // Direct typed method invocation on underlying Cubit:

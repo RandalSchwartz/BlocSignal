@@ -224,6 +224,21 @@ void main() {
       expect(storage.read('PrimitiveCounterCubit'), isNull);
     });
 
+    test(
+      'does not throw assertion and deletes storage when clear() is called '
+      'after close()',
+      () async {
+        storage.write('PrimitiveCounterCubit', 50);
+
+        final cubit = PrimitiveCounterCubit();
+        expect(cubit.stateValue, equals(50));
+
+        await cubit.close();
+        await expectLater(cubit.clear(), completes);
+        expect(storage.read('PrimitiveCounterCubit'), isNull);
+      },
+    );
+
     test('handles fromJson exception gracefully via onError', () {
       Object? capturedError;
       BlocSignalObserver.observer = _TestObserver(

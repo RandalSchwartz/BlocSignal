@@ -106,6 +106,27 @@ void main() {
         bloc.add(const CounterIncrementPressed());
         expect(bloc.canUndo, isFalse);
       });
+
+      test(
+        'does not mutate history or throw when undo or redo is called '
+        'after close',
+        () async {
+          final bloc = CounterBloc()..add(const CounterIncrementPressed());
+          expect(bloc.canUndo, isTrue);
+          expect(bloc.canRedo, isFalse);
+          await bloc.close();
+
+          expect(bloc.undo, returnsNormally);
+          expect(bloc.stateValue, equals(1));
+          expect(bloc.canUndo, isTrue);
+          expect(bloc.canRedo, isFalse);
+
+          expect(bloc.redo, returnsNormally);
+          expect(bloc.stateValue, equals(1));
+          expect(bloc.canUndo, isTrue);
+          expect(bloc.canRedo, isFalse);
+        },
+      );
     });
 
     group('clearHistory', () {

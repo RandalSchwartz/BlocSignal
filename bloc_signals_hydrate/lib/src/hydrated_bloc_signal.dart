@@ -175,6 +175,7 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
         onError(error, stackTrace);
       }
     }
+    if (isClosed) return;
     super.emit(initialState);
   }
 }

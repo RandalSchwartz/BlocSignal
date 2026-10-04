@@ -1,3 +1,7 @@
+## 1.1.2
+
+- **Fix (replay)**: Guard `undo()` and `redo()` with `if (isClosed) return;` in `ReplayCubitMixin` and `ReplayBlocMixin`, preventing `AssertionError` and corrupted history availability flags when invoked after container disposal (#297).
+
 ## 1.1.1
 
 - **Fix (replay)**: Gate history recording against core emission rejection (`isClosed` and `equals(stateValue, newState)`) so unchanged states or emissions after closure do not add undo entries or wipe active redo stacks (#268).

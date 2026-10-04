@@ -1,3 +1,7 @@
+## 1.0.3
+
+- **Fix (hydrate)**: Guard `clear()` with `if (isClosed) return;` before resetting state to `initialState`, allowing storage deletion without triggering post-close emit assertions (#297).
+
 ## 1.0.2
 
 - Fix async persistence errors escaping `onError`: Attach unhandled future error handlers on `storage.write` and `storage.delete` to route disk and serialization failures to `onError` and `BlocSignalObserver`.

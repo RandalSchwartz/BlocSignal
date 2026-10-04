@@ -25,6 +25,22 @@ void main() {
           },
         }),
       );
+      bloc.add(
+        const ProcessJsonMessage({
+          'version': 'v0.9',
+          'updateComponents': {
+            'surfaceId': 'form_surf',
+            'components': [
+              {
+                'id': 'tf_dest',
+                'component': 'TextField',
+                'label': 'Destination',
+                'value': {'path': '/destination'},
+              },
+            ],
+          },
+        }),
+      );
 
       // Add initial field
       bloc.add(

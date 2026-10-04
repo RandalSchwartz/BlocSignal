@@ -258,6 +258,146 @@ void main() {
       await bloc.close();
     });
 
+    testWidgets(
+        'F13: Button preserves action context from normalized event map',
+        (tester) async {
+      final bloc = A2uiSurfaceBloc();
+      final catalog = A2uiFlutterCatalog.standard();
+      addTearDown(bloc.close);
+
+      bloc
+        ..add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'surf-btn-normalized',
+              'catalogId': minimalCatalogId,
+            },
+          }),
+        )
+        ..add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'updateComponents': {
+              'surfaceId': 'surf-btn-normalized',
+              'components': [
+                {
+                  'id': 'btn-normalized-context',
+                  'component': 'Button',
+                  'child': 'txt-btn-norm',
+                  'action': {
+                    'event': {
+                      'name': 'add_to_cart',
+                      'context': {
+                        'productId': 'prod_99',
+                        'qty': 3,
+                      },
+                    },
+                  },
+                },
+                {
+                  'id': 'txt-btn-norm',
+                  'component': 'Text',
+                  'text': 'Add Normalized',
+                },
+              ],
+            },
+          }),
+        );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: A2uiSurfaceView(
+              bloc: bloc,
+              catalog: catalog,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.tap(find.text('Add Normalized'));
+      await tester.pump();
+
+      expect(bloc.value, isA<SurfaceSubmitting>());
+      final submitting = bloc.value as SurfaceSubmitting;
+      expect(submitting.actionName, equals('add_to_cart'));
+      expect(
+        submitting.payload['context'],
+        equals({'productId': 'prod_99', 'qty': 3}),
+      );
+    });
+
+    testWidgets(
+        'F13: Button preserves action context from un-normalized fallback map',
+        (tester) async {
+      final bloc = A2uiSurfaceBloc();
+      final catalog = A2uiFlutterCatalog.standard();
+      addTearDown(bloc.close);
+
+      bloc
+        ..add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'surf-btn-fallback',
+              'catalogId': minimalCatalogId,
+            },
+          }),
+        )
+        ..add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'updateComponents': {
+              'surfaceId': 'surf-btn-fallback',
+              'components': [
+                {
+                  'id': 'btn-fallback-context',
+                  'component': 'Button',
+                  'child': 'txt-btn-fall',
+                  'action': {
+                    'name': 'add_to_cart',
+                    'context': {
+                      'productId': 'prod_fallback',
+                      'qty': 1,
+                    },
+                  },
+                },
+                {
+                  'id': 'txt-btn-fall',
+                  'component': 'Text',
+                  'text': 'Add Fallback',
+                },
+              ],
+            },
+          }),
+        );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: A2uiSurfaceView(
+              bloc: bloc,
+              catalog: catalog,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.tap(find.text('Add Fallback'));
+      await tester.pump();
+
+      expect(bloc.value, isA<SurfaceSubmitting>());
+      final submitting = bloc.value as SurfaceSubmitting;
+      expect(submitting.actionName, equals('add_to_cart'));
+      expect(
+        submitting.payload['context'],
+        equals({'productId': 'prod_fallback', 'qty': 1}),
+      );
+    });
+
     testWidgets('TextField updates when external property changes',
         (tester) async {
       final bloc = A2uiSurfaceBloc();

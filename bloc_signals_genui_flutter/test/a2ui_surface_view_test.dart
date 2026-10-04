@@ -238,6 +238,15 @@ void main() {
           }),
         );
 
+      final surface = bloc.processor.groupModel.getSurface('surf-empty')!;
+      bloc.emitForTest(
+        SurfaceReady(
+          surfaceId: 'surf-empty',
+          surface: surface,
+          availableSurfaceIds: const ['surf-empty'],
+        ),
+      );
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(

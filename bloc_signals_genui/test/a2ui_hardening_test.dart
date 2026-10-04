@@ -425,6 +425,21 @@ void main() {
           },
         }),
       );
+      bloc.add(
+        const ProcessJsonMessage({
+          'version': 'v0.9',
+          'updateComponents': {
+            'surfaceId': 'test_diag',
+            'components': [
+              {
+                'id': 'txt_diag',
+                'component': 'Text',
+                'text': 'Diag',
+              },
+            ],
+          },
+        }),
+      );
 
       final ready = bloc.stateValue as SurfaceReady;
       expect(ready.surfaceId, equals('test_diag'));

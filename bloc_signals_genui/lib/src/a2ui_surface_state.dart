@@ -69,8 +69,12 @@ final class SurfaceStreaming extends A2uiSurfaceState {
       'SurfaceStreaming(surfaceId: $surfaceId, count: $messageCount, progress: $progress)';
 }
 
-/// State emitted when the surface is fully hydrated, validated against the
-/// component catalog, and ready for user viewing and form interaction.
+/// State emitted when the surface is fully hydrated with populated components,
+/// validated against the component catalog, and ready for user viewing and form
+/// interaction.
+///
+/// A component-less surface remains in [SurfaceStreaming] until its component
+/// tree is populated, eliminating UI flicker between message and stream paths.
 final class SurfaceReady extends A2uiSurfaceState {
   /// Creates a [SurfaceReady] state.
   const SurfaceReady({

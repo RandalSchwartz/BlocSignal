@@ -177,6 +177,17 @@ This document details the codified failure modes, architectural wounds, traps, a
   5. In `close()`, set a synchronous `_isClosing = true` flag at entry, and reject any `IngestStream` dispatches if `isClosed || _isClosing`.
   6. Wrap all stream cancellations in a resilient `_safeCancel` helper routing errors to `onError` without interrupting handler flow or shutdown.
 
+### 🩹 Scar: GenUI Surface Readiness Classification Parity & Action Context Extraction (`SCAR-GENUI-6`)
+- **The Pathogen / Wound**: In `bloc_signals_genui`, divergent emission helpers (`_emitFinalReadyOrInitial` vs `_emitSurfaceSnapshot`) created a readiness classification mismatch between `ProcessMessage` and `IngestStream`. A surface created without components emitted `SurfaceReady` under `ProcessMessage` (causing `A2uiSurfaceView` to display an empty/blank card), whereas under `IngestStream` it emitted `SurfaceStreaming` (displaying a skeleton loader). Concurrently, in `bloc_signals_genui_flutter`, `A2uiButton` extracted user context strictly from top-level `action['context']`, dropping action parameters when incoming payloads were normalized into `action['event']['context']`.
+- **The Antigen / Vulnerability Vector**: Maintaining two distinct state emission helpers with divergent readiness conditions, assuming empty surfaces are ready, and reading action parameters only from un-normalized top-level keys.
+- **The Antibody / Permanent Reflex**:
+  1. Consolidate surface state emissions into a single canonical helper (`_emitSurfaceSnapshot`).
+  2. Enforce readiness criteria uniformly: a surface remains in `SurfaceStreaming` until its `componentsModel.all.isNotEmpty` condition evaluates to true.
+  3. Track cumulative message processing via `_messageCount` across both direct messages and streaming chunks.
+  4. In `A2uiButton`, extract action context primarily from `eventMap['context']` when `sourceAction['event'] is Map`, falling back to `sourceAction['context']` for un-normalized maps.
+  5. In tests asserting stream parity, never rely on arbitrary `Future.delayed()` timeouts; use deterministic `Completer` instances conditioned on matching the specific `surfaceId` (`SCAR-TEST-11`).
+
+
 
 
 

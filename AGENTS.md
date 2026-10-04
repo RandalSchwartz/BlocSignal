@@ -128,6 +128,7 @@ To protect developer context while preventing catastrophic regressions, full sca
 | **Live Map Key Exposure** | `ConcurrentModificationError` on concurrent loop mutation | Return `List<T>.unmodifiable(_map.keys)` for registries and catalogs. |
 | **Multi-Surface Reset Isolation** | Wiping all history/surfaces or `ConcurrentModificationError` on reset | Snapshot `.toList()` for full wipe, prune container history prior to null-check, and heal phantom active surface. |
 | **GenUI Stream Lifecycle Races** | Orphaned streams, delayed superseding, and close ordering races | Subscribe replacement stream before awaiting cancel, eagerly nullify pointers, guard with `identical()`, and set synchronous `_isClosing` flag at close entry. |
+| **GenUI Readiness Parity & Action Context** | Blank-card vs skeleton flicker on empty surfaces and dropped action context | Consolidate emissions into `_emitSurfaceSnapshot` requiring populated components for `SurfaceReady`, and extract button context from `eventMap['context']` with fallback. |
 
 For the complete post-mortems, stack traces, and historical case studies for any scar above, inspect [`plugins/bloc-signals/skills/bloc-signals/scars.md`](plugins/bloc-signals/skills/bloc-signals/scars.md).
 

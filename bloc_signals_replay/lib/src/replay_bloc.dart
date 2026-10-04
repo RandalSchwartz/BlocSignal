@@ -178,6 +178,7 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
 
   /// Undo the last change.
   void undo() {
+    if (isClosed) return;
     _isReplaying = true;
     try {
       _changeStack.undo();
@@ -188,6 +189,7 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
 
   /// Redo the previous change.
   void redo() {
+    if (isClosed) return;
     _isReplaying = true;
     try {
       _changeStack.redo();

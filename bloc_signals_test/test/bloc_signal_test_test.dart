@@ -43,6 +43,7 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
 class TrackingObserver extends BlocSignalObserver {
   final created = <BlocSignalBase<dynamic>>[];
   final events = <Object?>[];
+  final eventsCompleted = <Object?>[];
   final transitions = <Object?>[];
   final changes = <Change<dynamic>>[];
   final errors = <Object>[];
@@ -54,6 +55,10 @@ class TrackingObserver extends BlocSignalObserver {
   @override
   void onEvent(BlocSignalBase<dynamic> bloc, Object? event) =>
       events.add(event);
+
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) =>
+      eventsCompleted.add(event);
 
   @override
   void onTransition(
@@ -210,6 +215,7 @@ void main() {
         verify: (bloc) {
           expect(tracker.created, hasLength(1));
           expect(tracker.events, hasLength(2));
+          expect(tracker.eventsCompleted, hasLength(2));
           expect(tracker.transitions, hasLength(1));
           expect(tracker.changes, hasLength(1));
           expect(tracker.errors, hasLength(1));
@@ -218,6 +224,41 @@ void main() {
 
       test('verifies parent observer received onClose', () {
         expect(tracker.closed, hasLength(1));
+      });
+    });
+
+    group('setUp observer scoping', () {
+      final baselineObserver = TrackingObserver();
+      final setupObserver = TrackingObserver();
+
+      test('initializes baseline observer', () {
+        BlocSignalObserver.observer = baselineObserver;
+      });
+
+      blocSignalTest<CounterBloc, int>(
+        'installs custom observer inside setUp and forwards events to it',
+        setUp: () {
+          BlocSignalObserver.observer = setupObserver;
+        },
+        build: CounterBloc.new,
+        act: (bloc) => bloc.add(IncrementEvent()),
+        expect: () => [1],
+        verify: (bloc) {
+          expect(setupObserver.created, hasLength(1));
+          expect(setupObserver.events, hasLength(1));
+          expect(setupObserver.eventsCompleted, hasLength(1));
+          expect(setupObserver.transitions, hasLength(1));
+          expect(setupObserver.changes, hasLength(1));
+        },
+      );
+
+      test('verifies observer reverted to baselineObserver after test', () {
+        expect(BlocSignalObserver.observer, equals(baselineObserver));
+        expect(baselineObserver.events, isEmpty);
+      });
+
+      tearDownAll(() {
+        BlocSignalObserver.observer = null;
       });
     });
 
@@ -298,6 +339,11 @@ void main() {
           isTelemetry('cubit_initialized', metadata: {'initial': 42}),
         ],
       );
+      blocSignalTest<_ConstructorErrorCubit, int>(
+        'captures errors emitted during build construction',
+        build: _ConstructorErrorCubit.new,
+        errors: () => [isA<Exception>()],
+      );
     });
   });
 }
@@ -314,5 +360,11 @@ class _TelemetryTestCubit extends CubitSignal<int> {
 class _ConstructorTelemetryCubit extends CubitSignal<int> {
   _ConstructorTelemetryCubit() : super(initialState: 42) {
     emitTelemetry('cubit_initialized', metadata: {'initial': 42});
+  }
+}
+
+class _ConstructorErrorCubit extends CubitSignal<int> {
+  _ConstructorErrorCubit() : super(initialState: 0) {
+    emitError(Exception('error during construction'));
   }
 }

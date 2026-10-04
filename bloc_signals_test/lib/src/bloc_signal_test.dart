@@ -57,18 +57,19 @@ void blocSignalTest<B extends BlocSignalBase<State>, State>(
   test_pkg.test(
     description,
     () async {
+      final baselineObserver = BlocSignalObserver.observer;
       await setUp?.call();
+      final activeObserver = BlocSignalObserver.observer;
       final states = <State>[];
       final caughtErrors = <Object>[];
       final caughtTelemetry = <BlocTelemetryEntry>[];
       B? bloc;
 
-      final previousObserver = BlocSignalObserver.observer;
       final initialErrors = <(Object, Object)>[];
       final initialTelemetry = <(Object, BlocTelemetryEntry)>[];
 
       final testObserver = _TestBlocSignalObserver(
-        parent: previousObserver,
+        parent: activeObserver,
         onErrorCallback: (b, error, stackTrace) {
           if (bloc == null) {
             initialErrors.add((b, error));
@@ -152,7 +153,7 @@ void blocSignalTest<B extends BlocSignalBase<State>, State>(
         if (bloc != null) {
           await bloc.close();
         }
-        BlocSignalObserver.observer = previousObserver;
+        BlocSignalObserver.observer = baselineObserver;
         await tearDown?.call();
       }
     },
@@ -188,6 +189,12 @@ class _TestBlocSignalObserver extends BlocSignalObserver {
   @override
   void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {
     parent?.onEvent(bloc, event);
+  }
+
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+    super.onEventCompleted(bloc, event);
+    parent?.onEventCompleted(bloc, event);
   }
 
   @override

@@ -79,6 +79,27 @@ void main() {
         cubit.increment();
         expect(cubit.canUndo, isFalse);
       });
+
+      test(
+        'does not mutate history or throw when undo or redo is called '
+        'after close',
+        () async {
+          final cubit = CounterCubit()..increment();
+          expect(cubit.canUndo, isTrue);
+          expect(cubit.canRedo, isFalse);
+          await cubit.close();
+
+          expect(cubit.undo, returnsNormally);
+          expect(cubit.stateValue, equals(1));
+          expect(cubit.canUndo, isTrue);
+          expect(cubit.canRedo, isFalse);
+
+          expect(cubit.redo, returnsNormally);
+          expect(cubit.stateValue, equals(1));
+          expect(cubit.canUndo, isTrue);
+          expect(cubit.canRedo, isFalse);
+        },
+      );
     });
 
     group('clearHistory', () {

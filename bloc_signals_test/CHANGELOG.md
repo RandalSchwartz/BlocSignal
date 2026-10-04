@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1
+
+- **Fix (test)**: Delegate `onEventCompleted` to parent observer in `_TestBlocSignalObserver` (#297).
+- **Fix (test)**: Capture ambient observer prior to invoking `setUp` in `blocSignalTest` to prevent observer leaks across tests (#297).
+- **Dependencies**: Bump `bloc_signals` constraint to `^1.5.0` for `onEventCompleted` support (#297).
+
 ## 1.0.0+1
 
 - Re-trigger pub.dev Pana static analysis.

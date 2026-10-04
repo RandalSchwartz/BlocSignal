@@ -95,6 +95,7 @@ mixin ReplayCubitMixin<State> on BlocSignalBase<State> {
 
   /// Undo the last change.
   void undo() {
+    if (isClosed) return;
     _isReplaying = true;
     try {
       _changeStack.undo();
@@ -105,6 +106,7 @@ mixin ReplayCubitMixin<State> on BlocSignalBase<State> {
 
   /// Redo the previous change.
   void redo() {
+    if (isClosed) return;
     _isReplaying = true;
     try {
       _changeStack.redo();

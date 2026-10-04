@@ -126,6 +126,7 @@ To protect developer context while preventing catastrophic regressions, full sca
 | **GenUI Stream Deduplication** | Identical partial JSON AST chunks dropped by state `equals()` | Increment monotonic `_surfaceVersion` on each chunk to guarantee widget tree re-evaluates streaming updates. |
 | **GenUI Zero-Chunk Failures** | Dangling user turn causing `INVALID_ARGUMENT` on retry | Prune optimistic user turn from history if stream fails before receiving any chunks, preserving turn alternation. |
 | **Live Map Key Exposure** | `ConcurrentModificationError` on concurrent loop mutation | Return `List<T>.unmodifiable(_map.keys)` for registries and catalogs. |
+| **Multi-Surface Reset Isolation** | Wiping all history/surfaces or `ConcurrentModificationError` on reset | Snapshot `.toList()` for full wipe, prune container history prior to null-check, and heal phantom active surface. |
 
 For the complete post-mortems, stack traces, and historical case studies for any scar above, inspect [`plugins/bloc-signals/skills/bloc-signals/scars.md`](plugins/bloc-signals/skills/bloc-signals/scars.md).
 

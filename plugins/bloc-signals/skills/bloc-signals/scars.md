@@ -153,6 +153,16 @@ This document details the codified failure modes, architectural wounds, traps, a
 - **The Antigen / Vulnerability Vector**: Returning live collection views (`_map.keys`) rather than unmodifiable snapshots (`List<T>.unmodifiable(_map.keys)`).
 - **The Antibody / Permanent Reflex**: In state containers, catalogs, and registries exposing collection keys or values, always return an unmodifiable snapshot (`List<T>.unmodifiable(_map.keys)` or `Set.unmodifiable(...)`) to guarantee snapshot isolation and prevent concurrent modification crashes.
 
+### 🩹 Scar: Multi-Surface Reset Isolation, Iteration Snapshot & Phantom Healing (`SCAR-GENUI-4`)
+- **The Pathogen / Wound**: In multi-surface Generative UI architectures (`bloc_signals_genui`), resetting a specific surface (`ResetSurface(surfaceId: 'B')`) wiped action response history globally, cleared unrelated active surfaces, and blanked the screen with `SurfaceInitial` instead of preserving surviving surfaces. In full-session resets (`ResetSurface()`), deleting surfaces while iterating over mutable collections triggered `ConcurrentModificationError`. Additionally, if a surface was deleted externally while recorded as `_activeSurfaceId`, targeted resets failed to prune action response history or heal `_activeSurfaceId` to promote surviving surfaces.
+- **The Antigen / Vulnerability Vector**: Treating all reset operations as full global clears, mutating collections during iteration, and placing history pruning logic behind existence checks on external model stores.
+- **The Antibody / Permanent Reflex**:
+  1. For full-session resets (`surfaceId == null`), iterate over an unmodifiable snapshot (`allSurfaces.toList()`) before invoking surface deletions (`SCAR-STATE-19`/`SCAR-STATE-20`).
+  2. For targeted resets (`surfaceId != null`), unconditionally prune container-scoped state (`_responseHistory.removeWhere((r) => r.surfaceId == targetId)`) *before* model existence checks.
+  3. If the surface does not exist in the model but matches `_activeSurfaceId`, clear `_activeSurfaceId = null` and invoke `_emitFinalReadyOrInitial()` to promote surviving surfaces or safely transition to `SurfaceInitial`.
+  4. Always increment the monotonic `_surfaceVersion++` to ensure reactive UI observers invalidate memoized views.
+
+
 
 
 

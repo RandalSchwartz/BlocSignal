@@ -2,6 +2,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/listener.dart';
 import 'package:bloc_signals_lint/src/fixes/require_cubit_signal_mixin_init_fix.dart';
@@ -35,6 +36,97 @@ class RequireCubitSignalMixinInit extends DartLintRule {
   @override
   List<Fix> getFixes() => [RequireCubitSignalMixinInitFix()];
 
+  /// Analyzes a [ClassDeclaration] and returns any constructor or class
+  /// initialization violations.
+  static List<
+      ({
+        Token token,
+        String mixinName,
+        String expectedMethod,
+      })> findViolations(ClassDeclaration node) {
+    final withClause = node.withClause;
+    if (withClause == null) return const [];
+
+    var mixinName = '';
+    for (final type in withClause.mixinTypes) {
+      final typeSource = type.toSource();
+      if (typeSource.contains('BlocSignalMixin')) {
+        mixinName = 'BlocSignalMixin';
+        break;
+      }
+      if (typeSource.contains('CubitSignalMixin')) {
+        mixinName = 'CubitSignalMixin';
+        break;
+      }
+      final staticType = type.type;
+      if (staticType != null) {
+        if (_blocMixinChecker.isAssignableFromType(staticType)) {
+          mixinName = 'BlocSignalMixin';
+          break;
+        }
+        if (_cubitMixinChecker.isAssignableFromType(staticType)) {
+          mixinName = 'CubitSignalMixin';
+          break;
+        }
+      }
+    }
+
+    if (mixinName.isEmpty) return const [];
+
+    const expectedMethod = 'initCubitSignal';
+
+    final constructors =
+        node.members.whereType<ConstructorDeclaration>().toList();
+    if (constructors.isEmpty) {
+      return [
+        (
+          token: node.name,
+          mixinName: mixinName,
+          expectedMethod: expectedMethod,
+        ),
+      ];
+    }
+
+    final violations = <({
+      Token token,
+      String mixinName,
+      String expectedMethod,
+    })>[];
+
+    for (final ctor in constructors) {
+      // Factory constructors cannot access `this` or invoke instance methods.
+      if (ctor.factoryKeyword != null) {
+        continue;
+      }
+
+      // Redirecting generative constructors (`Foo.redirect() : this();`)
+      // cannot have bodies and delegate initialization to the target
+      // constructor.
+      if (ctor.initializers.any((i) => i is RedirectingConstructorInvocation)) {
+        continue;
+      }
+
+      var callsInit = false;
+      ctor.body.visitChildren(
+        _InitInvocationVisitor(expectedMethod, () {
+          callsInit = true;
+        }),
+      );
+
+      if (!callsInit) {
+        violations.add(
+          (
+            token: ctor.name ?? ctor.returnType.beginToken,
+            mixinName: mixinName,
+            expectedMethod: expectedMethod,
+          ),
+        );
+      }
+    }
+
+    return violations;
+  }
+
   @override
   void run(
     CustomLintResolver resolver,
@@ -42,85 +134,27 @@ class RequireCubitSignalMixinInit extends DartLintRule {
     CustomLintContext context,
   ) {
     context.registry.addClassDeclaration((node) {
-      final withClause = node.withClause;
-      if (withClause == null) return;
-
-      var mixinName = '';
-      for (final type in withClause.mixinTypes) {
-        final typeSource = type.toSource();
-        if (typeSource.contains('BlocSignalMixin')) {
-          mixinName = 'BlocSignalMixin';
-          break;
-        }
-        if (typeSource.contains('CubitSignalMixin')) {
-          mixinName = 'CubitSignalMixin';
-          break;
-        }
-        final staticType = type.type;
-        if (staticType != null) {
-          if (_blocMixinChecker.isAssignableFromType(staticType)) {
-            mixinName = 'BlocSignalMixin';
-            break;
-          }
-          if (_cubitMixinChecker.isAssignableFromType(staticType)) {
-            mixinName = 'CubitSignalMixin';
-            break;
-          }
-        }
-      }
-
-      if (mixinName.isEmpty) return;
-
-      final expectedMethod = mixinName.contains('BlocSignalMixin')
-          ? 'initBlocSignal'
-          : 'initCubitSignal';
-
-      final constructors =
-          node.members.whereType<ConstructorDeclaration>().toList();
-      if (constructors.isEmpty) {
-        // Implicit default constructor with no body - flag class name
+      final violations = findViolations(node);
+      for (final v in violations) {
         reporter.atToken(
-          node.name,
+          v.token,
           code,
-          arguments: [mixinName, expectedMethod],
+          arguments: [v.mixinName, v.expectedMethod],
         );
-        return;
-      }
-
-      for (final ctor in constructors) {
-        // Factory redirect constructors do not need init in the redirect
-        if (ctor.factoryKeyword != null && ctor.redirectedConstructor != null) {
-          continue;
-        }
-
-        var callsInit = false;
-        ctor.body.visitChildren(
-          _InitInvocationVisitor(() {
-            callsInit = true;
-          }),
-        );
-
-        if (!callsInit) {
-          reporter.atToken(
-            ctor.name ?? node.name,
-            code,
-            arguments: [mixinName, expectedMethod],
-          );
-        }
       }
     });
   }
 }
 
 class _InitInvocationVisitor extends RecursiveAstVisitor<void> {
-  _InitInvocationVisitor(this.onInitCallFound);
+  _InitInvocationVisitor(this.expectedMethod, this.onInitCallFound);
 
+  final String expectedMethod;
   final void Function() onInitCallFound;
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    final name = node.methodName.name;
-    if (name == 'initCubitSignal' || name == 'initBlocSignal') {
+    if (node.methodName.name == expectedMethod) {
       onInitCallFound();
     }
     super.visitMethodInvocation(node);

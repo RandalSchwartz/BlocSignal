@@ -1,6 +1,8 @@
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
+import 'package:bloc_signals_lint/src/rules/require_cubit_signal_mixin_init.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -163,7 +165,12 @@ void externalFunction(dynamic bloc) {
             if (node.methodName.name == 'emit') {
               final enclosingClass =
                   node.thisOrAncestorOfType<ClassDeclaration>();
-              if (enclosingClass == null) {
+              final enclosingMixin =
+                  node.thisOrAncestorOfType<MixinDeclaration>();
+              if (!AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+                enclosingClass: enclosingClass,
+                enclosingMixin: enclosingMixin,
+              )) {
                 emitsOutsideClass.add(node);
               }
             }
@@ -171,6 +178,70 @@ void externalFunction(dynamic bloc) {
         );
 
         expect(emitsOutsideClass, hasLength(1));
+      },
+    );
+
+    test(
+      'AvoidDirectSignalMutationOutsideBloc accepts this.emit inside mixin '
+      'on CubitSignal',
+      () {
+        const goodCode = '''
+mixin CartPricing on CubitSignal<int> {
+  void calculate() {
+    this.emit(42);
+  }
+}
+''';
+        final parseResult = parseString(content: goodCode);
+        final flaggedEmits = <MethodInvocation>[];
+
+        parseResult.unit.visitChildren(
+          _MethodInvocationVisitor((node) {
+            if (node.methodName.name == 'emit') {
+              final enclosingClass =
+                  node.thisOrAncestorOfType<ClassDeclaration>();
+              final enclosingMixin =
+                  node.thisOrAncestorOfType<MixinDeclaration>();
+              if (!AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+                enclosingClass: enclosingClass,
+                enclosingMixin: enclosingMixin,
+              )) {
+                flaggedEmits.add(node);
+              }
+            }
+          }),
+        );
+
+        expect(flaggedEmits, isEmpty);
+      },
+    );
+
+    test(
+      'AvoidDirectSignalMutationOutsideBloc rejects non-bloc enclosingClass '
+      'even if enclosingMixin is present',
+      () {
+        const classCode = '''
+class NonBlocService {
+  void doEmit() {}
+}
+''';
+        const mixinCode = '''
+mixin CartPricing on CubitSignal<int> {}
+''';
+        final classUnit = parseString(content: classCode).unit;
+        final mixinUnit = parseString(content: mixinCode).unit;
+        final classNode =
+            classUnit.declarations.whereType<ClassDeclaration>().first;
+        final mixinNode =
+            mixinUnit.declarations.whereType<MixinDeclaration>().first;
+
+        final isAllowed =
+            AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+          enclosingClass: classNode,
+          enclosingMixin: mixinNode,
+        );
+
+        expect(isAllowed, isFalse);
       },
     );
 
@@ -200,8 +271,9 @@ class Service {
       },
     );
 
-    test('RequireCubitSignalMixinInit detects uninitialized mixin constructors',
-        () {
+    test(
+        'RequireCubitSignalMixinInit detects uninitialized mixin constructors '
+        'at constructor token', () {
       const badCode = '''
 class CounterService extends BaseService with CubitSignalMixin<int> {
   CounterService() {
@@ -210,34 +282,56 @@ class CounterService extends BaseService with CubitSignalMixin<int> {
 }
 ''';
       final parseResult = parseString(content: badCode);
-      final uninitializedConstructors = <String>[];
+      final classNode =
+          parseResult.unit.declarations.whereType<ClassDeclaration>().first;
+      final violations = RequireCubitSignalMixinInit.findViolations(classNode);
 
-      parseResult.unit.visitChildren(
-        _ClassVisitor((classNode) {
-          final withClause = classNode.withClause;
-          if (withClause != null &&
-              withClause.toSource().contains('CubitSignalMixin')) {
-            for (final ctor
-                in classNode.members.whereType<ConstructorDeclaration>()) {
-              var callsInit = false;
-              ctor.body.visitChildren(
-                _MethodInvocationVisitor((method) {
-                  if (method.methodName.name == 'initCubitSignal' ||
-                      method.methodName.name == 'initBlocSignal') {
-                    callsInit = true;
-                  }
-                }),
-              );
-              if (!callsInit) {
-                uninitializedConstructors
-                    .add(ctor.name?.lexeme ?? classNode.name.lexeme);
-              }
-            }
-          }
-        }),
+      expect(violations, hasLength(1));
+      expect(violations.first.token.lexeme, equals('CounterService'));
+      expect(
+        violations.first.token.offset,
+        equals(badCode.indexOf('CounterService()')),
       );
+      expect(violations.first.mixinName, equals('CubitSignalMixin'));
+      expect(violations.first.expectedMethod, equals('initCubitSignal'));
+    });
 
-      expect(uninitializedConstructors, contains('CounterService'));
+    test(
+        'RequireCubitSignalMixinInit flags class with BlocSignalMixin calling '
+        'initBlocSignal', () {
+      const badCode = '''
+class UserBloc extends BaseService with BlocSignalMixin<UserEvent, int> {
+  UserBloc() {
+    initBlocSignal(initialState: 0);
+  }
+}
+''';
+      final parseResult = parseString(content: badCode);
+      final classNode =
+          parseResult.unit.declarations.whereType<ClassDeclaration>().first;
+      final violations = RequireCubitSignalMixinInit.findViolations(classNode);
+
+      expect(violations, hasLength(1));
+      expect(violations.first.mixinName, equals('BlocSignalMixin'));
+      expect(violations.first.expectedMethod, equals('initCubitSignal'));
+    });
+
+    test(
+        'RequireCubitSignalMixinInit accepts class with BlocSignalMixin '
+        'calling initCubitSignal', () {
+      const goodCode = '''
+class UserBloc extends BaseService with BlocSignalMixin<UserEvent, int> {
+  UserBloc() {
+    initCubitSignal(initialState: 0);
+  }
+}
+''';
+      final parseResult = parseString(content: goodCode);
+      final classNode =
+          parseResult.unit.declarations.whereType<ClassDeclaration>().first;
+      final violations = RequireCubitSignalMixinInit.findViolations(classNode);
+
+      expect(violations, isEmpty);
     });
 
     test('RequireCubitSignalMixinInit accepts initialized mixin constructors',
@@ -250,34 +344,35 @@ class CounterService extends BaseService with CubitSignalMixin<int> {
 }
 ''';
       final parseResult = parseString(content: goodCode);
-      final uninitializedConstructors = <String>[];
+      final classNode =
+          parseResult.unit.declarations.whereType<ClassDeclaration>().first;
+      final violations = RequireCubitSignalMixinInit.findViolations(classNode);
 
-      parseResult.unit.visitChildren(
-        _ClassVisitor((classNode) {
-          final withClause = classNode.withClause;
-          if (withClause != null &&
-              withClause.toSource().contains('CubitSignalMixin')) {
-            for (final ctor
-                in classNode.members.whereType<ConstructorDeclaration>()) {
-              var callsInit = false;
-              ctor.body.visitChildren(
-                _MethodInvocationVisitor((method) {
-                  if (method.methodName.name == 'initCubitSignal' ||
-                      method.methodName.name == 'initBlocSignal') {
-                    callsInit = true;
-                  }
-                }),
-              );
-              if (!callsInit) {
-                uninitializedConstructors
-                    .add(ctor.name?.lexeme ?? classNode.name.lexeme);
-              }
-            }
-          }
-        }),
-      );
+      expect(violations, isEmpty);
+    });
 
-      expect(uninitializedConstructors, isEmpty);
+    test(
+        'RequireCubitSignalMixinInit ignores factory constructors and '
+        'redirecting constructors', () {
+      const code = '''
+class CounterService extends BaseService with CubitSignalMixin<int> {
+  CounterService._() {
+    initCubitSignal(initialState: 0);
+  }
+
+  CounterService.redirect() : this._();
+
+  factory CounterService.factory() {
+    return CounterService._();
+  }
+}
+''';
+      final parseResult = parseString(content: code);
+      final classNode =
+          parseResult.unit.declarations.whereType<ClassDeclaration>().first;
+      final violations = RequireCubitSignalMixinInit.findViolations(classNode);
+
+      expect(violations, isEmpty);
     });
 
     test('AvoidRawSignalEffectsInBloc detects top-level effect in bloc', () {
@@ -597,18 +692,6 @@ class _SuperConstructorInvocationVisitor extends RecursiveAstVisitor<void> {
   void visitSuperConstructorInvocation(SuperConstructorInvocation node) {
     onInvocation(node);
     super.visitSuperConstructorInvocation(node);
-  }
-}
-
-class _ClassVisitor extends RecursiveAstVisitor<void> {
-  _ClassVisitor(this.onClass);
-
-  final void Function(ClassDeclaration node) onClass;
-
-  @override
-  void visitClassDeclaration(ClassDeclaration node) {
-    onClass(node);
-    super.visitClassDeclaration(node);
   }
 }
 

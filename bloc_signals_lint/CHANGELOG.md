@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.3.1
+
+- Fix `require_cubit_signal_mixin_init`:
+  - Correct diagnostic message to suggest `initCubitSignal(initialState: ...)` instead of non-existent `initBlocSignal`.
+  - Strictly check for `initCubitSignal` instead of accepting either name.
+  - Report diagnostics directly on the constructor identifier token (or return type for unnamed constructors), allowing quick-fixes to target the specific constructor.
+  - Skip factory constructors and redirecting generative constructors that cannot declare bodies or invoke instance methods.
+- Fix `require_cubit_signal_mixin_init_fix`:
+  - Support unnamed constructors (`Foo()`) and synthesize a default constructor when none is present on the class.
+- Fix `use_provider_value_fix`:
+  - Rewrite constructor invocation to `.value` constructor (preserving generic type arguments, for example `BlocSignalProvider<CounterBloc>.value(...)`).
+  - Unwrap closure expressions (`(_) => instance` or `(context) => instance`) into direct values (`value: instance`).
+- Fix `avoid_direct_signal_mutation_outside_bloc`:
+  - Allow state emissions inside `MixinDeclaration` bodies constrained on `CubitSignal` or `BlocSignal` via `on` clauses.
+  - Ensure strict AST scope boundaries so non-container classes cannot inherit emission permissions from ancestor mixins.
+
 ## 1.3.0
 
 - Added custom analyzer rule `require_emit_in_helper_name`:

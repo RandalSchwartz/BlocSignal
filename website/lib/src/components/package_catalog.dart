@@ -125,7 +125,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_lint',
-    version: '1.3.0',
+    version: '1.3.1',
     desc: 'Analyzer plugin with 20 static analysis lint rules and 8 automated IDE quick-fixes.',
     icon: '🛡️',
     category: 'DevTools & Tooling',

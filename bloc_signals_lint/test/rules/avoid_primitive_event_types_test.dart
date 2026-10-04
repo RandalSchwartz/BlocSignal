@@ -113,7 +113,7 @@ class NullableIntBloc extends BlocSignal<int?, int> {
       const badCode = '''
 class ServiceBloc extends BaseService with BlocSignalMixin<int, int> {
   ServiceBloc() {
-    initBlocSignal(initialState: 0);
+    initCubitSignal(initialState: 0);
   }
 }
 ''';
@@ -246,7 +246,7 @@ sealed class UserEvent {}
 class UserBloc extends BaseRepository
     with DiagnosticableTreeMixin, BlocSignalMixin<UserEvent, int> {
   UserBloc() {
-    initBlocSignal(initialState: 0);
+    initCubitSignal(initialState: 0);
   }
 }
 ''';
@@ -268,7 +268,7 @@ class UserBloc extends BaseRepository
 class BadUserBloc extends BaseRepository
     with DiagnosticableTreeMixin, BlocSignalMixin<int, int> {
   BadUserBloc() {
-    initBlocSignal(initialState: 0);
+    initCubitSignal(initialState: 0);
   }
 }
 ''';

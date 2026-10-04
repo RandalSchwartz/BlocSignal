@@ -164,7 +164,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                 ]),
                 td([
                   Component.text(
-                    'Enforces calling initCubitSignal(initialState: ...) or initBlocSignal(initialState: ...) in constructors of classes adopting mixins.',
+                    'Enforces calling initCubitSignal(initialState: ...) in constructors of classes adopting mixins.',
                   ),
                 ]),
               ]),

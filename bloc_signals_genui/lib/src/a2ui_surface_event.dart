@@ -110,7 +110,17 @@ final class SubmitAction extends A2uiSurfaceEvent {
   final Map<String, dynamic> context;
 }
 
-/// Resets the surface and message processor back to [SurfaceInitial].
+/// Resets a targeted surface (or all surfaces if [surfaceId] is `null`) and the
+/// message processor.
+///
+/// When resetting a specific surface while other surfaces exist, the bloc transitions
+/// to [SurfaceReady] with the surviving active surface. When resetting all surfaces
+/// or the last surviving surface, transitions to [SurfaceInitial].
+///
+/// **Maintainer Note**: When extending `A2uiSurfaceBloc` with additional surface-scoped
+/// registries, caches, or state buffers, ensure those data structures are properly
+/// pruned in `_onResetSurface` both during targeted resets (`event.surfaceId != null`)
+/// and full session wipes (`event.surfaceId == null`).
 final class ResetSurface extends A2uiSurfaceEvent {
   /// Creates a [ResetSurface] event.
   const ResetSurface({this.surfaceId});

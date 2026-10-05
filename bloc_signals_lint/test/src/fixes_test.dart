@@ -178,8 +178,8 @@ class MyService with CubitSignalMixin<int> {
     });
 
     test(
-        'RequireCubitSignalMixinInitFix fires for unnamed constructor at '
-        'constructor token', () {
+        '(Issue #302: F2, F8) RequireCubitSignalMixinInitFix fires for unnamed '
+        'constructor at constructor token', () {
       const sourceCode = '''
 class MyService with CubitSignalMixin<int> {
   MyService() {
@@ -206,8 +206,8 @@ class MyService with CubitSignalMixin<int> {
     });
 
     test(
-        'RequireCubitSignalMixinInitFix generates constructor for class '
-        'without constructor', () {
+        '(Issue #302: F2, F8) RequireCubitSignalMixinInitFix generates '
+        'constructor for class without constructor', () {
       const sourceCode = '''
 class MyService with CubitSignalMixin<int> {
 }
@@ -283,8 +283,8 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
     });
 
     test(
-        'UseProviderValueFix rewrites to BlocSignalProvider.value with '
-        'unwrapped closure', () {
+        '(Issue #302: F9) UseProviderValueFix rewrites to '
+        'BlocSignalProvider.value with unwrapped closure', () {
       const sourceCode = '''
 Widget build(BuildContext context) {
   return BlocSignalProvider(
@@ -311,8 +311,8 @@ Widget build(BuildContext context) {
     });
 
     test(
-        'UseProviderValueFix supports generic type arguments and block '
-        'function body', () {
+        '(Issue #302: F9) UseProviderValueFix supports generic type arguments '
+        'and block function body', () {
       const sourceCode = '''
 Widget build(BuildContext context) {
   return BlocSignalProvider<CounterBloc>(

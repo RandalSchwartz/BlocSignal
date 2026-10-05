@@ -225,8 +225,8 @@ void main() {
     });
 
     test(
-      'does not throw assertion and deletes storage when clear() is called '
-      'after close()',
+      '(Issue #297: F7) does not throw assertion and deletes storage when '
+      'clear() is called after close()',
       () async {
         storage.write('PrimitiveCounterCubit', 50);
 

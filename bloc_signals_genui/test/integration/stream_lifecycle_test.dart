@@ -352,8 +352,8 @@ void main() {
     });
 
     test(
-        'F18: a slow cancel on the superseded stream does not release the replacement',
-        () async {
+        '(Issue #300: F18) a slow cancel on the superseded stream does not '
+        'release the replacement', () async {
       late _Feed second;
       await _session((bloc, observer) async {
         final cancelGate = Completer<void>();
@@ -470,7 +470,7 @@ void main() {
     });
   });
 
-  group('F18: two streams added in one synchronous turn', () {
+  group('(Issue #300: F18) two streams added in one synchronous turn', () {
     test('both subscribe, and the superseded one is cancelled', () async {
       late _Feed first;
       late _Feed second;
@@ -529,7 +529,9 @@ void main() {
     });
   });
 
-  group('F22: an ingest that starts while close is already running', () {
+  group(
+      '(Issue #300: F22) an ingest that starts while close is already running',
+      () {
     test('does not orphan stream subscription or leave active listeners',
         () async {
       final feed = _Feed();
@@ -572,7 +574,7 @@ void main() {
     });
   });
 
-  group('F21: a reset while a stream is still arriving', () {
+  group('(Issue #300: F21) a reset while a stream is still arriving', () {
     test('cancels active stream and completes handler', () async {
       late _Feed feed;
       var cancelledAtReset = false;
@@ -834,8 +836,8 @@ void main() {
     });
 
     test(
-        'BLOCKER-3: stream that throws synchronously in listen cancels pre-existing active stream',
-        () async {
+        '(Issue #300: Blocker 3) stream that throws synchronously in listen '
+        'cancels pre-existing active stream', () async {
       late _Feed first;
       final errorStream = _SyncThrowStream(StateError('sync listen error'));
       final outcome = await _session((bloc, observer) async {
@@ -859,7 +861,8 @@ void main() {
     });
 
     test(
-        'Round 3 BLOCKER-1: late event on superseded stream during synchronous listen throw is dropped without StateError',
+        '(Issue #300: Round 3 Blocker 1) late event on superseded stream '
+        'during synchronous listen throw is dropped without StateError',
         () async {
       final cancelGate = Completer<void>();
       final first = _SlowCancelFeed(cancelGate.future);
@@ -902,8 +905,8 @@ void main() {
     });
 
     test(
-        'BLOCKER-1: fatal Error in chunk processing resolves completer and finishes handler',
-        () async {
+        '(Issue #300: Blocker 1) fatal Error in chunk processing resolves '
+        'completer and finishes handler', () async {
       late _Feed feed;
       final failure = StateError('fatal chunk error');
       final outcome = await _session((bloc, observer) async {

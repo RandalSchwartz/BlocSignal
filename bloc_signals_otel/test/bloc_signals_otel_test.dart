@@ -158,8 +158,8 @@ void main() {
     });
 
     test(
-      'evicts spans strictly FIFO (oldest first) even when earlier spans are '
-      'recently touched (Issue #303: F12)',
+      '(Issue #303: F12) evicts spans strictly FIFO (oldest first) even when '
+      'earlier spans are recently touched',
       () async {
         final customObserver = OtelBlocSignalObserver(
           tracer: tracer,

@@ -169,8 +169,9 @@ void main() {
     // other unmount path for selector state; the trim runs on
     // `scheduleMicrotask` with no mounted check at all, and `_selectFinalizer`
     // is best-effort.
-    testComponents('cancels its subscription cleanly when it leaves the tree',
-        (tester) async {
+    testComponents(
+        '(Issue #298: F23) cancels its subscription cleanly when it leaves the '
+        'tree', (tester) async {
       final handed = CounterCubit();
       addTearDown(handed.close);
 
@@ -200,8 +201,9 @@ void main() {
     });
 
     // Pins F25 in the Jaspr twin.
-    testComponents('releases its subscription when component stops selecting',
-        (tester) async {
+    testComponents(
+        '(Issue #298: F25) releases its subscription when component stops '
+        'selecting', (tester) async {
       final handed = CounterCubit();
       addTearDown(handed.close);
 
@@ -354,8 +356,8 @@ void main() {
     });
 
     testComponents(
-        'lazily, does not re-run a throwing factory on subsequent rebuilds',
-        (tester) async {
+        '(Issue #298: F5) lazily, does not re-run a throwing factory on '
+        'subsequent rebuilds', (tester) async {
       var factoryCalls = 0;
       tester.pumpComponent(
         Host(

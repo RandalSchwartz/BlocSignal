@@ -69,7 +69,8 @@ void main() {
     );
 
     test(
-        'F19: bare createSurface produces identical SurfaceStreaming state across ProcessMessage and IngestStream',
+        '(Issue #301: F19) bare createSurface produces identical '
+        'SurfaceStreaming state across ProcessMessage and IngestStream',
         () async {
       final blocMsg = A2uiSurfaceBloc();
       final blocStream = A2uiSurfaceBloc();

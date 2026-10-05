@@ -85,8 +85,8 @@ Future<List<A2uiActionResponse>> _replayedResponses(
 void main() {
   group('ResetSurface Triad (Issue #299: F1, F17, F20, C1)', () {
     test(
-        'F1: named reset deletes targeted surface and preserves survivor state and history',
-        () async {
+        '(Issue #299: F1) named reset deletes targeted surface and preserves '
+        'survivor state and history', () async {
       final session = _createTwoSurfaces();
 
       session.bloc
@@ -132,8 +132,8 @@ void main() {
     });
 
     test(
-        'F1: resetting inactive surface preserves active surface and its history',
-        () async {
+        '(Issue #299: F1) resetting inactive surface preserves active surface '
+        'and its history', () async {
       final session = _createTwoSurfaces();
 
       session.bloc
@@ -175,8 +175,9 @@ void main() {
       expect(replayed.single.actionName, 'action_b');
     });
 
-    test('F17: id-less reset deletes all surfaces and clears all history',
-        () async {
+    test(
+        '(Issue #299: F17) id-less reset deletes all surfaces and clears all '
+        'history', () async {
       final session = _createTwoSurfaces();
 
       session.bloc
@@ -210,8 +211,9 @@ void main() {
       expect(replayed, isEmpty);
     });
 
-    test('F20: naming an unknown surface safely no-ops and preserves history',
-        () async {
+    test(
+        '(Issue #299: F20) naming an unknown surface safely no-ops and '
+        'preserves history', () async {
       final session = _createTwoSurfaces();
 
       session.bloc.add(
@@ -240,8 +242,8 @@ void main() {
     });
 
     test(
-        'C1: id-less reset recovers gracefully when active surface is already deleted externally',
-        () async {
+        '(Issue #299: C1) id-less reset recovers gracefully when active '
+        'surface is already deleted externally', () async {
       final session = _createTwoSurfaces();
 
       // Stale active surface: delete B directly from groupModel
@@ -257,8 +259,8 @@ void main() {
     });
 
     test(
-        'BLOCKER-2: targeted reset of phantom active surface heals activeSurfaceId and prunes history',
-        () async {
+        '(Issue #299: Blocker 2) targeted reset of phantom active surface '
+        'heals activeSurfaceId and prunes history', () async {
       final session = _createTwoSurfaces();
 
       session.bloc

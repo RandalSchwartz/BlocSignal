@@ -216,6 +216,14 @@ Package entrypoint libraries ending in `_test.dart` (such as `package:bloc_signa
 
 ---
 
+## Traceable Test Naming & Artifact Longevity (`SCAR-TEST-22`)
+
+When authoring regression tests or characterization suites for audit findings and reported defects:
+- Test group headers and test descriptions MUST incorporate the canonical permanent repository issue key alongside any finding ID or blocker label (for example, `(Issue #303: F11)`, `(Issue #297: F6)`, or `(Issue #299: Blocker 2)`).
+- Never use bare ephemeral finding IDs (such as `test('F13: ...')`) or untagged blocker labels. Ephemeral identifiers lose context once PR branches and temporary audit documents are archived; permanent issue keys guarantee long-term forensic navigability in `git blame` and CI reports.
+
+---
+
 ## Validation Commands
 
 Run non-UI core package unit tests (`bloc_signals`, `bloc_signals_test`, `bloc_signals_hydrate`, `bloc_signals_otel`, `bloc_signals_replay`) using `dart test` for sub-second CLI execution:

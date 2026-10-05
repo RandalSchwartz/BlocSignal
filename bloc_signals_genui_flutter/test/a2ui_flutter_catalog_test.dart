@@ -591,7 +591,7 @@ void main() {
       });
 
       test(
-          'BLOCKER-1 reproduction: registeredTypes returns an unmodifiable '
+          '(Issue #301: Blocker 1) registeredTypes returns an unmodifiable '
           'snapshot immune to ConcurrentModificationError during mutation', () {
         final catalog = A2uiFlutterCatalog.standard();
         final types = catalog.registeredTypes;

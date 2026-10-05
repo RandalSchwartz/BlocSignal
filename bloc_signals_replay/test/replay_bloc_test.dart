@@ -108,8 +108,8 @@ void main() {
       });
 
       test(
-        'does not mutate history or throw when undo or redo is called '
-        'after close',
+        '(Issue #297: F6) does not mutate history or throw when undo or redo '
+        'is called after close',
         () async {
           final bloc = CounterBloc()..add(const CounterIncrementPressed());
           expect(bloc.canUndo, isTrue);

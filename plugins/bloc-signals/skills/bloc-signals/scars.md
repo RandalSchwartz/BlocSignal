@@ -193,8 +193,8 @@ This document details the codified failure modes, architectural wounds, traps, a
   5. In tests asserting stream parity, never rely on arbitrary `Future.delayed()` timeouts; use deterministic `Completer` instances conditioned on matching the specific `surfaceId` (`SCAR-TEST-11`).
 
 
-
-
-
-
+### 🩹 Scar: Traceable Test Naming & Artifact Longevity (`SCAR-TEST-22`)
+- **The Pathogen / Wound**: Characterization tests and regression suites are authored using ephemeral, local finding numbers (for example, `test('F13: ...')` or bare `BLOCKER-:` labels). Once the temporary audit document, characterization report, or PR branch is archived and merged, the ephemeral finding numbers and blocker labels lose semantic navigability in `git blame`, IDE test runners, and CI test logs, breaking the forensic audit trail linking the test harness back to the originating GitHub issue.
+- **The Antigen / Vulnerability Vector**: The Local Frame-of-Reference Trap. Treating ephemeral finding numbers (`F1`, `F11`, `F12`) or ad-hoc review labels as globally durable identifiers, forgetting that repository history outlives the current audit cycle.
+- **The Antibody / Permanent Reflex**: The Permanent Issue Key & Dual-Traceability Invariant ($\operatorname{TestIdentifier} \implies \operatorname{CanonicalIssueKey} \land \operatorname{AuditFindingRef}$). Every test group, characterization harness, or regression test authored to remediate an audit finding or defect MUST include the canonical, permanent repository issue key alongside any audit finding identifier or blocker label (for example, `(Issue #297: F6)`, `(Issue #298: F3, F4)`, `(Issue #299: Blocker 2)`). This guarantees immediate traceability in `git blame`, CI test logs, and failure reports across arbitrary future time horizons.
 

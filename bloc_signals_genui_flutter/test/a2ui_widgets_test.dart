@@ -259,8 +259,8 @@ void main() {
     });
 
     testWidgets(
-        'F13: Button preserves action context from normalized event map',
-        (tester) async {
+        '(Issue #301: F13) Button preserves action context from normalized '
+        'event map', (tester) async {
       final bloc = A2uiSurfaceBloc();
       final catalog = A2uiFlutterCatalog.standard();
       addTearDown(bloc.close);
@@ -330,8 +330,8 @@ void main() {
     });
 
     testWidgets(
-        'F13: Button preserves action context from un-normalized fallback map',
-        (tester) async {
+        '(Issue #301: F13) Button preserves action context from un-normalized '
+        'fallback map', (tester) async {
       final bloc = A2uiSurfaceBloc();
       final catalog = A2uiFlutterCatalog.standard();
       addTearDown(bloc.close);

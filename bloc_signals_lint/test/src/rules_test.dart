@@ -182,8 +182,8 @@ void externalFunction(dynamic bloc) {
     );
 
     test(
-      'AvoidDirectSignalMutationOutsideBloc accepts this.emit inside mixin '
-      'on CubitSignal',
+      '(Issue #302: F16) AvoidDirectSignalMutationOutsideBloc accepts '
+      'this.emit inside mixin on CubitSignal',
       () {
         const goodCode = '''
 mixin CartPricing on CubitSignal<int> {
@@ -217,8 +217,8 @@ mixin CartPricing on CubitSignal<int> {
     );
 
     test(
-      'AvoidDirectSignalMutationOutsideBloc rejects non-bloc enclosingClass '
-      'even if enclosingMixin is present',
+      '(Issue #302: F16) AvoidDirectSignalMutationOutsideBloc rejects '
+      'non-bloc enclosingClass even if enclosingMixin is present',
       () {
         const classCode = '''
 class NonBlocService {
@@ -272,8 +272,8 @@ class Service {
     );
 
     test(
-        'RequireCubitSignalMixinInit detects uninitialized mixin constructors '
-        'at constructor token', () {
+        '(Issue #302: F2) RequireCubitSignalMixinInit detects uninitialized '
+        'mixin constructors at constructor token', () {
       const badCode = '''
 class CounterService extends BaseService with CubitSignalMixin<int> {
   CounterService() {
@@ -297,8 +297,8 @@ class CounterService extends BaseService with CubitSignalMixin<int> {
     });
 
     test(
-        'RequireCubitSignalMixinInit flags class with BlocSignalMixin calling '
-        'initBlocSignal', () {
+        '(Issue #302: F2, F8) RequireCubitSignalMixinInit flags class with '
+        'BlocSignalMixin calling initBlocSignal', () {
       const badCode = '''
 class UserBloc extends BaseService with BlocSignalMixin<UserEvent, int> {
   UserBloc() {
@@ -317,8 +317,8 @@ class UserBloc extends BaseService with BlocSignalMixin<UserEvent, int> {
     });
 
     test(
-        'RequireCubitSignalMixinInit accepts class with BlocSignalMixin '
-        'calling initCubitSignal', () {
+        '(Issue #302: F2, F8) RequireCubitSignalMixinInit accepts class with '
+        'BlocSignalMixin calling initCubitSignal', () {
       const goodCode = '''
 class UserBloc extends BaseService with BlocSignalMixin<UserEvent, int> {
   UserBloc() {
@@ -352,8 +352,8 @@ class CounterService extends BaseService with CubitSignalMixin<int> {
     });
 
     test(
-        'RequireCubitSignalMixinInit ignores factory constructors and '
-        'redirecting constructors', () {
+        '(Issue #302: F10) RequireCubitSignalMixinInit ignores factory '
+        'constructors and redirecting constructors', () {
       const code = '''
 class CounterService extends BaseService with CubitSignalMixin<int> {
   CounterService._() {

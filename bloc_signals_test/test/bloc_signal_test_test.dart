@@ -227,7 +227,7 @@ void main() {
       });
     });
 
-    group('setUp observer scoping', () {
+    group('(Issue #297: F14, F15) setUp observer scoping', () {
       final baselineObserver = TrackingObserver();
       final setupObserver = TrackingObserver();
 

@@ -280,8 +280,8 @@ void main() {
     // then sets `_isInitialized = true`, with nothing between them, so a throw
     // leaves the flag false and the next read runs the factory again.
     testWidgets(
-        'lazily, does not re-run a throwing factory on subsequent rebuilds',
-        (tester) async {
+        '(Issue #298: F5) lazily, does not re-run a throwing factory on '
+        'subsequent rebuilds', (tester) async {
       var factoryCalls = 0;
       final key = GlobalKey<HostState>();
 
@@ -462,7 +462,9 @@ void main() {
     });
   });
 
-  group('a selecting child when the container is replaced under it', () {
+  group(
+      '(Issue #298: F3, F4) a selecting child when the container is replaced '
+      'under it', () {
     testWidgets('rebuilds for the new container and stops following the old',
         (tester) async {
       final first = CounterCubit(10);
@@ -513,8 +515,9 @@ void main() {
     // its disposal loop sits inside `if (element.mounted)` -- the guard skips
     // exactly when the element is gone. `_selectFinalizer` is the only other
     // path, and a `Finalizer` is best-effort with no guarantee it ever runs.
-    testWidgets('releases its subscription after the provider leaves the tree',
-        (tester) async {
+    testWidgets(
+        '(Issue #298: F24) releases its subscription after the provider leaves '
+        'the tree', (tester) async {
       final handed = CounterCubit();
       addTearDown(handed.close);
 
@@ -544,7 +547,7 @@ void main() {
     });
   });
 
-  group('a selecting child that stops selecting', () {
+  group('(Issue #298: F25) a selecting child that stops selecting', () {
     // Pins F25. The trim is scheduled only from inside `select` and only on the
     // first call of a build, so a build that calls it zero times leaves the
     // subscription in the list with nothing scheduled to inspect it.

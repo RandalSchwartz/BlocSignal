@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.2
+
+- Fix `BlocSignalProvider` and `context.select`:
+  - Skip spurious rebuild on lazy `BlocSignalProvider` when container was initialized in-frame (F5, #298).
+  - Wrap lazy provider factory invocation in `try`/`finally` to prevent unbounded retry loops (F24, #298).
+  - Clean up orphaned selector subscriptions on conditional select branches (F25, #298).
+  - Catch only defunct `AssertionError` during Jaspr selector effect rebuild to cleanly dispose unmounted component subscriptions while bubbling real developer exceptions (F26, #298).
+
 ## 1.1.1
 
 - Fix `BlocSignalListener` and `BlocSignalConsumer` subscription transfer when provider container instance is swapped above `const` subtrees (#273).

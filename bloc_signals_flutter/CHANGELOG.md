@@ -1,3 +1,11 @@
+## 1.3.3
+
+- Fix `BlocSignalProvider`:
+  - Skip spurious rebuild on lazy `BlocSignalProvider` when old container was null and initialized in-frame (F5, #298).
+  - Wrap lazy provider factory invocation in `try`/`finally` to cache errors and prevent unbounded retry loops (F24, #298).
+  - Deterministically release selector subscriptions when element unmounts or leaves the tree (F23, #298).
+  - Clean up orphaned selector subscriptions on conditional select branches without pruning unnotified dependents (F25, #298).
+
 ## 1.3.2
 
 - Fix `BlocSignalListener` and `BlocSignalConsumer` subscription transfer when ancestor provider container instance is swapped above `const` subtrees (#273).

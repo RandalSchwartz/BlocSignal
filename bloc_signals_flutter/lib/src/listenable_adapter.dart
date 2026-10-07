@@ -110,6 +110,13 @@ extension BlocSignalValueListenableX<T> on BlocSignalBase<T> {
   /// Exposes this [BlocSignalBase] state container as a Flutter
   /// [ValueListenable].
   ///
+  /// The returned [ValueListenable] lazily subscribes to [state] when the
+  /// first listener is added via [Listenable.addListener] and automatically
+  /// unsubscribes when the last listener is removed via
+  /// [Listenable.removeListener]. Reading [ValueListenable.value] always
+  /// returns the current [stateValue] of this container, even when no
+  /// listeners are attached.
+  ///
   /// Example:
   /// ```dart
   /// final ValueListenable<int> listenable = cubit.toValueListenable();
@@ -120,18 +127,42 @@ extension BlocSignalValueListenableX<T> on BlocSignalBase<T> {
 }
 
 class _BlocSignalValueListenable<T> extends ValueNotifier<T> {
-  _BlocSignalValueListenable(this.bloc) : super(bloc.stateValue) {
-    _unsubscribe = bloc.state.subscribe((newValue) {
-      value = newValue;
-    });
-  }
+  _BlocSignalValueListenable(this.bloc) : super(bloc.stateValue);
 
   final BlocSignalBase<T> bloc;
-  late final void Function() _unsubscribe;
+  void Function()? _unsubscribe;
+
+  @override
+  T get value => bloc.stateValue;
+
+  @override
+  void addListener(VoidCallback listener) {
+    super.addListener(listener);
+    if (_unsubscribe == null && hasListeners) {
+      var isInitial = true;
+      _unsubscribe = bloc.state.subscribe((_) {
+        if (isInitial) {
+          isInitial = false;
+          return;
+        }
+        notifyListeners();
+      });
+    }
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    super.removeListener(listener);
+    if (!hasListeners) {
+      _unsubscribe?.call();
+      _unsubscribe = null;
+    }
+  }
 
   @override
   void dispose() {
-    _unsubscribe();
+    _unsubscribe?.call();
+    _unsubscribe = null;
     super.dispose();
   }
 }

@@ -212,7 +212,7 @@ final blocSignal = myChangeNotifier.toBlocSignal(
 ```
 
 ### `BlocSignal` ➔ `ValueListenable`
-Exposes a `ValueListenable<T>` for Flutter's `ValueListenableBuilder` or `package:provider`:
+Exposes a `ValueListenable<T>` for Flutter's `ValueListenableBuilder` or `package:provider` (lazily subscribing to `bloc.state` when the first listener is added and automatically unsubscribing when the last listener is removed):
 
 ```dart
 final ValueListenable<int> listenable = myBlocSignal.toValueListenable();

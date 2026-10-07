@@ -203,9 +203,11 @@ MultiBlocSignalProvider(
 ```dart
 // Convert any ChangeNotifier into a CubitSignal
 final ChangeNotifier notifier = MyChangeNotifier();
-final cubit = notifier.toBlocSignal(initialState: 0);
+final cubit = notifier.toBlocSignal(readState: () => notifier.count);
 
-// Convert any CubitSignal into a Flutter ValueListenable
+// Convert any CubitSignal into a Flutter ValueListenable.
+// Lazily subscribes when the first listener is added and automatically
+// unsubscribes when the last listener is removed:
 final ValueListenable<int> listenable = cubit.toValueListenable();
 ```
 

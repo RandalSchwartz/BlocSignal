@@ -1,42 +1,57 @@
-import 'package:analyzer/dart/analysis/utilities.dart';
-import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_context_watch_for_bloc_state.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_emit_in_build.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_invalid_context_select_generics.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_unmanaged_signal_effects.dart';
+import 'package:bloc_signals_lint/src/rules/prefer_bloc_signal_provider_read_in_callbacks.dart';
 import 'package:test/test.dart';
 
+import 'lint_test_harness.dart';
+
 void main() {
-  group('Flutter UI Rule AST Detection on Sample Code Snippets', () {
-    test('AvoidEmitInBuild detects emit or add inside build method', () {
-      const badCode = '''
+  tearDownAll(disposeLintTestHarness);
+
+  group(
+    '(Issue #315: R1) Flutter UI Rule AST Detection via rule.run()',
+    () {
+      test('AvoidEmitInBuild detects emit or add inside build method',
+          () async {
+        const badCode = '''
+class MyEvent {}
+class MyBloc extends BlocSignal<MyEvent, int> {
+  MyBloc() : super(initialState: 0);
+}
+
 class MyWidget {
-  Widget build(dynamic context) {
+  final MyBloc bloc = MyBloc();
+  Widget build(BuildContext context) {
     bloc.emit(42);
     bloc.add(MyEvent());
     return Container();
   }
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final flaggedMutations = <String>[];
+        final lints = await runLintRule(const AvoidEmitInBuild(), badCode);
+        expect(lints, hasLength(2));
+        expect(lints.map((l) => l.lexeme), containsAll(['emit', 'add']));
+        expect(
+          lints.map((l) => l.arguments?.first),
+          containsAll(['emit', 'add']),
+        );
+      });
 
-      parseResult.unit.visitChildren(
-        _MethodInvocationVisitor((node) {
-          final name = node.methodName.name;
-          if (name == 'emit' || name == 'add') {
-            final method = node.thisOrAncestorOfType<MethodDeclaration>();
-            if (method != null && method.name.lexeme == 'build') {
-              flaggedMutations.add(name);
-            }
-          }
-        }),
-      );
+      test('AvoidEmitInBuild accepts emit or add inside event callbacks',
+          () async {
+        const goodCode = '''
+class MyEvent {}
+class MyBloc extends BlocSignal<MyEvent, int> {
+  MyBloc() : super(initialState: 0);
+}
 
-      expect(flaggedMutations, containsAll(['emit', 'add']));
-    });
-
-    test('AvoidEmitInBuild accepts emit or add inside event callbacks', () {
-      const goodCode = '''
 class MyWidget {
-  Widget build(dynamic context) {
+  final MyBloc bloc = MyBloc();
+  Widget build(BuildContext context) {
     return Button(
       onPressed: () {
         bloc.add(MyEvent());
@@ -45,29 +60,38 @@ class MyWidget {
   }
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final directBuildMutations = <String>[];
+        final lints = await runLintRule(const AvoidEmitInBuild(), goodCode);
+        expect(lints, isEmpty);
+      });
 
-      parseResult.unit.visitChildren(
-        _MethodInvocationVisitor((node) {
-          final name = node.methodName.name;
-          if (name == 'emit' || name == 'add') {
-            final method = node.thisOrAncestorOfType<MethodDeclaration>();
-            final closure = node.thisOrAncestorOfType<FunctionExpression>();
-            if (method != null &&
-                method.name.lexeme == 'build' &&
-                closure == null) {
-              directBuildMutations.add(name);
-            }
-          }
-        }),
+      test(
+        'AvoidEmitInBuild ignores emit or add on non-bloc objects in build',
+        () async {
+          const goodCode = '''
+class CustomEmitter {
+  void emit(int v) {}
+}
+
+class MyWidget {
+  final CustomEmitter streamController = CustomEmitter();
+  final CustomEmitter otherObject = CustomEmitter();
+  final List<int> items = [];
+  Widget build(BuildContext context) {
+    streamController.emit(42);
+    otherObject.emit(42);
+    items.add(1);
+    return Container();
+  }
+}
+''';
+          final lints = await runLintRule(const AvoidEmitInBuild(), goodCode);
+          expect(lints, isEmpty);
+        },
       );
 
-      expect(directBuildMutations, isEmpty);
-    });
-
-    test('AvoidUnmanagedSignalEffects detects unassigned effect in widget', () {
-      const badCode = '''
+      test('AvoidUnmanagedSignalEffects detects unassigned effect in widget',
+          () async {
+        const badCode = '''
 class MyStatefulWidget extends State {
   void initState() {
     effect(() {
@@ -76,30 +100,43 @@ class MyStatefulWidget extends State {
   }
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final unassignedEffects = <MethodInvocation>[];
+        final lints =
+            await runLintRule(const AvoidUnmanagedSignalEffects(), badCode);
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('effect'));
+      });
 
-      parseResult.unit.visitChildren(
-        _MethodInvocationVisitor((node) {
-          if (node.methodName.name == 'effect') {
-            final enclosingClass =
-                node.thisOrAncestorOfType<ClassDeclaration>();
-            if (enclosingClass != null && node.parent is ExpressionStatement) {
-              unassignedEffects.add(node);
-            }
-          }
-        }),
+      test(
+        'AvoidUnmanagedSignalEffects accepts assigned effect in widget',
+        () async {
+          const goodCode = '''
+class MyStatefulWidget extends State {
+  late final void Function() _dispose;
+  void initState() {
+    _dispose = effect(() {
+      print('managed');
+    });
+  }
+}
+''';
+          final lints = await runLintRule(
+            const AvoidUnmanagedSignalEffects(),
+            goodCode,
+          );
+          expect(lints, isEmpty);
+        },
       );
 
-      expect(unassignedEffects, hasLength(1));
-    });
+      test(
+        'PreferBlocSignalProviderReadInCallbacks detects watch in onPressed',
+        () async {
+          const badCode = '''
+class MyBloc extends CubitSignal<int> {
+  MyBloc() : super(initialState: 0);
+}
 
-    test(
-      'PreferBlocSignalProviderReadInCallbacks detects watch in onPressed',
-      () {
-        const badCode = '''
 class MyWidget {
-  Widget build(dynamic context) {
+  Widget build(BuildContext context) {
     return Button(
       onPressed: () {
         final bloc = context.watch<MyBloc>();
@@ -108,31 +145,54 @@ class MyWidget {
   }
 }
 ''';
-        final parseResult = parseString(content: badCode);
-        final watchInCallbacks = <MethodInvocation>[];
+          final lints = await runLintRule(
+            const PreferBlocSignalProviderReadInCallbacks(),
+            badCode,
+          );
+          expect(lints, hasLength(1));
+          expect(lints.first.lexeme, equals('watch'));
+        },
+      );
 
-        parseResult.unit.visitChildren(
-          _MethodInvocationVisitor((node) {
-            if (node.methodName.name == 'watch') {
-              final parentArg = node.thisOrAncestorOfType<NamedExpression>();
-              if (parentArg != null &&
-                  parentArg.name.label.name == 'onPressed') {
-                watchInCallbacks.add(node);
-              }
-            }
-          }),
-        );
+      test(
+        'PreferBlocSignalProviderReadInCallbacks accepts read in onPressed',
+        () async {
+          const goodCode = '''
+class MyBloc extends CubitSignal<int> {
+  MyBloc() : super(initialState: 0);
+}
 
-        expect(watchInCallbacks, hasLength(1));
+class MyWidget {
+  Widget build(BuildContext context) {
+    return Button(
+      onPressed: () {
+        final bloc = context.read<MyBloc>();
       },
     );
+  }
+}
+''';
+          final lints = await runLintRule(
+            const PreferBlocSignalProviderReadInCallbacks(),
+            goodCode,
+          );
+          expect(lints, isEmpty);
+        },
+      );
 
-    test(
-      'AvoidProvidingExistingInstanceWithCreate detects existing ref in create',
-      () {
-        const badCode = '''
+      test(
+        'AvoidProvidingExistingInstanceWithCreate detects existing ref in '
+        'create',
+        () async {
+          const badCode = '''
+class MyBloc extends CubitSignal<int> {
+  MyBloc() : super(initialState: 0);
+}
+
+final myGlobalBloc = MyBloc();
+
 class MyWidget {
-  Widget build(dynamic context) {
+  Widget build(BuildContext context) {
     return BlocSignalProvider(
       create: (context) => myGlobalBloc,
       child: Container(),
@@ -140,128 +200,158 @@ class MyWidget {
   }
 }
 ''';
-        final parseResult = parseString(content: badCode);
-        final existingRefCreates = <AstNode>[];
+          final lints = await runLintRule(
+            const AvoidProvidingExistingInstanceWithCreate(),
+            badCode,
+          );
+          expect(lints, hasLength(1));
+          expect(lints.first.lexeme, equals('myGlobalBloc'));
+        },
+      );
 
-        parseResult.unit.visitChildren(
-          _MethodInvocationVisitor((node) {
-            if (node.methodName.name == 'BlocSignalProvider') {
-              for (final arg in node.argumentList.arguments) {
-                if (arg is NamedExpression && arg.name.label.name == 'create') {
-                  existingRefCreates.add(node);
-                }
-              }
-            }
-          }),
-        );
+      test(
+        'AvoidProvidingExistingInstanceWithCreate accepts fresh constructor '
+        'in create',
+        () async {
+          const goodCode = '''
+class MyBloc extends CubitSignal<int> {
+  MyBloc() : super(initialState: 0);
+}
 
-        expect(existingRefCreates, hasLength(1));
-      },
+class MyWidget {
+  Widget build(BuildContext context) {
+    return BlocSignalProvider(
+      create: (context) => MyBloc(),
+      child: Container(),
     );
+  }
+}
+''';
+          final lints = await runLintRule(
+            const AvoidProvidingExistingInstanceWithCreate(),
+            goodCode,
+          );
+          expect(lints, isEmpty);
+        },
+      );
 
-    test('AvoidManualCloseOnProvidedBloc detects context.read().close()', () {
-      const badCode = '''
-void dispose(dynamic context) {
+      test('AvoidManualCloseOnProvidedBloc detects context.read().close()',
+          () async {
+        const badCode = '''
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+void dispose(BuildContext context) {
   context.read<CounterBloc>().close();
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final manualCloses = <MethodInvocation>[];
+        final lints = await runLintRule(
+          const AvoidManualCloseOnProvidedBloc(),
+          badCode,
+        );
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('close'));
+      });
 
-      parseResult.unit.visitChildren(
-        _MethodInvocationVisitor((node) {
-          if (node.methodName.name == 'close') {
-            final target = node.target;
-            if (target is MethodInvocation &&
-                target.methodName.name == 'read') {
-              manualCloses.add(node);
-            }
-          }
-        }),
-      );
+      test(
+        'AvoidContextWatchForBlocState detects context.watch<T>() in build',
+        () async {
+          const badCode = '''
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
 
-      expect(manualCloses, hasLength(1));
-    });
-
-    test(
-      'AvoidContextWatchForBlocState detects context.watch<T>() in build',
-      () {
-        const badCode = '''
 class CounterView {
-  Widget build(dynamic context) {
+  Widget build(BuildContext context) {
     final bloc = context.watch<CounterBloc>();
     return Container();
   }
 }
 ''';
-        final parseResult = parseString(content: badCode);
-        final watchedBlocs = <String>[];
+          final lints = await runLintRule(
+            const AvoidContextWatchForBlocState(),
+            badCode,
+          );
+          expect(lints, hasLength(1));
+          expect(lints.first.lexeme, equals('watch'));
+          expect(lints.first.arguments, equals(['CounterBloc']));
+        },
+      );
 
-        parseResult.unit.visitChildren(
-          _MethodInvocationVisitor((node) {
-            if (node.methodName.name == 'watch') {
-              final typeArgs = node.typeArguments?.arguments;
-              if (typeArgs != null && typeArgs.isNotEmpty) {
-                final typeName = typeArgs.first.toSource();
-                if (typeName.endsWith('Bloc') || typeName.endsWith('Cubit')) {
-                  final method = node.thisOrAncestorOfType<MethodDeclaration>();
-                  if (method != null && method.name.lexeme == 'build') {
-                    watchedBlocs.add(typeName);
-                  }
-                }
-              }
-            }
-          }),
-        );
+      test(
+        'AvoidContextWatchForBlocState accepts context.read<T>() in build',
+        () async {
+          const goodCode = '''
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
 
-        expect(watchedBlocs, contains('CounterBloc'));
-      },
-    );
-
-    test(
-      'AvoidContextWatchForBlocState accepts context.read<T>() in build',
-      () {
-        const goodCode = '''
 class CounterView {
-  Widget build(dynamic context) {
+  Widget build(BuildContext context) {
     final bloc = context.read<CounterBloc>();
     return Container();
   }
 }
 ''';
-        final parseResult = parseString(content: goodCode);
-        final watchedBlocs = <String>[];
+          final lints = await runLintRule(
+            const AvoidContextWatchForBlocState(),
+            goodCode,
+          );
+          expect(lints, isEmpty);
+        },
+      );
 
-        parseResult.unit.visitChildren(
-          _MethodInvocationVisitor((node) {
-            if (node.methodName.name == 'watch') {
-              final typeArgs = node.typeArguments?.arguments;
-              if (typeArgs != null && typeArgs.isNotEmpty) {
-                final typeName = typeArgs.first.toSource();
-                if (typeName.endsWith('Bloc') || typeName.endsWith('Cubit')) {
-                  final method = node.thisOrAncestorOfType<MethodDeclaration>();
-                  if (method != null && method.name.lexeme == 'build') {
-                    watchedBlocs.add(typeName);
-                  }
-                }
-              }
-            }
-          }),
-        );
-
-        expect(watchedBlocs, isEmpty);
-      },
-    );
-  });
+      test(
+        'AvoidInvalidContextSelectGenerics detects 3 generic type parameters',
+        () async {
+          const badCode = '''
+class CounterState {}
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
 }
 
-class _MethodInvocationVisitor extends RecursiveAstVisitor<void> {
-  _MethodInvocationVisitor(this.onInvocation);
-  final void Function(MethodInvocation node) onInvocation;
-
-  @override
-  void visitMethodInvocation(MethodInvocation node) {
-    onInvocation(node);
-    super.visitMethodInvocation(node);
+class CounterView {
+  Widget build(BuildContext context) {
+    final count = context.select<CounterBloc, CounterState, int>((b) => b.value);
+    return Container();
   }
+}
+''';
+          final lints = await runLintRule(
+            const AvoidInvalidContextSelectGenerics(),
+            badCode,
+          );
+          expect(lints, hasLength(1));
+          expect(
+            lints.first.lexeme,
+            equals('<CounterBloc, CounterState, int>'),
+          );
+        },
+      );
+
+      test(
+        'AvoidInvalidContextSelectGenerics accepts 2 generic type parameters',
+        () async {
+          const goodCode = '''
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+class CounterView {
+  Widget build(BuildContext context) {
+    final count = context.select<CounterBloc, int>((b) => b.value);
+    return Container();
+  }
+}
+''';
+          final lints = await runLintRule(
+            const AvoidInvalidContextSelectGenerics(),
+            goodCode,
+          );
+          expect(lints, isEmpty);
+        },
+      );
+    },
+  );
 }

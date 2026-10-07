@@ -1,190 +1,194 @@
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_top_level_bloc_signal_instances.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_unused_select_result.dart';
+import 'package:bloc_signals_lint/src/rules/prefer_named_replay_constructor.dart';
 import 'package:bloc_signals_lint/src/rules/require_cubit_signal_mixin_init.dart';
+import 'package:bloc_signals_lint/src/rules/require_super_on_event.dart';
 import 'package:test/test.dart';
 
+import 'lint_test_harness.dart';
+
 void main() {
-  group('Rule AST Detection on Sample Code Snippets', () {
-    test('AvoidDuplicateEventHandlers detects duplicate on<E> handlers', () {
+  tearDownAll(disposeLintTestHarness);
+
+  group('(Issue #315: R1) Rule AST Detection via rule.run()', () {
+    test('AvoidDuplicateEventHandlers detects duplicate on<E> handlers',
+        () async {
       const badCode = '''
-class CounterBloc {
-  CounterBloc() {
+sealed class CounterEvent {}
+class IncrementEvent extends CounterEvent {}
+
+class CounterBloc extends BlocSignal<CounterEvent, int> {
+  CounterBloc() : super(initialState: 0) {
     on<IncrementEvent>((event, emit) {});
     on<IncrementEvent>((event, emit) {});
   }
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final registeredTypes = <String>[];
-      final duplicateTypes = <String>[];
-
-      parseResult.unit.visitChildren(
-        _MethodInvocationVisitor((node) {
-          if (node.methodName.name == 'on') {
-            final typeArgs = node.typeArguments?.arguments;
-            if (typeArgs != null && typeArgs.isNotEmpty) {
-              final typeName = typeArgs.first.toSource();
-              if (registeredTypes.contains(typeName)) {
-                duplicateTypes.add(typeName);
-              } else {
-                registeredTypes.add(typeName);
-              }
-            }
-          }
-        }),
-      );
-
-      expect(duplicateTypes, contains('IncrementEvent'));
+      final lints =
+          await runLintRule(const AvoidDuplicateEventHandlers(), badCode);
+      expect(lints, hasLength(1));
+      expect(lints.first.lexeme, contains('on<IncrementEvent>'));
     });
 
-    test('AvoidDuplicateEventHandlers accepts distinct on<E> handlers', () {
+    test('AvoidDuplicateEventHandlers accepts distinct on<E> handlers',
+        () async {
       const goodCode = '''
-class CounterBloc {
-  CounterBloc() {
+sealed class CounterEvent {}
+class IncrementEvent extends CounterEvent {}
+class DecrementEvent extends CounterEvent {}
+
+class CounterBloc extends BlocSignal<CounterEvent, int> {
+  CounterBloc() : super(initialState: 0) {
     on<IncrementEvent>((event, emit) {});
     on<DecrementEvent>((event, emit) {});
   }
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final registeredTypes = <String>[];
-      final duplicateTypes = <String>[];
-
-      parseResult.unit.visitChildren(
-        _MethodInvocationVisitor((node) {
-          if (node.methodName.name == 'on') {
-            final typeArgs = node.typeArguments?.arguments;
-            if (typeArgs != null && typeArgs.isNotEmpty) {
-              final typeName = typeArgs.first.toSource();
-              if (registeredTypes.contains(typeName)) {
-                duplicateTypes.add(typeName);
-              } else {
-                registeredTypes.add(typeName);
-              }
-            }
-          }
-        }),
-      );
-
-      expect(duplicateTypes, isEmpty);
+      final lints =
+          await runLintRule(const AvoidDuplicateEventHandlers(), goodCode);
+      expect(lints, isEmpty);
     });
 
-    test('RequireSuperOnEvent detects missing super.onEvent in bad code', () {
+    test('AvoidDuplicateEventHandlers ignores plain non-bloc classes',
+        () async {
+      const goodCode = '''
+class IncrementEvent {}
+
+class NotABloc {
+  void on<T>(void Function(T, dynamic) cb) {}
+  NotABloc() {
+    on<IncrementEvent>((event, emit) {});
+    on<IncrementEvent>((event, emit) {});
+  }
+}
+''';
+      final lints =
+          await runLintRule(const AvoidDuplicateEventHandlers(), goodCode);
+      expect(lints, isEmpty);
+    });
+
+    test('RequireSuperOnEvent detects missing super.onEvent in bad code',
+        () async {
       const badCode = '''
-class MyBloc {
-  void onEvent(dynamic event) {
+class MyEvent {}
+
+class MyBloc extends BlocSignal<MyEvent, int> {
+  void onEvent(MyEvent event) {
     print(event);
   }
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final methodNode = parseResult.unit.declarations
-          .whereType<ClassDeclaration>()
-          .first
-          .members
-          .whereType<MethodDeclaration>()
-          .first;
-
-      var callsSuper = false;
-      methodNode.body.visitChildren(
-        _SuperCallVisitor(() {
-          callsSuper = true;
-        }),
-      );
-
-      expect(callsSuper, isFalse);
+      final lints = await runLintRule(const RequireSuperOnEvent(), badCode);
+      expect(lints, hasLength(1));
+      expect(lints.first.lexeme, equals('onEvent'));
     });
 
-    test('RequireSuperOnEvent accepts valid super.onEvent in good code', () {
+    test('RequireSuperOnEvent accepts valid super.onEvent in good code',
+        () async {
       const goodCode = '''
-class MyBloc {
-  void onEvent(dynamic event) {
+class MyEvent {}
+
+class MyBloc extends BlocSignal<MyEvent, int> {
+  void onEvent(MyEvent event) {
     super.onEvent(event);
     print(event);
   }
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final methodNode = parseResult.unit.declarations
-          .whereType<ClassDeclaration>()
-          .first
-          .members
-          .whereType<MethodDeclaration>()
-          .first;
+      final lints = await runLintRule(const RequireSuperOnEvent(), goodCode);
+      expect(lints, isEmpty);
+    });
 
-      var callsSuper = false;
-      methodNode.body.visitChildren(
-        _SuperCallVisitor(() {
-          callsSuper = true;
-        }),
-      );
-
-      expect(callsSuper, isTrue);
+    test('RequireSuperOnEvent ignores plain non-bloc class with onEvent',
+        () async {
+      const goodCode = '''
+class NotABloc {
+  void onEvent(dynamic event) {
+    print(event);
+  }
+}
+''';
+      final lints = await runLintRule(const RequireSuperOnEvent(), goodCode);
+      expect(lints, isEmpty);
     });
 
     test(
       'AvoidStreamTransformersOnBlocSignal detects invalid transformer calls',
-      () {
+      () async {
         const badCode = '''
-void test(dynamic bloc) {
+class CounterBloc extends BlocSignal<Object, int> {
+  CounterBloc() : super(initialState: 0);
+  void debounce() {}
+  void switchMap() {}
+}
+
+void test(CounterBloc bloc) {
   bloc.debounce();
   bloc.switchMap();
 }
 ''';
-        final parseResult = parseString(content: badCode);
-        final flaggedMethods = <String>[];
-
-        parseResult.unit.visitChildren(
-          _MethodInvocationVisitor((node) {
-            final name = node.methodName.name;
-            if (name == 'debounce' || name == 'switchMap') {
-              flaggedMethods.add(name);
-            }
-          }),
+        final lints = await runLintRule(
+          const AvoidStreamTransformersOnBlocSignal(),
+          badCode,
         );
+        expect(lints, hasLength(2));
+        expect(
+          lints.map((l) => l.lexeme),
+          containsAll(['debounce', 'switchMap']),
+        );
+      },
+    );
 
-        expect(flaggedMethods, containsAll(['debounce', 'switchMap']));
+    test(
+      'AvoidStreamTransformersOnBlocSignal ignores stream transformer calls '
+      'on non-bloc targets',
+      () async {
+        const goodCode = '''
+class MyStream {
+  void debounce() {}
+  void switchMap() {}
+}
+
+void test(MyStream myStream) {
+  myStream.debounce();
+  myStream.switchMap();
+}
+''';
+        final lints = await runLintRule(
+          const AvoidStreamTransformersOnBlocSignal(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
       },
     );
 
     test(
       'AvoidDirectSignalMutationOutsideBloc detects external emit calls',
-      () {
+      () async {
         const badCode = '''
-void externalFunction(dynamic bloc) {
+void externalFunction(CubitSignal<int> bloc) {
   bloc.emit(42);
 }
 ''';
-        final parseResult = parseString(content: badCode);
-        final emitsOutsideClass = <MethodInvocation>[];
-
-        parseResult.unit.visitChildren(
-          _MethodInvocationVisitor((node) {
-            if (node.methodName.name == 'emit') {
-              final enclosingClass =
-                  node.thisOrAncestorOfType<ClassDeclaration>();
-              final enclosingMixin =
-                  node.thisOrAncestorOfType<MixinDeclaration>();
-              if (!AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
-                enclosingClass: enclosingClass,
-                enclosingMixin: enclosingMixin,
-              )) {
-                emitsOutsideClass.add(node);
-              }
-            }
-          }),
+        final lints = await runLintRule(
+          const AvoidDirectSignalMutationOutsideBloc(),
+          badCode,
         );
-
-        expect(emitsOutsideClass, hasLength(1));
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('emit'));
       },
     );
 
     test(
       '(Issue #302: F16) AvoidDirectSignalMutationOutsideBloc accepts '
       'this.emit inside mixin on CubitSignal',
-      () {
+      () async {
         const goodCode = '''
 mixin CartPricing on CubitSignal<int> {
   void calculate() {
@@ -192,34 +196,18 @@ mixin CartPricing on CubitSignal<int> {
   }
 }
 ''';
-        final parseResult = parseString(content: goodCode);
-        final flaggedEmits = <MethodInvocation>[];
-
-        parseResult.unit.visitChildren(
-          _MethodInvocationVisitor((node) {
-            if (node.methodName.name == 'emit') {
-              final enclosingClass =
-                  node.thisOrAncestorOfType<ClassDeclaration>();
-              final enclosingMixin =
-                  node.thisOrAncestorOfType<MixinDeclaration>();
-              if (!AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
-                enclosingClass: enclosingClass,
-                enclosingMixin: enclosingMixin,
-              )) {
-                flaggedEmits.add(node);
-              }
-            }
-          }),
+        final lints = await runLintRule(
+          const AvoidDirectSignalMutationOutsideBloc(),
+          goodCode,
         );
-
-        expect(flaggedEmits, isEmpty);
+        expect(lints, isEmpty);
       },
     );
 
     test(
       '(Issue #302: F16) AvoidDirectSignalMutationOutsideBloc rejects '
       'non-bloc enclosingClass even if enclosingMixin is present',
-      () {
+      () async {
         const classCode = '''
 class NonBlocService {
   void doEmit() {}
@@ -242,119 +230,158 @@ mixin CartPricing on CubitSignal<int> {}
         );
 
         expect(isAllowed, isFalse);
+
+        const nestedBadCode = '''
+class OuterService {
+  void run(CubitSignal<int> cubit) {
+    cubit.emit(1);
+  }
+}
+''';
+        final lints = await runLintRule(
+          const AvoidDirectSignalMutationOutsideBloc(),
+          nestedBadCode,
+        );
+        expect(lints, hasLength(1));
       },
     );
 
     test(
       'AvoidTopLevelBlocSignalInstances detects global top-level bloc '
       'declarations',
-      () {
+      () async {
         const badCode = '''
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+class AuthBloc extends CubitSignal<int> {
+  AuthBloc() : super(initialState: 0);
+}
+
 final counterBloc = CounterBloc();
 class Service {
   static final authBloc = AuthBloc();
 }
 ''';
-        final parseResult = parseString(content: badCode);
-        final globalVars = <String>[];
-
-        parseResult.unit.visitChildren(
-          _VariableVisitor((node) {
-            final name = node.name.lexeme;
-            if (name == 'counterBloc' || name == 'authBloc') {
-              globalVars.add(name);
-            }
-          }),
+        final lints = await runLintRule(
+          const AvoidTopLevelBlocSignalInstances(),
+          badCode,
         );
+        expect(lints, hasLength(2));
+        expect(
+          lints.map((l) => l.arguments?.first),
+          containsAll(['counterBloc', 'authBloc']),
+        );
+      },
+    );
 
-        expect(globalVars, containsAll(['counterBloc', 'authBloc']));
+    test(
+      'AvoidTopLevelBlocSignalInstances accepts global primitive signals and '
+      'instance fields',
+      () async {
+        const goodCode = '''
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+final globalCount = signal(0);
+class Service {
+  final instanceBloc = CounterBloc();
+}
+''';
+        final lints = await runLintRule(
+          const AvoidTopLevelBlocSignalInstances(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
       },
     );
 
     test(
         '(Issue #302: F2) RequireCubitSignalMixinInit detects uninitialized '
-        'mixin constructors at constructor token', () {
+        'mixin constructors at constructor token', () async {
       const badCode = '''
+class BaseService {}
+
 class CounterService extends BaseService with CubitSignalMixin<int> {
   CounterService() {
     print('hello');
   }
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final classNode =
-          parseResult.unit.declarations.whereType<ClassDeclaration>().first;
-      final violations = RequireCubitSignalMixinInit.findViolations(classNode);
-
-      expect(violations, hasLength(1));
-      expect(violations.first.token.lexeme, equals('CounterService'));
+      final lints =
+          await runLintRule(const RequireCubitSignalMixinInit(), badCode);
+      expect(lints, hasLength(1));
+      expect(lints.first.lexeme, equals('CounterService'));
+      expect(lints.first.offset, equals(badCode.indexOf('CounterService()')));
       expect(
-        violations.first.token.offset,
-        equals(badCode.indexOf('CounterService()')),
+        lints.first.arguments,
+        equals(['CubitSignalMixin', 'initCubitSignal']),
       );
-      expect(violations.first.mixinName, equals('CubitSignalMixin'));
-      expect(violations.first.expectedMethod, equals('initCubitSignal'));
     });
 
     test(
         '(Issue #302: F2, F8) RequireCubitSignalMixinInit flags class with '
-        'BlocSignalMixin calling initBlocSignal', () {
+        'BlocSignalMixin calling initBlocSignal', () async {
       const badCode = '''
+class BaseService {}
+class UserEvent {}
+
 class UserBloc extends BaseService with BlocSignalMixin<UserEvent, int> {
   UserBloc() {
     initBlocSignal(initialState: 0);
   }
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final classNode =
-          parseResult.unit.declarations.whereType<ClassDeclaration>().first;
-      final violations = RequireCubitSignalMixinInit.findViolations(classNode);
-
-      expect(violations, hasLength(1));
-      expect(violations.first.mixinName, equals('BlocSignalMixin'));
-      expect(violations.first.expectedMethod, equals('initCubitSignal'));
+      final lints =
+          await runLintRule(const RequireCubitSignalMixinInit(), badCode);
+      expect(lints, hasLength(1));
+      expect(
+        lints.first.arguments,
+        equals(['BlocSignalMixin', 'initCubitSignal']),
+      );
     });
 
     test(
         '(Issue #302: F2, F8) RequireCubitSignalMixinInit accepts class with '
-        'BlocSignalMixin calling initCubitSignal', () {
+        'BlocSignalMixin calling initCubitSignal', () async {
       const goodCode = '''
+class BaseService {}
+class UserEvent {}
+
 class UserBloc extends BaseService with BlocSignalMixin<UserEvent, int> {
   UserBloc() {
     initCubitSignal(initialState: 0);
   }
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final classNode =
-          parseResult.unit.declarations.whereType<ClassDeclaration>().first;
-      final violations = RequireCubitSignalMixinInit.findViolations(classNode);
-
-      expect(violations, isEmpty);
+      final lints =
+          await runLintRule(const RequireCubitSignalMixinInit(), goodCode);
+      expect(lints, isEmpty);
     });
 
     test('RequireCubitSignalMixinInit accepts initialized mixin constructors',
-        () {
+        () async {
       const goodCode = '''
+class BaseService {}
+
 class CounterService extends BaseService with CubitSignalMixin<int> {
   CounterService() {
     initCubitSignal(initialState: 0);
   }
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final classNode =
-          parseResult.unit.declarations.whereType<ClassDeclaration>().first;
-      final violations = RequireCubitSignalMixinInit.findViolations(classNode);
-
-      expect(violations, isEmpty);
+      final lints =
+          await runLintRule(const RequireCubitSignalMixinInit(), goodCode);
+      expect(lints, isEmpty);
     });
 
     test(
         '(Issue #302: F10) RequireCubitSignalMixinInit ignores factory '
-        'constructors and redirecting constructors', () {
+        'constructors and redirecting constructors', () async {
       const code = '''
+class BaseService {}
+
 class CounterService extends BaseService with CubitSignalMixin<int> {
   CounterService._() {
     initCubitSignal(initialState: 0);
@@ -367,15 +394,13 @@ class CounterService extends BaseService with CubitSignalMixin<int> {
   }
 }
 ''';
-      final parseResult = parseString(content: code);
-      final classNode =
-          parseResult.unit.declarations.whereType<ClassDeclaration>().first;
-      final violations = RequireCubitSignalMixinInit.findViolations(classNode);
-
-      expect(violations, isEmpty);
+      final lints =
+          await runLintRule(const RequireCubitSignalMixinInit(), code);
+      expect(lints, isEmpty);
     });
 
-    test('AvoidRawSignalEffectsInBloc detects top-level effect in bloc', () {
+    test('AvoidRawSignalEffectsInBloc detects top-level effect in bloc',
+        () async {
       const badCode = '''
 class MyCubit extends CubitSignal<int> {
   MyCubit() : super(initialState: 0) {
@@ -385,26 +410,13 @@ class MyCubit extends CubitSignal<int> {
   }
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final rawEffects = <String>[];
-
-      parseResult.unit.visitChildren(
-        _MethodInvocationVisitor((node) {
-          if (node.methodName.name == 'effect' && node.target == null) {
-            final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
-            if (classNode != null &&
-                (classNode.extendsClause?.toSource().contains('CubitSignal') ??
-                    false)) {
-              rawEffects.add(node.methodName.name);
-            }
-          }
-        }),
-      );
-
-      expect(rawEffects, contains('effect'));
+      final lints =
+          await runLintRule(const AvoidRawSignalEffectsInBloc(), badCode);
+      expect(lints, hasLength(1));
+      expect(lints.first.lexeme, equals('effect'));
     });
 
-    test('AvoidRawSignalEffectsInBloc accepts createEffect in bloc', () {
+    test('AvoidRawSignalEffectsInBloc accepts createEffect in bloc', () async {
       const goodCode = '''
 class MyCubit extends CubitSignal<int> {
   MyCubit() : super(initialState: 0) {
@@ -414,131 +426,90 @@ class MyCubit extends CubitSignal<int> {
   }
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final rawEffects = <String>[];
-
-      parseResult.unit.visitChildren(
-        _MethodInvocationVisitor((node) {
-          if (node.methodName.name == 'effect' && node.target == null) {
-            rawEffects.add(node.methodName.name);
-          }
-        }),
-      );
-
-      expect(rawEffects, isEmpty);
+      final lints =
+          await runLintRule(const AvoidRawSignalEffectsInBloc(), goodCode);
+      expect(lints, isEmpty);
     });
 
     test('AvoidUnusedSelectResult detects discarded context.select statements',
-        () {
+        () async {
       const badCode = '''
-void build(dynamic context) {
+class MyBloc extends CubitSignal<int> {
+  MyBloc() : super(initialState: 0);
+}
+
+void build(BuildContext context) {
   context.select<MyBloc, int>((b) => b.stateValue);
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final unusedSelects = <String>[];
-
-      parseResult.unit.visitChildren(
-        _ExpressionStatementVisitor((node) {
-          final expr = node.expression;
-          if (expr is MethodInvocation &&
-              expr.methodName.name == 'select' &&
-              (expr.target?.toSource().contains('context') ?? false)) {
-            unusedSelects.add(expr.methodName.name);
-          }
-        }),
-      );
-
-      expect(unusedSelects, contains('select'));
+      final lints = await runLintRule(const AvoidUnusedSelectResult(), badCode);
+      expect(lints, hasLength(1));
+      expect(lints.first.lexeme, equals('select'));
     });
 
     test('AvoidUnusedSelectResult accepts assigned context.select expressions',
-        () {
+        () async {
       const goodCode = '''
-void build(dynamic context) {
+class MyBloc extends CubitSignal<int> {
+  MyBloc() : super(initialState: 0);
+}
+
+void build(BuildContext context) {
   final count = context.select<MyBloc, int>((b) => b.stateValue);
   print(count);
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final unusedSelects = <String>[];
-
-      parseResult.unit.visitChildren(
-        _ExpressionStatementVisitor((node) {
-          final expr = node.expression;
-          if (expr is MethodInvocation &&
-              expr.methodName.name == 'select' &&
-              (expr.target?.toSource().contains('context') ?? false)) {
-            unusedSelects.add(expr.methodName.name);
-          }
-        }),
-      );
-
-      expect(unusedSelects, isEmpty);
+      final lints =
+          await runLintRule(const AvoidUnusedSelectResult(), goodCode);
+      expect(lints, isEmpty);
     });
 
     test(
       'PreferNamedReplayConstructor detects super.positional on ReplayCubit',
-      () {
+      () async {
         const badCode = '''
 class CounterCubit extends ReplayCubit<int> {
   CounterCubit(int initial, {int? limit})
       : super.positional(initial, limit: limit);
 }
 ''';
-        final parseResult = parseString(content: badCode);
-        final flaggedInvocations = <String>[];
-
-        parseResult.unit.visitChildren(
-          _SuperConstructorInvocationVisitor((node) {
-            final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
-            final superclass = classNode?.extendsClause?.superclass.toSource();
-            if (node.constructorName?.name == 'positional' &&
-                superclass != null &&
-                superclass.startsWith('ReplayCubit')) {
-              flaggedInvocations.add(node.toSource());
-            }
-          }),
+        final lints = await runLintRule(
+          const PreferNamedReplayConstructor(),
+          badCode,
         );
-
+        expect(lints, hasLength(1));
         expect(
-          flaggedInvocations,
-          contains('super.positional(initial, limit: limit)'),
+          lints.first.lexeme,
+          equals('super.positional(initial, limit: limit)'),
         );
       },
     );
 
     test(
       'PreferNamedReplayConstructor detects super.positional on ReplayBloc',
-      () {
+      () async {
         const badCode = '''
+class CounterEvent {}
+
 class CounterBloc extends ReplayBloc<CounterEvent, int> {
   CounterBloc(int initial) : super.positional(initial);
 }
 ''';
-        final parseResult = parseString(content: badCode);
-        final flaggedInvocations = <String>[];
-
-        parseResult.unit.visitChildren(
-          _SuperConstructorInvocationVisitor((node) {
-            final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
-            final superclass = classNode?.extendsClause?.superclass.toSource();
-            if (node.constructorName?.name == 'positional' &&
-                superclass != null &&
-                superclass.startsWith('ReplayBloc')) {
-              flaggedInvocations.add(node.toSource());
-            }
-          }),
+        final lints = await runLintRule(
+          const PreferNamedReplayConstructor(),
+          badCode,
         );
-
-        expect(flaggedInvocations, contains('super.positional(initial)'));
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('super.positional(initial)'));
       },
     );
 
     test(
       'PreferNamedReplayConstructor accepts named super(initialState: ...)',
-      () {
+      () async {
         const goodCode = '''
+class CounterEvent {}
+
 class CounterCubit extends ReplayCubit<int> {
   CounterCubit(int initial, {int? limit})
       : super(initialState: initial, limit: limit);
@@ -547,60 +518,59 @@ class CounterBloc extends ReplayBloc<CounterEvent, int> {
   CounterBloc(int initial) : super(initialState: initial);
 }
 ''';
-        final parseResult = parseString(content: goodCode);
-        final flaggedInvocations = <String>[];
-
-        parseResult.unit.visitChildren(
-          _SuperConstructorInvocationVisitor((node) {
-            final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
-            final superclass = classNode?.extendsClause?.superclass.toSource();
-            if (node.constructorName?.name == 'positional' &&
-                superclass != null &&
-                (superclass.startsWith('ReplayCubit') ||
-                    superclass.startsWith('ReplayBloc'))) {
-              flaggedInvocations.add(node.toSource());
-            }
-          }),
+        final lints = await runLintRule(
+          const PreferNamedReplayConstructor(),
+          goodCode,
         );
-
-        expect(flaggedInvocations, isEmpty);
+        expect(lints, isEmpty);
       },
     );
 
     test(
       'ReplacePositionalReplayConstructorFix rewrites super.positional',
-      () {
+      () async {
         const sourceCode = '''
 class CounterCubit extends ReplayCubit<int> {
   CounterCubit(int initial, {int? limit})
       : super.positional(initial, limit: limit);
 }
 ''';
-        final parseResult = parseString(content: sourceCode);
-        String? transformed;
-
-        parseResult.unit.visitChildren(
-          _SuperConstructorInvocationVisitor((node) {
-            if (node.constructorName?.name == 'positional') {
-              final period = node.period!;
-              final constructorName = node.constructorName!;
-              final positionalArg = node.argumentList.arguments
-                  .where((arg) => arg is! NamedExpression)
-                  .firstOrNull;
-
-              if (positionalArg != null) {
-                final beforePeriod = sourceCode.substring(0, period.offset);
-                final betweenPeriodAndArg = sourceCode.substring(
-                  constructorName.end,
-                  positionalArg.offset,
-                );
-                final afterArg = sourceCode.substring(positionalArg.offset);
-                transformed = '$beforePeriod$betweenPeriodAndArg'
-                    'initialState: $afterArg';
-              }
-            }
-          }),
+        final lints = await runLintRule(
+          const PreferNamedReplayConstructor(),
+          sourceCode,
         );
+        expect(lints, hasLength(1));
+
+        final parseResult = parseString(content: sourceCode);
+        final constructorNode = parseResult.unit.declarations
+            .whereType<ClassDeclaration>()
+            .first
+            .members
+            .whereType<ConstructorDeclaration>()
+            .first;
+        final node = constructorNode.initializers
+            .whereType<SuperConstructorInvocation>()
+            .first;
+
+        String? transformed;
+        if (node.constructorName?.name == 'positional') {
+          final period = node.period!;
+          final constructorName = node.constructorName!;
+          final positionalArg = node.argumentList.arguments
+              .where((arg) => arg is! NamedExpression)
+              .firstOrNull;
+
+          if (positionalArg != null) {
+            final beforePeriod = sourceCode.substring(0, period.offset);
+            final betweenPeriodAndArg = sourceCode.substring(
+              constructorName.end,
+              positionalArg.offset,
+            );
+            final afterArg = sourceCode.substring(positionalArg.offset);
+            transformed = '$beforePeriod$betweenPeriodAndArg'
+                'initialState: $afterArg';
+          }
+        }
 
         expect(
           transformed,
@@ -612,38 +582,49 @@ class CounterCubit extends ReplayCubit<int> {
 
     test(
       'ReplacePositionalReplayConstructorFix rewrites with leading named args',
-      () {
+      () async {
         const sourceCode = '''
 class CounterCubit extends ReplayCubit<int> {
   CounterCubit(int initial, {int? limit})
       : super.positional(limit: limit, initial);
 }
 ''';
-        final parseResult = parseString(content: sourceCode);
-        String? transformed;
-
-        parseResult.unit.visitChildren(
-          _SuperConstructorInvocationVisitor((node) {
-            if (node.constructorName?.name == 'positional') {
-              final period = node.period!;
-              final constructorName = node.constructorName!;
-              final positionalArg = node.argumentList.arguments
-                  .where((arg) => arg is! NamedExpression)
-                  .firstOrNull;
-
-              if (positionalArg != null) {
-                final beforePeriod = sourceCode.substring(0, period.offset);
-                final betweenConstructorAndArg = sourceCode.substring(
-                  constructorName.end,
-                  positionalArg.offset,
-                );
-                final afterArg = sourceCode.substring(positionalArg.offset);
-                transformed = '$beforePeriod$betweenConstructorAndArg'
-                    'initialState: $afterArg';
-              }
-            }
-          }),
+        final lints = await runLintRule(
+          const PreferNamedReplayConstructor(),
+          sourceCode,
         );
+        expect(lints, hasLength(1));
+
+        final parseResult = parseString(content: sourceCode);
+        final constructorNode = parseResult.unit.declarations
+            .whereType<ClassDeclaration>()
+            .first
+            .members
+            .whereType<ConstructorDeclaration>()
+            .first;
+        final node = constructorNode.initializers
+            .whereType<SuperConstructorInvocation>()
+            .first;
+
+        String? transformed;
+        if (node.constructorName?.name == 'positional') {
+          final period = node.period!;
+          final constructorName = node.constructorName!;
+          final positionalArg = node.argumentList.arguments
+              .where((arg) => arg is! NamedExpression)
+              .firstOrNull;
+
+          if (positionalArg != null) {
+            final beforePeriod = sourceCode.substring(0, period.offset);
+            final betweenConstructorAndArg = sourceCode.substring(
+              constructorName.end,
+              positionalArg.offset,
+            );
+            final afterArg = sourceCode.substring(positionalArg.offset);
+            transformed = '$beforePeriod$betweenConstructorAndArg'
+                'initialState: $afterArg';
+          }
+        }
 
         expect(
           transformed,
@@ -656,87 +637,41 @@ class CounterCubit extends ReplayCubit<int> {
     test(
       'ReplacePositionalReplayConstructorFix safely skips '
       'empty super parameters',
-      () {
+      () async {
         const sourceCode = '''
 class CounterCubit extends ReplayCubit<int> {
   CounterCubit(super.initialState, {super.limit}) : super.positional();
 }
 ''';
-        final parseResult = parseString(content: sourceCode);
-        var skipped = false;
-
-        parseResult.unit.visitChildren(
-          _SuperConstructorInvocationVisitor((node) {
-            if (node.constructorName?.name == 'positional') {
-              final positionalArg = node.argumentList.arguments
-                  .where((arg) => arg is! NamedExpression)
-                  .firstOrNull;
-              if (positionalArg == null) {
-                skipped = true;
-              }
-            }
-          }),
+        final lints = await runLintRule(
+          const PreferNamedReplayConstructor(),
+          sourceCode,
         );
+        expect(lints, hasLength(1));
+
+        final parseResult = parseString(content: sourceCode);
+        final constructorNode = parseResult.unit.declarations
+            .whereType<ClassDeclaration>()
+            .first
+            .members
+            .whereType<ConstructorDeclaration>()
+            .first;
+        final node = constructorNode.initializers
+            .whereType<SuperConstructorInvocation>()
+            .first;
+
+        var skipped = false;
+        if (node.constructorName?.name == 'positional') {
+          final positionalArg = node.argumentList.arguments
+              .where((arg) => arg is! NamedExpression)
+              .firstOrNull;
+          if (positionalArg == null) {
+            skipped = true;
+          }
+        }
 
         expect(skipped, isTrue);
       },
     );
   });
-}
-
-class _SuperConstructorInvocationVisitor extends RecursiveAstVisitor<void> {
-  _SuperConstructorInvocationVisitor(this.onInvocation);
-  final void Function(SuperConstructorInvocation node) onInvocation;
-
-  @override
-  void visitSuperConstructorInvocation(SuperConstructorInvocation node) {
-    onInvocation(node);
-    super.visitSuperConstructorInvocation(node);
-  }
-}
-
-class _ExpressionStatementVisitor extends RecursiveAstVisitor<void> {
-  _ExpressionStatementVisitor(this.onStatement);
-  final void Function(ExpressionStatement node) onStatement;
-
-  @override
-  void visitExpressionStatement(ExpressionStatement node) {
-    onStatement(node);
-    super.visitExpressionStatement(node);
-  }
-}
-
-class _MethodInvocationVisitor extends RecursiveAstVisitor<void> {
-  _MethodInvocationVisitor(this.onInvocation);
-  final void Function(MethodInvocation node) onInvocation;
-
-  @override
-  void visitMethodInvocation(MethodInvocation node) {
-    onInvocation(node);
-    super.visitMethodInvocation(node);
-  }
-}
-
-class _SuperCallVisitor extends RecursiveAstVisitor<void> {
-  _SuperCallVisitor(this.onSuperCall);
-  final void Function() onSuperCall;
-
-  @override
-  void visitMethodInvocation(MethodInvocation node) {
-    if (node.target is SuperExpression && node.methodName.name == 'onEvent') {
-      onSuperCall();
-    }
-    super.visitMethodInvocation(node);
-  }
-}
-
-class _VariableVisitor extends RecursiveAstVisitor<void> {
-  _VariableVisitor(this.onVariable);
-  final void Function(VariableDeclaration node) onVariable;
-
-  @override
-  void visitVariableDeclaration(VariableDeclaration node) {
-    onVariable(node);
-    super.visitVariableDeclaration(node);
-  }
 }

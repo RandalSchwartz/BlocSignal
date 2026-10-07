@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_signals_replay/bloc_signals_replay.dart';
 import 'package:test/test.dart';
 
@@ -333,6 +335,232 @@ void main() {
       );
     });
   });
+
+  group('(Issue #317: R3) observer and onEvent exception isolation', () {
+    test(
+      'isolates BlocSignalObserver exceptions in onEvent, onTransition, and '
+      'onChange during undo and redo without aborting state restoration',
+      () async {
+        addTearDown(() => BlocSignalObserver.observer = null);
+        BlocSignalObserver.observer = _ThrowingReplayObserver();
+
+        final errors = <Object>[];
+        final bloc = _ErrorRecordingCounterBloc(onErrorCallback: errors.add);
+        addTearDown(bloc.close);
+
+        bloc.add(const CounterIncrementPressed());
+        expect(bloc.stateValue, equals(1));
+        expect(bloc.canUndo, isTrue);
+        expect(bloc.canRedo, isFalse);
+        errors.clear();
+
+        expect(bloc.undo, returnsNormally);
+        expect(bloc.stateValue, equals(0));
+        expect(bloc.canUndo, isFalse);
+        expect(bloc.canRedo, isTrue);
+        expect(
+          errors.map((e) => e.toString()),
+          containsAll([
+            'Exception: observer onEvent failure',
+            'Exception: observer onTransition failure',
+            'Exception: observer onChange failure',
+          ]),
+        );
+
+        errors.clear();
+        expect(bloc.redo, returnsNormally);
+        expect(bloc.stateValue, equals(1));
+        expect(bloc.canUndo, isTrue);
+        expect(bloc.canRedo, isFalse);
+        expect(
+          errors.map((e) => e.toString()),
+          containsAll([
+            'Exception: observer onEvent failure',
+            'Exception: observer onTransition failure',
+            'Exception: observer onChange failure',
+          ]),
+        );
+      },
+    );
+
+    test(
+      'isolates BlocSignalObserver.onTransition exception when onTransition is '
+      'invoked directly with a ReplayEvent',
+      () async {
+        addTearDown(() => BlocSignalObserver.observer = null);
+        BlocSignalObserver.observer = _ThrowingReplayObserver();
+
+        final errors = <Object>[];
+        final bloc = _ErrorRecordingCounterBloc(onErrorCallback: errors.add);
+        addTearDown(bloc.close);
+
+        expect(
+          () => bloc.onTransition(
+            const Transition<ReplayEvent, int>(
+              currentState: 0,
+              event: _CustomReplayEvent(),
+              nextState: 1,
+            ),
+          ),
+          returnsNormally,
+        );
+        expect(
+          errors.map((e) => e.toString()),
+          equals(['Exception: observer onTransition failure']),
+        );
+      },
+    );
+
+    test(
+      'isolates synchronous Exception in subclass onEvent override during undo '
+      'and redo',
+      () async {
+        final errors = <Object>[];
+        final bloc = _SyncThrowingOnEventBloc(onErrorCallback: errors.add);
+        addTearDown(bloc.close);
+
+        bloc.add(const CounterIncrementPressed());
+        expect(bloc.stateValue, equals(1));
+        errors.clear();
+
+        expect(bloc.undo, returnsNormally);
+        expect(bloc.stateValue, equals(0));
+        expect(bloc.canUndo, isFalse);
+        expect(bloc.canRedo, isTrue);
+        expect(
+          errors.map((e) => e.toString()),
+          equals(['Exception: sync onEvent failure on Undo']),
+        );
+
+        errors.clear();
+        expect(bloc.redo, returnsNormally);
+        expect(bloc.stateValue, equals(1));
+        expect(bloc.canUndo, isTrue);
+        expect(bloc.canRedo, isFalse);
+        expect(
+          errors.map((e) => e.toString()),
+          equals(['Exception: sync onEvent failure on Redo']),
+        );
+      },
+    );
+
+    test(
+      'isolates asynchronous Exception rejection in subclass onEvent override '
+      'during undo and redo',
+      () async {
+        final errors = <Object>[];
+        final bloc = _AsyncThrowingOnEventBloc(onErrorCallback: errors.add);
+        addTearDown(bloc.close);
+
+        bloc.add(const CounterIncrementPressed());
+        expect(bloc.stateValue, equals(1));
+        errors.clear();
+
+        expect(bloc.undo, returnsNormally);
+        expect(bloc.stateValue, equals(0));
+        expect(bloc.canUndo, isFalse);
+        expect(bloc.canRedo, isTrue);
+        await Future<void>.microtask(() {});
+        expect(
+          errors.map((e) => e.toString()),
+          equals(['Exception: async onEvent failure on Undo']),
+        );
+
+        errors.clear();
+        expect(bloc.redo, returnsNormally);
+        expect(bloc.stateValue, equals(1));
+        expect(bloc.canUndo, isTrue);
+        expect(bloc.canRedo, isFalse);
+        await Future<void>.microtask(() {});
+        expect(
+          errors.map((e) => e.toString()),
+          equals(['Exception: async onEvent failure on Redo']),
+        );
+      },
+    );
+
+    test(
+      'delegates non-ReplayEvent handleTransition calls to super',
+      () async {
+        final bloc = CounterBloc();
+        addTearDown(bloc.close);
+
+        expect(
+          // Exercising protected handleTransition fallback for non-ReplayEvent.
+          // ignore: invalid_use_of_protected_member
+          () => bloc.handleTransition(Object(), 0, 1),
+          throwsA(isA<TypeError>()),
+        );
+      },
+    );
+  });
+}
+
+class _CustomReplayEvent extends ReplayEvent {
+  const _CustomReplayEvent();
+}
+
+class _ThrowingReplayObserver extends BlocSignalObserver {
+  @override
+  void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {
+    super.onEvent(bloc, event);
+    throw Exception('observer onEvent failure');
+  }
+
+  @override
+  void onTransition(
+    BlocSignalBase<dynamic> bloc,
+    Object? event,
+    Object? state,
+  ) {
+    super.onTransition(bloc, event, state);
+    throw Exception('observer onTransition failure');
+  }
+
+  @override
+  void onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change) {
+    super.onChange(bloc, change);
+    throw Exception('observer onChange failure');
+  }
+}
+
+class _ErrorRecordingCounterBloc extends ReplayBloc<CounterEvent, int> {
+  _ErrorRecordingCounterBloc({required this.onErrorCallback})
+      : super(initialState: 0) {
+    on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
+  }
+
+  final void Function(Object error) onErrorCallback;
+
+  @override
+  void onError(Object error, StackTrace stackTrace) {
+    onErrorCallback(error);
+    super.onError(error, stackTrace);
+  }
+}
+
+class _SyncThrowingOnEventBloc extends _ErrorRecordingCounterBloc {
+  _SyncThrowingOnEventBloc({required super.onErrorCallback});
+
+  @override
+  void onEvent(ReplayEvent event) {
+    unawaited(Future.value(super.onEvent(event)));
+    if (event is! CounterEvent) {
+      throw Exception('sync onEvent failure on $event');
+    }
+  }
+}
+
+class _AsyncThrowingOnEventBloc extends _ErrorRecordingCounterBloc {
+  _AsyncThrowingOnEventBloc({required super.onErrorCallback});
+
+  @override
+  Future<void> onEvent(ReplayEvent event) async {
+    await super.onEvent(event);
+    if (event is! CounterEvent) {
+      throw Exception('async onEvent failure on $event');
+    }
+  }
 }
 
 class _NamedCounterBloc extends ReplayBloc<CounterEvent, int> {

@@ -118,5 +118,54 @@ void main() {
       await sub.cancel();
       await bloc.close();
     });
+
+    test(
+        '(Issue #292) delegates selectSurface and closeSurface to '
+        'A2uiSurfaceBloc', () async {
+      final bloc = A2uiSurfaceBloc();
+      addTearDown(bloc.close);
+      final adapter = bloc.toGenUiController()
+        ..processJson({
+          'version': 'v0.9',
+          'createSurface': {
+            'surfaceId': 'surf-1',
+            'catalogId': minimalCatalogId,
+          },
+        })
+        ..processJson({
+          'version': 'v0.9',
+          'updateComponents': {
+            'surfaceId': 'surf-1',
+            'components': [
+              {'id': 't1', 'component': 'Text', 'text': 'One'},
+            ],
+          },
+        })
+        ..processJson({
+          'version': 'v0.9',
+          'createSurface': {
+            'surfaceId': 'surf-2',
+            'catalogId': minimalCatalogId,
+          },
+        })
+        ..processJson({
+          'version': 'v0.9',
+          'updateComponents': {
+            'surfaceId': 'surf-2',
+            'components': [
+              {'id': 't2', 'component': 'Text', 'text': 'Two'},
+            ],
+          },
+        });
+
+      expect(bloc.activeSurfaceIdValue, equals('surf-2'));
+
+      adapter.selectSurface('surf-1');
+      expect(bloc.activeSurfaceIdValue, equals('surf-1'));
+
+      adapter.closeSurface('surf-1');
+      expect(bloc.availableSurfaceIds, equals(['surf-2']));
+      expect(bloc.activeSurfaceIdValue, equals('surf-2'));
+    });
   });
 }

@@ -47,7 +47,7 @@ typedef A2uiValidationErrorsBuilder = Widget Function(
 ///   or default error banner when [SurfaceReady.isValid] is false.
 /// - [SurfaceSubmitting]: Renders [submittingBuilder] or interaction barrier.
 /// - [SurfaceError]: Renders [errorBuilder] or a default error alert.
-class A2uiSurfaceView extends StatelessWidget {
+class A2uiSurfaceView extends StatefulWidget {
   /// Creates an [A2uiSurfaceView].
   ///
   /// If [catalog] is omitted, defaults to [A2uiFlutterCatalog.standard].
@@ -93,11 +93,58 @@ class A2uiSurfaceView extends StatelessWidget {
   final A2uiValidationErrorsBuilder? validationErrorsBuilder;
 
   @override
+  State<A2uiSurfaceView> createState() => _A2uiSurfaceViewState();
+}
+
+class _A2uiSurfaceViewState extends State<A2uiSurfaceView> {
+  void Function()? _activeSurfaceUnsubscribe;
+  String? _lastActiveSurfaceId;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeActiveSurfaceId();
+  }
+
+  @override
+  void didUpdateWidget(A2uiSurfaceView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.bloc != oldWidget.bloc ||
+        widget.surfaceId != oldWidget.surfaceId) {
+      _subscribeActiveSurfaceId();
+    }
+  }
+
+  void _subscribeActiveSurfaceId() {
+    _activeSurfaceUnsubscribe?.call();
+    _activeSurfaceUnsubscribe = null;
+    _lastActiveSurfaceId = widget.bloc.activeSurfaceId.value;
+    if (widget.surfaceId == null) {
+      _activeSurfaceUnsubscribe = widget.bloc.activeSurfaceId.subscribe(
+        (currentId) {
+          if (_lastActiveSurfaceId != currentId) {
+            _lastActiveSurfaceId = currentId;
+            if (mounted) {
+              setState(() {});
+            }
+          }
+        },
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _activeSurfaceUnsubscribe?.call();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return BlocSignalBuilder<A2uiSurfaceBloc, A2uiSurfaceState>(
-      bloc: bloc,
+      bloc: widget.bloc,
       builder: (context, state) {
-        final targetId = surfaceId;
+        final targetId = widget.surfaceId ?? widget.bloc.activeSurfaceId.value;
         if (targetId != null) {
           if (state is SurfaceSubmitting && state.surfaceId == targetId) {
             return _buildSubmitting(context, state);
@@ -106,59 +153,62 @@ class A2uiSurfaceView extends StatelessWidget {
               (state.surfaceId == targetId || state.surfaceId == null)) {
             return _buildError(context, state);
           }
-          if (state is SurfaceStreaming && state.surfaceId == targetId) {
+          if (state is SurfaceStreaming &&
+              (state.surfaceId == targetId ||
+                  (widget.surfaceId == null && state.surfaceId == null))) {
             return _buildStreaming(context, state);
           }
           if (state is SurfaceReady && state.surfaceId == targetId) {
             return _SurfaceTreeRenderer(
               surfaceReady: state,
-              catalog: catalog,
-              bloc: bloc,
-              validationErrorsBuilder: validationErrorsBuilder,
+              catalog: widget.catalog,
+              bloc: widget.bloc,
+              validationErrorsBuilder: widget.validationErrorsBuilder,
             );
           }
 
-          final targetedReady = bloc.getSurfaceReady(targetId);
+          final targetedReady = widget.bloc.getSurfaceReady(targetId);
           if (targetedReady != null) {
+            if (targetedReady.surface.componentsModel.all.isEmpty) {
+              return _buildStreaming(
+                context,
+                SurfaceStreaming(surfaceId: targetId, messageCount: 1),
+              );
+            }
             return _SurfaceTreeRenderer(
               surfaceReady: targetedReady,
-              catalog: catalog,
-              bloc: bloc,
-              validationErrorsBuilder: validationErrorsBuilder,
+              catalog: widget.catalog,
+              bloc: widget.bloc,
+              validationErrorsBuilder: widget.validationErrorsBuilder,
             );
           }
 
-          return _buildInitial(context);
+          if (widget.surfaceId != null) {
+            return _buildInitial(context);
+          }
         }
 
-        return switch (state) {
-          final SurfaceInitial _ => _buildInitial(context),
-          final SurfaceStreaming streaming =>
-            _buildStreaming(context, streaming),
-          final SurfaceReady ready => _SurfaceTreeRenderer(
-              surfaceReady: ready,
-              catalog: catalog,
-              bloc: bloc,
-              validationErrorsBuilder: validationErrorsBuilder,
-            ),
-          final SurfaceSubmitting submitting =>
-            _buildSubmitting(context, submitting),
-          final SurfaceError error => _buildError(context, error),
-        };
+        if (state is SurfaceStreaming) {
+          return _buildStreaming(context, state);
+        }
+        if (state is SurfaceError) {
+          return _buildError(context, state);
+        }
+        return _buildInitial(context);
       },
     );
   }
 
   Widget _buildInitial(BuildContext context) {
-    if (placeholderBuilder != null) {
-      return placeholderBuilder!(context);
+    if (widget.placeholderBuilder != null) {
+      return widget.placeholderBuilder!(context);
     }
     return const SizedBox.shrink();
   }
 
   Widget _buildStreaming(BuildContext context, SurfaceStreaming streaming) {
-    if (streamingBuilder != null) {
-      return streamingBuilder!(context, streaming);
+    if (widget.streamingBuilder != null) {
+      return widget.streamingBuilder!(context, streaming);
     }
     return Center(
       child: Padding(
@@ -179,8 +229,8 @@ class A2uiSurfaceView extends StatelessWidget {
   }
 
   Widget _buildSubmitting(BuildContext context, SurfaceSubmitting submitting) {
-    if (submittingBuilder != null) {
-      return submittingBuilder!(context, submitting);
+    if (widget.submittingBuilder != null) {
+      return widget.submittingBuilder!(context, submitting);
     }
     return Stack(
       children: [
@@ -216,8 +266,8 @@ class A2uiSurfaceView extends StatelessWidget {
   }
 
   Widget _buildError(BuildContext context, SurfaceError error) {
-    if (errorBuilder != null) {
-      return errorBuilder!(context, error);
+    if (widget.errorBuilder != null) {
+      return widget.errorBuilder!(context, error);
     }
     return Container(
       padding: const EdgeInsets.all(16),

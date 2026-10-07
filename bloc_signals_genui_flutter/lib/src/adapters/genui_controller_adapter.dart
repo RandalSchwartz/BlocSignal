@@ -47,6 +47,24 @@ class GenUiControllerAdapter {
     );
   }
 
+  /// Selects and activates the surface with [surfaceId].
+  ///
+  /// ```dart
+  /// adapter.selectSurface('surf_flight');
+  /// ```
+  void selectSurface(String surfaceId) {
+    surfaceBloc.add(SelectSurface(surfaceId: surfaceId));
+  }
+
+  /// Closes and evicts the surface with [surfaceId].
+  ///
+  /// ```dart
+  /// adapter.closeSurface('surf_flight');
+  /// ```
+  void closeSurface(String surfaceId) {
+    surfaceBloc.add(CloseSurface(surfaceId: surfaceId));
+  }
+
   /// Resets the surface.
   void reset([String? surfaceId]) {
     surfaceBloc.add(ResetSurface(surfaceId: surfaceId));

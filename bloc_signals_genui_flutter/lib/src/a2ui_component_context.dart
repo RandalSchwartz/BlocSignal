@@ -125,4 +125,22 @@ class A2uiComponentContext {
       ),
     );
   }
+
+  /// Dispatches a [CloseSurface] event to [surfaceBloc], closing and evicting
+  /// [targetSurfaceId] (or this component's [surfaceId] when omitted).
+  ///
+  /// ```dart
+  /// // Example: dismissing the current modal surface
+  /// componentContext.closeSurface();
+  ///
+  /// // Example: closing a specific background surface
+  /// componentContext.closeSurface('surf_sidebar');
+  /// ```
+  void closeSurface([String? targetSurfaceId]) {
+    surfaceBloc.add(
+      CloseSurface(
+        surfaceId: targetSurfaceId ?? surfaceId,
+      ),
+    );
+  }
 }

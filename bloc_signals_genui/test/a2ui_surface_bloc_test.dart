@@ -887,7 +887,8 @@ void main() {
         final ready1 = bloc.stateValue as SurfaceReady;
         expect(ready1.surfaceId, equals('surf_1'));
         expect(ready1.availableSurfaceIds, containsAll(['surf_1', 'surf_2']));
-        expect(bloc.activeSurfaceId, equals('surf_1'));
+        expect(bloc.activeSurfaceId.value, equals('surf_1'));
+        expect(bloc.activeSurfaceIdValue, equals('surf_1'));
       });
 
       test(
@@ -975,6 +976,815 @@ void main() {
         expect(s1 == Object(), isFalse);
         expect(s1.hashCode, equals(s2.hashCode));
         expect(s1.toString(), contains('SelectSurface(surfaceId: surf_1)'));
+      });
+    });
+
+    group(
+        '(Issue #292) Reactive activeSurfaceId, Per-Surface Versions, '
+        'CloseSurface, DeleteSurfaceMessage, and Bounded LRU Eviction', () {
+      test(
+          '(Issue #292) activeSurfaceId is a ReadonlySignal<String?> and '
+          'activeSurfaceIdValue updates synchronously in 0ms', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        final observedActiveIds = <String?>[];
+        final unsub = bloc.activeSurfaceId.subscribe(observedActiveIds.add);
+        addTearDown(unsub);
+
+        expect(bloc.activeSurfaceId.value, isNull);
+        expect(bloc.activeSurfaceIdValue, isNull);
+        expect(observedActiveIds, equals([null]));
+
+        // CreateSurfaceMessage updates activeSurfaceId synchronously
+        bloc.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              surfaceId: 'surf_a',
+              catalogId: minimalCatalogId,
+            ),
+          ),
+        );
+        expect(bloc.activeSurfaceId.value, equals('surf_a'));
+        expect(bloc.activeSurfaceIdValue, equals('surf_a'));
+        expect(observedActiveIds.last, equals('surf_a'));
+
+        // Create second surface
+        bloc.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              surfaceId: 'surf_b',
+              catalogId: minimalCatalogId,
+            ),
+          ),
+        );
+        expect(bloc.activeSurfaceId.value, equals('surf_b'));
+        expect(bloc.activeSurfaceIdValue, equals('surf_b'));
+
+        // SelectSurface updates activeSurfaceId synchronously
+        bloc.add(const SelectSurface(surfaceId: 'surf_a'));
+        expect(bloc.activeSurfaceId.value, equals('surf_a'));
+        expect(bloc.activeSurfaceIdValue, equals('surf_a'));
+
+        // Direct emit() transitions sync activeSurfaceId
+        bloc.emit(
+          const SurfaceStreaming(surfaceId: 'surf_direct', messageCount: 1),
+        );
+        expect(bloc.activeSurfaceId.value, equals('surf_direct'));
+        expect(bloc.activeSurfaceIdValue, equals('surf_direct'));
+
+        // Direct emit(SurfaceInitial()) resets activeSurfaceId to null
+        bloc.emit(const SurfaceInitial());
+        expect(bloc.activeSurfaceId.value, isNull);
+        expect(bloc.activeSurfaceIdValue, isNull);
+      });
+
+      test(
+          '(Issue #292) SelectSurface switching A -> B -> A does NOT increment '
+          'version on either surface', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 'A',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'A',
+              components: const [
+                {'id': 'txt_a', 'component': 'Text', 'text': 'Surface A'},
+              ],
+            ),
+            CreateSurfaceMessage(
+              surfaceId: 'B',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'B',
+              components: const [
+                {'id': 'txt_b', 'component': 'Text', 'text': 'Surface B'},
+              ],
+            ),
+          ]),
+        );
+
+        final initialVersionA = bloc.getSurfaceReady('A')!.version;
+        final initialVersionB = bloc.getSurfaceReady('B')!.version;
+        expect(bloc.activeSurfaceIdValue, equals('B'));
+
+        // Switch B -> A
+        bloc.add(const SelectSurface(surfaceId: 'A'));
+        expect(bloc.activeSurfaceIdValue, equals('A'));
+        expect((bloc.value as SurfaceReady).surfaceId, equals('A'));
+        expect((bloc.value as SurfaceReady).version, equals(initialVersionA));
+        expect(bloc.getSurfaceReady('A')!.version, equals(initialVersionA));
+        expect(bloc.getSurfaceReady('B')!.version, equals(initialVersionB));
+
+        // Switch A -> B
+        bloc.add(const SelectSurface(surfaceId: 'B'));
+        expect(bloc.activeSurfaceIdValue, equals('B'));
+        expect((bloc.value as SurfaceReady).surfaceId, equals('B'));
+        expect((bloc.value as SurfaceReady).version, equals(initialVersionB));
+        expect(bloc.getSurfaceReady('A')!.version, equals(initialVersionA));
+        expect(bloc.getSurfaceReady('B')!.version, equals(initialVersionB));
+
+        // Switch B -> A again
+        bloc.add(const SelectSurface(surfaceId: 'A'));
+        expect(bloc.activeSurfaceIdValue, equals('A'));
+        expect((bloc.value as SurfaceReady).surfaceId, equals('A'));
+        expect((bloc.value as SurfaceReady).version, equals(initialVersionA));
+      });
+
+      test(
+          '(Issue #292) per-surface version tracking isolates mutations to the '
+          'targeted surface without incrementing sibling surface versions', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 'A',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'A',
+              components: const [
+                {'id': 'txt_a', 'component': 'Text', 'text': 'Surface A'},
+              ],
+            ),
+            CreateSurfaceMessage(
+              surfaceId: 'B',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'B',
+              components: const [
+                {
+                  'id': 'tf_b',
+                  'component': 'TextField',
+                  'label': 'Name',
+                  'required': true,
+                  'value': {'path': '/name'},
+                },
+              ],
+            ),
+          ]),
+        );
+
+        final versionA = bloc.getSurfaceReady('A')!.version;
+        var versionB = bloc.getSurfaceReady('B')!.version;
+
+        // 1. UpdateComponentsMessage on B
+        bloc.add(
+          ProcessMessage(
+            UpdateComponentsMessage(
+              surfaceId: 'B',
+              components: const [
+                {
+                  'id': 'tf_b',
+                  'component': 'TextField',
+                  'label': 'Name Updated',
+                  'required': true,
+                  'value': {'path': '/name'},
+                },
+              ],
+            ),
+          ),
+        );
+        expect(bloc.getSurfaceReady('B')!.version, greaterThan(versionB));
+        expect(bloc.getSurfaceReady('A')!.version, equals(versionA));
+        versionB = bloc.getSurfaceReady('B')!.version;
+
+        // 2. UpdateDataModelMessage on B
+        bloc.add(
+          ProcessMessage(
+            UpdateDataModelMessage(
+              surfaceId: 'B',
+              path: '/extra',
+              value: 'data',
+            ),
+          ),
+        );
+        expect(bloc.getSurfaceReady('B')!.version, greaterThan(versionB));
+        expect(bloc.getSurfaceReady('A')!.version, equals(versionA));
+        versionB = bloc.getSurfaceReady('B')!.version;
+
+        // 3. SubmitAction validation failure on B (since /name is empty)
+        bloc.add(
+          const SubmitAction(
+            actionName: 'submitB',
+            sourceComponentId: 'tf_b',
+            surfaceId: 'B',
+          ),
+        );
+        expect(bloc.getSurfaceReady('B')!.version, greaterThan(versionB));
+        expect(bloc.getSurfaceReady('A')!.version, equals(versionA));
+        versionB = bloc.getSurfaceReady('B')!.version;
+
+        // 4. UpdateFormField on B
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'B',
+            path: '/name',
+            value: 'Alice',
+          ),
+        );
+        expect(bloc.getSurfaceReady('B')!.version, greaterThan(versionB));
+        expect(bloc.getSurfaceReady('A')!.version, equals(versionA));
+        versionB = bloc.getSurfaceReady('B')!.version;
+
+        // 5. SubmitAction valid + CancelSubmission on B
+        bloc.add(
+          const SubmitAction(
+            actionName: 'submitB',
+            sourceComponentId: 'tf_b',
+            surfaceId: 'B',
+          ),
+        );
+        bloc.add(
+          const CancelSubmission(
+            surfaceId: 'B',
+            error: 'Cancelled',
+          ),
+        );
+        expect(bloc.getSurfaceReady('B')!.version, greaterThan(versionB));
+        expect(bloc.getSurfaceReady('A')!.version, equals(versionA));
+        versionB = bloc.getSurfaceReady('B')!.version;
+
+        // 6. CompleteAction on B
+        bloc.add(
+          const CompleteAction(
+            surfaceId: 'B',
+          ),
+        );
+        expect(bloc.getSurfaceReady('B')!.version, greaterThan(versionB));
+        expect(bloc.getSurfaceReady('A')!.version, equals(versionA));
+      });
+
+      test('(Issue #292) CloseSurface value equality, hashCode, and toString',
+          () {
+        const c1 = CloseSurface(surfaceId: 'surf_1');
+        const c2 = CloseSurface(surfaceId: 'surf_1');
+        const c3 = CloseSurface(surfaceId: 'surf_2');
+
+        expect(c1 == c2, isTrue);
+        expect(c1 == c3, isFalse);
+        expect(c1 == Object(), isFalse);
+        expect(c1.hashCode, equals(c2.hashCode));
+        expect(c1.toString(), equals('CloseSurface(surfaceId: surf_1)'));
+      });
+
+      test(
+          '(Issue #292) CloseSurface evicts surface, prunes history/version, '
+          'and promotes most-recently-accessed survivor without bumping its version',
+          () async {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 'A',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'A',
+              components: const [
+                {'id': 'txt_a', 'component': 'Text', 'text': 'Surface A'},
+              ],
+            ),
+            CreateSurfaceMessage(
+              surfaceId: 'B',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'B',
+              components: const [
+                {'id': 'txt_b', 'component': 'Text', 'text': 'Surface B'},
+              ],
+            ),
+            CreateSurfaceMessage(
+              surfaceId: 'C',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'C',
+              components: const [
+                {'id': 'txt_c', 'component': 'Text', 'text': 'Surface C'},
+              ],
+            ),
+          ]),
+        );
+
+        // Submit actions on B and C
+        bloc
+          ..add(
+            const SubmitAction(
+              actionName: 'act_b',
+              sourceComponentId: 'txt_b',
+              surfaceId: 'B',
+            ),
+          )
+          ..add(const CompleteAction(surfaceId: 'B'))
+          ..add(
+            const SubmitAction(
+              actionName: 'act_c',
+              sourceComponentId: 'txt_c',
+              surfaceId: 'C',
+            ),
+          )
+          ..add(const CompleteAction(surfaceId: 'C'));
+
+        // Select A, then Select C so LRU order is [B, A, C] (most recent = C, second = A)
+        bloc
+          ..add(const SelectSurface(surfaceId: 'A'))
+          ..add(const SelectSurface(surfaceId: 'C'));
+
+        final versionA = bloc.getSurfaceReady('A')!.version;
+        final versionB = bloc.getSurfaceReady('B')!.version;
+
+        // Close inactive surface B while C is active
+        final versionC = (bloc.value as SurfaceReady).version;
+        bloc.add(const CloseSurface(surfaceId: 'B'));
+
+        expect(bloc.availableSurfaceIds, equals(['A', 'C']));
+        expect(bloc.activeSurfaceIdValue, equals('C'));
+        final readyAfterCloseB = bloc.value as SurfaceReady;
+        expect(readyAfterCloseB.surfaceId, equals('C'));
+        expect(readyAfterCloseB.availableSurfaceIds, equals(['A', 'C']));
+        // Closing inactive B must NOT bump active C's version!
+        expect(readyAfterCloseB.version, equals(versionC));
+        expect(bloc.getSurfaceReady('A')!.version, equals(versionA));
+        expect(bloc.getSurfaceReady('B'), isNull);
+
+        // Close active surface C -> should promote most-recently-accessed survivor A
+        bloc.add(const CloseSurface(surfaceId: 'C'));
+        expect(bloc.availableSurfaceIds, equals(['A']));
+        expect(bloc.activeSurfaceIdValue, equals('A'));
+        final readyAfterCloseC = bloc.value as SurfaceReady;
+        expect(readyAfterCloseC.surfaceId, equals('A'));
+        expect(readyAfterCloseC.version, equals(versionA));
+
+        // Verify B and C action responses were pruned
+        final responses = <A2uiActionResponse>[];
+        final sub = bloc.actionResponses.listen(responses.add);
+        await Future<void>.microtask(() {});
+        await sub.cancel();
+        expect(responses, isEmpty);
+
+        // Close last remaining surface A -> transitions to SurfaceInitial and activeSurfaceId == null
+        bloc.add(const CloseSurface(surfaceId: 'A'));
+        expect(bloc.availableSurfaceIds, isEmpty);
+        expect(bloc.activeSurfaceIdValue, isNull);
+        expect(bloc.value, isA<SurfaceInitial>());
+        // Suppress unused variable warning check
+        expect(versionB, isPositive);
+      });
+
+      test(
+          '(Issue #292) CloseSurface cancels active stream when closing active '
+          'surface and handles non-existent or phantom surfaces gracefully',
+          () async {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        var streamCancelled = false;
+        final controller = StreamController<dynamic>(
+          onCancel: () {
+            streamCancelled = true;
+          },
+        );
+
+        bloc.add(IngestStream(controller.stream));
+        await Future<void>.microtask(() {});
+
+        controller.add(
+          CreateSurfaceMessage(
+            surfaceId: 'stream_surf',
+            catalogId: minimalCatalogId,
+          ),
+        );
+        await Future<void>.microtask(() {});
+        expect(bloc.activeSurfaceIdValue, equals('stream_surf'));
+
+        // Closing active surface cancels the in-flight stream
+        bloc.add(const CloseSurface(surfaceId: 'stream_surf'));
+        await Future<void>.microtask(() {});
+
+        expect(streamCancelled, isTrue);
+        expect(bloc.activeSurfaceIdValue, isNull);
+        expect(bloc.value, isA<SurfaceInitial>());
+
+        // Closing a non-existent surface when SurfaceInitial is a safe no-op
+        bloc.add(const CloseSurface(surfaceId: 'non_existent'));
+        expect(bloc.value, isA<SurfaceInitial>());
+
+        // Phantom active surface healing on CloseSurface
+        bloc.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              surfaceId: 'phantom',
+              catalogId: minimalCatalogId,
+            ),
+          ),
+        );
+        bloc.processor.groupModel.deleteSurface('phantom');
+        expect(bloc.activeSurfaceIdValue, equals('phantom'));
+        bloc.add(const CloseSurface(surfaceId: 'phantom'));
+        expect(bloc.activeSurfaceIdValue, isNull);
+        expect(bloc.value, isA<SurfaceInitial>());
+
+        await controller.close();
+      });
+
+      test(
+          '(Issue #292) Wire-level DeleteSurfaceMessage prunes history, '
+          'versions, LRU order, and heals activeSurfaceId', () async {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 'A',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'A',
+              components: const [
+                {'id': 'txt_a', 'component': 'Text', 'text': 'Surface A'},
+              ],
+            ),
+            CreateSurfaceMessage(
+              surfaceId: 'B',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'B',
+              components: const [
+                {'id': 'txt_b', 'component': 'Text', 'text': 'Surface B'},
+              ],
+            ),
+          ]),
+        );
+
+        bloc
+          ..add(
+            const SubmitAction(
+              actionName: 'act_b',
+              sourceComponentId: 'txt_b',
+              surfaceId: 'B',
+            ),
+          )
+          ..add(const CompleteAction(surfaceId: 'B'));
+
+        expect(bloc.activeSurfaceIdValue, equals('B'));
+
+        // Dispatch DeleteSurfaceMessage for active surface B via ProcessMessage
+        bloc.add(
+          ProcessMessage(
+            DeleteSurfaceMessage(surfaceId: 'B'),
+          ),
+        );
+
+        expect(bloc.availableSurfaceIds, equals(['A']));
+        expect(bloc.activeSurfaceIdValue, equals('A'));
+        expect((bloc.value as SurfaceReady).surfaceId, equals('A'));
+
+        // Verify B's history was pruned
+        final responses = <A2uiActionResponse>[];
+        final sub = bloc.actionResponses.listen(responses.add);
+        await Future<void>.microtask(() {});
+        await sub.cancel();
+        expect(responses, isEmpty);
+
+        // Also test DeleteSurfaceMessage via ProcessJsonMessage for A
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'deleteSurface': {
+              'surfaceId': 'A',
+            },
+          }),
+        );
+        expect(bloc.availableSurfaceIds, isEmpty);
+        expect(bloc.activeSurfaceIdValue, isNull);
+        expect(bloc.value, isA<SurfaceInitial>());
+      });
+
+      test(
+          '(Issue #292) A2uiSurfaceBloc(maxSurfaces: k) enforces bounded LRU '
+          'surface eviction and spares recently accessed surfaces', () {
+        expect(
+          () => A2uiSurfaceBloc(maxSurfaces: 0),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(
+          () => A2uiSurfaceBloc(maxSurfaces: -1),
+          throwsA(isA<AssertionError>()),
+        );
+
+        final bloc = A2uiSurfaceBloc(maxSurfaces: 2);
+        addTearDown(bloc.close);
+
+        // Create A and B (capacity 2 reached: [A, B])
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 'A',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'A',
+              components: const [
+                {'id': 'txt_a', 'component': 'Text', 'text': 'Surface A'},
+              ],
+            ),
+            CreateSurfaceMessage(
+              surfaceId: 'B',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'B',
+              components: const [
+                {'id': 'txt_b', 'component': 'Text', 'text': 'Surface B'},
+              ],
+            ),
+          ]),
+        );
+        expect(bloc.availableSurfaceIds, containsAll(['A', 'B']));
+
+        // Touch A via SelectSurface so LRU order becomes [B, A] (B is oldest)
+        bloc.add(const SelectSurface(surfaceId: 'A'));
+
+        // Create C -> should evict oldest non-active surface B!
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 'C',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'C',
+              components: const [
+                {'id': 'txt_c', 'component': 'Text', 'text': 'Surface C'},
+              ],
+            ),
+          ]),
+        );
+
+        expect(bloc.availableSurfaceIds, containsAll(['A', 'C']));
+        expect(bloc.availableSurfaceIds, isNot(contains('B')));
+        expect(bloc.getSurfaceReady('B'), isNull);
+        expect(bloc.activeSurfaceIdValue, equals('C'));
+
+        // Touch A via UpdateFormField so LRU order becomes [C, A]
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'A',
+            path: '/touched',
+            value: true,
+          ),
+        );
+
+        // Create D -> C becomes inactive when D is created, and since A was
+        // touched more recently than C, C is evicted!
+        bloc.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              surfaceId: 'D',
+              catalogId: minimalCatalogId,
+            ),
+          ),
+        );
+        expect(bloc.availableSurfaceIds, containsAll(['A', 'D']));
+        expect(bloc.availableSurfaceIds, isNot(contains('C')));
+
+        // Also test maxSurfaces: 1
+        final blocSingle = A2uiSurfaceBloc(maxSurfaces: 1);
+        addTearDown(blocSingle.close);
+        blocSingle
+          ..add(
+            ProcessMessage(
+              CreateSurfaceMessage(
+                surfaceId: 'S1',
+                catalogId: minimalCatalogId,
+              ),
+            ),
+          )
+          ..add(
+            ProcessMessage(
+              CreateSurfaceMessage(
+                surfaceId: 'S2',
+                catalogId: minimalCatalogId,
+              ),
+            ),
+          );
+        expect(blocSingle.availableSurfaceIds, equals(['S2']));
+        expect(blocSingle.activeSurfaceIdValue, equals('S2'));
+
+        // Also test maxSurfaces eviction fallback when surface was created
+        // directly on processor.groupModel outside _surfaceAccessOrder
+        final blocFallback = A2uiSurfaceBloc(maxSurfaces: 1);
+        addTearDown(blocFallback.close);
+        blocFallback.processor.processMessages([
+          CreateSurfaceMessage(
+            surfaceId: 'S_untracked',
+            catalogId: minimalCatalogId,
+          ),
+        ]);
+        blocFallback.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              surfaceId: 'S_tracked',
+              catalogId: minimalCatalogId,
+            ),
+          ),
+        );
+        expect(blocFallback.availableSurfaceIds, equals(['S_tracked']));
+      });
+
+      test(
+          '(Issue #292) covers A2uiActionResponse equality/getFormValue, '
+          'SurfaceState deep equality, and processor normalization branches',
+          () async {
+        final ts = DateTime.utc(2026);
+        final r1 = A2uiActionResponse(
+          actionName: 'act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          formData: const {
+            'name': 'Alice',
+            'nested': {'k': 1},
+          },
+          context: const {'ctx': 'v1'},
+          timestamp: ts,
+        );
+        final r2 = A2uiActionResponse(
+          actionName: 'act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          formData: const {
+            'name': 'Alice',
+            'nested': {'k': 1},
+          },
+          context: const {'ctx': 'v1'},
+          timestamp: ts,
+        );
+        final rDiffLen = A2uiActionResponse(
+          actionName: 'act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          formData: const {'name': 'Alice'},
+          timestamp: ts,
+        );
+        final rDiffKey = A2uiActionResponse(
+          actionName: 'act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          formData: const {
+            'name': 'Alice',
+            'other': {'k': 1},
+          },
+          timestamp: ts,
+        );
+        final rDiffNested = A2uiActionResponse(
+          actionName: 'act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          formData: const {
+            'name': 'Alice',
+            'nested': {'k': 2},
+          },
+          timestamp: ts,
+        );
+        final rDiffVal = A2uiActionResponse(
+          actionName: 'act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          formData: const {
+            'name': 'Bob',
+            'nested': {'k': 1},
+          },
+          timestamp: ts,
+        );
+
+        expect(r1, equals(r2));
+        expect(r1, isNot(equals(rDiffLen)));
+        expect(r1, isNot(equals(rDiffKey)));
+        expect(r1, isNot(equals(rDiffNested)));
+        expect(r1, isNot(equals(rDiffVal)));
+        expect(r1.getFormValue<String>('/name'), equals('Alice'));
+        expect(r1.getFormValue<int>('/name'), isNull);
+
+        // SurfaceError equality and SurfaceSubmitting nested map/list equality
+        const err1 = SurfaceError(error: 'boom', surfaceId: 's1');
+        const err2 = SurfaceError(error: 'boom', surfaceId: 's1');
+        const err3 = SurfaceError(error: 'boom', surfaceId: 's2');
+        expect(err1, equals(err2));
+        expect(err1, isNot(equals(err3)));
+
+        const sub1 = SurfaceSubmitting(
+          surfaceId: 's1',
+          actionName: 'go',
+          sourceComponentId: 'c1',
+          payload: {
+            'map': {'a': 1},
+            'list': [1, 2],
+          },
+        );
+        const sub2 = SurfaceSubmitting(
+          surfaceId: 's1',
+          actionName: 'go',
+          sourceComponentId: 'c1',
+          payload: {
+            'map': {'a': 1},
+            'list': [1, 2],
+          },
+        );
+        const subDiffMap = SurfaceSubmitting(
+          surfaceId: 's1',
+          actionName: 'go',
+          sourceComponentId: 'c1',
+          payload: {
+            'map': {'a': 2},
+            'list': [1, 2],
+          },
+        );
+        const subDiffList = SurfaceSubmitting(
+          surfaceId: 's1',
+          actionName: 'go',
+          sourceComponentId: 'c1',
+          payload: {
+            'map': {'a': 1},
+            'list': [1, 3],
+          },
+        );
+        expect(sub1, equals(sub2));
+        expect(sub1, isNot(equals(subDiffMap)));
+        expect(sub1, isNot(equals(subDiffList)));
+
+        // Normalization & validation branches on A2uiSurfaceBloc
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        // Untyped Map in components list & un-wrapped action map
+        bloc
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'createSurface': {
+                'surfaceId': 's_norm',
+                'catalogId': minimalCatalogId,
+              },
+            }),
+          )
+          ..add(
+            const ProcessJsonMessage({
+              'version': 'v0.9',
+              'updateComponents': {
+                'surfaceId': 's_norm',
+                'components': <Object>[
+                  <dynamic, dynamic>{
+                    'id': 'btn_unwrapped',
+                    'component': 'Button',
+                    'action': <String, dynamic>{'name': 'do_it'},
+                  },
+                ],
+              },
+            }),
+          );
+
+        // Add component with 'name' property and literal key in dataModel
+        final surface = bloc.processor.groupModel.getSurface('s_norm')!;
+        surface.componentsModel.addComponent(
+          ComponentModel('tf_named', 'TextField', const {
+            'name': 'namedField',
+            'required': true,
+          }),
+        );
+        surface.dataModel.set(
+          '/',
+          <dynamic, dynamic>{
+            'namedField': 'has_value',
+          },
+        );
+        final snap = bloc.getSurfaceReady('s_norm')!;
+        expect(snap.isValid, isTrue);
+
+        // DeleteSurfaceMessage when all surfaces are removed while a stream is active
+        final streamCtrl = StreamController<dynamic>();
+        addTearDown(streamCtrl.close);
+        bloc.add(IngestStream(streamCtrl.stream));
+        await Future<void>.delayed(Duration.zero);
+
+        // Emit snapshot when no surfaces exist but stream subscription is active
+        streamCtrl.add(DeleteSurfaceMessage(surfaceId: 's_norm'));
+        await Future<void>.delayed(Duration.zero);
+        expect(bloc.value, isA<SurfaceStreaming>());
       });
     });
   });

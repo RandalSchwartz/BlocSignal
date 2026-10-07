@@ -293,7 +293,7 @@ void main() {
       expect(bloc.stateValue, isA<SurfaceReady>());
       final ready = bloc.stateValue as SurfaceReady;
       expect(ready.surfaceId, equals('norm_surf'));
-      expect(bloc.activeSurfaceId, equals('norm_surf'));
+      expect(bloc.activeSurfaceId.value, equals('norm_surf'));
 
       final col = ready.surface.componentsModel.get('root_col');
       expect(col, isNotNull);

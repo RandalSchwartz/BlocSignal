@@ -86,6 +86,15 @@ void main() async {
 }
 ```
 
+### Multi-Surface Navigation & Bounded LRU Eviction
+
+`A2uiSurfaceBloc` decouples active navigation coordinates from per-surface content revisions:
+
+- **Reactive Active Surface Signal**: Observe `bloc.activeSurfaceId` (`ReadonlySignal<String?>`) or read `bloc.activeSurfaceIdValue` (`String?`) synchronously in 0ms.
+- **Zero-Rebuild Tab Switching**: Dispatch `SelectSurface(surfaceId: '...')` to switch the primary active surface without artificially incrementing any surface's `version` counter.
+- **Explicit Surface Closure**: Dispatch `CloseSurface(surfaceId: '...')` (or ingest wire-level `DeleteSurfaceMessage`) to evict a surface, prune its action history and revision metadata, and automatically promote the most-recently-accessed surviving surface.
+- **Bounded LRU Retention**: Configure `A2uiSurfaceBloc(maxSurfaces: 10)` to automatically evict the least-recently-used non-active surface when the active session exceeds the configured cap.
+
 ---
 
 ## 💡 Production Architecture: Safe Stream Wiring & Zero-Chunk Rollback

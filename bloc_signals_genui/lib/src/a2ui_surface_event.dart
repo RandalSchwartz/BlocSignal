@@ -4,7 +4,7 @@ import 'package:bloc_signals_genui/src/a2ui_action_response.dart'
 import 'package:bloc_signals_genui/src/a2ui_surface_bloc.dart'
     show A2uiSurfaceBloc;
 import 'package:bloc_signals_genui/src/a2ui_surface_state.dart'
-    show SurfaceError, SurfaceInitial, SurfaceReady;
+    show SurfaceError, SurfaceInitial, SurfaceReady, SurfaceStreaming;
 import 'package:meta/meta.dart';
 
 /// Sealed hierarchy defining events dispatched to [A2uiSurfaceBloc].
@@ -203,9 +203,11 @@ final class CompleteAction extends A2uiSurfaceEvent {
 
 /// Selects and switches the active surface to [surfaceId].
 ///
-/// Emits a new [SurfaceReady] state for [surfaceId] if the surface exists,
-/// or [SurfaceError] if the surface does not exist in the active message
-/// processor.
+/// Updates [A2uiSurfaceBloc.activeSurfaceId] synchronously and emits a
+/// [SurfaceReady] state (or [SurfaceStreaming] if components have not yet
+/// arrived) for [surfaceId] without incrementing the surface's content
+/// revision counter, or [SurfaceError] if the surface does not exist in the
+/// active message processor.
 ///
 /// ```dart
 /// // Example: navigating between conversation surfaces
@@ -228,4 +230,36 @@ final class SelectSurface extends A2uiSurfaceEvent {
 
   @override
   String toString() => 'SelectSurface(surfaceId: $surfaceId)';
+}
+
+/// Closes and evicts the surface identified by [surfaceId] from the active
+/// session.
+///
+/// Removes the surface from the underlying message processor, prunes its
+/// recorded action response history and version metadata, and promotes the
+/// most-recently-accessed surviving surface to [A2uiSurfaceBloc.activeSurfaceId]
+/// if the closed surface was active (or transitions to [SurfaceInitial] if no
+/// surfaces remain).
+///
+/// ```dart
+/// // Example: dismissing a secondary surface tab or modal sheet
+/// surfaceBloc.add(const CloseSurface(surfaceId: 'surf_modal'));
+/// ```
+final class CloseSurface extends A2uiSurfaceEvent {
+  /// Creates a [CloseSurface] event.
+  const CloseSurface({required this.surfaceId});
+
+  /// The identifier of the surface to close and evict.
+  final String surfaceId;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CloseSurface && surfaceId == other.surfaceId;
+
+  @override
+  int get hashCode => surfaceId.hashCode;
+
+  @override
+  String toString() => 'CloseSurface(surfaceId: $surfaceId)';
 }

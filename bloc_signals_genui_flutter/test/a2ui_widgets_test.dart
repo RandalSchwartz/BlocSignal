@@ -534,5 +534,113 @@ void main() {
 
       await bloc.close();
     });
+
+    testWidgets(
+      '(Issue #292) covers Button un-normalized Map/String actions and '
+      'TextField null value path fallback',
+      (tester) async {
+        final bloc = A2uiSurfaceBloc()
+          ..add(
+            ProcessMessages([
+              CreateSurfaceMessage(
+                surfaceId: 'surf-direct-comp',
+                catalogId: minimalCatalogId,
+              ),
+              UpdateComponentsMessage(
+                surfaceId: 'surf-direct-comp',
+                components: const [
+                  {'id': 'txt-root', 'component': 'Text', 'text': 'Root'},
+                ],
+              ),
+            ]),
+          );
+        addTearDown(bloc.close);
+
+        final catalog = A2uiFlutterCatalog.standard();
+
+        final btnMapCtx = A2uiComponentContext(
+          component: ComponentModel('btn-map', 'Button', const {
+            'action': {'name': 'raw_map_action'},
+          }),
+          props: const {
+            'action': {'name': 'raw_map_action'},
+          },
+          surfaceBloc: bloc,
+          buildChildCallback: (id) => const Text('Raw Map Btn'),
+          buildChildrenCallback: (ids) => const [],
+          surfaceId: 'surf-direct-comp',
+        );
+
+        final btnStrCtx = A2uiComponentContext(
+          component: ComponentModel('btn-str', 'Button', const {
+            'action': 'raw_string_action',
+          }),
+          props: const {
+            'action': 'raw_string_action',
+          },
+          surfaceBloc: bloc,
+          buildChildCallback: (id) => const Text('Raw Str Btn'),
+          buildChildrenCallback: (ids) => const [],
+          surfaceId: 'surf-direct-comp',
+        );
+
+        final tfNullPathCtx = A2uiComponentContext(
+          component: ComponentModel('tf-null-path', 'TextField', const {
+            'label': 'Null Path TF',
+            'value': {'path': null},
+          }),
+          props: const {
+            'label': 'Null Path TF',
+          },
+          surfaceBloc: bloc,
+          buildChildCallback: (id) => const SizedBox(),
+          buildChildrenCallback: (ids) => const [],
+          surfaceId: 'surf-direct-comp',
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => Column(
+                  children: [
+                    catalog.build(context, btnMapCtx),
+                    catalog.build(context, btnStrCtx),
+                    catalog.build(context, tfNullPathCtx),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        await tester.enterText(find.byType(TextField), 'NullPathTyped');
+        await tester.pump();
+        final surface =
+            bloc.processor.groupModel.getSurface('surf-direct-comp')!;
+        expect(
+          surface.dataModel.get('/tf-null-path'),
+          equals('NullPathTyped'),
+        );
+
+        await tester.tap(find.byType(ElevatedButton).first);
+        await tester.pump();
+        expect(
+          (bloc.value as SurfaceSubmitting).actionName,
+          equals('raw_map_action'),
+        );
+
+        bloc.add(const CompleteAction(surfaceId: 'surf-direct-comp'));
+        await tester.pump();
+
+        await tester.tap(find.byType(ElevatedButton).last);
+        await tester.pump();
+        expect(
+          (bloc.value as SurfaceSubmitting).actionName,
+          equals('raw_string_action'),
+        );
+      },
+    );
   });
 }

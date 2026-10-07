@@ -394,7 +394,7 @@ void main() {
         second.add(_createSurface('live'));
         await _settle();
 
-        activeSurfaceId = bloc.activeSurfaceId;
+        activeSurfaceId = bloc.activeSurfaceId.value;
 
         await first.close();
         await second.close();
@@ -647,7 +647,7 @@ void main() {
         feed.add(_createSurface('s1'));
         await _settle();
 
-        expect(bloc.activeSurfaceId, 's1');
+        expect(bloc.activeSurfaceId.value, 's1');
 
         bloc.add(const ResetSurface(surfaceId: 's1'));
         await _settle();
@@ -717,7 +717,7 @@ void main() {
         feed.push(_createSurface('after-close'));
         await _settle();
 
-        activeSurfaceId = bloc.activeSurfaceId;
+        activeSurfaceId = bloc.activeSurfaceId.value;
       });
 
       expect(activeSurfaceId, isNull);

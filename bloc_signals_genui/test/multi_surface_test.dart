@@ -116,7 +116,7 @@ void main() {
       // B is deleted, A survives
       expect(_surfaceIds(session.bloc), ['A']);
       // Active surface is promoted to survivor A
-      expect(session.bloc.activeSurfaceId, 'A');
+      expect(session.bloc.activeSurfaceId.value, 'A');
 
       // State is SurfaceReady for A, NOT SurfaceInitial
       expect(session.states, hasLength(1));
@@ -160,7 +160,7 @@ void main() {
       // A is deleted, B survives
       expect(_surfaceIds(session.bloc), ['B']);
       // Active surface remains B
-      expect(session.bloc.activeSurfaceId, 'B');
+      expect(session.bloc.activeSurfaceId.value, 'B');
 
       // State is SurfaceReady for B with updated availableSurfaceIds
       expect(session.states, hasLength(1));
@@ -203,7 +203,7 @@ void main() {
 
       // All surfaces are deleted
       expect(_surfaceIds(session.bloc), isEmpty);
-      expect(session.bloc.activeSurfaceId, isNull);
+      expect(session.bloc.activeSurfaceId.value, isNull);
       expect(session.states.single, const SurfaceInitial());
 
       // All history is cleared
@@ -231,7 +231,7 @@ void main() {
 
       // Both surfaces survive
       expect(_surfaceIds(session.bloc), ['A', 'B']);
-      expect(session.bloc.activeSurfaceId, 'A');
+      expect(session.bloc.activeSurfaceId.value, 'A');
       // No SurfaceInitial emitted; state is untouched
       expect(session.states, isEmpty);
 
@@ -254,7 +254,7 @@ void main() {
       session.bloc.add(const ResetSurface());
 
       expect(_surfaceIds(session.bloc), isEmpty);
-      expect(session.bloc.activeSurfaceId, isNull);
+      expect(session.bloc.activeSurfaceId.value, isNull);
       expect(session.states.single, const SurfaceInitial());
     });
 
@@ -291,7 +291,7 @@ void main() {
 
       // Active surface must be healed to surviving surface A
       expect(_surfaceIds(session.bloc), ['A']);
-      expect(session.bloc.activeSurfaceId, 'A');
+      expect(session.bloc.activeSurfaceId.value, 'A');
 
       // State is SurfaceReady for A, NOT stuck on phantom B or unhandled
       expect(session.states, hasLength(1));

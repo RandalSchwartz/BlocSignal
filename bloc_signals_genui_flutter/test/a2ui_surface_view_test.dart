@@ -1,5 +1,6 @@
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_flutter/bloc_signals_genui_flutter.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:json_schema_builder/json_schema_builder.dart';
@@ -1525,6 +1526,498 @@ void main() {
         await bloc.close();
       },
     );
+
+    group(
+        '(Issue #292) Reactive activeSurfaceId Viewport & Split-Pane Isolation',
+        () {
+      testWidgets(
+        '(Issue #292) A2uiSurfaceView (surfaceId == null) reactively observes '
+        'bloc.activeSurfaceId, switches without version bumps, and rebinds on '
+        'widget.bloc swap',
+        (tester) async {
+          final bloc1 = A2uiSurfaceBloc()
+            ..add(
+              ProcessMessages([
+                CreateSurfaceMessage(
+                  surfaceId: 'surf-a',
+                  catalogId: minimalCatalogId,
+                ),
+                UpdateComponentsMessage(
+                  surfaceId: 'surf-a',
+                  components: const [
+                    {
+                      'id': 'txt-a',
+                      'component': 'Text',
+                      'text': 'Surface A View',
+                    },
+                  ],
+                ),
+                CreateSurfaceMessage(
+                  surfaceId: 'surf-b',
+                  catalogId: minimalCatalogId,
+                ),
+                UpdateComponentsMessage(
+                  surfaceId: 'surf-b',
+                  components: const [
+                    {
+                      'id': 'txt-b',
+                      'component': 'Text',
+                      'text': 'Surface B View',
+                    },
+                  ],
+                ),
+              ]),
+            );
+          addTearDown(bloc1.close);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc1,
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(find.text('Surface B View'), findsOneWidget);
+          expect(find.text('Surface A View'), findsNothing);
+
+          final verA = bloc1.getSurfaceReady('surf-a')!.version;
+          final verB = bloc1.getSurfaceReady('surf-b')!.version;
+
+          // Switch B -> A -> B -> A via SelectSurface (no version bump)
+          bloc1.add(const SelectSurface(surfaceId: 'surf-a'));
+          await tester.pump();
+          expect(find.text('Surface A View'), findsOneWidget);
+          expect(find.text('Surface B View'), findsNothing);
+          expect(bloc1.getSurfaceReady('surf-a')!.version, equals(verA));
+
+          bloc1.add(const SelectSurface(surfaceId: 'surf-b'));
+          await tester.pump();
+          expect(find.text('Surface B View'), findsOneWidget);
+          expect(find.text('Surface A View'), findsNothing);
+          expect(bloc1.getSurfaceReady('surf-b')!.version, equals(verB));
+
+          // Swap widget.bloc to bloc2 in didUpdateWidget
+          final bloc2 = A2uiSurfaceBloc()
+            ..add(
+              ProcessMessages([
+                CreateSurfaceMessage(
+                  surfaceId: 'surf-c',
+                  catalogId: minimalCatalogId,
+                ),
+                UpdateComponentsMessage(
+                  surfaceId: 'surf-c',
+                  components: const [
+                    {
+                      'id': 'txt-c',
+                      'component': 'Text',
+                      'text': 'Surface C on Bloc 2',
+                    },
+                  ],
+                ),
+                CreateSurfaceMessage(
+                  surfaceId: 'surf-d',
+                  catalogId: minimalCatalogId,
+                ),
+                UpdateComponentsMessage(
+                  surfaceId: 'surf-d',
+                  components: const [
+                    {
+                      'id': 'txt-d',
+                      'component': 'Text',
+                      'text': 'Surface D on Bloc 2',
+                    },
+                  ],
+                ),
+              ]),
+            );
+          addTearDown(bloc2.close);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc2,
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(find.text('Surface D on Bloc 2'), findsOneWidget);
+
+          // Select surf-c on bloc2 and verify reactive update on new bloc
+          bloc2.add(const SelectSurface(surfaceId: 'surf-c'));
+          await tester.pump();
+          expect(find.text('Surface C on Bloc 2'), findsOneWidget);
+          expect(find.text('Surface D on Bloc 2'), findsNothing);
+        },
+      );
+
+      testWidgets(
+        '(Issue #292) split-pane A2uiSurfaceView(surfaceId: A) does not '
+        'reconcile binders or increment version when Surface B mutates or '
+        'when SelectSurface switches active focus',
+        (tester) async {
+          var buildCountA = 0;
+          final trackingCatalog = A2uiFlutterCatalog.standard()
+            ..register('Text', (context, componentContext) {
+              if (componentContext.surfaceId == 'A') {
+                buildCountA++;
+              }
+              final text = componentContext.props['text']?.toString() ?? '';
+              return Text(text);
+            });
+
+          final bloc = A2uiSurfaceBloc()
+            ..add(
+              ProcessMessages([
+                CreateSurfaceMessage(
+                  surfaceId: 'A',
+                  catalogId: minimalCatalogId,
+                ),
+                UpdateComponentsMessage(
+                  surfaceId: 'A',
+                  components: const [
+                    {
+                      'id': 'txt-a',
+                      'component': 'Text',
+                      'text': 'Pane A Content',
+                    },
+                  ],
+                ),
+                CreateSurfaceMessage(
+                  surfaceId: 'B',
+                  catalogId: minimalCatalogId,
+                ),
+                UpdateComponentsMessage(
+                  surfaceId: 'B',
+                  components: const [
+                    {
+                      'id': 'txt-b',
+                      'component': 'Text',
+                      'text': 'Pane B Initial',
+                    },
+                  ],
+                ),
+              ]),
+            );
+          addTearDown(bloc.close);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: Row(
+                  children: [
+                    Expanded(
+                      child: A2uiSurfaceView(
+                        bloc: bloc,
+                        surfaceId: 'A',
+                        catalog: trackingCatalog,
+                      ),
+                    ),
+                    Expanded(
+                      child: A2uiSurfaceView(
+                        bloc: bloc,
+                        surfaceId: 'B',
+                        catalog: trackingCatalog,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(find.text('Pane A Content'), findsOneWidget);
+          expect(find.text('Pane B Initial'), findsOneWidget);
+          final versionABefore = bloc.getSurfaceReady('A')!.version;
+          expect(buildCountA, equals(1));
+
+          // Mutate Surface B in the background
+          bloc.add(
+            ProcessMessage(
+              UpdateComponentsMessage(
+                surfaceId: 'B',
+                components: const [
+                  {
+                    'id': 'txt-b',
+                    'component': 'Text',
+                    'text': 'Pane B Updated',
+                  },
+                ],
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(find.text('Pane B Updated'), findsOneWidget);
+          // Surface A's version must NOT have incremented!
+          expect(bloc.getSurfaceReady('A')!.version, equals(versionABefore));
+        },
+      );
+
+      testWidgets(
+        '(Issue #292) A2uiComponentContext.closeSurface dispatches '
+        'CloseSurface for current or target surfaceId',
+        (tester) async {
+          final bloc = A2uiSurfaceBloc()
+            ..add(
+              ProcessMessages([
+                CreateSurfaceMessage(
+                  surfaceId: 'surf-1',
+                  catalogId: minimalCatalogId,
+                ),
+                UpdateComponentsMessage(
+                  surfaceId: 'surf-1',
+                  components: const [
+                    {'id': 'txt-1', 'component': 'Text', 'text': 'One'},
+                  ],
+                ),
+                CreateSurfaceMessage(
+                  surfaceId: 'surf-2',
+                  catalogId: minimalCatalogId,
+                ),
+                UpdateComponentsMessage(
+                  surfaceId: 'surf-2',
+                  components: const [
+                    {'id': 'txt-2', 'component': 'Text', 'text': 'Two'},
+                  ],
+                ),
+              ]),
+            );
+          addTearDown(bloc.close);
+
+          final component = ComponentModel('btn-close', 'Button', const {});
+          final ctx = A2uiComponentContext(
+            component: component,
+            props: const {},
+            surfaceBloc: bloc,
+            buildChildCallback: (id) => const SizedBox(),
+            buildChildrenCallback: (ids) => const [],
+            surfaceId: 'surf-2',
+          )
+            // Close explicit target surface 'surf-1'
+            ..closeSurface('surf-1');
+          expect(bloc.availableSurfaceIds, equals(['surf-2']));
+
+          // Close current context surface ('surf-2') when omitted
+          ctx.closeSurface();
+          expect(bloc.availableSurfaceIds, isEmpty);
+          expect(bloc.value, isA<SurfaceInitial>());
+        },
+      );
+
+      testWidgets(
+        '(Issue #292) covers fallback switch in A2uiSurfaceView, '
+        'collectId Map branch, and safe_prop_parser asInt',
+        (tester) async {
+          expect(asInt(42.7), equals(42));
+          expect(asInt('128'), equals(128));
+          expect(asInt('invalid', 7), equals(7));
+          expect(asInt(null, 9), equals(9));
+
+          final bloc = A2uiSurfaceBloc();
+          addTearDown(bloc.close);
+          final catalog = A2uiFlutterCatalog.standard();
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc,
+                  catalog: catalog,
+                ),
+              ),
+            ),
+          );
+
+          // 1. Trigger fallback switch for SurfaceSubmitting with mismatched
+          // surfaceId when activeSurfaceId is non-null
+          bloc
+            ..emitForTest(
+              const SurfaceSubmitting(
+                surfaceId: 'surf-sub',
+                actionName: 'act',
+                sourceComponentId: 'btn-1',
+              ),
+            )
+            ..emitForTest(
+              const SurfaceStreaming(
+                surfaceId: 'surf-other-nonexistent',
+                messageCount: 1,
+              ),
+            );
+          await tester.pump();
+
+          // 2. Also test Map child with 'id' in _SurfaceTreeRenderer.collectId
+          bloc.add(
+            ProcessMessages([
+              CreateSurfaceMessage(
+                surfaceId: 'surf-map-child',
+                catalogId: minimalCatalogId,
+              ),
+            ]),
+          );
+          final surface =
+              bloc.processor.groupModel.getSurface('surf-map-child')!;
+          surface.componentsModel
+            ..addComponent(
+              ComponentModel('card-1', 'Card', const {
+                'child': {'id': 'txt-inside'},
+              }),
+            )
+            ..addComponent(
+              ComponentModel(
+                'txt-inside',
+                'Text',
+                const {'text': 'Inside Card'},
+              ),
+            );
+          bloc.emitForTest(bloc.getSurfaceReady('surf-map-child')!);
+          await tester.pump();
+          expect(find.text('Inside Card'), findsOneWidget);
+
+          // 3. Fallback switch for SurfaceReady, SurfaceSubmitting, and
+          // SurfaceError when targetId does not match state.surfaceId
+          final readySnap = bloc.getSurfaceReady('surf-map-child')!;
+          bloc.processor.groupModel.deleteSurface('surf-map-child');
+          bloc
+            ..emitForTest(readySnap)
+            ..emitForTest(
+              const SurfaceSubmitting(
+                surfaceId: 'surf-sub-ephemeral',
+                actionName: 'submit',
+                sourceComponentId: 'btn-1',
+              ),
+            )
+            ..emitForTest(const SurfaceInitial())
+            ..emitForTest(
+              const SurfaceError(error: 'err'),
+            );
+          await tester.pump();
+        },
+      );
+
+      testWidgets(
+        '(Issue #292) renders streaming skeleton when active or targeted '
+        'surface is created with empty component tree',
+        (tester) async {
+          final bloc = A2uiSurfaceBloc()
+            ..add(
+              ProcessMessage(
+                CreateSurfaceMessage(
+                  surfaceId: 'surf-1',
+                  catalogId: minimalCatalogId,
+                ),
+              ),
+            );
+          addTearDown(bloc.close);
+
+          expect(bloc.value, isA<SurfaceStreaming>());
+          expect(bloc.activeSurfaceId.value, equals('surf-1'));
+
+          // 1. Default view (surfaceId == null) must render streaming skeleton
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc,
+                  streamingBuilder: (context, streaming) =>
+                      Text('Streaming active: ${streaming.surfaceId}'),
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+          expect(find.text('Streaming active: surf-1'), findsOneWidget);
+
+          // 2. Targeted view (surfaceId: 'surf-1') must also render streaming
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc,
+                  surfaceId: 'surf-1',
+                  streamingBuilder: (context, streaming) =>
+                      Text('Streaming targeted: ${streaming.surfaceId}'),
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+          expect(find.text('Streaming targeted: surf-1'), findsOneWidget);
+
+          // 3. When 'surf-1' gets components (becomes SurfaceReady) and a
+          // secondary 'surf-2' is created with 0 components and then user
+          // switches back to 'surf-1' (so bloc.value is SurfaceReady),
+          // a split-pane A2uiSurfaceView(surfaceId: 'surf-2') targeting the
+          // empty 'surf-2' must render streaming rather than a blank tree!
+          bloc
+            ..add(
+              ProcessMessage(
+                UpdateComponentsMessage(
+                  surfaceId: 'surf-1',
+                  components: const [
+                    {'id': 'txt-1', 'component': 'Text', 'text': 'One Ready'},
+                  ],
+                ),
+              ),
+            )
+            ..add(
+              ProcessMessage(
+                CreateSurfaceMessage(
+                  surfaceId: 'surf-2',
+                  catalogId: minimalCatalogId,
+                ),
+              ),
+            )
+            ..add(const SelectSurface(surfaceId: 'surf-1'));
+          expect(bloc.value, isA<SurfaceReady>());
+          expect(bloc.activeSurfaceId.value, equals('surf-1'));
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc,
+                  surfaceId: 'surf-2',
+                  streamingBuilder: (context, streaming) =>
+                      Text('Streaming secondary: ${streaming.surfaceId}'),
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+          expect(find.text('Streaming secondary: surf-2'), findsOneWidget);
+
+          // 4. When activeSurfaceId is 'surf-1' (populated) and a new stream
+          // starts emitting SurfaceStreaming(surfaceId: null), default
+          // A2uiSurfaceView (widget.surfaceId == null) must render streaming
+          // skeleton instead of falling through to getSurfaceReady('surf-1')!
+          bloc.emitForTest(const SurfaceStreaming());
+          expect(bloc.activeSurfaceId.value, equals('surf-1'));
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc,
+                  streamingBuilder: (context, streaming) =>
+                      Text('Streaming new turn: ${streaming.messageCount}'),
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+          expect(find.text('Streaming new turn: 0'), findsOneWidget);
+        },
+      );
+    });
   });
 }
 

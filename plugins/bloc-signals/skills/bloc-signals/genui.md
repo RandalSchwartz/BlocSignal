@@ -38,15 +38,16 @@ In Google's **A2UI / GenUI** streaming protocol, AI models (such as Google Gemin
 │  - Concurrency control via restartable()     │
 │  - State: SurfaceInitial -> Streaming        │
 │           -> SurfaceReady -> Submitting      │
-│  - Holds fieldSignals for 0ms form updates   │
-│  - Monotonic _surfaceVersion on every chunk  │
+│  - Reactive activeSurfaceId ReadonlySignal   │
+│  - Per-surface _surfaceVersions counters     │
+│  - Bounded LRU eviction via maxSurfaces      │
 └──────────────────────┬───────────────────────┘
                        │ 2. Synchronous Signals
                        ▼
 ┌──────────────────────────────────────────────┐
 │       A2uiSurfaceView (Flutter Tree)         │
 │  - Maps catalog components to widgets        │
-│  - context.select for surgical field rebuild │
+│  - Subscribes to activeSurfaceId when null   │
 │  - Error boundaries wrap unknown components  │
 └──────────────────────────────────────────────┘
 ```
@@ -58,37 +59,21 @@ In Google's **A2UI / GenUI** streaming protocol, AI models (such as Google Gemin
 ### Surface State Lifecycle
 
 The surface state hierarchy is modeled as a sealed class `A2uiSurfaceState`:
-- **`A2uiSurfaceInitial`**: Initial blank state before any stream connection.
-- **`A2uiSurfaceStreaming`**: Chunks are actively arriving over SSE. Contains current partial surface AST, streaming text buffer, and a monotonic `version` counter.
-- **`A2uiSurfaceReady`**: Stream completed successfully. Surface AST is validated and interactive.
-- **`A2uiSurfaceSubmitting`**: User triggered a form or action button. Contains the action payload and loading feedback.
-- **`A2uiSurfaceError`**: Stream parsing error or network failure, routed through `onError()`.
+- **`SurfaceInitial`**: Initial blank state before any stream connection or after all surfaces are closed/reset.
+- **`SurfaceStreaming`**: Chunks are actively arriving over SSE, or a surface has been created but has not yet received components.
+- **`SurfaceReady`**: Surface has populated components and is interactive. Carries a per-surface monotonic `version` counter.
+- **`SurfaceSubmitting`**: User triggered a form or action button. Contains the action payload and loading feedback.
+- **`SurfaceError`**: Stream parsing error, missing surface target, or network failure, routed through `onError()`.
 
-### Handling Streaming Chunks with Monotonic Versions
-Because state updates propagate synchronously in `BlocSignal` and transitions are de-duplicated by default, streaming partial JSON chunks might appear identical to previous chunks if intermediate keys have not changed.
+### Per-Surface Content Revisions & Reactive Navigation Coordinates
+Because state updates propagate synchronously in `BlocSignal` and transitions are de-duplicated by default, `A2uiSurfaceBloc` separates **navigation coordinates** from **per-surface content revisions** (`SCAR-GENUI-7`):
+- **Navigation Coordinates (`activeSurfaceId`)**: `A2uiSurfaceBloc.activeSurfaceId` exposes a `ReadonlySignal<String?>` (with `activeSurfaceIdValue` for raw `String?` access) that updates synchronously in 0ms whenever a surface is created, selected via `SelectSurface`, closed via `CloseSurface`, deleted via `DeleteSurfaceMessage`, or reset via `ResetSurface`.
+- **Per-Surface Content Revisions (`_surfaceVersions`)**: Each surface tracks its own monotonic version counter in `_surfaceVersions[surfaceId]`. Content mutations (`CreateSurfaceMessage`, `UpdateComponentsMessage`, `UpdateDataModelMessage`, `UpdateFormField`, `StreamCompleted`, `CancelSubmission`, `CompleteAction`, or validation failures) increment only the targeted surface's version. Switching active surfaces via `SelectSurface` never increments any surface's version, preventing redundant `_SurfaceTreeRenderer` binder reconciliation in split-pane or tabbed views.
 
-To ensure the widget tree reliably receives every chunk without deduplication drops:
 ```dart
-// A2uiSurfaceState includes a monotonic surfaceVersion
-class A2uiSurfaceStreaming extends A2uiSurfaceState {
-  const A2uiSurfaceStreaming({
-    required this.surface,
-    required this.version,
-  });
-
-  final A2uiSurface surface;
-  final int version;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is A2uiSurfaceStreaming &&
-          version == other.version &&
-          surface == other.surface;
-
-  @override
-  int get hashCode => Object.hash(surface, version);
-}
+// SurfaceReady carries the per-surface content version
+final ready = surfaceBloc.getSurfaceReady('surf_main');
+final activeId = surfaceBloc.activeSurfaceId.value;
 ```
 
 ---
@@ -101,31 +86,34 @@ Inject the `A2uiSurfaceBloc` via `BlocSignalProvider` and display `A2uiSurfaceVi
 ```dart
 BlocSignalProvider<A2uiSurfaceBloc>(
   create: (context) => A2uiSurfaceBloc(
-    catalog: A2uiFlutterCatalog.standard(),
-  )..add(const ConnectA2uiStreamEvent(streamUrl: 'https://api.example.com/stream')),
-  child: const Scaffold(
-    body: A2uiSurfaceView(),
+    maxSurfaces: 10,
+  )..add(IngestStream(stream)),
+  child: Scaffold(
+    body: A2uiSurfaceView(
+      bloc: surfaceBloc,
+      catalog: A2uiFlutterCatalog.standard(),
+    ),
   ),
 );
 ```
 
 ### Granular Form Field Reactivity
-Never rebuild the entire surface when a user types into a form input. `A2uiSurfaceBloc` maintains isolated `fieldSignals` for each input component:
-```dart
-// Surgical field update: only the input widget updates
-final fieldSignal = surfaceBloc.getFieldSignal('passenger_name');
-```
+Never rebuild the entire surface when a user types into a form input. `A2uiSurfaceView` binds each component to `a2ui_core`'s reactive `DataModel` via per-component `_ComponentReactiveBinder` instances, updating only the affected leaf widget in 0ms.
 
 ---
 
 ## 🛡️ Defensive Invariants & Verification
 
-1. **Uncaught Stream Errors**: Never allow stream parse exceptions to crash the UI isolate. Route them through `onError()` on `BlocSignalObserver` and transition the surface to `A2uiSurfaceError`.
+1. **Uncaught Stream Errors**: Never allow stream parse exceptions to crash the UI isolate. Route them through `onError()` on `BlocSignalObserver` and transition the surface to `SurfaceError`.
 2. **Defensive Property Parsing**: Component properties received from LLMs can be malformed (for example strings where integers are expected). Use defensive type coercers (`SafePropParser`) with fallback defaults.
-3. **Unknown Component Graceful Fallback**: When an agent streams an unrecognized component type, render an inline fallback container (for example `A2uiFallbackWidget`) rather than throwing an exception.
+3. **Unknown Component Graceful Fallback**: When an agent streams an unrecognized component type, render an inline fallback container rather than throwing an exception.
 4. **Action Response Replay**: Buffer action responses so late-mounted listeners do not drop responses.
 5. **Submission Recovery & Lifecycle Completion**: Action submissions (`SubmitAction`) transition the state to `SurfaceSubmitting`. If an agent action fails, encounters a network timeout, or completes without streaming a new UI tree, the surface must transition back to `SurfaceReady` via `CancelSubmission({String? error, String? surfaceId})` or `CompleteAction({String? error, String? surfaceId})`. This dismisses the `ModalBarrier` overlay, preserves all active form inputs and component models, sets `isValid: false`, and renders error notifications via `validationErrorsBuilder`.
-6. **Multi-Surface Discovery & Targeted Rendering**: An agent may stream multiple distinct surfaces (for example conversational sidebars, main content panes, or modal sheets) over the same connection. Surfaces register dynamically in `availableSurfaceIds`. To navigate between surfaces or display multiple surfaces simultaneously, dispatch `SelectSurface({required String surfaceId})` to switch the active surface or pass `surfaceId:` directly to `A2uiSurfaceView(surfaceId: '...')` to render target surfaces concurrently in split panes or tabs without mutating global active surface state.
+6. **Multi-Surface Navigation, Split-Pane Isolation & Bounded LRU Eviction (`SCAR-GENUI-7`)**: An agent may stream multiple distinct surfaces (for example conversational sidebars, main content panes, or modal sheets) over the same connection. Surfaces register dynamically in `availableSurfaceIds`.
+   - Dispatch `SelectSurface({required String surfaceId})` (or call `componentContext.selectSurface(id)` / `adapter.selectSurface(id)`) to switch `bloc.activeSurfaceId` synchronously without incrementing surface content versions.
+   - Pass `surfaceId:` to `A2uiSurfaceView(bloc: bloc, surfaceId: '...')` to pin a viewport to a specific surface in split panes or tabs; when `surfaceId` is `null`, `A2uiSurfaceView` automatically subscribes to `bloc.activeSurfaceId`.
+   - Dispatch `CloseSurface({required String surfaceId})` (or call `componentContext.closeSurface([id])` / `adapter.closeSurface(id)`) or ingest wire-level `DeleteSurfaceMessage` to evict a surface, prune its `_responseHistory`, `_surfaceVersions`, and LRU entries, and automatically promote the most-recently-accessed surviving surface.
+   - Pass `maxSurfaces:` to `A2uiSurfaceBloc(maxSurfaces: k)` to bound memory growth in long-running sessions by automatically evicting the least-recently-used non-active surface.
 7. **Zero-Chunk Stream Aborts & Dangling Turn Prevention (`SCAR-GENUI-3`)**: In conversational LLM architectures, an optimistic user turn is added to chat history before initiating the streaming request. If the stream fails or disconnects before any chunks arrive (`chunkCount == 0`), the client must transactionally roll back / prune the optimistic user message from chat history. Failing to prune leaves two consecutive user turns in history on retry, which strictly violates the turn-alternation schemas of Google Generative AI and Firebase AI/Genkit, throwing `INVALID_ARGUMENT: Consecutive user turns are not allowed`.
 
 ---

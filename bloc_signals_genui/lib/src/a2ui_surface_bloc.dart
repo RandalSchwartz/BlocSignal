@@ -22,9 +22,21 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// Creates an [A2uiSurfaceBloc].
   ///
   /// If [catalogs] is omitted, defaults to registering the standard [StandardCatalog].
+  /// If [maxSurfaces] is provided (must be greater than `0`), enforces bounded
+  /// Least-Recently-Used (LRU) eviction of inactive surfaces when the number of
+  /// tracked surfaces exceeds [maxSurfaces].
+  ///
+  /// ```dart
+  /// final bloc = A2uiSurfaceBloc(maxSurfaces: 10);
+  /// ```
   A2uiSurfaceBloc({
     List<Catalog<ComponentApi, FunctionImplementation>>? catalogs,
-  })  : catalogs = catalogs ??
+    this.maxSurfaces,
+  })  : assert(
+          maxSurfaces == null || maxSurfaces > 0,
+          'maxSurfaces must be null or greater than 0.',
+        ),
+        catalogs = catalogs ??
             [
               StandardCatalog(),
               StandardCatalog(
@@ -34,7 +46,6 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         super(initialState: const SurfaceInitial()) {
     _processor = MessageProcessor<ComponentApi>(
       catalogs: this.catalogs,
-      onAction: _handleClientAction,
     );
 
     on<IngestStream>(
@@ -50,19 +61,142 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     on<CancelSubmission>(_onCancelSubmission);
     on<CompleteAction>(_onCompleteAction);
     on<SelectSurface>(_onSelectSurface);
+    on<CloseSurface>(_onCloseSurface);
     on<ResetSurface>(_onResetSurface);
   }
 
   /// The active component catalogs registered with this surface bloc.
   final List<Catalog<ComponentApi, FunctionImplementation>> catalogs;
 
+  /// Optional maximum number of surfaces to retain in memory before evicting
+  /// the least-recently-used inactive surface.
+  ///
+  /// When `null`, surface count is unbounded.
+  final int? maxSurfaces;
+
   late final MessageProcessor<ComponentApi> _processor;
 
-  /// The primary active surface ID being tracked by this bloc.
-  String? _activeSurfaceId;
+  /// Internal reactive signal tracking the primary active surface ID.
+  final Signal<String?> _activeSurfaceIdSignal = signal<String?>(null);
 
-  /// Returns the current active surface ID, derived from state or tracked session.
-  String? get activeSurfaceId => stateValue.surfaceId ?? _activeSurfaceId;
+  /// Reactive read-only signal exposing the currently active surface identifier.
+  ///
+  /// Updates synchronously in 0ms whenever a surface is created, selected via
+  /// [SelectSurface], closed via [CloseSurface], deleted via
+  /// [DeleteSurfaceMessage], or reset via [ResetSurface].
+  ///
+  /// ```dart
+  /// final activeId = surfaceBloc.activeSurfaceId.value;
+  /// ```
+  ReadonlySignal<String?> get activeSurfaceId => _activeSurfaceIdSignal;
+
+  /// Convenience getter returning the current raw value of [activeSurfaceId].
+  ///
+  /// ```dart
+  /// final currentId = surfaceBloc.activeSurfaceIdValue;
+  /// ```
+  String? get activeSurfaceIdValue => _activeSurfaceIdSignal.value;
+
+  String? get _activeSurfaceId => _activeSurfaceIdSignal.value;
+
+  set _activeSurfaceId(String? value) {
+    _activeSurfaceIdSignal.value = value;
+  }
+
+  /// Per-surface monotonically increasing content revision counters.
+  final Map<String, int> _surfaceVersions = <String, int>{};
+
+  /// Least-Recently-Used (LRU) surface access order from oldest to most recent.
+  final List<String> _surfaceAccessOrder = <String>[];
+
+  void _touchSurface(String surfaceId) {
+    _surfaceAccessOrder
+      ..remove(surfaceId)
+      ..add(surfaceId);
+  }
+
+  int _bumpSurfaceVersion(String surfaceId) {
+    final next = (_surfaceVersions[surfaceId] ?? 0) + 1;
+    _surfaceVersions[surfaceId] = next;
+    return next;
+  }
+
+  void _pruneSurfaceMetadata(String surfaceId) {
+    _responseHistory.removeWhere((r) => r.surfaceId == surfaceId);
+    _surfaceVersions.remove(surfaceId);
+    _surfaceAccessOrder.remove(surfaceId);
+  }
+
+  String? _selectSurvivingSurfaceId() {
+    for (var i = _surfaceAccessOrder.length - 1; i >= 0; i--) {
+      final candidate = _surfaceAccessOrder[i];
+      if (_processor.groupModel.getSurface(candidate) != null) {
+        return candidate;
+      }
+    }
+    final allSurfaces = _processor.groupModel.allSurfaces;
+    if (allSurfaces.isNotEmpty) {
+      return allSurfaces.first.id;
+    }
+    return null;
+  }
+
+  void _enforceMaxSurfacesBound() {
+    final limit = maxSurfaces;
+    if (limit == null) return;
+
+    while (_processor.groupModel.allSurfaces.length > limit) {
+      String? victimId;
+      for (final id in _surfaceAccessOrder) {
+        if (id != _activeSurfaceId &&
+            _processor.groupModel.getSurface(id) != null) {
+          victimId = id;
+          break;
+        }
+      }
+      victimId ??= _processor.groupModel.allSurfaces
+          .map((s) => s.id)
+          .firstWhere((id) => id != _activeSurfaceId);
+
+      _processor.groupModel.deleteSurface(victimId);
+      _pruneSurfaceMetadata(victimId);
+    }
+  }
+
+  void _preProcessMessages(List<A2uiMessage> messages) {
+    for (final msg in messages) {
+      if (msg is CreateSurfaceMessage) {
+        if (_processor.groupModel.getSurface(msg.surfaceId) != null) {
+          _processor.groupModel.deleteSurface(msg.surfaceId);
+        }
+        _activeSurfaceId = msg.surfaceId;
+        _touchSurface(msg.surfaceId);
+        _bumpSurfaceVersion(msg.surfaceId);
+      } else if (msg is UpdateComponentsMessage) {
+        _touchSurface(msg.surfaceId);
+        _bumpSurfaceVersion(msg.surfaceId);
+      } else if (msg is UpdateDataModelMessage) {
+        _touchSurface(msg.surfaceId);
+        _bumpSurfaceVersion(msg.surfaceId);
+      } else if (msg is DeleteSurfaceMessage) {
+        _pruneSurfaceMetadata(msg.surfaceId);
+        if (_activeSurfaceId == msg.surfaceId) {
+          _activeSurfaceId = null;
+        }
+      }
+    }
+  }
+
+  @override
+  void onChange(Change<A2uiSurfaceState> change) {
+    final nextState = change.nextState;
+    if (nextState is SurfaceInitial) {
+      _activeSurfaceId = null;
+    } else if (nextState.surfaceId != null) {
+      _activeSurfaceId = nextState.surfaceId;
+    }
+    super.onChange(change);
+  }
 
   /// Returns an unmodifiable list of all surface identifiers currently discovered
   /// and registered in the underlying message processor.
@@ -84,7 +218,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       formValues: formValues,
       isValid: validationErrors.isEmpty,
       validationErrors: validationErrors,
-      version: _surfaceVersion,
+      version: _surfaceVersions[surfaceId] ?? 0,
     );
   }
 
@@ -104,26 +238,13 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     StreamSubscription<A2uiActionResponse>? sub;
     controller = StreamController<A2uiActionResponse>(
       onListen: () {
-        final liveQueue = <A2uiActionResponse>[];
-        var replaying = true;
-
         sub = _actionResponsesController.stream.listen(
-          (event) {
-            if (replaying) {
-              liveQueue.add(event);
-            } else {
-              controller.add(event);
-            }
-          },
+          controller.add,
           onError: controller.addError,
           onDone: controller.close,
         );
 
         _responseHistory.forEach(controller.add);
-        replaying = false;
-
-        liveQueue.forEach(controller.add);
-        liveQueue.clear();
       },
       onCancel: () async {
         await sub?.cancel();
@@ -138,7 +259,6 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   bool _isClosing = false;
   StreamSubscription<dynamic>? _activeStreamSubscription;
   Completer<void>? _activeStreamCompleter;
-  int _surfaceVersion = 0;
   int _messageCount = 0;
 
   Future<void> _onIngestStream(
@@ -174,9 +294,6 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
               _isClosing ||
               !identical(_activeStreamSubscription, subscription)) {
             await _safeCancel(subscription);
-            if (identical(_activeStreamSubscription, subscription)) {
-              _activeStreamSubscription = null;
-            }
             if (!completer.isCompleted) completer.complete();
             return;
           }
@@ -184,19 +301,11 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           try {
             final messages = _parseChunkToMessages(chunk);
             if (messages.isNotEmpty) {
-              for (final msg in messages) {
-                if (msg is CreateSurfaceMessage) {
-                  if (_processor.groupModel.getSurface(msg.surfaceId) != null) {
-                    _processor.groupModel.deleteSurface(msg.surfaceId);
-                  }
-                  _activeSurfaceId = msg.surfaceId;
-                }
-              }
-
+              _preProcessMessages(messages);
               _processor.processMessages(messages);
+              _enforceMaxSurfacesBound();
               messageCount += messages.length;
               _messageCount += messages.length;
-              _surfaceVersion++;
 
               _emitSurfaceSnapshot(emit, messageCount: messageCount);
             }
@@ -277,15 +386,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   ) {
     try {
       final message = _normalizeMessage(event.message);
-      if (message is CreateSurfaceMessage) {
-        if (_processor.groupModel.getSurface(message.surfaceId) != null) {
-          _processor.groupModel.deleteSurface(message.surfaceId);
-        }
-        _activeSurfaceId = message.surfaceId;
-      }
+      _preProcessMessages([message]);
       _processor.processMessages([message]);
+      _enforceMaxSurfacesBound();
       _messageCount++;
-      _surfaceVersion++;
       _emitSurfaceSnapshot(emit);
     } catch (error, stackTrace) {
       onError(error, stackTrace);
@@ -306,15 +410,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   ) {
     try {
       final message = A2uiMessage.fromJson(_normalizeJson(event.json));
-      if (message is CreateSurfaceMessage) {
-        if (_processor.groupModel.getSurface(message.surfaceId) != null) {
-          _processor.groupModel.deleteSurface(message.surfaceId);
-        }
-        _activeSurfaceId = message.surfaceId;
-      }
+      _preProcessMessages([message]);
       _processor.processMessages([message]);
+      _enforceMaxSurfacesBound();
       _messageCount++;
-      _surfaceVersion++;
       _emitSurfaceSnapshot(emit);
     } catch (error, stackTrace) {
       onError(error, stackTrace);
@@ -335,17 +434,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   ) {
     try {
       final normalizedMessages = event.messages.map(_normalizeMessage).toList();
-      for (final msg in normalizedMessages) {
-        if (msg is CreateSurfaceMessage) {
-          if (_processor.groupModel.getSurface(msg.surfaceId) != null) {
-            _processor.groupModel.deleteSurface(msg.surfaceId);
-          }
-          _activeSurfaceId = msg.surfaceId;
-        }
-      }
+      _preProcessMessages(normalizedMessages);
       _processor.processMessages(normalizedMessages);
+      _enforceMaxSurfacesBound();
       _messageCount += normalizedMessages.length;
-      _surfaceVersion++;
       _emitSurfaceSnapshot(emit);
     } catch (error, stackTrace) {
       onError(error, stackTrace);
@@ -366,8 +458,12 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   ) {
     if (event.surfaceId != null) {
       _activeSurfaceId = event.surfaceId;
+      _touchSurface(event.surfaceId!);
     }
-    _surfaceVersion++;
+    final targetId = _activeSurfaceId;
+    if (targetId != null) {
+      _bumpSurfaceVersion(targetId);
+    }
     _emitSurfaceSnapshot(emit);
   }
 
@@ -385,7 +481,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     batch(() {
       surface.dataModel.set(event.path, event.value);
     });
-    _surfaceVersion++;
+    _touchSurface(surfaceId);
+    _bumpSurfaceVersion(surfaceId);
 
     _emitSurfaceSnapshot(emit);
   }
@@ -417,11 +514,13 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       return;
     }
 
+    _touchSurface(surfaceId);
+
     // Capture form values and enforce validation contract
     final formValues = _extractFormData(surface);
     final validationErrors = _validateForm(surface, formValues);
     if (validationErrors.isNotEmpty) {
-      _surfaceVersion++;
+      final version = _bumpSurfaceVersion(surfaceId);
       emit(
         SurfaceReady(
           surfaceId: surfaceId,
@@ -430,7 +529,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           formValues: formValues,
           isValid: false,
           validationErrors: validationErrors,
-          version: _surfaceVersion,
+          version: version,
         ),
       );
       return;
@@ -485,12 +584,13 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     required String? error,
     required void Function(A2uiSurfaceState) emit,
   }) {
-    final targetSurfaceId = surfaceId ?? activeSurfaceId;
+    final targetSurfaceId = surfaceId ?? activeSurfaceIdValue;
     if (targetSurfaceId == null) return;
 
     final surface = _processor.groupModel.getSurface(targetSurfaceId);
     if (surface == null) return;
 
+    _touchSurface(targetSurfaceId);
     final formValues = _extractFormData(surface);
     final formErrors = _validateForm(surface, formValues);
     final validationErrors = List<String>.from(formErrors);
@@ -501,7 +601,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       }
     }
 
-    _surfaceVersion++;
+    final version = _bumpSurfaceVersion(targetSurfaceId);
     emit(
       SurfaceReady(
         surfaceId: targetSurfaceId,
@@ -510,7 +610,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         formValues: formValues,
         isValid: validationErrors.isEmpty,
         validationErrors: validationErrors,
-        version: _surfaceVersion,
+        version: version,
       ),
     );
   }
@@ -534,8 +634,15 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     }
 
     _activeSurfaceId = event.surfaceId;
-    _surfaceVersion++;
+    _touchSurface(event.surfaceId);
     _emitSurfaceSnapshot(emit);
+  }
+
+  void _onCloseSurface(
+    CloseSurface event,
+    void Function(A2uiSurfaceState) emit,
+  ) {
+    _evictAndEmitSurface(targetId: event.surfaceId, emit: emit);
   }
 
   void _onResetSurface(
@@ -543,39 +650,50 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     void Function(A2uiSurfaceState) emit,
   ) {
     final surfaceId = event.surfaceId;
-    if (surfaceId == null || surfaceId == _activeSurfaceId) {
-      final oldCompleter = _activeStreamCompleter;
-      _activeStreamCompleter = null;
-      if (oldCompleter != null && !oldCompleter.isCompleted) {
-        oldCompleter.complete();
-      }
-      final oldSub = _activeStreamSubscription;
-      _activeStreamSubscription = null;
-      if (oldSub != null) {
-        unawaited(_safeCancel(oldSub));
-      }
-    }
-
     if (surfaceId == null) {
+      _cancelActiveStream();
       for (final surface in _processor.groupModel.allSurfaces.toList()) {
         _processor.groupModel.deleteSurface(surface.id);
       }
       _responseHistory.clear();
+      _surfaceVersions.clear();
+      _surfaceAccessOrder.clear();
       _activeSurfaceId = null;
       _messageCount = 0;
-      _surfaceVersion++;
       emit(const SurfaceInitial());
       return;
     }
 
-    final targetId = surfaceId;
-    _responseHistory.removeWhere((r) => r.surfaceId == targetId);
+    _evictAndEmitSurface(targetId: surfaceId, emit: emit);
+  }
+
+  void _cancelActiveStream() {
+    final oldCompleter = _activeStreamCompleter;
+    _activeStreamCompleter = null;
+    if (oldCompleter != null && !oldCompleter.isCompleted) {
+      oldCompleter.complete();
+    }
+    final oldSub = _activeStreamSubscription;
+    _activeStreamSubscription = null;
+    if (oldSub != null) {
+      unawaited(_safeCancel(oldSub));
+    }
+  }
+
+  void _evictAndEmitSurface({
+    required String targetId,
+    required void Function(A2uiSurfaceState) emit,
+  }) {
+    if (targetId == _activeSurfaceId) {
+      _cancelActiveStream();
+    }
+
+    _pruneSurfaceMetadata(targetId);
 
     final surface = _processor.groupModel.getSurface(targetId);
     if (surface == null) {
       if (_activeSurfaceId == targetId) {
         _activeSurfaceId = null;
-        _surfaceVersion++;
         _emitSurfaceSnapshot(emit);
       }
       return;
@@ -585,19 +703,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     if (_activeSurfaceId == targetId) {
       _activeSurfaceId = null;
     }
-    _surfaceVersion++;
     _emitSurfaceSnapshot(emit);
-  }
-
-  void _handleClientAction(A2uiClientAction action) {
-    add(
-      SubmitAction(
-        actionName: action.name,
-        sourceComponentId: action.sourceComponentId,
-        surfaceId: action.surfaceId,
-        context: action.context,
-      ),
-    );
   }
 
   List<A2uiMessage> _parseChunkToMessages(dynamic chunk) {
@@ -740,11 +846,14 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     }
 
     if (surface == null) {
-      final allSurfaces = _processor.groupModel.allSurfaces;
-      if (allSurfaces.isNotEmpty) {
-        surface = allSurfaces.first;
-        targetSurfaceId = surface.id;
+      final fallbackId = _selectSurvivingSurfaceId();
+      if (fallbackId != null) {
+        surface = _processor.groupModel.getSurface(fallbackId);
+        targetSurfaceId = fallbackId;
         _activeSurfaceId = targetSurfaceId;
+      } else {
+        targetSurfaceId = null;
+        _activeSurfaceId = null;
       }
     }
 
@@ -759,7 +868,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           formValues: formValues,
           isValid: validationErrors.isEmpty,
           validationErrors: validationErrors,
-          version: _surfaceVersion,
+          version: _surfaceVersions[targetSurfaceId] ?? 0,
         ),
       );
       return;

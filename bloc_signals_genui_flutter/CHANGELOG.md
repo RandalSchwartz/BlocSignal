@@ -4,6 +4,10 @@ All notable changes to `bloc_signals_genui_flutter` will be documented in this f
 
 ## Unreleased
 
+- Decoupled active surface viewport observation and added surface closure helpers (#292):
+  - Updated `A2uiSurfaceView` (when `surfaceId == null`) to reactively subscribe to `bloc.activeSurfaceId` and rebind cleanly in `didUpdateWidget`, enabling instant tab switching and split-pane isolation without synthetic version bumps or redundant `_SurfaceTreeRenderer` binder reconciliation.
+  - Added `closeSurface([String? targetSurfaceId])` on `A2uiComponentContext` to dispatch `CloseSurface` for the current or targeted surface.
+  - Added `selectSurface(String surfaceId)` and `closeSurface(String surfaceId)` on `GenUiControllerAdapter`.
 - Added multi-surface navigation and concurrent targeted rendering support (#283):
   - Added optional `surfaceId` parameter to `A2uiSurfaceView` enabling targeted rendering of specific surfaces independently of the globally active surface (supporting split views, tabs, and PageViews).
   - Added `selectSurface(String targetSurfaceId)` helper on `A2uiComponentContext` allowing catalog components (for example tab buttons or links) to switch active surfaces.

@@ -163,9 +163,8 @@ This document details the codified failure modes, architectural wounds, traps, a
 - **The Antigen / Vulnerability Vector**: Treating all reset operations as full global clears, mutating collections during iteration, and placing history pruning logic behind existence checks on external model stores.
 - **The Antibody / Permanent Reflex**:
   1. For full-session resets (`surfaceId == null`), iterate over an unmodifiable snapshot (`allSurfaces.toList()`) before invoking surface deletions (`SCAR-STATE-19`/`SCAR-STATE-20`).
-  2. For targeted resets (`surfaceId != null`), unconditionally prune container-scoped state (`_responseHistory.removeWhere((r) => r.surfaceId == targetId)`) *before* model existence checks.
-  3. If the surface does not exist in the model but matches `_activeSurfaceId`, clear `_activeSurfaceId = null` and invoke `_emitFinalReadyOrInitial()` to promote surviving surfaces or safely transition to `SurfaceInitial`.
-  4. Always increment the monotonic `_surfaceVersion++` to ensure reactive UI observers invalidate memoized views.
+  2. For targeted resets (`surfaceId != null`) and `CloseSurface`, unconditionally prune container-scoped metadata (`_pruneSurfaceMetadata(targetId)` clearing `_responseHistory`, `_surfaceVersions`, and `_surfaceAccessOrder`) *before* model existence checks.
+  3. If the surface does not exist in the model but matches `_activeSurfaceId`, clear `_activeSurfaceId = null` and invoke `_emitSurfaceSnapshot()` to promote the most-recently-accessed surviving surface or safely transition to `SurfaceInitial`.
 
 ### 🩹 Scar: GenUI Stream Lifecycle Races, Cancellation Atomicity & Close Ordering (`SCAR-GENUI-5`)
 - **The Pathogen / Wound**: In `bloc_signals_genui`, asynchronous gaps during stream ingestion and container teardown created three critical lifecycle failures:
@@ -178,7 +177,7 @@ This document details the codified failure modes, architectural wounds, traps, a
   1. Eagerly nullify `_activeStreamSubscription = null;` and `_activeStreamCompleter = null;` at the entry of ingestion and completion of `oldCompleter`.
   2. Subscribe to the replacement stream *before* awaiting cancellation of the superseded stream, while isolating cancellation in a `finally { await _safeCancel(oldSub); }` block.
   3. Capture the instance `subscription` locally in callbacks and gate all chunk processing and pointer cleanup on `identical(_activeStreamSubscription, subscription)`.
-  4. In `_onResetSurface`, cancel `_activeStreamSubscription` and complete `_activeStreamCompleter` when resetting the active surface or all surfaces.
+  4. In `_onResetSurface` and `_onCloseSurface`, cancel `_activeStreamSubscription` and complete `_activeStreamCompleter` when resetting or closing the active surface or all surfaces.
   5. In `close()`, set a synchronous `_isClosing = true` flag at entry, and reject any `IngestStream` dispatches if `isClosed || _isClosing`.
   6. Wrap all stream cancellations in a resilient `_safeCancel` helper routing errors to `onError` without interrupting handler flow or shutdown.
 
@@ -191,6 +190,15 @@ This document details the codified failure modes, architectural wounds, traps, a
   3. Track cumulative message processing via `_messageCount` across both direct messages and streaming chunks.
   4. In `A2uiButton`, extract action context primarily from `eventMap['context']` when `sourceAction['event'] is Map`, falling back to `sourceAction['context']` for un-normalized maps.
   5. In tests asserting stream parity, never rely on arbitrary `Future.delayed()` timeouts; use deterministic `Completer` instances conditioned on matching the specific `surfaceId` (`SCAR-TEST-11`).
+
+### 🩹 Scar: GenUI Navigation Coordinate Coupling & Synthetic Version Clock Debt (`SCAR-GENUI-7`)
+- **The Pathogen / Wound**: In `bloc_signals_genui` (Issue #292), tracking a single global `_surfaceVersion` counter across all surfaces and incrementing it on `SelectSurface` caused two cascading failures: (1) mutating Surface B incremented the global version, forcing split-pane `A2uiSurfaceView(surfaceId: 'A')` instances to run full `_reconcileBinders()` passes even when Surface A was untouched; and (2) switching tabs via `SelectSurface` required artificial version bumps just to bypass `BlocSignal` state deduplication. Additionally, wire-level `DeleteSurfaceMessage` left orphaned entries in `_responseHistory` and stale `_activeSurfaceId` pointers, and long-running multi-surface sessions had no upper bound on retained surfaces.
+- **The Antigen / Vulnerability Vector**: Conflating active surface navigation coordinates (`activeSurfaceId`) with per-surface content revisions (`SurfaceReady.version`), and failing to prune container-side metadata on wire-level `DeleteSurfaceMessage` or bound inactive surface accumulation.
+- **The Antibody / Permanent Reflex**:
+  1. **Reactive Navigation Signal**: Expose `ReadonlySignal<String?> get activeSurfaceId` (and `String? get activeSurfaceIdValue`) on `A2uiSurfaceBloc`, synchronized in `onChange`, and subscribe `A2uiSurfaceView` (when `widget.surfaceId == null`) to `bloc.activeSurfaceId` (rebinding in `didUpdateWidget` on `widget.bloc` or `widget.surfaceId` changes).
+  2. **Per-Surface Content Revisions**: Maintain `_surfaceVersions` (`Map<String, int>`) per `surfaceId`. Increment a surface's version strictly on content mutations (`CreateSurfaceMessage`, `UpdateComponentsMessage`, `UpdateDataModelMessage`, `UpdateFormField`, `StreamCompleted`, `CancelSubmission`, `CompleteAction`, or validation errors)—never on `SelectSurface`.
+  3. **Unified Surface Eviction & LRU Promotion**: On `CloseSurface`, targeted `ResetSurface`, or wire-level `DeleteSurfaceMessage`, prune `_responseHistory`, `_surfaceVersions`, and `_surfaceAccessOrder` via `_pruneSurfaceMetadata`, and promote the most-recently-accessed surviving surface to `activeSurfaceId`.
+  4. **Bounded LRU Surface Retention**: Support `A2uiSurfaceBloc(maxSurfaces: k)` (`assert(maxSurfaces == null || maxSurfaces > 0)`) to automatically evict the least-recently-used non-active surface when `allSurfaces.length > maxSurfaces`.
 
 
 ### 🩹 Scar: Traceable Test Naming & Artifact Longevity (`SCAR-TEST-22`)

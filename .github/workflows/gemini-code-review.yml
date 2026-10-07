@@ -150,47 +150,36 @@ jobs:
               "   - Explicit recommendation tag: 🟢 APPROVE or 🟡 REQUEST CHANGES.\n\n" +
               "Format your response in clean GitHub Markdown with headings, bullet points, and an explicit GCA approval status tag.";
 
-            const candidateModels = [
-              'gemini-3.8-flash',
-              'gemini-2.5-flash',
-              'gemini-2.0-flash',
-              'gemini-1.5-flash-002'
-            ];
-            let response;
+            const model = 'gemini-flash-latest';
+            const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+            console.log('Querying Gemini API (' + model + ')...');
+
             let reviewText = null;
+            try {
+              const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: prompt }] }]
+                })
+              });
 
-            for (const model of candidateModels) {
-              const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
-              console.log('Querying Gemini API (' + model + ')...');
-              try {
-                const res = await fetch(url, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
-                  })
-                });
-
-                if (res.ok) {
-                  const data = await res.json();
-                  reviewText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-                  if (reviewText) {
-                    response = res;
-                    break;
-                  }
-                } else {
-                  const errBody = await res.text();
-                  console.log('Model ' + model + ' returned HTTP ' + res.status + ': ' + errBody);
-                }
-              } catch (e) {
-                console.log('Fetch error for model ' + model + ':', e.message);
+              if (!res.ok) {
+                const errBody = await res.text();
+                console.log('⚠️ Gemini API Review Notice (HTTP ' + res.status + '):\n' + errBody);
+                console.log('Please verify GEMINI_API_KEY permissions in Google AI Studio / GCP Console.');
+                return;
               }
+
+              const data = await res.json();
+              reviewText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            } catch (e) {
+              console.log('⚠️ Fetch error for model ' + model + ':', e.message);
+              return;
             }
 
-            if (!response || !response.ok || !reviewText) {
-              const errText = response ? await response.text() : 'No response';
-              console.log('⚠️ Gemini API Review Notice (' + (response ? response.status : 'error') + '):\n' + errText);
-              console.log('Please verify GEMINI_API_KEY permissions in Google AI Studio / GCP Console.');
+            if (!reviewText) {
+              console.log('⚠️ Gemini API returned an empty review response.');
               return;
             }
 

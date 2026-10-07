@@ -120,8 +120,12 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
         ),
       );
     } else {
-      BlocSignalObserver.observer
-          ?.onTransition(this, transition.event, transition.nextState);
+      try {
+        BlocSignalObserver.observer
+            ?.onTransition(this, transition.event, transition.nextState);
+      } on Exception catch (e, stackTrace) {
+        onError(e, stackTrace);
+      }
     }
   }
 
@@ -129,10 +133,27 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
   @mustCallSuper
   FutureOr<void> onEvent(covariant ReplayEvent event) {
     if (event is _Undo || event is _Redo) {
-      BlocSignalObserver.observer?.onEvent(this, event);
+      try {
+        BlocSignalObserver.observer?.onEvent(this, event);
+      } on Exception catch (e, stackTrace) {
+        onError(e, stackTrace);
+      }
     }
     if (event is Event) {
       return super.onEvent(event);
+    }
+  }
+
+  void _notifyReplayEvent(ReplayEvent event) {
+    try {
+      unawaited(
+        Future.value(onEvent(event)).catchError(
+          onError,
+          test: (e) => e is Exception,
+        ),
+      );
+    } on Exception catch (e, stackTrace) {
+      onError(e, stackTrace);
     }
   }
 
@@ -150,7 +171,7 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
           newState,
           () {
             final event = _Redo();
-            unawaited(Future.value(onEvent(event)));
+            _notifyReplayEvent(event);
             runZoned(
               () => super.emit(newState),
               zoneValues: {
@@ -161,7 +182,7 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
           },
           (val) {
             final event = _Undo();
-            unawaited(Future.value(onEvent(event)));
+            _notifyReplayEvent(event);
             runZoned(
               () => super.emit(val),
               zoneValues: {

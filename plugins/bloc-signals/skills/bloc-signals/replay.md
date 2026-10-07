@@ -108,4 +108,5 @@ Calling `undo()` or `redo()` internally triggers an `emit()` to restore the sele
 - **Post-Close Safety**: Once `close()` has been called, subsequent emissions (for example from pending asynchronous tasks) are strictly prevented from mutating or appending to the undo/redo history stack.
 - **De-duplication**: When an `emit()` produces a value identical to the current state (`equals(stateValue, newState)`), it is skipped and does not pollute the history stack.
 - **Synthetic Event Routing**: In `ReplayBloc`, internal `_Undo` and `_Redo` events are routed with replay tags so external `onTransition` observers do not receive duplicate notifications.
+- **Observer & Hook Exception Isolation (`SCAR-CORE-12`)**: During `undo()` and `redo()`, any `Exception` thrown by `BlocSignalObserver.onEvent`, `onTransition`, `onChange`, or a custom `onEvent` override (whether synchronous or asynchronous) is caught and routed to `onError()` without aborting state restoration.
 

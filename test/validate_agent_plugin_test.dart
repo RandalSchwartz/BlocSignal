@@ -96,4 +96,33 @@ void main() {
       );
     });
   });
+
+  group(
+    '(Issue #336: R1) SCAR-TEST-23 semantic lint test harness invariants',
+    () {
+      test('codifies SCAR-TEST-23 across AGENTS.md, scars.md, and lint.md', () {
+        final agentsText = File('AGENTS.md').readAsStringSync();
+        expect(agentsText, contains('SCAR-TEST-23'));
+        expect(agentsText, contains('runLintRule'));
+        expect(agentsText, contains('disposeLintTestHarness'));
+        expect(agentsText, contains('AnalysisContextCollection'));
+
+        final scarsText = File(
+          'plugins/bloc-signals/skills/bloc-signals/scars.md',
+        ).readAsStringSync();
+        expect(scarsText, contains('SCAR-TEST-23'));
+        expect(scarsText, contains('runLintRule'));
+        expect(scarsText, contains('disposeLintTestHarness'));
+        expect(scarsText, contains('AnalysisContextCollection'));
+
+        final lintText = File(
+          'plugins/bloc-signals/skills/bloc-signals/lint.md',
+        ).readAsStringSync();
+        expect(lintText, contains('SCAR-TEST-23'));
+        expect(lintText, contains('runLintRule'));
+        expect(lintText, contains('disposeLintTestHarness'));
+        expect(lintText, contains('AnalysisContextCollection'));
+      });
+    },
+  );
 }

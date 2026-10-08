@@ -493,6 +493,390 @@ void main() {
         );
       },
     );
+
+    group(
+        '(Issue #319: R5) runtime limit trimming & atomic shouldReplay '
+        'traversal', () {
+      group('ReplayBloc', () {
+        test('runtime limit lowering trims existing _history', () async {
+          final bloc = CounterBloc();
+          addTearDown(bloc.close);
+          for (var i = 1; i <= 5; i++) {
+            bloc.add(const CounterIncrementPressed());
+          }
+          expect(bloc.stateValue, 5);
+
+          bloc.limit = 2;
+          expect(bloc.limit, 2);
+
+          bloc
+            ..undo()
+            ..undo()
+            ..undo()
+            ..undo()
+            ..undo();
+
+          expect(bloc.stateValue, 3);
+          expect(bloc.canUndo, isFalse);
+        });
+
+        test('runtime limit = 0 clears existing _history and _redos', () async {
+          final bloc = CounterBloc();
+          addTearDown(bloc.close);
+          bloc
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed());
+          expect(bloc.stateValue, 3);
+
+          bloc.undo();
+          expect(bloc.stateValue, 2);
+          expect(bloc.canUndo, isTrue);
+          expect(bloc.canRedo, isTrue);
+
+          bloc.limit = 0;
+          expect(bloc.limit, 0);
+          expect(bloc.canUndo, isFalse);
+          expect(bloc.canRedo, isFalse);
+
+          bloc.undo();
+          expect(bloc.stateValue, 2);
+          bloc.redo();
+          expect(bloc.stateValue, 2);
+        });
+
+        test('runtime limit = null restores unbounded history', () async {
+          final bloc = CounterBloc(limit: 1);
+          addTearDown(bloc.close);
+          bloc
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed());
+          expect(bloc.stateValue, 2);
+
+          bloc.limit = null;
+          expect(bloc.limit, isNull);
+
+          bloc
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed());
+          expect(bloc.stateValue, 5);
+
+          bloc
+            ..undo()
+            ..undo()
+            ..undo()
+            ..undo();
+          expect(bloc.stateValue, 1);
+          expect(bloc.canUndo, isFalse);
+        });
+
+        test(
+          'lowering limit while entries are in _redos trims _history upon '
+          'redo()',
+          () async {
+            final bloc = CounterBloc();
+            addTearDown(bloc.close);
+            bloc
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed());
+            expect(bloc.stateValue, 4);
+
+            bloc
+              ..undo()
+              ..undo();
+            expect(bloc.stateValue, 2);
+
+            bloc.limit = 2;
+            expect(bloc.limit, 2);
+
+            bloc
+              ..redo()
+              ..redo();
+            expect(bloc.stateValue, 4);
+
+            bloc
+              ..undo()
+              ..undo()
+              ..undo()
+              ..undo();
+            expect(bloc.stateValue, 2);
+            expect(bloc.canUndo, isFalse);
+          },
+        );
+
+        test(
+          'single-pass shouldReplay evaluation & atomic rollback when no '
+          'replayable target exists',
+          () async {
+            var evaluations = 0;
+            final blocA = CounterBloc(
+              shouldReplayCallback: (s) {
+                evaluations++;
+                return s == 1;
+              },
+            );
+            addTearDown(blocA.close);
+
+            for (var i = 1; i <= 5; i++) {
+              blocA.add(const CounterIncrementPressed());
+            }
+            expect(blocA.stateValue, 5);
+            evaluations = 0;
+
+            blocA.undo();
+            expect(blocA.stateValue, 1);
+            expect(evaluations, 4);
+
+            var allowReplay = false;
+            final blocB = CounterBloc(
+              shouldReplayCallback: (s) => allowReplay,
+            );
+            addTearDown(blocB.close);
+
+            blocB
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed());
+            expect(blocB.stateValue, 3);
+
+            blocB.undo();
+            expect(blocB.stateValue, 3);
+            expect(blocB.canRedo, isFalse);
+
+            allowReplay = true;
+            expect(blocB.canUndo, isTrue);
+            blocB.undo();
+            expect(blocB.stateValue, 2);
+
+            allowReplay = false;
+            blocB.redo();
+            expect(blocB.stateValue, 2);
+
+            allowReplay = true;
+            expect(blocB.canRedo, isTrue);
+            blocB.redo();
+            expect(blocB.stateValue, 3);
+
+            final blocC = CounterBloc(
+              shouldReplayCallback: (s) => s.isOdd,
+            );
+            addTearDown(blocC.close);
+
+            blocC
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed());
+            expect(blocC.stateValue, 3);
+
+            blocC.undo();
+            expect(blocC.stateValue, 1);
+            expect(blocC.canUndo, isFalse);
+
+            blocC.redo();
+            expect(blocC.stateValue, 3);
+            expect(blocC.canRedo, isFalse);
+
+            blocC.undo();
+            expect(blocC.stateValue, 1);
+            blocC.redo();
+            expect(blocC.stateValue, 3);
+          },
+        );
+      });
+
+      group('ReplayBlocMixin', () {
+        test('runtime limit lowering trims existing _history', () async {
+          final bloc = CounterBlocMixin();
+          addTearDown(bloc.close);
+          for (var i = 1; i <= 5; i++) {
+            bloc.add(const CounterIncrementPressed());
+          }
+          expect(bloc.stateValue, 5);
+
+          bloc.limit = 2;
+          expect(bloc.limit, 2);
+
+          bloc
+            ..undo()
+            ..undo()
+            ..undo()
+            ..undo()
+            ..undo();
+
+          expect(bloc.stateValue, 3);
+          expect(bloc.canUndo, isFalse);
+        });
+
+        test('runtime limit = 0 clears existing _history and _redos', () async {
+          final bloc = CounterBlocMixin();
+          addTearDown(bloc.close);
+          bloc
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed());
+          expect(bloc.stateValue, 3);
+
+          bloc.undo();
+          expect(bloc.stateValue, 2);
+          expect(bloc.canUndo, isTrue);
+          expect(bloc.canRedo, isTrue);
+
+          bloc.limit = 0;
+          expect(bloc.limit, 0);
+          expect(bloc.canUndo, isFalse);
+          expect(bloc.canRedo, isFalse);
+
+          bloc.undo();
+          expect(bloc.stateValue, 2);
+          bloc.redo();
+          expect(bloc.stateValue, 2);
+        });
+
+        test('runtime limit = null restores unbounded history', () async {
+          final bloc = CounterBlocMixin(limit: 1);
+          addTearDown(bloc.close);
+          bloc
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed());
+          expect(bloc.stateValue, 2);
+
+          bloc.limit = null;
+          expect(bloc.limit, isNull);
+
+          bloc
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed());
+          expect(bloc.stateValue, 5);
+
+          bloc
+            ..undo()
+            ..undo()
+            ..undo()
+            ..undo();
+          expect(bloc.stateValue, 1);
+          expect(bloc.canUndo, isFalse);
+        });
+
+        test(
+          'lowering limit while entries are in _redos trims _history upon '
+          'redo()',
+          () async {
+            final bloc = CounterBlocMixin();
+            addTearDown(bloc.close);
+            bloc
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed());
+            expect(bloc.stateValue, 4);
+
+            bloc
+              ..undo()
+              ..undo();
+            expect(bloc.stateValue, 2);
+
+            bloc.limit = 2;
+            expect(bloc.limit, 2);
+
+            bloc
+              ..redo()
+              ..redo();
+            expect(bloc.stateValue, 4);
+
+            bloc
+              ..undo()
+              ..undo()
+              ..undo()
+              ..undo();
+            expect(bloc.stateValue, 2);
+            expect(bloc.canUndo, isFalse);
+          },
+        );
+
+        test(
+          'single-pass shouldReplay evaluation & atomic rollback when no '
+          'replayable target exists',
+          () async {
+            var evaluations = 0;
+            final blocA = CounterBlocMixin(
+              shouldReplayCallback: (s) {
+                evaluations++;
+                return s == 1;
+              },
+            );
+            addTearDown(blocA.close);
+
+            for (var i = 1; i <= 5; i++) {
+              blocA.add(const CounterIncrementPressed());
+            }
+            expect(blocA.stateValue, 5);
+            evaluations = 0;
+
+            blocA.undo();
+            expect(blocA.stateValue, 1);
+            expect(evaluations, 4);
+
+            var allowReplay = false;
+            final blocB = CounterBlocMixin(
+              shouldReplayCallback: (s) => allowReplay,
+            );
+            addTearDown(blocB.close);
+
+            blocB
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed());
+            expect(blocB.stateValue, 3);
+
+            blocB.undo();
+            expect(blocB.stateValue, 3);
+            expect(blocB.canRedo, isFalse);
+
+            allowReplay = true;
+            expect(blocB.canUndo, isTrue);
+            blocB.undo();
+            expect(blocB.stateValue, 2);
+
+            allowReplay = false;
+            blocB.redo();
+            expect(blocB.stateValue, 2);
+
+            allowReplay = true;
+            expect(blocB.canRedo, isTrue);
+            blocB.redo();
+            expect(blocB.stateValue, 3);
+
+            final blocC = CounterBlocMixin(
+              shouldReplayCallback: (s) => s.isOdd,
+            );
+            addTearDown(blocC.close);
+
+            blocC
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed())
+              ..add(const CounterIncrementPressed());
+            expect(blocC.stateValue, 3);
+
+            blocC.undo();
+            expect(blocC.stateValue, 1);
+            expect(blocC.canUndo, isFalse);
+
+            blocC.redo();
+            expect(blocC.stateValue, 3);
+            expect(blocC.canRedo, isFalse);
+
+            blocC.undo();
+            expect(blocC.stateValue, 1);
+            blocC.redo();
+            expect(blocC.stateValue, 3);
+          },
+        );
+      });
+    });
   });
 }
 

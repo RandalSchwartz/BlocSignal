@@ -67,10 +67,15 @@ abstract class ReplayCubit<State> extends CubitSignal<State>
 mixin ReplayCubitMixin<State> on BlocSignalBase<State> {
   late final _changeStack = _ChangeStack<State>(shouldReplay: shouldReplay);
 
+  /// The internal `undo`/`redo` size limit.
+  ///
+  /// If `null`, there is no limit.
+  int? get limit => _changeStack.limit;
+
   /// Sets the internal `undo`/`redo` size limit.
   ///
   /// By default there is no limit.
-  set limit(int limit) => _changeStack.limit = limit;
+  set limit(int? limit) => _changeStack.limit = limit;
 
   bool _isReplaying = false;
 

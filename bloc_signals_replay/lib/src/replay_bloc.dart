@@ -87,10 +87,15 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
     on BlocSignal<Event, State> {
   late final _changeStack = _ChangeStack<State>(shouldReplay: shouldReplay);
 
+  /// The internal `undo`/`redo` size limit.
+  ///
+  /// If `null`, there is no limit.
+  int? get limit => _changeStack.limit;
+
   /// Sets the internal `undo`/`redo` size limit.
   ///
   /// By default there is no limit.
-  set limit(int limit) => _changeStack.limit = limit;
+  set limit(int? limit) => _changeStack.limit = limit;
 
   @override
   @protected

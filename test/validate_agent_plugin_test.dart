@@ -125,4 +125,61 @@ void main() {
       });
     },
   );
+
+  group('(Issue #343: SCAR-DOC-18) per-PR Unreleased changelog and pubspec '
+      'hygiene invariants', () {
+    test('backfills ## Unreleased entries for #316, #317, and #318 before '
+        'latest version headers', () {
+      final flutterChangelog = File('bloc_signals_flutter/CHANGELOG.md')
+          .readAsStringSync();
+      expect(flutterChangelog.trimLeft(), startsWith('## Unreleased'));
+      expect(
+        flutterChangelog,
+        contains('BlocSignalListenableExtension.toValueListenable()'),
+      );
+      expect(flutterChangelog, contains('(#316)'));
+      expect(
+        flutterChangelog.indexOf('## Unreleased'),
+        lessThan(flutterChangelog.indexOf('## 1.3.3')),
+      );
+
+      final replayChangelog = File('bloc_signals_replay/CHANGELOG.md')
+          .readAsStringSync();
+      expect(replayChangelog.trimLeft(), startsWith('## Unreleased'));
+      expect(replayChangelog, contains('ReplayBlocMixin'));
+      expect(replayChangelog, contains('(#317)'));
+      expect(
+        replayChangelog.indexOf('## Unreleased'),
+        lessThan(replayChangelog.indexOf('## 1.1.2')),
+      );
+
+      final hydrateChangelog = File('bloc_signals_hydrate/CHANGELOG.md')
+          .readAsStringSync();
+      expect(hydrateChangelog.trimLeft(), startsWith('## Unreleased'));
+      expect(hydrateChangelog, contains('HydratedMixin.fromJson'));
+      expect(hydrateChangelog, contains('(#318)'));
+      expect(
+        hydrateChangelog.indexOf('## Unreleased'),
+        lessThan(hydrateChangelog.indexOf('## 1.0.3')),
+      );
+    });
+
+    test('codifies SCAR-DOC-18 across AGENTS.md, publishing_and_scoring.md, '
+        'and scars.md', () {
+      final agentsText = File('AGENTS.md').readAsStringSync();
+      expect(agentsText, contains('SCAR-DOC-18'));
+      expect(agentsText, contains('## Unreleased'));
+
+      final publishingText = File('doc/internals/publishing_and_scoring.md')
+          .readAsStringSync();
+      expect(publishingText, contains('SCAR-DOC-18'));
+      expect(publishingText, contains('## Unreleased'));
+
+      final scarsText = File(
+        'plugins/bloc-signals/skills/bloc-signals/scars.md',
+      ).readAsStringSync();
+      expect(scarsText, contains('SCAR-DOC-18'));
+      expect(scarsText, contains('## Unreleased'));
+    });
+  });
 }

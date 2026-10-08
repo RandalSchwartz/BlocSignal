@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (hydrate)**: Replace silent `e?.toString()` list element coercion with strict `e as String?` casting in `HydratedMixin.fromJson`, preventing non-string JSON list elements (`[1, 2, 3]`, `[{'a': 1}]`) from being corrupted into strings when `StateType` is assignable from `List<String?>` (#318).
+
 ## 1.0.3
 
 - **Fix (hydrate)**: Guard `clear()` with `if (isClosed) return;` before resetting state to `initialState`, allowing storage deletion without triggering post-close emit assertions (#297).

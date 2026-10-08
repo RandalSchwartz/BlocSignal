@@ -62,6 +62,7 @@ To satisfy pub.dev publishing requirements while maintaining local developer wor
    - Monorepo runner: `dart run tool/run_workspace_tests.dart`
 3. **Format**: Always run `dart format .` to maintain uniform formatting before committing.
 4. **Phrasing Standard**: Never use the abbreviation `e.g.` (write **"for example"**) or `i.e.` (write **"that is"**).
+5. **Per-PR `CHANGELOG.md` (`## Unreleased`) & `pubspec.yaml` Hygiene (`SCAR-DOC-18`)**: Every pull request that modifies production code (`lib/`, `bin/`) or dependencies (`pubspec.yaml`) in any workspace package MUST record an entry under `## Unreleased` at the top of that package's `CHANGELOG.md` (creating `## Unreleased` above the latest `## X.Y.Z` heading if not yet present). Use standard categorized prefixes (`- **BREAKING (<scope>)**:`, `- **Feat (<scope>)**:`, `- **Fix (<scope>)**:`, `- **Perf (<scope>)**:`, `- **Docs (<scope>)**:`, `- **Dependencies**:`) with the issue reference `(#XXX)`. Never defer `CHANGELOG.md` entries to release-cutting time, even for internal bug fixes. Verify `pubspec.yaml` dependency constraints whenever cross-package contracts are updated (do not bump `pubspec.yaml` `version:` until cutting an explicit release).
 
 ---
 
@@ -133,5 +134,6 @@ To protect developer context while preventing catastrophic regressions, full sca
 | **GenUI Navigation & Per-Surface Versions** | Global `_surfaceVersion` causing split-pane rebuilds on `SelectSurface` & leaked metadata on `DeleteSurfaceMessage` | Expose `ReadonlySignal<String?> get activeSurfaceId`, track per-surface `_surfaceVersions`, prune metadata on `CloseSurface`/`DeleteSurfaceMessage`, and bound via `maxSurfaces` (`SCAR-GENUI-7`). |
 | **Test Traceability & Longevity** | Ephemeral finding numbers breaking git blame and CI triage | Prefix test groups and regression tests with canonical permanent repository issue keys `(Issue #XXX: FYY)` (`SCAR-TEST-22`). |
 | **Semantic Lint Rule Testing** | Fake local AST visitors or unresolved `parseString()` leaving `staticType` null and failing under `flutter test` | Execute real `rule.run()` via `runLintRule` / `disposeLintTestHarness` (`lint_test_harness.dart`) using `AnalysisContextCollection` + `getResolvedUnit` and `flutter_tester` `sdkPath` discovery (`SCAR-TEST-23`). |
+| **Per-PR `## Unreleased` Changelog Hygiene** | Merging `lib/`, `bin/`, or `pubspec.yaml` changes without updating `CHANGELOG.md` | Record every package's production or dependency change under `## Unreleased` at the top of its `CHANGELOG.md` in the same PR; promote `## Unreleased` to `## X.Y.Z` only at release-cutting time (`SCAR-DOC-18`). |
 
 For the complete post-mortems, stack traces, and historical case studies for any scar above, inspect [`plugins/bloc-signals/skills/bloc-signals/scars.md`](plugins/bloc-signals/skills/bloc-signals/scars.md).

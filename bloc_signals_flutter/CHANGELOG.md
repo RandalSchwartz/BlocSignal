@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (flutter)**: Lazily subscribe to the source container in `BlocSignalListenableExtension.toValueListenable()` and `toListenable()` (`0 -> 1` listener attach, `1 -> 0` detach) and delegate `.value` directly to `bloc.stateValue`, preventing permanent effect leaks when passed inline to `ValueListenableBuilder` (#316).
+
 ## 1.3.3
 
 - Fix `BlocSignalProvider`:

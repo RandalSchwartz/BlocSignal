@@ -56,6 +56,10 @@ Ensure all 11 published workspace package `README.md` files feature the exact sa
 - **Complete Docstring Coverage**: Always write clear, comprehensive Dart doc-comments (`///`) with descriptive summaries, parameter explanations, and runnable code examples.
 - **Zero Undocumented Symbols**: No public member, method, constructor, or re-exported symbol should ever be committed or published without complete docstrings.
 
+### Continuous `## Unreleased` Changelog Accumulation & Release Promotion Lifecycle (`SCAR-DOC-18`)
+1. **Per-PR `## Unreleased` Accumulation**: Every PR touching `lib/`, `bin/`, or `pubspec.yaml` in a member package must append a categorized bullet (`- **BREAKING (<scope>)**:`, `- **Feat (<scope>)**:`, `- **Fix (<scope>)**:`, `- **Perf (<scope>)**:`, `- **Docs (<scope>)**:`, `- **Dependencies**:`) with `(#XXX)` under `## Unreleased` at the top of that package's `CHANGELOG.md` (creating the `## Unreleased` section above the latest `## X.Y.Z` version heading if absent). Do not bump `version:` in `pubspec.yaml` during regular feature/fix PRs.
+2. **Release-Time Promotion (`## Unreleased` to `## X.Y.Z`)**: When cutting a package release, promote the accumulated `## Unreleased` heading to the target version `## X.Y.Z` (or keep an empty `## Unreleased` header above `## X.Y.Z`), bump `version: X.Y.Z` in `pubspec.yaml`, and synchronize the uniform package catalog table across `README.md` files and `website/lib/src/components/package_catalog.dart`.
+
 ---
 
 ## 🚫 3. Pre-Release & Unpublished Packages (GenUI & A2UI)

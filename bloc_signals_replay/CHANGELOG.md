@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (replay)**: Isolate observer exceptions in `ReplayBlocMixin` (`onTransition`, `onEvent`, and `_notifyReplayEvent`) using `on Exception catch` and filtered `catchError(..., test: (e) => e is Exception)`, routing recoverable exceptions to `onError` without aborting `undo()` / `redo()` state transitions while allowing fatal Dart `Error`s to fail fast (#317).
+
 ## 1.1.2
 
 - **Fix (replay)**: Guard `undo()` and `redo()` with `if (isClosed) return;` in `ReplayCubitMixin` and `ReplayBlocMixin`, preventing `AssertionError` and corrupted history availability flags when invoked after container disposal (#297).

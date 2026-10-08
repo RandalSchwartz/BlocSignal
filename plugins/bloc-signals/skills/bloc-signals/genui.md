@@ -98,7 +98,7 @@ BlocSignalProvider<A2uiSurfaceBloc>(
 ```
 
 ### Granular Form Field Reactivity
-Never rebuild the entire surface when a user types into a form input. `A2uiSurfaceView` binds each component to `a2ui_core`'s reactive `DataModel` via per-component `_ComponentReactiveBinder` instances, updating only the affected leaf widget in 0ms.
+Never rebuild the entire surface when a user types into a form input or when a single bound path in `DataModel` updates. `A2uiSurfaceView` wraps each component in a reactive `_BoundComponentWidget` subscribed to its `GenericBinder.resolvedProps` signal, updating only the affected leaf widget in 0ms while preserving ancestor-path circular reference protection.
 
 ---
 

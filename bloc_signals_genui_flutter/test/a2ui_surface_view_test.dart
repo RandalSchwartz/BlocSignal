@@ -2018,6 +2018,131 @@ void main() {
         },
       );
     });
+
+    group('(Issue #321: R7) Per-Component Binder Signal Subscriptions', () {
+      testWidgets(
+        '(Issue #321: R7) direct dataModel mutation rebuilds only the bound '
+        'component via binder.resolvedProps without rebuilding sibling '
+        'components, and reconciles cleanly on component update or removal',
+        (tester) async {
+          final buildCounts = <String, int>{};
+          final trackingCatalog = A2uiFlutterCatalog.standard()
+            ..register('Text', (context, componentContext) {
+              final id = componentContext.component.id;
+              buildCounts[id] = (buildCounts[id] ?? 0) + 1;
+              final text = componentContext.props['text']?.toString() ?? '';
+              return Text(text);
+            });
+
+          final bloc = A2uiSurfaceBloc()
+            ..add(
+              ProcessMessages([
+                CreateSurfaceMessage(
+                  surfaceId: 'surf-granular',
+                  catalogId: minimalCatalogId,
+                ),
+                UpdateDataModelMessage(
+                  surfaceId: 'surf-granular',
+                  path: '/greeting',
+                  value: 'Hello World',
+                ),
+                UpdateDataModelMessage(
+                  surfaceId: 'surf-granular',
+                  path: '/other',
+                  value: 'Static Sibling',
+                ),
+                UpdateComponentsMessage(
+                  surfaceId: 'surf-granular',
+                  components: const [
+                    {
+                      'id': 'col-root',
+                      'component': 'Column',
+                      'children': ['comp-a', 'comp-b'],
+                    },
+                    {
+                      'id': 'comp-a',
+                      'component': 'Text',
+                      'text': {'path': '/greeting'},
+                    },
+                    {
+                      'id': 'comp-b',
+                      'component': 'Text',
+                      'text': {'path': '/other'},
+                    },
+                  ],
+                ),
+              ]),
+            );
+          addTearDown(bloc.close);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc,
+                  catalog: trackingCatalog,
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(find.text('Hello World'), findsOneWidget);
+          expect(find.text('Static Sibling'), findsOneWidget);
+          expect(buildCounts['comp-a'], equals(1));
+          expect(buildCounts['comp-b'], equals(1));
+
+          final versionBefore = (bloc.value as SurfaceReady).version;
+          final surface =
+              bloc.processor.groupModel.getSurface('surf-granular')!;
+
+          // Mutate surface.dataModel directly without dispatching a bloc event
+          // or bumping SurfaceReady.version
+          surface.dataModel.set('/greeting', 'Updated Directly');
+          await tester.pump();
+
+          expect((bloc.value as SurfaceReady).version, equals(versionBefore));
+          expect(find.text('Updated Directly'), findsOneWidget);
+          expect(find.text('Static Sibling'), findsOneWidget);
+          expect(buildCounts['comp-a'], equals(2));
+          expect(buildCounts['comp-b'], equals(1));
+
+          // Remove comp-b from the surface and update comp-a's binding path
+          surface.componentsModel.removeComponent('comp-b');
+          bloc.add(
+            ProcessMessage(
+              UpdateComponentsMessage(
+                surfaceId: 'surf-granular',
+                components: const [
+                  {
+                    'id': 'col-root',
+                    'component': 'Column',
+                    'children': ['comp-a'],
+                  },
+                  {
+                    'id': 'comp-a',
+                    'component': 'Text',
+                    'text': {'path': '/other'},
+                  },
+                ],
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(find.text('Static Sibling'), findsOneWidget);
+          expect(find.text('Updated Directly'), findsNothing);
+
+          // Direct mutation to '/other' updates comp-a; comp-b is unmounted and does not rebuild
+          final countB = buildCounts['comp-b']!;
+          surface.dataModel.set('/other', 'Rebound Value');
+          await tester.pump();
+
+          expect(find.text('Rebound Value'), findsOneWidget);
+          expect(buildCounts['comp-b'], equals(countB));
+        },
+      );
+    });
   });
 }
 

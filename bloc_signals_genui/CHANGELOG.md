@@ -4,6 +4,7 @@ All notable changes to `bloc_signals_genui` will be documented in this file.
 
 ## Unreleased
 
+- **Fix (genui)**: Replaced shallow map/list equality and collection-length hash codes on `A2uiActionResponse`, `SurfaceReady`, and `SurfaceSubmitting` with recursive `deepEquals` and `deepHashCode` helpers (`deep_collection_equality.dart`), and added a bounded 100-entry validation regular expression cache in `A2uiSurfaceBloc._validateForm` that caches malformed patterns as `null` on `FormatException` (#321).
 - Decoupled active surface navigation coordinates from per-surface content revisions and added bounded surface lifecycle management (#292):
   - Promoted `A2uiSurfaceBloc.activeSurfaceId` to a reactive `ReadonlySignal<String?>` alongside `String? get activeSurfaceIdValue` for 0ms synchronous access.
   - Replaced global `_surfaceVersion` counter with per-surface `_surfaceVersions` (`Map<String, int>`), ensuring `SelectSurface` switches and sibling surface mutations never artificially increment unrelated surface versions.

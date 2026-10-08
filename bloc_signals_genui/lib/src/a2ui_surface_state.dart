@@ -1,6 +1,7 @@
 import 'package:a2ui_core/a2ui_core.dart';
 import 'package:bloc_signals_genui/src/a2ui_surface_bloc.dart'
     show A2uiSurfaceBloc;
+import 'package:bloc_signals_genui/src/deep_collection_equality.dart';
 import 'package:meta/meta.dart';
 
 /// Sealed hierarchy defining the client-side presentation lifecycle of an
@@ -118,9 +119,9 @@ final class SurfaceReady extends A2uiSurfaceState {
           identical(surface, other.surface) &&
           isValid == other.isValid &&
           version == other.version &&
-          _listsEqual(availableSurfaceIds, other.availableSurfaceIds) &&
-          _mapsEqual(formValues, other.formValues) &&
-          _listsEqual(validationErrors, other.validationErrors);
+          deepEquals(availableSurfaceIds, other.availableSurfaceIds) &&
+          deepEquals(formValues, other.formValues) &&
+          deepEquals(validationErrors, other.validationErrors);
 
   @override
   int get hashCode => Object.hash(
@@ -128,8 +129,9 @@ final class SurfaceReady extends A2uiSurfaceState {
         surface,
         isValid,
         version,
-        formValues.length,
-        availableSurfaceIds.length,
+        deepHashCode(formValues),
+        deepHashCode(availableSurfaceIds),
+        deepHashCode(validationErrors),
       );
 
   @override
@@ -168,14 +170,14 @@ final class SurfaceSubmitting extends A2uiSurfaceState {
           surfaceId == other.surfaceId &&
           actionName == other.actionName &&
           sourceComponentId == other.sourceComponentId &&
-          _mapsEqual(payload, other.payload);
+          deepEquals(payload, other.payload);
 
   @override
   int get hashCode => Object.hash(
         surfaceId,
         actionName,
         sourceComponentId,
-        payload.length,
+        deepHashCode(payload),
       );
 
   @override
@@ -215,31 +217,4 @@ final class SurfaceError extends A2uiSurfaceState {
 
   @override
   String toString() => 'SurfaceError(surfaceId: $surfaceId, error: $error)';
-}
-
-bool _mapsEqual(Map<dynamic, dynamic> a, Map<dynamic, dynamic> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (final key in a.keys) {
-    if (!b.containsKey(key)) return false;
-    final valA = a[key];
-    final valB = b[key];
-    if (valA is Map && valB is Map) {
-      if (!_mapsEqual(valA, valB)) return false;
-    } else if (valA is List && valB is List) {
-      if (!_listsEqual(valA, valB)) return false;
-    } else if (valA != valB) {
-      return false;
-    }
-  }
-  return true;
-}
-
-bool _listsEqual(List<dynamic> a, List<dynamic> b) {
-  if (identical(a, b)) return true;
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
 }

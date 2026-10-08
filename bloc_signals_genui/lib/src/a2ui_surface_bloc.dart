@@ -7,6 +7,7 @@ import 'package:bloc_signals_genui/src/a2ui_action_response.dart';
 import 'package:bloc_signals_genui/src/a2ui_surface_event.dart';
 import 'package:bloc_signals_genui/src/a2ui_surface_state.dart';
 import 'package:bloc_signals_genui/src/standard_catalog.dart';
+import 'package:meta/meta.dart';
 
 /// A pure-Dart reactive state container that bridges Google's A2UI declarative
 /// protocol with [BlocSignal] architecture.
@@ -896,6 +897,39 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     emit(const SurfaceInitial());
   }
 
+  static const int _maxRegexCacheSize = 100;
+  static final Map<String, RegExp?> _regexCache = <String, RegExp?>{};
+
+  /// Returns the current number of entries in the validation regular expression
+  /// cache.
+  @visibleForTesting
+  static int get debugRegexCacheSize => _regexCache.length;
+
+  /// Clears all cached validation regular expressions.
+  @visibleForTesting
+  static void clearRegexCache() {
+    _regexCache.clear();
+  }
+
+  static RegExp? _resolveValidationRegExp(String pattern) {
+    if (_regexCache.containsKey(pattern)) {
+      final cached = _regexCache.remove(pattern);
+      _regexCache[pattern] = cached;
+      return cached;
+    }
+    RegExp? compiled;
+    try {
+      compiled = RegExp(pattern);
+    } on FormatException {
+      compiled = null;
+    }
+    if (_regexCache.length >= _maxRegexCacheSize) {
+      _regexCache.remove(_regexCache.keys.first);
+    }
+    _regexCache[pattern] = compiled;
+    return compiled;
+  }
+
   List<String> _validateForm(
     SurfaceModel<ComponentApi> surface,
     Map<String, dynamic> formValues,
@@ -953,11 +987,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         final pattern = props['pattern']?.toString() ??
             props['validationRegexp']?.toString();
         if (pattern != null) {
-          try {
-            if (!RegExp(pattern).hasMatch(fieldValue)) {
-              errors.add('Field "$label" does not match the required pattern.');
-            }
-          } catch (_) {}
+          final regExp = _resolveValidationRegExp(pattern);
+          if (regExp != null && !regExp.hasMatch(fieldValue)) {
+            errors.add('Field "$label" does not match the required pattern.');
+          }
         }
         final minLength = (props['minLength'] as num?)?.toInt();
         if (minLength != null && fieldValue.length < minLength) {

@@ -1,3 +1,4 @@
+import 'package:bloc_signals_genui/src/deep_collection_equality.dart';
 import 'package:meta/meta.dart';
 
 /// Structured representation of a client action response dispatched from an
@@ -92,8 +93,8 @@ class A2uiActionResponse {
           surfaceId == other.surfaceId &&
           sourceComponentId == other.sourceComponentId &&
           timestamp == other.timestamp &&
-          _mapsEqual(formData, other.formData) &&
-          _mapsEqual(context, other.context);
+          deepEquals(formData, other.formData) &&
+          deepEquals(context, other.context);
 
   @override
   int get hashCode => Object.hash(
@@ -101,28 +102,9 @@ class A2uiActionResponse {
         surfaceId,
         sourceComponentId,
         timestamp,
-        formData.length,
-        context.length,
+        deepHashCode(formData),
+        deepHashCode(context),
       );
-
-  static bool _mapsEqual(
-    Map<String, dynamic> a,
-    Map<String, dynamic> b,
-  ) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (final key in a.keys) {
-      if (!b.containsKey(key)) return false;
-      final valA = a[key];
-      final valB = b[key];
-      if (valA is Map<String, dynamic> && valB is Map<String, dynamic>) {
-        if (!_mapsEqual(valA, valB)) return false;
-      } else if (valA != valB) {
-        return false;
-      }
-    }
-    return true;
-  }
 
   @override
   String toString() =>

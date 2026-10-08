@@ -1787,5 +1787,113 @@ void main() {
         expect(bloc.value, isA<SurfaceStreaming>());
       });
     });
+
+    group('(Issue #321: R7) Bounded Validation Regex Cache', () {
+      setUp(A2uiSurfaceBloc.clearRegexCache);
+      tearDown(A2uiSurfaceBloc.clearRegexCache);
+
+      test(
+          '(Issue #321: R7) caches compiled RegExp instances, caches malformed '
+          'patterns as null without throwing, and evicts beyond 100 entries',
+          () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        expect(A2uiSurfaceBloc.debugRegexCacheSize, equals(0));
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 'surf_regex',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'surf_regex',
+              components: const [
+                {
+                  'id': 'tf_valid',
+                  'component': 'TextField',
+                  'label': 'Code',
+                  'value': {'path': '/code'},
+                  'pattern': r'^[A-Z]{3}-\d{2}$',
+                },
+                {
+                  'id': 'tf_malformed',
+                  'component': 'TextField',
+                  'label': 'Broken',
+                  'value': {'path': '/broken'},
+                  'validationRegexp': '[unclosed',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        // Update both fields to non-empty strings so regex validation runs
+        bloc
+          ..add(
+            const UpdateFormField(
+              surfaceId: 'surf_regex',
+              path: '/code',
+              value: 'bad',
+            ),
+          )
+          ..add(
+            const UpdateFormField(
+              surfaceId: 'surf_regex',
+              path: '/broken',
+              value: 'anything',
+            ),
+          );
+
+        expect(A2uiSurfaceBloc.debugRegexCacheSize, equals(2));
+        var ready = bloc.value as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(
+          ready.validationErrors,
+          equals(['Field "Code" does not match the required pattern.']),
+        );
+
+        // Subsequent validation reuses cached entries (size remains 2) and validates accurately
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_regex',
+            path: '/code',
+            value: 'ABC-42',
+          ),
+        );
+        expect(A2uiSurfaceBloc.debugRegexCacheSize, equals(2));
+        ready = bloc.value as SurfaceReady;
+        expect(ready.isValid, isTrue);
+        expect(ready.validationErrors, isEmpty);
+
+        // Populate 105 distinct patterns and verify capacity is bounded at 100
+        final manyComponents = <Map<String, dynamic>>[
+          for (var i = 0; i < 105; i++)
+            {
+              'id': 'tf_$i',
+              'component': 'TextField',
+              'label': 'Field $i',
+              'value': {'path': '/f_$i'},
+              'pattern': '^val_$i\$',
+            },
+        ];
+        final surface = bloc.processor.groupModel.getSurface('surf_regex')!;
+        for (var i = 0; i < 105; i++) {
+          surface.dataModel.set('/f_$i', 'val_$i');
+        }
+        bloc.add(
+          ProcessJsonMessage({
+            'version': 'v0.9',
+            'updateComponents': {
+              'surfaceId': 'surf_regex',
+              'components': manyComponents,
+            },
+          }),
+        );
+
+        expect(A2uiSurfaceBloc.debugRegexCacheSize, equals(100));
+      });
+    });
   });
 }

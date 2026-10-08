@@ -567,5 +567,357 @@ void main() {
 
       await bloc.close();
     });
+
+    group(
+        '(Issue #321: R7) Recursive Deep Equality & Content-Derived HashCodes',
+        () {
+      test(
+          '(Issue #321: R7) A2uiActionResponse deep equality and hashCode '
+          'handle nested Lists, uncast Maps, and same-length differing collections',
+          () {
+        final ts = DateTime.utc(2026, 10, 8);
+        final a = A2uiActionResponse(
+          actionName: 'submit',
+          surfaceId: 's1',
+          sourceComponentId: 'btn1',
+          timestamp: ts,
+          formData: const <String, dynamic>{
+            'tags': <String>['a', 'b'],
+            'nested': <dynamic>[
+              <dynamic, dynamic>{
+                'k': 1,
+                'set': <int>{10, 20},
+              },
+            ],
+            'uncastMap': <dynamic, dynamic>{
+              'inner': <int>[1, 2, 3],
+            },
+          },
+          context: const <String, dynamic>{
+            'meta': <dynamic>['x', 'y'],
+          },
+        );
+        final b = A2uiActionResponse(
+          actionName: 'submit',
+          surfaceId: 's1',
+          sourceComponentId: 'btn1',
+          timestamp: ts,
+          formData: const <String, dynamic>{
+            'tags': <String>['a', 'b'],
+            'nested': <dynamic>[
+              <String, dynamic>{
+                'k': 1,
+                'set': <int>{20, 10},
+              },
+            ],
+            'uncastMap': <String, dynamic>{
+              'inner': <int>[1, 2, 3],
+            },
+          },
+          context: const <String, dynamic>{
+            'meta': <String>['x', 'y'],
+          },
+        );
+
+        expect(a, equals(b));
+        expect(a.hashCode, equals(b.hashCode));
+
+        // Same length, different list element in formData
+        final diffList = A2uiActionResponse(
+          actionName: 'submit',
+          surfaceId: 's1',
+          sourceComponentId: 'btn1',
+          timestamp: ts,
+          formData: const <String, dynamic>{
+            'tags': <String>['a', 'c'],
+            'nested': <dynamic>[
+              <String, dynamic>{
+                'k': 1,
+                'set': <int>{10, 20},
+              },
+            ],
+            'uncastMap': <String, dynamic>{
+              'inner': <int>[1, 2, 3],
+            },
+          },
+          context: const <String, dynamic>{
+            'meta': <String>['x', 'y'],
+          },
+        );
+        expect(a, isNot(equals(diffList)));
+        expect(a.hashCode, isNot(equals(diffList.hashCode)));
+
+        // Same length, different nested map value in context
+        final diffContext = A2uiActionResponse(
+          actionName: 'submit',
+          surfaceId: 's1',
+          sourceComponentId: 'btn1',
+          timestamp: ts,
+          formData: a.formData,
+          context: const <String, dynamic>{
+            'meta': <String>['x', 'z'],
+          },
+        );
+        expect(a, isNot(equals(diffContext)));
+        expect(a.hashCode, isNot(equals(diffContext.hashCode)));
+      });
+
+      test(
+          '(Issue #321: R7) SurfaceReady and SurfaceSubmitting deep equality '
+          'and hashCode handle nested Lists/Maps and distinguish same-length collections',
+          () async {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 's_eq',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 's_eq',
+              components: const [
+                {'id': 't1', 'component': 'Text', 'text': 'Hello'},
+              ],
+            ),
+          ]),
+        );
+
+        final surface = bloc.processor.groupModel.getSurface('s_eq')!;
+
+        final ready1 = SurfaceReady(
+          surfaceId: 's_eq',
+          surface: surface,
+          availableSurfaceIds: const <String>['s_eq', 's_other'],
+          formValues: const <String, dynamic>{
+            'items': <dynamic>[
+              <String, dynamic>{
+                'id': 1,
+                'flags': <bool>[true, false],
+              },
+            ],
+          },
+          validationErrors: const <String>['err_1'],
+          version: 1,
+        );
+        final ready2 = SurfaceReady(
+          surfaceId: 's_eq',
+          surface: surface,
+          availableSurfaceIds: const <String>['s_eq', 's_other'],
+          formValues: const <String, dynamic>{
+            'items': <dynamic>[
+              <dynamic, dynamic>{
+                'id': 1,
+                'flags': <bool>[true, false],
+              },
+            ],
+          },
+          validationErrors: const <String>['err_1'],
+          version: 1,
+        );
+        final readyDiffNested = SurfaceReady(
+          surfaceId: 's_eq',
+          surface: surface,
+          availableSurfaceIds: const <String>['s_eq', 's_other'],
+          formValues: const <String, dynamic>{
+            'items': <dynamic>[
+              <String, dynamic>{
+                'id': 1,
+                'flags': <bool>[true, true],
+              },
+            ],
+          },
+          validationErrors: const <String>['err_1'],
+          version: 1,
+        );
+        final readyDiffErrors = SurfaceReady(
+          surfaceId: 's_eq',
+          surface: surface,
+          availableSurfaceIds: const <String>['s_eq', 's_other'],
+          formValues: ready1.formValues,
+          validationErrors: const <String>['err_2'],
+          version: 1,
+        );
+
+        expect(ready1, equals(ready2));
+        expect(ready1.hashCode, equals(ready2.hashCode));
+        expect(ready1, isNot(equals(readyDiffNested)));
+        expect(ready1.hashCode, isNot(equals(readyDiffNested.hashCode)));
+        expect(ready1, isNot(equals(readyDiffErrors)));
+        expect(ready1.hashCode, isNot(equals(readyDiffErrors.hashCode)));
+
+        const sub1 = SurfaceSubmitting(
+          surfaceId: 's_eq',
+          actionName: 'act',
+          sourceComponentId: 'btn',
+          payload: <String, dynamic>{
+            'nestedList': <dynamic>[
+              <String, dynamic>{
+                'k': <int>[1, 2],
+              },
+            ],
+          },
+        );
+        const sub2 = SurfaceSubmitting(
+          surfaceId: 's_eq',
+          actionName: 'act',
+          sourceComponentId: 'btn',
+          payload: <String, dynamic>{
+            'nestedList': <dynamic>[
+              <dynamic, dynamic>{
+                'k': <int>[1, 2],
+              },
+            ],
+          },
+        );
+        const subDiff = SurfaceSubmitting(
+          surfaceId: 's_eq',
+          actionName: 'act',
+          sourceComponentId: 'btn',
+          payload: <String, dynamic>{
+            'nestedList': <dynamic>[
+              <String, dynamic>{
+                'k': <int>[1, 9],
+              },
+            ],
+          },
+        );
+
+        expect(sub1, equals(sub2));
+        expect(sub1.hashCode, equals(sub2.hashCode));
+        expect(sub1, isNot(equals(subDiff)));
+        expect(sub1.hashCode, isNot(equals(subDiff.hashCode)));
+      });
+
+      test(
+          '(Issue #321: R7) deep equality and hashCode cover Sets of nested '
+          'collections, non-List Iterables, and self-referential cycles', () {
+        final ts = DateTime.utc(2026, 10, 8);
+
+        // Sets containing nested maps/lists (where b.contains(elementA) is false
+        // by identity, requiring deep structural element matching)
+        final setResp1 = A2uiActionResponse(
+          actionName: 'set_act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          timestamp: ts,
+          formData: <String, dynamic>{
+            'setOfMaps': const <Map<String, int>>{
+              <String, int>{'a': 1},
+              <String, int>{'b': 2},
+            },
+            'iterable': <int>[10, 20, 30].where((x) => x > 0),
+          },
+        );
+        final setResp2 = A2uiActionResponse(
+          actionName: 'set_act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          timestamp: ts,
+          formData: <String, dynamic>{
+            'setOfMaps': const <Map<String, int>>{
+              <String, int>{'b': 2},
+              <String, int>{'a': 1},
+            },
+            'iterable': <int>[10, 20, 30].map((x) => x),
+          },
+        );
+        final setRespDiff = A2uiActionResponse(
+          actionName: 'set_act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          timestamp: ts,
+          formData: <String, dynamic>{
+            'setOfMaps': const <Map<String, int>>{
+              <String, int>{'a': 1},
+              <String, int>{'b': 99},
+            },
+            'iterable': <int>[10, 20, 30].map((x) => x),
+          },
+        );
+        final setRespDiffLen = A2uiActionResponse(
+          actionName: 'set_act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          timestamp: ts,
+          formData: <String, dynamic>{
+            'setOfMaps': const <Map<String, int>>{
+              <String, int>{'a': 1},
+            },
+            'iterable': <int>[10, 20].map((x) => x),
+          },
+        );
+        final iterDiffElem = A2uiActionResponse(
+          actionName: 'set_act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          timestamp: ts,
+          formData: <String, dynamic>{
+            'setOfMaps': setResp1.formData['setOfMaps'],
+            'iterable': <int>[10, 99, 30].where((x) => x > 0),
+          },
+        );
+        final iterDiffLen = A2uiActionResponse(
+          actionName: 'set_act',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          timestamp: ts,
+          formData: <String, dynamic>{
+            'setOfMaps': setResp1.formData['setOfMaps'],
+            'iterable': <int>[10, 20].where((x) => x > 0),
+          },
+        );
+
+        expect(setResp1, equals(setResp2));
+        expect(setResp1.hashCode, equals(setResp2.hashCode));
+        expect(setResp1, isNot(equals(setRespDiff)));
+        expect(setResp1, isNot(equals(setRespDiffLen)));
+        expect(setResp1, isNot(equals(iterDiffElem)));
+        expect(setResp1, isNot(equals(iterDiffLen)));
+
+        // Self-referential cycle defense in Map, List, and Set
+        final cyclicMapA = <String, dynamic>{'k': 1};
+        cyclicMapA['self'] = cyclicMapA;
+        final cyclicMapB = <String, dynamic>{'k': 1};
+        cyclicMapB['self'] = cyclicMapB;
+
+        final cyclicListA = <dynamic>[1];
+        cyclicListA.add(cyclicListA);
+        final cyclicListB = <dynamic>[1];
+        cyclicListB.add(cyclicListB);
+
+        final cyclicSetA = <dynamic>{};
+        cyclicSetA.add(cyclicSetA);
+        final cyclicSetB = <dynamic>{};
+        cyclicSetB.add(cyclicSetB);
+
+        final cyc1 = A2uiActionResponse(
+          actionName: 'cyc',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          timestamp: ts,
+          formData: <String, dynamic>{
+            'map': cyclicMapA,
+            'list': cyclicListA,
+            'set': cyclicSetA,
+          },
+        );
+        final cyc2 = A2uiActionResponse(
+          actionName: 'cyc',
+          surfaceId: 's1',
+          sourceComponentId: 'c1',
+          timestamp: ts,
+          formData: <String, dynamic>{
+            'map': cyclicMapB,
+            'list': cyclicListB,
+            'set': cyclicSetB,
+          },
+        );
+
+        expect(cyc1, equals(cyc2));
+        expect(cyc1.hashCode, equals(cyc2.hashCode));
+      });
+    });
   });
 }

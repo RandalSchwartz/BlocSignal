@@ -4,6 +4,7 @@ All notable changes to `bloc_signals_genui_flutter` will be documented in this f
 
 ## Unreleased
 
+- **Fix (genui_flutter)**: Wrapped per-component rendering in `_SurfaceTreeRenderer` inside reactive `_BoundComponentWidget` instances subscribed to `binder.resolvedProps` with ancestor-path circular reference protection, enabling granular leaf component rebuilds when `DataModel` bindings update directly (#321).
 - Decoupled active surface viewport observation and added surface closure helpers (#292):
   - Updated `A2uiSurfaceView` (when `surfaceId == null`) to reactively subscribe to `bloc.activeSurfaceId` and rebind cleanly in `didUpdateWidget`, enabling instant tab switching and split-pane isolation without synthetic version bumps or redundant `_SurfaceTreeRenderer` binder reconciliation.
   - Added `closeSurface([String? targetSurfaceId])` on `A2uiComponentContext` to dispatch `CloseSurface` for the current or targeted surface.

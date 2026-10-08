@@ -331,7 +331,6 @@ class _SurfaceTreeRenderer extends StatefulWidget {
 class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
   final Map<String, GenericBinder> _binders = {};
   final Map<String, ComponentModel> _boundComponents = {};
-  final Set<String> _activeBuildPath = <String>{};
 
   @override
   void initState() {
@@ -392,8 +391,8 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
     super.dispose();
   }
 
-  Widget _buildComponent(String componentId) {
-    if (_activeBuildPath.contains(componentId)) {
+  Widget _buildComponent(String componentId, Set<String> ancestorPath) {
+    if (ancestorPath.contains(componentId)) {
       return SizedBox.shrink(
         key: ValueKey('circular_ref_$componentId'),
       );
@@ -406,32 +405,18 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
     }
 
     final binder = _binders[componentId];
-    final resolvedProps = binder?.resolvedProps.value ?? component.properties;
-
-    final componentCtx = A2uiComponentContext(
+    return _BoundComponentWidget(
+      key: ValueKey('a2ui_bound_$componentId'),
       component: component,
-      props: resolvedProps,
-      surfaceBloc: widget.bloc,
+      binder: binder,
+      ancestorPath: ancestorPath,
+      catalog: widget.catalog,
+      bloc: widget.bloc,
       surfaceId: widget.surfaceReady.surfaceId,
-      buildChildCallback: _buildComponent,
-      buildChildrenCallback: (ids) => ids.map(_buildComponent).toList(),
+      surfaceVersion: widget.surfaceReady.version,
+      buildComponentCallback: _buildComponent,
+      errorFallbackBuilder: _buildComponentErrorFallback,
     );
-
-    _activeBuildPath.add(componentId);
-    try {
-      final childWidget = widget.catalog.build(context, componentCtx);
-      return KeyedSubtree(
-        key: ValueKey('a2ui_$componentId'),
-        child: childWidget,
-      );
-    } on Object catch (error) {
-      return KeyedSubtree(
-        key: ValueKey('a2ui_error_$componentId'),
-        child: _buildComponentErrorFallback(context, componentId, error),
-      );
-    } finally {
-      _activeBuildPath.remove(componentId);
-    }
   }
 
   Widget _buildComponentErrorFallback(
@@ -572,14 +557,18 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
     if (rootComponents.isEmpty) {
       content = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: components.map((c) => _buildComponent(c.id)).toList(),
+        children: components
+            .map((c) => _buildComponent(c.id, const <String>{}))
+            .toList(),
       );
     } else if (rootComponents.length == 1) {
-      content = _buildComponent(rootComponents.first.id);
+      content = _buildComponent(rootComponents.first.id, const <String>{});
     } else {
       content = Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: rootComponents.map((c) => _buildComponent(c.id)).toList(),
+        children: rootComponents
+            .map((c) => _buildComponent(c.id, const <String>{}))
+            .toList(),
       );
     }
 
@@ -595,5 +584,114 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
     }
 
     return content;
+  }
+}
+
+class _BoundComponentWidget extends StatefulWidget {
+  const _BoundComponentWidget({
+    required this.component,
+    required this.binder,
+    required this.ancestorPath,
+    required this.catalog,
+    required this.bloc,
+    required this.surfaceId,
+    required this.surfaceVersion,
+    required this.buildComponentCallback,
+    required this.errorFallbackBuilder,
+    super.key,
+  });
+
+  final ComponentModel component;
+  final GenericBinder? binder;
+  final Set<String> ancestorPath;
+  final A2uiFlutterCatalog catalog;
+  final A2uiSurfaceBloc bloc;
+  final String surfaceId;
+  final int surfaceVersion;
+  final Widget Function(String componentId, Set<String> ancestorPath)
+      buildComponentCallback;
+  final Widget Function(
+    BuildContext context,
+    String componentId,
+    Object error,
+  ) errorFallbackBuilder;
+
+  @override
+  State<_BoundComponentWidget> createState() => _BoundComponentWidgetState();
+}
+
+class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
+  void Function()? _unsubscribe;
+  Map<String, dynamic>? _lastProps;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeBinder();
+  }
+
+  @override
+  void didUpdateWidget(_BoundComponentWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(widget.binder, oldWidget.binder)) {
+      _subscribeBinder();
+    }
+  }
+
+  void _subscribeBinder() {
+    _unsubscribe?.call();
+    _unsubscribe = null;
+    final binder = widget.binder;
+    _lastProps = binder?.resolvedProps.value;
+    if (binder != null) {
+      _unsubscribe = binder.resolvedProps.subscribe((nextProps) {
+        if (!identical(_lastProps, nextProps)) {
+          _lastProps = nextProps;
+          if (mounted) {
+            setState(() {});
+          }
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _unsubscribe?.call();
+    _unsubscribe = null;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final componentId = widget.component.id;
+    final nextPath = <String>{...widget.ancestorPath, componentId};
+    final resolvedProps =
+        widget.binder?.resolvedProps.value ?? widget.component.properties;
+
+    final componentCtx = A2uiComponentContext(
+      component: widget.component,
+      props: resolvedProps,
+      surfaceBloc: widget.bloc,
+      surfaceId: widget.surfaceId,
+      buildChildCallback: (childId) =>
+          widget.buildComponentCallback(childId, nextPath),
+      buildChildrenCallback: (ids) => ids
+          .map((childId) => widget.buildComponentCallback(childId, nextPath))
+          .toList(),
+    );
+
+    try {
+      final childWidget = widget.catalog.build(context, componentCtx);
+      return KeyedSubtree(
+        key: ValueKey('a2ui_$componentId'),
+        child: childWidget,
+      );
+    } on Object catch (error) {
+      return KeyedSubtree(
+        key: ValueKey('a2ui_error_$componentId'),
+        child: widget.errorFallbackBuilder(context, componentId, error),
+      );
+    }
   }
 }

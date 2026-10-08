@@ -58,7 +58,7 @@ Ensure all 11 published workspace package `README.md` files feature the exact sa
 
 ### Continuous `## Unreleased` Changelog Accumulation & Release Promotion Lifecycle (`SCAR-DOC-18`)
 1. **Per-PR `## Unreleased` Accumulation**: Every PR touching `lib/`, `bin/`, or `pubspec.yaml` in a member package must append a categorized bullet (`- **BREAKING (<scope>)**:`, `- **Feat (<scope>)**:`, `- **Fix (<scope>)**:`, `- **Perf (<scope>)**:`, `- **Docs (<scope>)**:`, `- **Dependencies**:`) with `(#XXX)` under `## Unreleased` at the top of that package's `CHANGELOG.md` (creating the `## Unreleased` section above the latest `## X.Y.Z` version heading if absent). Do not bump `version:` in `pubspec.yaml` during regular feature/fix PRs.
-2. **Release-Time Promotion (`## Unreleased` to `## X.Y.Z`)**: When cutting a package release, promote the accumulated `## Unreleased` heading to the target version `## X.Y.Z` (or keep an empty `## Unreleased` header above `## X.Y.Z`), bump `version: X.Y.Z` in `pubspec.yaml`, and synchronize the uniform package catalog table across `README.md` files and `website/lib/src/components/package_catalog.dart`.
+2. **Release-Time Promotion (`## Unreleased` to `## X.Y.Z`)**: When cutting a package release, replace the `## Unreleased` heading directly with `## X.Y.Z` (never leave an empty `## Unreleased` section at the top of `CHANGELOG.md`, as `pana` and `pub.dev` expect the top heading to match `pubspec.yaml`'s `version:`), bump `version: X.Y.Z` in `pubspec.yaml`, and synchronize the uniform package catalog table across `README.md` files and `website/lib/src/components/package_catalog.dart`.
 
 ---
 
@@ -85,4 +85,31 @@ Before running `flutter pub publish` on any member package:
 2. **Coverage**: Ensure 100% line coverage across modified packages.
 3. **Format**: Run `dart format .`.
 4. **Dry Run**: Run `flutter pub publish --dry-run` in the package root to check for any scoring or packaging warnings (verify package is one of the 11 published packages, not a GenUI package).
+
+---
+
+## 🔄 5. Pub.dev Synchronization Publish Sweep Protocol
+
+When asked to perform a `pub.dev` synchronization publish sweep across the workspace:
+
+1. **Discover Candidates**: Scan the 11 published packages (excluding `bloc_signals_genui` and `bloc_signals_genui_flutter`) for `## Unreleased` sections in `CHANGELOG.md`.
+2. **Compute Next SemVer Version**: For each candidate package, inspect the categorized bullets under `## Unreleased`:
+   - Any `- **BREAKING ...**:` bullet $\implies$ **Major** bump (or minor if `0.x`).
+   - Any `- **Feat ...**:` bullet $\implies$ **Minor** bump.
+   - Only `- **Fix ...**:`, `- **Perf ...**:`, `- **Docs ...**:`, or `- **Dependencies**:` bullets $\implies$ **Patch** bump.
+3. **Promote Changelogs & Bump `pubspec.yaml`**:
+   - Replace `## Unreleased` with `## <new_version>` in each candidate package's `CHANGELOG.md` (do not leave an empty `## Unreleased` heading).
+   - Update `version: <new_version>` in each candidate package's `pubspec.yaml`.
+   - If `bloc_signals` (or another upstream workspace package) is bumped and downstream packages depend on new upstream behavior/contracts, tighten the dependency constraint (`bloc_signals: ^<new_version>`) in the downstream `pubspec.yaml` and record `- **Dependencies**: Bump bloc_signals to ^<new_version>.` in the downstream changelog.
+4. **Synchronize Ecosystem Catalogs**:
+   - Update the `version:` fields for all bumped packages in `website/lib/src/components/package_catalog.dart` (and any static version tables in `README.md` files if present).
+5. **Validate & Commit**:
+   - Run `dart format .`, `dart analyze`, `flutter test test/validate_agent_plugin_test.dart`, and `flutter pub publish --dry-run` inside each bumped package directory.
+   - Commit the release preparation (`chore(release): bump <packages> to <versions>`) and tag each released package on that commit using `<package_name>-v<new_version>` (for example `bloc_signals_flutter-v1.3.4`).
+6. **Topological Publish Execution**:
+   - Always publish in topological dependency order so `pub.dev` resolves newly tightened upstream constraints:
+     1. **Tier 0 (Core)**: `bloc_signals`
+     2. **Tier 1 (Direct Core Dependents)**: `bloc_signals_flutter`, `bloc_signals_bloc`, `bloc_signals_riverpod`, `bloc_signals_test`, `bloc_signals_lint`, `bloc_signals_hydrate`, `bloc_signals_otel`, `bloc_signals_replay`, `bloc_signals_jaspr`, `bloc_signals_devtools`
+   - Execute `flutter pub publish --force` (after human approval) in each bumped package directory.
+
 

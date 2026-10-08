@@ -128,38 +128,59 @@ void main() {
 
   group('(Issue #343: SCAR-DOC-18) per-PR Unreleased changelog and pubspec '
       'hygiene invariants', () {
-    test('backfills ## Unreleased entries for #316, #317, and #318 before '
-        'latest version headers', () {
+    test('retains backfilled entries for #316, #317, and #318 above their '
+        'prior release headers across Unreleased and future releases', () {
       final flutterChangelog = File('bloc_signals_flutter/CHANGELOG.md')
           .readAsStringSync();
-      expect(flutterChangelog.trimLeft(), startsWith('## Unreleased'));
+      expect(
+        flutterChangelog.trimLeft(),
+        matches(
+          RegExp(
+            r'^#\s+Changelog\s+##\s+(Unreleased|\d+\.\d+\.\d+)|^##\s+(Unreleased|\d+\.\d+\.\d+)',
+          ),
+        ),
+      );
       expect(
         flutterChangelog,
         contains('BlocSignalListenableExtension.toValueListenable()'),
       );
       expect(flutterChangelog, contains('(#316)'));
       expect(
-        flutterChangelog.indexOf('## Unreleased'),
+        flutterChangelog.indexOf('(#316)'),
         lessThan(flutterChangelog.indexOf('## 1.3.3')),
       );
 
       final replayChangelog = File('bloc_signals_replay/CHANGELOG.md')
           .readAsStringSync();
-      expect(replayChangelog.trimLeft(), startsWith('## Unreleased'));
+      expect(
+        replayChangelog.trimLeft(),
+        matches(
+          RegExp(
+            r'^#\s+Changelog\s+##\s+(Unreleased|\d+\.\d+\.\d+)|^##\s+(Unreleased|\d+\.\d+\.\d+)',
+          ),
+        ),
+      );
       expect(replayChangelog, contains('ReplayBlocMixin'));
       expect(replayChangelog, contains('(#317)'));
       expect(
-        replayChangelog.indexOf('## Unreleased'),
+        replayChangelog.indexOf('(#317)'),
         lessThan(replayChangelog.indexOf('## 1.1.2')),
       );
 
       final hydrateChangelog = File('bloc_signals_hydrate/CHANGELOG.md')
           .readAsStringSync();
-      expect(hydrateChangelog.trimLeft(), startsWith('## Unreleased'));
+      expect(
+        hydrateChangelog.trimLeft(),
+        matches(
+          RegExp(
+            r'^#\s+Changelog\s+##\s+(Unreleased|\d+\.\d+\.\d+)|^##\s+(Unreleased|\d+\.\d+\.\d+)',
+          ),
+        ),
+      );
       expect(hydrateChangelog, contains('HydratedMixin.fromJson'));
       expect(hydrateChangelog, contains('(#318)'));
       expect(
-        hydrateChangelog.indexOf('## Unreleased'),
+        hydrateChangelog.indexOf('(#318)'),
         lessThan(hydrateChangelog.indexOf('## 1.0.3')),
       );
     });

@@ -1064,6 +1064,496 @@ void main() {
       },
     );
   });
+
+  group(
+    'Issue #320: R6 — Custom equals/equalityCheck and didUpdate fallback '
+    'listen: true',
+    () {
+      testWidgets(
+        'BlocSignalBuilder and BlocSignalListener respect custom equals '
+        '(identical) when state operator == returns true for distinct '
+        'instances',
+        (tester) async {
+          final initial = _ValueEqualBox('alpha');
+          final cubit = _IdentityBoxCubit(initial);
+          var buildCount = 0;
+          final builderStates = <_ValueEqualBox>[];
+          final listenerStates = <_ValueEqualBox>[];
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: BlocSignalProvider<_IdentityBoxCubit>.value(
+                value: cubit,
+                child: BlocSignalListener<_IdentityBoxCubit, _ValueEqualBox>(
+                  listener: (context, state) {
+                    listenerStates.add(state);
+                  },
+                  child: BlocSignalBuilder<_IdentityBoxCubit, _ValueEqualBox>(
+                    builder: (context, state) {
+                      buildCount++;
+                      builderStates.add(state);
+                      return Text('Box: ${state.label}');
+                    },
+                  ),
+                ),
+              ),
+            ),
+          );
+
+          expect(buildCount, equals(1));
+          expect(identical(builderStates.last, initial), isTrue);
+          expect(listenerStates, isEmpty);
+
+          // Emit a distinct instance with the exact same label (`==` is true,
+          // but `identical` is false).
+          final next = _ValueEqualBox('alpha');
+          expect(next == initial, isTrue);
+          expect(identical(next, initial), isFalse);
+
+          cubit.emitBox(next);
+          await tester.pump();
+
+          expect(buildCount, equals(2));
+          expect(identical(builderStates.last, next), isTrue);
+          expect(listenerStates, hasLength(1));
+          expect(identical(listenerStates.single, next), isTrue);
+
+          await cubit.close();
+        },
+      );
+
+      testWidgets(
+        'BlocSignalSelector respects SignalOptions equalityCheck, equals '
+        'comparator, Computed memoization, and re-initializes computed when '
+        'options or equals changes',
+        (tester) async {
+          final cubit = _IdentityBoxCubit(_ValueEqualBox('alpha'));
+          var buildCount = 0;
+          var selectorCallCount = 0;
+          final selectedValues = <String>[];
+          var watchedACount = 0;
+          var watchedBCount = 0;
+
+          String labelSelector(_ValueEqualBox state) {
+            selectorCallCount++;
+            return state.label;
+          }
+
+          bool caseInsensitiveEquals(String a, String b) =>
+              a.toLowerCase() == b.toLowerCase();
+
+          final optionsA = SignalOptions<String>(
+            name: 'SelectorOptionsA',
+            watched: () => watchedACount++,
+            equality: SignalEquality<String>.custom(caseInsensitiveEquals),
+          );
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: BlocSignalProvider<_IdentityBoxCubit>.value(
+                value: cubit,
+                child: BlocSignalSelector<_IdentityBoxCubit, _ValueEqualBox,
+                    String>(
+                  selector: labelSelector,
+                  options: optionsA,
+                  builder: (context, selected) {
+                    buildCount++;
+                    selectedValues.add(selected);
+                    return Text('Selected: $selected');
+                  },
+                ),
+              ),
+            ),
+          );
+
+          expect(buildCount, equals(1));
+          expect(watchedACount, equals(1));
+          expect(selectorCallCount, equals(1));
+          expect(selectedValues, equals(['alpha']));
+
+          // Emitting a state whose projected value is equal under
+          // SignalOptions.equalityCheck ('alpha' vs 'ALPHA') evaluates
+          // selector once inside Computed and suppresses widget rebuild.
+          cubit.emitBox(_ValueEqualBox('ALPHA'));
+          await tester.pump();
+
+          expect(selectorCallCount, equals(2));
+          expect(buildCount, equals(1));
+          expect(selectedValues, equals(['alpha']));
+
+          // Emitting a state whose projected value is NOT equal ('beta')
+          // triggers a single selector evaluation and rebuilds the widget.
+          cubit.emitBox(_ValueEqualBox('beta'));
+          await tester.pump();
+
+          expect(selectorCallCount, equals(3));
+          expect(buildCount, equals(2));
+          expect(selectedValues, equals(['alpha', 'beta']));
+
+          // Update options and provide explicit equals via didUpdateWidget
+          // and verify _initComputed() re-initializes the computed signal.
+          final optionsB = ComputedOptions<String>(
+            name: 'SelectorOptionsB',
+            watched: () => watchedBCount++,
+          );
+          bool exactEquals(String a, String b) => a == b;
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: BlocSignalProvider<_IdentityBoxCubit>.value(
+                value: cubit,
+                child: BlocSignalSelector<_IdentityBoxCubit, _ValueEqualBox,
+                    String>(
+                  selector: labelSelector,
+                  options: optionsB,
+                  equals: exactEquals,
+                  builder: (context, selected) {
+                    buildCount++;
+                    selectedValues.add(selected);
+                    return Text('Selected: $selected');
+                  },
+                ),
+              ),
+            ),
+          );
+
+          expect(watchedBCount, equals(1));
+          expect(buildCount, equals(3));
+
+          // With exactEquals, 'BETA' != 'beta' so it rebuilds.
+          cubit.emitBox(_ValueEqualBox('BETA'));
+          await tester.pump();
+          expect(buildCount, equals(4));
+          expect(selectedValues.last, equals('BETA'));
+
+          // Update only equals parameter via didUpdateWidget (keeping optionsB
+          // identical) to verify oldWidget.equals != widget.equals triggers
+          // _initComputed().
+          await tester.pumpWidget(
+            MaterialApp(
+              home: BlocSignalProvider<_IdentityBoxCubit>.value(
+                value: cubit,
+                child: BlocSignalSelector<_IdentityBoxCubit, _ValueEqualBox,
+                    String>(
+                  selector: labelSelector,
+                  options: optionsB,
+                  equals: caseInsensitiveEquals,
+                  builder: (context, selected) {
+                    buildCount++;
+                    selectedValues.add(selected);
+                    return Text('Selected: $selected');
+                  },
+                ),
+              ),
+            ),
+          );
+
+          expect(buildCount, equals(5));
+
+          // Now case-insensitive 'beta' matches 'BETA', suppressing rebuild.
+          cubit.emitBox(_ValueEqualBox('beta'));
+          await tester.pump();
+          expect(buildCount, equals(5));
+
+          // Also support ReadonlySignalOptions<V> directly.
+          var watchedCCount = 0;
+          final optionsC = ReadonlySignalOptions<String>(
+            name: 'SelectorOptionsC',
+            watched: () => watchedCCount++,
+          );
+          await tester.pumpWidget(
+            MaterialApp(
+              home: BlocSignalProvider<_IdentityBoxCubit>.value(
+                value: cubit,
+                child: BlocSignalSelector<_IdentityBoxCubit, _ValueEqualBox,
+                    String>(
+                  selector: labelSelector,
+                  options: optionsC,
+                  equals: caseInsensitiveEquals,
+                  builder: (context, selected) {
+                    buildCount++;
+                    selectedValues.add(selected);
+                    return Text('Selected: $selected');
+                  },
+                ),
+              ),
+            ),
+          );
+
+          expect(watchedCCount, equals(1));
+          expect(buildCount, equals(6));
+
+          // Verify stricter-than-`==` custom equality (for example `identical`
+          // when `V.operator ==` returns true for distinct instances) triggers
+          // rebuilds both via `equals: identical` and via
+          // `SignalOptions(equality: SignalEquality.identical())`.
+          final box1 = _ValueEqualBox('same');
+          final box2 = _ValueEqualBox('same');
+          final box3 = _ValueEqualBox('same');
+          expect(box1 == box2, isTrue);
+          expect(identical(box1, box2), isFalse);
+          expect(box2 == box3, isTrue);
+          expect(identical(box2, box3), isFalse);
+
+          final boxCubit = _IdentityBoxCubit(box1);
+          var boxBuildCount = 0;
+          final selectedBoxes = <_ValueEqualBox>[];
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: BlocSignalProvider<_IdentityBoxCubit>.value(
+                value: boxCubit,
+                child: BlocSignalSelector<_IdentityBoxCubit, _ValueEqualBox,
+                    _ValueEqualBox>(
+                  selector: (state) => state,
+                  equals: identical,
+                  builder: (context, selectedBox) {
+                    boxBuildCount++;
+                    selectedBoxes.add(selectedBox);
+                    return Text('BoxIdentity: ${selectedBox.label}');
+                  },
+                ),
+              ),
+            ),
+          );
+
+          expect(boxBuildCount, equals(1));
+          expect(identical(selectedBoxes.last, box1), isTrue);
+
+          boxCubit.emitBox(box2);
+          await tester.pump();
+          expect(boxBuildCount, equals(2));
+          expect(identical(selectedBoxes.last, box2), isTrue);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: BlocSignalProvider<_IdentityBoxCubit>.value(
+                value: boxCubit,
+                child: BlocSignalSelector<_IdentityBoxCubit, _ValueEqualBox,
+                    _ValueEqualBox>(
+                  selector: (state) => state,
+                  options: SignalOptions<_ValueEqualBox>(
+                    equality: SignalEquality<_ValueEqualBox>.custom(identical),
+                  ),
+                  builder: (context, selectedBox) {
+                    boxBuildCount++;
+                    selectedBoxes.add(selectedBox);
+                    return Text('BoxIdentity: ${selectedBox.label}');
+                  },
+                ),
+              ),
+            ),
+          );
+
+          expect(boxBuildCount, equals(3));
+
+          boxCubit.emitBox(box3);
+          await tester.pump();
+          expect(boxBuildCount, equals(4));
+          expect(identical(selectedBoxes.last, box3), isTrue);
+
+          // Verify constructor assertion rejects unsupported options types.
+          expect(
+            () => BlocSignalSelector<_IdentityBoxCubit, _ValueEqualBox, String>(
+              selector: (state) => state.label,
+              options: 'invalid',
+              builder: (context, selected) => Text(selected),
+            ),
+            throwsAssertionError,
+          );
+
+          await boxCubit.close();
+          await cubit.close();
+        },
+      );
+
+      testWidgets(
+        'BlocSignalListener and BlocSignalSelector fallback from explicit bloc '
+        'to null in didUpdateWidget subscribes to ancestor provider swaps',
+        (tester) async {
+          final explicitCubit = CounterCubit();
+          final providerCubit1 = CounterCubit();
+          final providerCubit2 = CounterCubit();
+          final listenedStates = <int>[];
+          final selectedStates = <int>[];
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: _FlutterFallbackHarness(
+                providerCubit: providerCubit1,
+                explicitCubit: explicitCubit,
+                onListened: listenedStates.add,
+                onSelectedBuilt: selectedStates.add,
+              ),
+            ),
+          );
+
+          expect(selectedStates, equals([0]));
+
+          // Step 1: Switch explicitCubit from explicit instance to null so
+          // didUpdateWidget falls back to
+          // BlocSignalProvider.of(context, listen: true) while providerCubit1
+          // remains unchanged.
+          await tester.pumpWidget(
+            MaterialApp(
+              home: _FlutterFallbackHarness(
+                providerCubit: providerCubit1,
+                explicitCubit: null,
+                onListened: listenedStates.add,
+                onSelectedBuilt: selectedStates.add,
+              ),
+            ),
+          );
+
+          providerCubit1.increment(); // 1
+          await tester.pump();
+          expect(listenedStates, equals([1]));
+          expect(selectedStates.last, equals(1));
+
+          // Step 2: Swap ancestor provider from providerCubit1 to
+          // providerCubit2 above a cached child so only InheritedWidget
+          // dependency notification (registered during step 1's
+          // didUpdateWidget) can rebind them.
+          await tester.pumpWidget(
+            MaterialApp(
+              home: _FlutterFallbackHarness(
+                providerCubit: providerCubit2,
+                explicitCubit: null,
+                onListened: listenedStates.add,
+                onSelectedBuilt: selectedStates.add,
+              ),
+            ),
+          );
+
+          // Verify old disconnected cubit (providerCubit1) and explicitCubit
+          // do NOT trigger listener or selector before providerCubit2 emits.
+          providerCubit1.increment(); // 2 on old cubit
+          explicitCubit.increment(); // 1 on explicit cubit
+          await tester.pump();
+          expect(listenedStates, equals([1]));
+          expect(selectedStates.last, equals(0));
+
+          // Verify new providerCubit2 triggers both listener and selector.
+          providerCubit2
+            ..increment() // 1
+            ..increment(); // 2
+          await tester.pump();
+          expect(listenedStates, equals([1, 1, 2]));
+          expect(selectedStates.last, equals(2));
+
+          await explicitCubit.close();
+          await providerCubit1.close();
+          await providerCubit2.close();
+        },
+      );
+    },
+  );
+}
+
+@immutable
+class _ValueEqualBox {
+  // Intentionally non-const constructor to test distinct heap allocations with
+  // identical values.
+  // ignore: prefer_const_constructors_in_immutables
+  _ValueEqualBox(this.label);
+
+  final String label;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _ValueEqualBox && other.label == label;
+
+  @override
+  int get hashCode => label.hashCode;
+}
+
+class _IdentityBoxCubit extends CubitSignal<_ValueEqualBox> {
+  _IdentityBoxCubit(_ValueEqualBox initial)
+      : super(
+          initialState: initial,
+          equals: identical,
+        );
+
+  void emitBox(_ValueEqualBox next) => emit(next);
+}
+
+class _FlutterFallbackHarness extends StatelessWidget {
+  const _FlutterFallbackHarness({
+    required this.providerCubit,
+    required this.explicitCubit,
+    required this.onListened,
+    required this.onSelectedBuilt,
+  });
+
+  final CounterCubit providerCubit;
+  final CounterCubit? explicitCubit;
+  final void Function(int state) onListened;
+  final void Function(int state) onSelectedBuilt;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSignalProvider<CounterCubit>.value(
+      value: providerCubit,
+      child: _FlutterFallbackInner(
+        explicitCubit: explicitCubit,
+        onListened: onListened,
+        onSelectedBuilt: onSelectedBuilt,
+      ),
+    );
+  }
+}
+
+class _FlutterFallbackInner extends StatefulWidget {
+  const _FlutterFallbackInner({
+    required this.explicitCubit,
+    required this.onListened,
+    required this.onSelectedBuilt,
+  });
+
+  final CounterCubit? explicitCubit;
+  final void Function(int state) onListened;
+  final void Function(int state) onSelectedBuilt;
+
+  @override
+  State<_FlutterFallbackInner> createState() => _FlutterFallbackInnerState();
+}
+
+class _FlutterFallbackInnerState extends State<_FlutterFallbackInner> {
+  late Widget _cachedSubtree;
+
+  @override
+  void initState() {
+    super.initState();
+    _cachedSubtree = _buildSubtree();
+  }
+
+  @override
+  void didUpdateWidget(_FlutterFallbackInner oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.explicitCubit != widget.explicitCubit) {
+      _cachedSubtree = _buildSubtree();
+    }
+  }
+
+  Widget _buildSubtree() {
+    return BlocSignalListener<CounterCubit, int>(
+      bloc: widget.explicitCubit,
+      listener: (context, state) => widget.onListened(state),
+      child: BlocSignalSelector<CounterCubit, int, int>(
+        bloc: widget.explicitCubit,
+        selector: (state) => state,
+        builder: (context, value) {
+          widget.onSelectedBuilt(value);
+          return Text('FallbackSelected: $value');
+        },
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _cachedSubtree;
+  }
 }
 
 class _ConstSelectorChild extends StatelessWidget {

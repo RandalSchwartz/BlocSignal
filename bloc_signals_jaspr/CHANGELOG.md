@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (jaspr)**: Respect container `bloc.equals(previous, current)` in `BlocSignalBuilder` and `BlocSignalListener`, support custom `equals` and `SignalOptions.equalityCheck` in `BlocSignalSelector` while re-initializing `computed` when `options` or `equals` changes in `didUpdateComponent`, and pass `listen: true` when falling back to `BlocSignalProvider.of<T>(context, listen: true)` in `didUpdateComponent` (#320).
+
 ## 1.1.2
 
 - Fix `BlocSignalProvider` and `context.select`:

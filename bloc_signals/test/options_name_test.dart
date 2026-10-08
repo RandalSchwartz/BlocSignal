@@ -2,7 +2,6 @@
 // ignore_for_file: cascade_invocations
 
 import 'package:bloc_signals/bloc_signals.dart';
-import 'package:preact_signals/preact_signals.dart' show SignalEquality;
 import 'package:signals_core/signals_core.dart';
 import 'package:test/test.dart';
 

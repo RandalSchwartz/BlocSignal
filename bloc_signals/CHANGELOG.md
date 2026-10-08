@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Feat (core)**: Remove `@protected` annotation from `BlocSignalBase.equals` and `CubitSignalMixin.equals` so UI bindings and external adapters can evaluate container state equality without violating visibility diagnostics (#320).
+
 ## 1.5.0
 
 - Add `BlocSignalObserver.onEventCompleted` lifecycle hook called synchronously or asynchronously upon event handler completion.

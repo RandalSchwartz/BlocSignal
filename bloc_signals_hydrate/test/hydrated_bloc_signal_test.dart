@@ -27,6 +27,11 @@ class ZeroOverrideListCubit extends HydratedCubitSignal<List<String>> {
   void add(String item) => emit([...stateValue, item]);
 }
 
+class ZeroOverrideNullableListCubit extends HydratedCubitSignal<List<String?>> {
+  ZeroOverrideNullableListCubit({super.storage})
+      : super(initialState: const []);
+}
+
 class ZeroOverrideMapCubit extends HydratedCubitSignal<Map<String, int>> {
   ZeroOverrideMapCubit({super.id, super.storage})
       : super(initialState: const {});
@@ -253,6 +258,53 @@ void main() {
       expect(cubit.stateValue, equals(0)); // Falls back to initialState
       expect(capturedError, isA<FormatException>());
     });
+
+    test(
+      '(Issue #318: R4) rejects non-String list elements for List<String?> '
+      'instead of coercing via toString()',
+      () {
+        final previousObserver = BlocSignalObserver.observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final capturedErrors = <Object>[];
+        BlocSignalObserver.observer = _TestObserver(
+          onErrorCallback: (bloc, error, stackTrace) {
+            capturedErrors.add(error);
+          },
+        );
+
+        storage.write('ZeroOverrideNullableListCubit', <dynamic>[1, 2, 3]);
+        final cubit1 = ZeroOverrideNullableListCubit();
+        expect(cubit1.stateValue, equals(const <String?>[]));
+        expect(capturedErrors, hasLength(1));
+        expect(capturedErrors.first, isA<FormatException>());
+
+        storage.write(
+          'ZeroOverrideNullableListCubit',
+          <dynamic>[
+            {'a': 1},
+          ],
+        );
+        final cubit2 = ZeroOverrideNullableListCubit();
+        expect(cubit2.stateValue, equals(const <String?>[]));
+        expect(capturedErrors, hasLength(2));
+        expect(capturedErrors.last, isA<FormatException>());
+      },
+    );
+
+    test(
+      '(Issue #318: R4) hydrates List<String?> when stored elements are '
+      'valid Strings or nulls',
+      () {
+        storage.write(
+          'ZeroOverrideNullableListCubit',
+          <dynamic>['a', null, 'b'],
+        );
+
+        final cubit = ZeroOverrideNullableListCubit();
+        expect(cubit.stateValue, equals(<String?>['a', null, 'b']));
+      },
+    );
   });
 }
 

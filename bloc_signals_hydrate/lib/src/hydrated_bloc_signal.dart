@@ -48,7 +48,7 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
         if (list is StateType) return list;
       } on Object catch (_) {}
       try {
-        final dynamic list = json.map((dynamic e) => e?.toString()).toList();
+        final dynamic list = json.map((dynamic e) => e as String?).toList();
         if (list is StateType) return list;
       } on Object catch (_) {}
       try {

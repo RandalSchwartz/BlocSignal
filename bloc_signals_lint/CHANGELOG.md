@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (fixes)**: Respect custom parameter names and convert arrow (`=>`) or empty function bodies into block bodies in `AddSuperOnEventFix` (#322).
+
 ## 1.3.1
 
 - Fix `require_cubit_signal_mixin_init`:

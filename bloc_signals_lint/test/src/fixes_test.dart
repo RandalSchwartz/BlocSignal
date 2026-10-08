@@ -91,6 +91,176 @@ class MyBloc extends BlocSignal<MyEvent, int> {
       expect(transformed, contains('doSomething();'));
     });
 
+    test(
+      '(Issue #322: R8) AddSuperOnEventFix respects custom parameter name '
+      'in block body',
+      () {
+        const sourceCode = '''
+class MyBloc extends BlocSignal<CounterEvent, int> {
+  MyBloc() : super(initialState: 0);
+
+  @override
+  void onEvent(CounterEvent e) {
+    doSomething(e);
+  }
+}
+''';
+        final parseResult = parseString(content: sourceCode);
+        final onEventMethod = parseResult.unit.declarations
+            .whereType<ClassDeclaration>()
+            .first
+            .members
+            .whereType<MethodDeclaration>()
+            .firstWhere((m) => m.name.lexeme == 'onEvent');
+
+        final fix = AddSuperOnEventFix();
+        final transformed = _runFix(
+          fix: fix,
+          source: sourceCode,
+          unit: parseResult.unit,
+          targetRange: onEventMethod.sourceRange,
+        );
+
+        expect(transformed, contains('super.onEvent(e);'));
+        expect(transformed, isNot(contains('super.onEvent(event);')));
+        expect(transformed, contains('doSomething(e);'));
+        parseString(content: transformed);
+      },
+    );
+
+    test(
+      '(Issue #322: R8) AddSuperOnEventFix converts arrow function body '
+      'to block body with custom parameter name',
+      () {
+        const sourceCode = '''
+class MyBloc extends BlocSignal<CounterEvent, int> {
+  MyBloc() : super(initialState: 0);
+
+  @override
+  void onEvent(CounterEvent e) => log(e);
+}
+''';
+        final parseResult = parseString(content: sourceCode);
+        final onEventMethod = parseResult.unit.declarations
+            .whereType<ClassDeclaration>()
+            .first
+            .members
+            .whereType<MethodDeclaration>()
+            .firstWhere((m) => m.name.lexeme == 'onEvent');
+
+        final fix = AddSuperOnEventFix();
+        final transformed = _runFix(
+          fix: fix,
+          source: sourceCode,
+          unit: parseResult.unit,
+          targetRange: onEventMethod.sourceRange,
+        );
+
+        expect(
+          transformed,
+          contains('{\n    super.onEvent(e);\n    log(e);\n  }'),
+        );
+        expect(transformed, isNot(contains('=>\n')));
+        parseString(content: transformed);
+      },
+    );
+
+    test(
+      '(Issue #322: R8) AddSuperOnEventFix handles async block body '
+      'and empty function body',
+      () {
+        const asyncSource = '''
+class MyBloc extends BlocSignal<CounterEvent, int> {
+  MyBloc() : super(initialState: 0);
+
+  @override
+  Future<void> onEvent(CounterEvent e) async {
+    doSomething(e);
+  }
+}
+''';
+        final asyncParse = parseString(content: asyncSource);
+        final asyncMethod = asyncParse.unit.declarations
+            .whereType<ClassDeclaration>()
+            .first
+            .members
+            .whereType<MethodDeclaration>()
+            .firstWhere((m) => m.name.lexeme == 'onEvent');
+
+        final fix = AddSuperOnEventFix();
+        final asyncTransformed = _runFix(
+          fix: fix,
+          source: asyncSource,
+          unit: asyncParse.unit,
+          targetRange: asyncMethod.sourceRange,
+        );
+
+        expect(
+          asyncTransformed,
+          contains('async {\n    super.onEvent(e);'),
+        );
+        parseString(content: asyncTransformed);
+
+        const emptySource = '''
+class MyBloc extends BlocSignal<CounterEvent, int> {
+  MyBloc() : super(initialState: 0);
+
+  @override
+  void onEvent(CounterEvent e);
+}
+''';
+        final emptyParse = parseString(content: emptySource);
+        final emptyMethod = emptyParse.unit.declarations
+            .whereType<ClassDeclaration>()
+            .first
+            .members
+            .whereType<MethodDeclaration>()
+            .firstWhere((m) => m.name.lexeme == 'onEvent');
+
+        final emptyTransformed = _runFix(
+          fix: fix,
+          source: emptySource,
+          unit: emptyParse.unit,
+          targetRange: emptyMethod.sourceRange,
+        );
+
+        expect(
+          emptyTransformed,
+          contains('{\n    super.onEvent(e);\n  }'),
+        );
+        parseString(content: emptyTransformed);
+
+        const asyncArrowSource = '''
+class MyBloc extends BlocSignal<CounterEvent, int> {
+  MyBloc() : super(initialState: 0);
+
+  @override
+  Future<void> onEvent(CounterEvent e) async => await log(e);
+}
+''';
+        final asyncArrowParse = parseString(content: asyncArrowSource);
+        final asyncArrowMethod = asyncArrowParse.unit.declarations
+            .whereType<ClassDeclaration>()
+            .first
+            .members
+            .whereType<MethodDeclaration>()
+            .firstWhere((m) => m.name.lexeme == 'onEvent');
+
+        final asyncArrowTransformed = _runFix(
+          fix: fix,
+          source: asyncArrowSource,
+          unit: asyncArrowParse.unit,
+          targetRange: asyncArrowMethod.sourceRange,
+        );
+
+        expect(
+          asyncArrowTransformed,
+          contains('async {\n    super.onEvent(e);\n    await log(e);\n  }'),
+        );
+        parseString(content: asyncArrowTransformed);
+      },
+    );
+
     test('PreferReadInCallbacksFix replaces watch with read', () {
       const sourceCode = '''
 Widget build(BuildContext context) {

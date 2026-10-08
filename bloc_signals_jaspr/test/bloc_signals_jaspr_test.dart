@@ -609,6 +609,477 @@ void main() {
       },
     );
   });
+
+  group(
+    'Issue #320: R6 — Custom equals/equalityCheck and didUpdate fallback '
+    'listen: true',
+    () {
+      testComponents(
+        'BlocSignalBuilder and BlocSignalListener respect custom equals '
+        '(identical) when state operator == returns true for distinct '
+        'instances',
+        (tester) async {
+          final initial = _JasprValueEqualBox('alpha');
+          final cubit = _JasprIdentityBoxCubit(initial);
+          var buildCount = 0;
+          final builderStates = <_JasprValueEqualBox>[];
+          final listenerStates = <_JasprValueEqualBox>[];
+
+          tester.pumpComponent(
+            BlocSignalProvider<_JasprIdentityBoxCubit>.value(
+              value: cubit,
+              child: BlocSignalListener<_JasprIdentityBoxCubit,
+                  _JasprValueEqualBox>(
+                listener: (context, state) {
+                  listenerStates.add(state);
+                },
+                child: BlocSignalBuilder<_JasprIdentityBoxCubit,
+                    _JasprValueEqualBox>(
+                  builder: (context, state) {
+                    buildCount++;
+                    builderStates.add(state);
+                    return div([Component.text('Box: ${state.label}')]);
+                  },
+                ),
+              ),
+            ),
+          );
+
+          expect(buildCount, equals(1));
+          expect(identical(builderStates.last, initial), isTrue);
+          expect(listenerStates, isEmpty);
+
+          final next = _JasprValueEqualBox('alpha');
+          expect(next == initial, isTrue);
+          expect(identical(next, initial), isFalse);
+
+          cubit.emitBox(next);
+          await tester.pump();
+
+          expect(buildCount, equals(2));
+          expect(identical(builderStates.last, next), isTrue);
+          expect(listenerStates, hasLength(1));
+          expect(identical(listenerStates.single, next), isTrue);
+
+          await cubit.close();
+        },
+      );
+
+      testComponents(
+        'BlocSignalSelector respects SignalOptions equalityCheck, equals '
+        'comparator, Computed memoization, and re-initializes computed when '
+        'options or equals changes',
+        (tester) async {
+          final cubit = _JasprIdentityBoxCubit(_JasprValueEqualBox('alpha'));
+          var buildCount = 0;
+          var selectorCallCount = 0;
+          final selectedValues = <String>[];
+          late _JasprSelectorOptionsHostState hostState;
+          var watchedACount = 0;
+          var watchedBCount = 0;
+
+          bool caseInsensitiveEquals(String a, String b) =>
+              a.toLowerCase() == b.toLowerCase();
+
+          final optionsA = SignalOptions<String>(
+            name: 'JasprSelectorOptionsA',
+            watched: () => watchedACount++,
+            equality: SignalEquality<String>.custom(caseInsensitiveEquals),
+          );
+
+          tester.pumpComponent(
+            _JasprSelectorOptionsHost(
+              cubit: cubit,
+              initialOptions: optionsA,
+              onCreated: (state) => hostState = state,
+              onSelectorCalled: () => selectorCallCount++,
+              onBuilt: (selectedLabel) {
+                buildCount++;
+                selectedValues.add(selectedLabel);
+              },
+            ),
+          );
+
+          expect(buildCount, equals(1));
+          expect(watchedACount, equals(1));
+          expect(selectorCallCount, equals(1));
+          expect(selectedValues, equals(['alpha']));
+
+          // Emitting a state whose projected value is equal under
+          // SignalOptions.equalityCheck ('alpha' vs 'ALPHA') evaluates
+          // selector once inside Computed and suppresses component rebuild.
+          cubit.emitBox(_JasprValueEqualBox('ALPHA'));
+          await tester.pump();
+
+          expect(selectorCallCount, equals(2));
+          expect(buildCount, equals(1));
+          expect(selectedValues, equals(['alpha']));
+
+          // Emitting a state whose projected value is NOT equal ('beta')
+          // triggers a single selector evaluation and rebuilds the component.
+          cubit.emitBox(_JasprValueEqualBox('beta'));
+          await tester.pump();
+
+          expect(selectorCallCount, equals(3));
+          expect(buildCount, equals(2));
+          expect(selectedValues, equals(['alpha', 'beta']));
+
+          // Update options and provide explicit equals via didUpdateComponent
+          // and verify _initComputed() re-initializes the computed signal.
+          final optionsB = ComputedOptions<String>(
+            name: 'JasprSelectorOptionsB',
+            watched: () => watchedBCount++,
+          );
+          bool exactEquals(String a, String b) => a == b;
+
+          hostState.setOptionsAndEquals(optionsB, exactEquals);
+          await tester.pump();
+          expect(watchedBCount, equals(1));
+          expect(buildCount, equals(3));
+
+          // With exactEquals, 'BETA' != 'beta' so it rebuilds.
+          cubit.emitBox(_JasprValueEqualBox('BETA'));
+          await tester.pump();
+          expect(buildCount, equals(4));
+          expect(selectedValues.last, equals('BETA'));
+
+          // Update only equals parameter via didUpdateComponent (keeping
+          // optionsB identical) to verify oldComponent.equals !=
+          // component.equals triggers _initComputed().
+          hostState.setOptionsAndEquals(optionsB, caseInsensitiveEquals);
+          await tester.pump();
+          expect(buildCount, equals(5));
+
+          // Now case-insensitive 'beta' matches 'BETA', suppressing rebuild.
+          cubit.emitBox(_JasprValueEqualBox('beta'));
+          await tester.pump();
+          expect(buildCount, equals(5));
+
+          // Also support ReadonlySignalOptions<V> directly.
+          var watchedCCount = 0;
+          final optionsC = ReadonlySignalOptions<String>(
+            name: 'JasprSelectorOptionsC',
+            watched: () => watchedCCount++,
+          );
+          hostState.setOptionsAndEquals(optionsC, caseInsensitiveEquals);
+          await tester.pump();
+          expect(watchedCCount, equals(1));
+          expect(buildCount, equals(6));
+
+          // Verify stricter-than-`==` custom equality (for example `identical`
+          // when `V.operator ==` returns true for distinct instances) triggers
+          // rebuilds both via `equals: identical` and via
+          // `SignalOptions(equality: SignalEquality.identical())`.
+          final box1 = _JasprValueEqualBox('same');
+          final box2 = _JasprValueEqualBox('same');
+          final box3 = _JasprValueEqualBox('same');
+          expect(box1 == box2, isTrue);
+          expect(identical(box1, box2), isFalse);
+          expect(box2 == box3, isTrue);
+          expect(identical(box2, box3), isFalse);
+
+          final boxCubit1 = _JasprIdentityBoxCubit(box1);
+          var boxBuildCount = 0;
+          final selectedBoxes = <_JasprValueEqualBox>[];
+
+          tester.pumpComponent(
+            BlocSignalProvider<_JasprIdentityBoxCubit>.value(
+              value: boxCubit1,
+              child: BlocSignalSelector<_JasprIdentityBoxCubit,
+                  _JasprValueEqualBox, _JasprValueEqualBox>(
+                selector: (state) => state,
+                equals: identical,
+                builder: (context, selectedBox) {
+                  boxBuildCount++;
+                  selectedBoxes.add(selectedBox);
+                  return div([Component.text('Box: ${selectedBox.label}')]);
+                },
+              ),
+            ),
+          );
+
+          expect(boxBuildCount, equals(1));
+          expect(identical(selectedBoxes.last, box1), isTrue);
+
+          boxCubit1.emitBox(box2);
+          await tester.pump();
+          expect(boxBuildCount, equals(2));
+          expect(identical(selectedBoxes.last, box2), isTrue);
+          await boxCubit1.close();
+
+          final boxCubit2 = _JasprIdentityBoxCubit(box2);
+          tester.pumpComponent(
+            BlocSignalProvider<_JasprIdentityBoxCubit>.value(
+              value: boxCubit2,
+              child: BlocSignalSelector<_JasprIdentityBoxCubit,
+                  _JasprValueEqualBox, _JasprValueEqualBox>(
+                selector: (state) => state,
+                options: SignalOptions<_JasprValueEqualBox>(
+                  equality:
+                      SignalEquality<_JasprValueEqualBox>.custom(identical),
+                ),
+                builder: (context, selectedBox) {
+                  boxBuildCount++;
+                  selectedBoxes.add(selectedBox);
+                  return div([Component.text('Box: ${selectedBox.label}')]);
+                },
+              ),
+            ),
+          );
+
+          expect(boxBuildCount, equals(3));
+
+          boxCubit2.emitBox(box3);
+          await tester.pump();
+          expect(boxBuildCount, equals(4));
+          expect(identical(selectedBoxes.last, box3), isTrue);
+
+          // Verify constructor assertion rejects unsupported options types.
+          expect(
+            () => BlocSignalSelector<_JasprIdentityBoxCubit,
+                _JasprValueEqualBox, String>(
+              selector: (state) => state.label,
+              options: 'invalid',
+              builder: (context, selected) => div([Component.text(selected)]),
+            ),
+            throwsAssertionError,
+          );
+
+          await boxCubit2.close();
+          await cubit.close();
+        },
+      );
+
+      testComponents(
+        'BlocSignalListener and BlocSignalSelector fallback from explicit bloc '
+        'to null in didUpdateComponent subscribes to ancestor provider swaps',
+        (tester) async {
+          final explicitCubit = CounterCubit();
+          final providerCubit1 = CounterCubit();
+          final providerCubit2 = CounterCubit();
+          final listenedStates = <int>[];
+          final selectedStates = <int>[];
+          late _JasprFallbackHarnessState harnessState;
+
+          tester.pumpComponent(
+            _JasprFallbackHarness(
+              initialProviderCubit: providerCubit1,
+              initialExplicitCubit: explicitCubit,
+              onCreated: (state) => harnessState = state,
+              onListened: listenedStates.add,
+              onSelectedBuilt: selectedStates.add,
+            ),
+          );
+
+          expect(selectedStates, equals([0]));
+
+          // Step 1: Switch explicitCubit from explicit instance to null so
+          // didUpdateComponent falls back to
+          // BlocSignalProvider.of(context, listen: true) while providerCubit1
+          // remains unchanged.
+          harnessState.clearExplicitCubit();
+          await tester.pump();
+
+          providerCubit1.increment(); // 1
+          await tester.pump();
+          expect(listenedStates, equals([1]));
+          expect(selectedStates.last, equals(1));
+
+          // Step 2: Swap ancestor provider from providerCubit1 to
+          // providerCubit2 while keeping the inner subtree cached so only
+          // InheritedComponent dependency notification (registered during
+          // step 1's didUpdateComponent) can rebind them.
+          harnessState.swapProviderCubit(providerCubit2);
+          await tester.pump();
+
+          // Verify old disconnected cubit (providerCubit1) and explicitCubit
+          // do NOT trigger listener or selector before providerCubit2 emits.
+          providerCubit1.increment(); // 2 on old cubit
+          explicitCubit.increment(); // 1 on explicit cubit
+          await tester.pump();
+          expect(listenedStates, equals([1]));
+          expect(selectedStates.last, equals(0));
+
+          // Verify new providerCubit2 triggers both listener and selector.
+          providerCubit2
+            ..increment() // 1
+            ..increment(); // 2
+          await tester.pump();
+          expect(listenedStates, equals([1, 1, 2]));
+          expect(selectedStates.last, equals(2));
+
+          await explicitCubit.close();
+          await providerCubit1.close();
+          await providerCubit2.close();
+        },
+      );
+    },
+  );
+}
+
+@immutable
+class _JasprValueEqualBox {
+  // Intentionally non-const constructor to test distinct heap allocations with
+  // identical values.
+  // ignore: prefer_const_constructors_in_immutables
+  _JasprValueEqualBox(this.label);
+
+  final String label;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _JasprValueEqualBox && other.label == label;
+
+  @override
+  int get hashCode => label.hashCode;
+}
+
+class _JasprIdentityBoxCubit extends CubitSignal<_JasprValueEqualBox> {
+  _JasprIdentityBoxCubit(_JasprValueEqualBox initial)
+      : super(
+          initialState: initial,
+          equals: identical,
+        );
+
+  void emitBox(_JasprValueEqualBox next) => emit(next);
+}
+
+class _JasprSelectorOptionsHost extends StatefulComponent {
+  const _JasprSelectorOptionsHost({
+    required this.cubit,
+    required this.initialOptions,
+    required this.onCreated,
+    required this.onSelectorCalled,
+    required this.onBuilt,
+  });
+
+  final _JasprIdentityBoxCubit cubit;
+  final BlocSignalSelectorOptions<String> initialOptions;
+  final void Function(_JasprSelectorOptionsHostState state) onCreated;
+  final void Function() onSelectorCalled;
+  final void Function(String selectedLabel) onBuilt;
+
+  @override
+  State<_JasprSelectorOptionsHost> createState() =>
+      _JasprSelectorOptionsHostState();
+}
+
+class _JasprSelectorOptionsHostState extends State<_JasprSelectorOptionsHost> {
+  late BlocSignalSelectorOptions<String> _options;
+  bool Function(String previous, String current)? _equals;
+
+  @override
+  void initState() {
+    super.initState();
+    _options = component.initialOptions;
+    component.onCreated(this);
+  }
+
+  void setOptionsAndEquals(
+    BlocSignalSelectorOptions<String> nextOptions,
+    bool Function(String previous, String current)? nextEquals,
+  ) {
+    setState(() {
+      _options = nextOptions;
+      _equals = nextEquals;
+    });
+  }
+
+  String _labelSelector(_JasprValueEqualBox state) {
+    component.onSelectorCalled();
+    return state.label;
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalProvider<_JasprIdentityBoxCubit>.value(
+      value: component.cubit,
+      child: BlocSignalSelector<_JasprIdentityBoxCubit, _JasprValueEqualBox,
+          String>(
+        selector: _labelSelector,
+        options: _options,
+        equals: _equals,
+        builder: (context, selected) {
+          component.onBuilt(selected);
+          return div([Component.text('Selected: $selected')]);
+        },
+      ),
+    );
+  }
+}
+
+class _JasprFallbackHarness extends StatefulComponent {
+  const _JasprFallbackHarness({
+    required this.initialProviderCubit,
+    required this.initialExplicitCubit,
+    required this.onCreated,
+    required this.onListened,
+    required this.onSelectedBuilt,
+  });
+
+  final CounterCubit initialProviderCubit;
+  final CounterCubit? initialExplicitCubit;
+  final void Function(_JasprFallbackHarnessState state) onCreated;
+  final void Function(int state) onListened;
+  final void Function(int state) onSelectedBuilt;
+
+  @override
+  State<_JasprFallbackHarness> createState() => _JasprFallbackHarnessState();
+}
+
+class _JasprFallbackHarnessState extends State<_JasprFallbackHarness> {
+  late CounterCubit _providerCubit;
+  CounterCubit? _explicitCubit;
+  late Component _cachedSubtree;
+
+  @override
+  void initState() {
+    super.initState();
+    _providerCubit = component.initialProviderCubit;
+    _explicitCubit = component.initialExplicitCubit;
+    _cachedSubtree = _buildSubtree();
+    component.onCreated(this);
+  }
+
+  void clearExplicitCubit() {
+    setState(() {
+      _explicitCubit = null;
+      _cachedSubtree = _buildSubtree();
+    });
+  }
+
+  void swapProviderCubit(CounterCubit nextProviderCubit) {
+    setState(() {
+      _providerCubit = nextProviderCubit;
+      // Intentionally do NOT rebuild _cachedSubtree so that didUpdateComponent
+      // is NOT called during step 2; only InheritedComponent dependency
+      // notification from step 1's didUpdateComponent can trigger
+      // didChangeDependencies!
+    });
+  }
+
+  Component _buildSubtree() {
+    return BlocSignalListener<CounterCubit, int>(
+      bloc: _explicitCubit,
+      listener: (context, state) => component.onListened(state),
+      child: BlocSignalSelector<CounterCubit, int, int>(
+        bloc: _explicitCubit,
+        selector: (state) => state,
+        builder: (context, value) {
+          component.onSelectedBuilt(value);
+          return div([Component.text('FallbackSelected: $value')]);
+        },
+      ),
+    );
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalProvider<CounterCubit>.value(
+      value: _providerCubit,
+      child: _cachedSubtree,
+    );
+  }
 }
 
 class _JasprSwapProvider extends StatefulComponent {

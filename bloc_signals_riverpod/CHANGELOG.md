@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (riverpod)**: Remove obsolete `invalid_use_of_protected_member` ignore comment following `BlocSignalBase.equals` visibility update (#320).
+
 ## 1.1.2
 
 - Fix `WidgetRef` container resolution, disposal lifecycle, and interop synchronization (#266):

@@ -309,7 +309,6 @@ abstract class BlocSignalBase<StateType> {
   ///
   /// Subclasses can override this method or pass `equals: identical` to force
   /// reference identity comparison.
-  @protected
   bool equals(StateType previous, StateType current);
 
   /// Canonical zone key used to track the ambient host [BlocSignalBase]

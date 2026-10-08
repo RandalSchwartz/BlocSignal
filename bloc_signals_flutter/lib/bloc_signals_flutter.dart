@@ -7,6 +7,8 @@
 library;
 
 export 'package:bloc_signals/bloc_signals.dart';
+export 'package:signals_flutter/signals_flutter.dart'
+    show ComputedOptions, ReadonlySignalOptions, SignalOptions;
 export 'src/bloc_signal_builder.dart';
 export 'src/bloc_signal_consumer.dart';
 export 'src/bloc_signal_listener.dart';

@@ -56,8 +56,8 @@ class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
     _cleanup = effect(
       () {
         final currentState = _bloc!.state.value;
-        if (_state != currentState) {
-          final previous = _state as S;
+        final previous = _state as S;
+        if (!_bloc!.equals(previous, currentState)) {
           if (component.buildWhen == null ||
               component.buildWhen!(previous, currentState)) {
             _state = currentState;

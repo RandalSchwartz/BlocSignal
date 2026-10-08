@@ -11,6 +11,7 @@ import 'package:bloc_signals/src/bloc_signal_mixin.dart';
 import 'package:bloc_signals/src/bloc_signals_base.dart';
 import 'package:bloc_signals/src/cubit_signal_mixin.dart';
 
+export 'package:preact_signals/preact_signals.dart' show SignalEquality;
 export 'src/bloc_signal_mixin.dart';
 export 'src/bloc_signals_base.dart';
 export 'src/bloc_telemetry_keys.dart';

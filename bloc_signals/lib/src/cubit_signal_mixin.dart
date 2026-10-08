@@ -146,7 +146,6 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   }
 
   @override
-  @protected
   bool equals(StateType previous, StateType current) {
     final optEquality = _optionsEquality;
     if (optEquality != null) {

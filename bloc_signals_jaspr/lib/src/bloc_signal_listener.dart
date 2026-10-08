@@ -79,9 +79,9 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
     _cleanup = effect(
       () {
         final currentState = _bloc!.state.value;
+        final previous = _previousState as S;
 
-        if (_previousState != currentState) {
-          final previous = _previousState as S;
+        if (!_bloc!.equals(previous, currentState)) {
           _previousState = currentState;
 
           if (component.listenWhen == null ||
@@ -108,7 +108,8 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
   @override
   void didUpdateComponent(BlocSignalListener<T, S> oldComponent) {
     super.didUpdateComponent(oldComponent);
-    final effectiveBloc = component.bloc ?? BlocSignalProvider.of<T>(context);
+    final effectiveBloc =
+        component.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     if (_bloc != effectiveBloc) {
       _bloc = effectiveBloc;
       _subscribe();

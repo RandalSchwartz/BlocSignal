@@ -71,9 +71,9 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
 
     _cleanup = effect(() {
       final currentState = _bloc!.state.value;
+      final previous = _previousState as S;
 
-      if (_previousState != currentState) {
-        final previous = _previousState as S;
+      if (!_bloc!.equals(previous, currentState)) {
         _previousState = currentState;
 
         if (widget.listenWhen == null ||
@@ -98,7 +98,8 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
   @override
   void didUpdateWidget(BlocSignalListener<T, S> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final effectiveBloc = widget.bloc ?? BlocSignalProvider.of<T>(context);
+    final effectiveBloc =
+        widget.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     if (_bloc != effectiveBloc) {
       _bloc = effectiveBloc;
       _subscribe();

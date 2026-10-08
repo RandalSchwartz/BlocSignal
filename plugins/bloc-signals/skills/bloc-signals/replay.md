@@ -81,6 +81,11 @@ class BoundedCubit extends ReplayCubit<int> {
 }
 ```
 
+- **Dynamic Limit Adjustment**: The history bound can be inspected via `limit` getter or modified at runtime via `cubit.limit = newLimit` (or `bloc.limit = newLimit`). Lowering `limit` immediately trims existing history to the new bound, evicting the oldest entries first.
+- **Clearing via Zero Limit**: Setting `limit <= 0` immediately clears both history and redo queues, disabling further tracking until a positive limit (or `null`) is set.
+- **Unbounded History**: Setting `limit = null` removes bounds and allows unlimited history recording.
+- **Redo History Enforcement**: When replaying previously undone states via `redo()`, the history queue is trimmed to `limit` as changes are restored, preventing history size from exceeding the configured bound if `limit` was lowered while entries resided in the redo stack.
+
 ### Selective Replaying (`shouldReplay`)
 
 Override `shouldReplay` to filter out intermediate or ephemeral states during undo/redo traversal:
@@ -96,6 +101,10 @@ class SelectiveCubit extends ReplayCubit<MyState> {
   }
 }
 ```
+
+- **Atomic Single-Pass Traversal**: `undo()` and `redo()` evaluate `shouldReplay` in a single linear pass ($O(N)$) from the active end of the stack rather than recursive $O(N^2)$ re-scans.
+- **Atomic Rollback on Traversal Exhaustion**: If no candidate state satisfies `shouldReplay`, skipped changes are not drained into the opposite stack; the traversal cleanly preserves the existing queues without modifying the container's state.
+- **Symmetric Traversal Across Intermediate Skips**: Undoing across multiple filtered states and subsequently redoing restores corresponding states symmetrically.
 
 ---
 

@@ -597,6 +597,388 @@ void main() {
       );
     });
   });
+
+  group(
+      '(Issue #319: R5) runtime limit trimming & atomic shouldReplay '
+      'traversal', () {
+    group('ReplayCubit', () {
+      test('runtime limit lowering trims existing _history', () async {
+        final cubit = CounterCubit();
+        addTearDown(cubit.close);
+        for (var i = 1; i <= 5; i++) {
+          cubit.increment();
+        }
+        expect(cubit.stateValue, 5);
+
+        cubit.limit = 2;
+        expect(cubit.limit, 2);
+
+        cubit
+          ..undo()
+          ..undo()
+          ..undo()
+          ..undo()
+          ..undo();
+
+        expect(cubit.stateValue, 3);
+        expect(cubit.canUndo, isFalse);
+      });
+
+      test('runtime limit = 0 clears existing _history and _redos', () async {
+        final cubit = CounterCubit();
+        addTearDown(cubit.close);
+        cubit
+          ..increment()
+          ..increment()
+          ..increment();
+        expect(cubit.stateValue, 3);
+
+        cubit.undo();
+        expect(cubit.stateValue, 2);
+        expect(cubit.canUndo, isTrue);
+        expect(cubit.canRedo, isTrue);
+
+        cubit.limit = 0;
+        expect(cubit.limit, 0);
+        expect(cubit.canUndo, isFalse);
+        expect(cubit.canRedo, isFalse);
+
+        cubit.undo();
+        expect(cubit.stateValue, 2);
+        cubit.redo();
+        expect(cubit.stateValue, 2);
+      });
+
+      test('runtime limit = null restores unbounded history', () async {
+        final cubit = CounterCubit(limit: 1);
+        addTearDown(cubit.close);
+        cubit
+          ..increment()
+          ..increment();
+        expect(cubit.stateValue, 2);
+
+        cubit.limit = null;
+        expect(cubit.limit, isNull);
+
+        cubit
+          ..increment()
+          ..increment()
+          ..increment();
+        expect(cubit.stateValue, 5);
+
+        cubit
+          ..undo()
+          ..undo()
+          ..undo()
+          ..undo();
+        expect(cubit.stateValue, 1);
+        expect(cubit.canUndo, isFalse);
+      });
+
+      test(
+        'lowering limit while entries are in _redos trims _history upon redo()',
+        () async {
+          final cubit = CounterCubit();
+          addTearDown(cubit.close);
+          cubit
+            ..increment()
+            ..increment()
+            ..increment()
+            ..increment();
+          expect(cubit.stateValue, 4);
+
+          cubit
+            ..undo()
+            ..undo();
+          expect(cubit.stateValue, 2);
+
+          cubit.limit = 2;
+          expect(cubit.limit, 2);
+
+          cubit
+            ..redo()
+            ..redo();
+          expect(cubit.stateValue, 4);
+
+          cubit
+            ..undo()
+            ..undo()
+            ..undo()
+            ..undo();
+          expect(cubit.stateValue, 2);
+          expect(cubit.canUndo, isFalse);
+        },
+      );
+
+      test(
+        'single-pass shouldReplay evaluation & atomic rollback when no '
+        'replayable target exists',
+        () async {
+          var evaluations = 0;
+          final cubitA = CounterCubit(
+            shouldReplayCallback: (s) {
+              evaluations++;
+              return s == 1;
+            },
+          );
+          addTearDown(cubitA.close);
+
+          for (var i = 1; i <= 5; i++) {
+            cubitA.increment();
+          }
+          expect(cubitA.stateValue, 5);
+          evaluations = 0;
+
+          cubitA.undo();
+          expect(cubitA.stateValue, 1);
+          expect(evaluations, 4);
+
+          var allowReplay = false;
+          final cubitB = CounterCubit(
+            shouldReplayCallback: (s) => allowReplay,
+          );
+          addTearDown(cubitB.close);
+
+          cubitB
+            ..increment()
+            ..increment()
+            ..increment();
+          expect(cubitB.stateValue, 3);
+
+          cubitB.undo();
+          expect(cubitB.stateValue, 3);
+          expect(cubitB.canRedo, isFalse);
+
+          allowReplay = true;
+          expect(cubitB.canUndo, isTrue);
+          cubitB.undo();
+          expect(cubitB.stateValue, 2);
+
+          allowReplay = false;
+          cubitB.redo();
+          expect(cubitB.stateValue, 2);
+
+          allowReplay = true;
+          expect(cubitB.canRedo, isTrue);
+          cubitB.redo();
+          expect(cubitB.stateValue, 3);
+
+          final cubitC = CounterCubit(
+            shouldReplayCallback: (s) => s.isOdd,
+          );
+          addTearDown(cubitC.close);
+
+          cubitC
+            ..increment()
+            ..increment()
+            ..increment();
+          expect(cubitC.stateValue, 3);
+
+          cubitC.undo();
+          expect(cubitC.stateValue, 1);
+          expect(cubitC.canUndo, isFalse);
+
+          cubitC.redo();
+          expect(cubitC.stateValue, 3);
+          expect(cubitC.canRedo, isFalse);
+
+          cubitC.undo();
+          expect(cubitC.stateValue, 1);
+          cubitC.redo();
+          expect(cubitC.stateValue, 3);
+        },
+      );
+    });
+
+    group('ReplayCubitMixin', () {
+      test('runtime limit lowering trims existing _history', () async {
+        final cubit = CounterCubitMixin();
+        addTearDown(cubit.close);
+        for (var i = 1; i <= 5; i++) {
+          cubit.increment();
+        }
+        expect(cubit.stateValue, 5);
+
+        cubit.limit = 2;
+        expect(cubit.limit, 2);
+
+        cubit
+          ..undo()
+          ..undo()
+          ..undo()
+          ..undo()
+          ..undo();
+
+        expect(cubit.stateValue, 3);
+        expect(cubit.canUndo, isFalse);
+      });
+
+      test('runtime limit = 0 clears existing _history and _redos', () async {
+        final cubit = CounterCubitMixin();
+        addTearDown(cubit.close);
+        cubit
+          ..increment()
+          ..increment()
+          ..increment();
+        expect(cubit.stateValue, 3);
+
+        cubit.undo();
+        expect(cubit.stateValue, 2);
+        expect(cubit.canUndo, isTrue);
+        expect(cubit.canRedo, isTrue);
+
+        cubit.limit = 0;
+        expect(cubit.limit, 0);
+        expect(cubit.canUndo, isFalse);
+        expect(cubit.canRedo, isFalse);
+
+        cubit.undo();
+        expect(cubit.stateValue, 2);
+        cubit.redo();
+        expect(cubit.stateValue, 2);
+      });
+
+      test('runtime limit = null restores unbounded history', () async {
+        final cubit = CounterCubitMixin(limit: 1);
+        addTearDown(cubit.close);
+        cubit
+          ..increment()
+          ..increment();
+        expect(cubit.stateValue, 2);
+
+        cubit.limit = null;
+        expect(cubit.limit, isNull);
+
+        cubit
+          ..increment()
+          ..increment()
+          ..increment();
+        expect(cubit.stateValue, 5);
+
+        cubit
+          ..undo()
+          ..undo()
+          ..undo()
+          ..undo();
+        expect(cubit.stateValue, 1);
+        expect(cubit.canUndo, isFalse);
+      });
+
+      test(
+        'lowering limit while entries are in _redos trims _history upon redo()',
+        () async {
+          final cubit = CounterCubitMixin();
+          addTearDown(cubit.close);
+          cubit
+            ..increment()
+            ..increment()
+            ..increment()
+            ..increment();
+          expect(cubit.stateValue, 4);
+
+          cubit
+            ..undo()
+            ..undo();
+          expect(cubit.stateValue, 2);
+
+          cubit.limit = 2;
+          expect(cubit.limit, 2);
+
+          cubit
+            ..redo()
+            ..redo();
+          expect(cubit.stateValue, 4);
+
+          cubit
+            ..undo()
+            ..undo()
+            ..undo()
+            ..undo();
+          expect(cubit.stateValue, 2);
+          expect(cubit.canUndo, isFalse);
+        },
+      );
+
+      test(
+        'single-pass shouldReplay evaluation & atomic rollback when no '
+        'replayable target exists',
+        () async {
+          var evaluations = 0;
+          final cubitA = CounterCubitMixin(
+            shouldReplayCallback: (s) {
+              evaluations++;
+              return s == 1;
+            },
+          );
+          addTearDown(cubitA.close);
+
+          for (var i = 1; i <= 5; i++) {
+            cubitA.increment();
+          }
+          expect(cubitA.stateValue, 5);
+          evaluations = 0;
+
+          cubitA.undo();
+          expect(cubitA.stateValue, 1);
+          expect(evaluations, 4);
+
+          var allowReplay = false;
+          final cubitB = CounterCubitMixin(
+            shouldReplayCallback: (s) => allowReplay,
+          );
+          addTearDown(cubitB.close);
+
+          cubitB
+            ..increment()
+            ..increment()
+            ..increment();
+          expect(cubitB.stateValue, 3);
+
+          cubitB.undo();
+          expect(cubitB.stateValue, 3);
+          expect(cubitB.canRedo, isFalse);
+
+          allowReplay = true;
+          expect(cubitB.canUndo, isTrue);
+          cubitB.undo();
+          expect(cubitB.stateValue, 2);
+
+          allowReplay = false;
+          cubitB.redo();
+          expect(cubitB.stateValue, 2);
+
+          allowReplay = true;
+          expect(cubitB.canRedo, isTrue);
+          cubitB.redo();
+          expect(cubitB.stateValue, 3);
+
+          final cubitC = CounterCubitMixin(
+            shouldReplayCallback: (s) => s.isOdd,
+          );
+          addTearDown(cubitC.close);
+
+          cubitC
+            ..increment()
+            ..increment()
+            ..increment();
+          expect(cubitC.stateValue, 3);
+
+          cubitC.undo();
+          expect(cubitC.stateValue, 1);
+          expect(cubitC.canUndo, isFalse);
+
+          cubitC.redo();
+          expect(cubitC.stateValue, 3);
+          expect(cubitC.canRedo, isFalse);
+
+          cubitC.undo();
+          expect(cubitC.stateValue, 1);
+          cubitC.redo();
+          expect(cubitC.stateValue, 3);
+        },
+      );
+    });
+  });
 }
 
 class _NamedCounterCubit extends ReplayCubit<int> {

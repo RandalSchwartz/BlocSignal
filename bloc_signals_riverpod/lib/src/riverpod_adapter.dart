@@ -308,7 +308,6 @@ class BlocSignalNotifier<B extends BlocSignalBase<T>, T> extends Notifier<T> {
   @override
   bool updateShouldNotify(T previous, T next) {
     // Interop adapter delegates state equality checks to the wrapped container.
-    // ignore: invalid_use_of_protected_member
     return !bloc.equals(previous, next);
   }
 }

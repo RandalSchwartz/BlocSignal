@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Fix (jaspr)**: Replace brittle `'defunct'` `AssertionError` substring check in `context.select` with deterministic element lifecycle and root-attachment tracking (#327).
 - **Fix (jaspr)**: Respect container `bloc.equals(previous, current)` in `BlocSignalBuilder` and `BlocSignalListener`, support custom `equals` and `SignalOptions.equalityCheck` in `BlocSignalSelector` while re-initializing `computed` when `options` or `equals` changes in `didUpdateComponent`, and pass `listen: true` when falling back to `BlocSignalProvider.of<T>(context, listen: true)` in `didUpdateComponent` (#320).
 
 ## 1.1.2

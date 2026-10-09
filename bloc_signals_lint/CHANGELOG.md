@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Fix (lint)**: Add enclosing closure guard in `AvoidContextWatchForBlocState` and receiver guards in `AvoidInvalidContextSelectGenerics` and `AvoidManualCloseOnProvidedBloc` (#326).
 - **Fix (fixes)**: Respect custom parameter names and convert arrow (`=>`) or empty function bodies into block bodies in `AddSuperOnEventFix` (#322).
 
 ## 1.3.1

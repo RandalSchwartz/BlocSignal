@@ -222,6 +222,8 @@ class BlocSignalProvider<T> extends Widget {
     T? value,
     Widget? child,
   });
+  static T of<T>(BuildContext context, {bool listen = false}) =>
+      throw UnimplementedError();
 }
 ''');
 

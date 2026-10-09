@@ -1,6 +1,8 @@
 // Ignore deprecated_member_use due to custom_lint_builder parameter signature.
 // ignore_for_file: deprecated_member_use
 
+import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/error/listener.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
@@ -33,10 +35,29 @@ class AvoidInvalidContextSelectGenerics extends DartLintRule {
     context.registry.addMethodInvocation((node) {
       if (node.methodName.name != 'select') return;
 
+      final target = node.target;
+      if (target == null || !_isBuildContext(target)) return;
+
       final typeArguments = node.typeArguments;
       if (typeArguments != null && typeArguments.arguments.length > 2) {
         reporter.atNode(typeArguments, _code);
       }
     });
+  }
+
+  bool _isBuildContext(Expression target) {
+    final targetType = target.staticType;
+    if (targetType != null &&
+        targetType is! DynamicType &&
+        targetType is! InvalidType) {
+      return targetType
+          .getDisplayString(withNullability: false)
+          .contains('BuildContext');
+    }
+    final targetSource = target.toSource();
+    return targetSource == 'context' ||
+        targetSource.endsWith('.context') ||
+        targetSource == 'ctx' ||
+        targetSource.endsWith('.ctx');
   }
 }

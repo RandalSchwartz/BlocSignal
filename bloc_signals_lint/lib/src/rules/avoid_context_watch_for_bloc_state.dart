@@ -67,6 +67,9 @@ class AvoidContextWatchForBlocState extends DartLintRule {
 
       if (!isBloc) return;
 
+      final enclosingClosure = node.thisOrAncestorOfType<FunctionExpression>();
+      if (enclosingClosure != null) return;
+
       final enclosingMethod = node.thisOrAncestorOfType<MethodDeclaration>();
       if (enclosingMethod != null && enclosingMethod.name.lexeme == 'build') {
         reporter.atNode(

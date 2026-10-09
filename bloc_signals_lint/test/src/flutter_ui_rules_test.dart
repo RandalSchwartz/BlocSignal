@@ -354,4 +354,143 @@ class CounterView {
       );
     },
   );
+
+  group('(Issue #326: R12) Closure and Receiver Guards', () {
+    test(
+      'AvoidContextWatchForBlocState ignores context.watch<T>() inside '
+      'closures in build(), while PreferBlocSignalProviderReadInCallbacks '
+      'flags it once',
+      () async {
+        const code = '''
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+class CounterView {
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: () {
+            context.watch<CounterBloc>();
+          },
+          child: Text('Block'),
+        ),
+        ElevatedButton(
+          onPressed: () => context.watch<CounterBloc>(),
+          child: Text('Arrow'),
+        ),
+      ],
+    );
+  }
+}
+''';
+        final watchInBuildLints = await runLintRule(
+          const AvoidContextWatchForBlocState(),
+          code,
+        );
+        expect(watchInBuildLints, isEmpty);
+
+        final readInCallbacksLints = await runLintRule(
+          const PreferBlocSignalProviderReadInCallbacks(),
+          code,
+        );
+        expect(readInCallbacksLints, hasLength(2));
+      },
+    );
+
+    test(
+      'AvoidInvalidContextSelectGenerics ignores non-BuildContext and implicit '
+      'select calls while detecting BuildContext ctx.select',
+      () async {
+        const nonContextCode = '''
+class Database {
+  R select<A, B, R>() => throw UnimplementedError();
+  void query() {
+    select<int, String, bool>();
+  }
+}
+
+void runQuery(Database db) {
+  db.select<int, String, bool>();
+}
+''';
+        final nonContextLints = await runLintRule(
+          const AvoidInvalidContextSelectGenerics(),
+          nonContextCode,
+        );
+        expect(nonContextLints, isEmpty);
+
+        const ctxCode = '''
+class CounterState {}
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+Widget buildWidget(BuildContext ctx) {
+  final count = ctx.select<CounterBloc, CounterState, int>((b) => b.value);
+  return Container();
+}
+''';
+        final ctxLints = await runLintRule(
+          const AvoidInvalidContextSelectGenerics(),
+          ctxCode,
+        );
+        expect(ctxLints, hasLength(1));
+        expect(
+          ctxLints.first.lexeme,
+          equals('<CounterBloc, CounterState, int>'),
+        );
+      },
+    );
+
+    test(
+      'AvoidManualCloseOnProvidedBloc ignores unrelated .of().close() and '
+      '.read().close() while detecting BlocSignalProvider.of and context.watch',
+      () async {
+        const unrelatedCode = '''
+class MyStream {
+  static MyStream of(int value) => MyStream();
+  void close() {}
+}
+
+class Navigator {
+  static Navigator of(BuildContext context) => Navigator();
+  void close() {}
+}
+
+class Box {
+  MyStream read() => MyStream();
+}
+
+void cleanup(BuildContext context, Box box) {
+  MyStream.of(1).close();
+  Navigator.of(context).close();
+  box.read().close();
+}
+''';
+        final unrelatedLints = await runLintRule(
+          const AvoidManualCloseOnProvidedBloc(),
+          unrelatedCode,
+        );
+        expect(unrelatedLints, isEmpty);
+
+        const providerCloseCode = '''
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+void badCleanup(BuildContext context) {
+  BlocSignalProvider.of<CounterBloc>(context).close();
+  context.watch<CounterBloc>().close();
+}
+''';
+        final providerCloseLints = await runLintRule(
+          const AvoidManualCloseOnProvidedBloc(),
+          providerCloseCode,
+        );
+        expect(providerCloseLints, hasLength(2));
+      },
+    );
+  });
 }

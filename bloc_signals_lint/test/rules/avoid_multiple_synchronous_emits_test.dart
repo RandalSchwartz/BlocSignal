@@ -469,5 +469,238 @@ class CounterCubit extends CubitSignal<int> {
 
       expect(flaggedNodes, isEmpty);
     });
+
+    test(
+      '(Issue #329: R15) detects multiple synchronous emit() calls inside '
+      'MixinDeclaration via findMixinViolations',
+      () {
+        const badCode = '''
+mixin PricingMixin on CubitSignal<int> {
+  void applyDiscount() {
+    emit(1);
+    _helperEmit();
+  }
+
+  void _helperEmit() => emit(2);
+}
+''';
+        final parseResult = parseString(content: badCode);
+        final flaggedNodes = <AstNode>[];
+
+        for (final declaration
+            in parseResult.unit.declarations.whereType<MixinDeclaration>()) {
+          flaggedNodes.addAll(
+            AvoidMultipleSynchronousEmits.findMixinViolations(declaration),
+          );
+        }
+
+        expect(flaggedNodes, hasLength(1));
+      },
+    );
+
+    test(
+      '(Issue #329: R15) detects cascade emit() calls in '
+      'ExpressionFunctionBody arrow method and closure',
+      () {
+        const badCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void badArrow() => this
+    ..emit(1)
+    ..emit(2);
+
+  void badClosure() {
+    final fn = () => this
+      ..emit(3)
+      ..emit(4);
+    fn();
+  }
+
+  void safeForeignCascade(CubitSignal<int> other) => other..emit(1)..emit(2);
+}
+''';
+        final parseResult = parseString(content: badCode);
+        final flaggedNodes = <AstNode>[];
+
+        for (final declaration
+            in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+          flaggedNodes.addAll(
+            AvoidMultipleSynchronousEmits.findViolations(declaration),
+          );
+        }
+
+        expect(flaggedNodes, hasLength(2));
+      },
+    );
+
+    test(
+      '(Issue #329: R15) handles ContinueStatement without false-positive '
+      'same-iteration fallthrough while catching multi-iteration emits',
+      () {
+        const goodCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void safeLoop(List<int> items, bool cond) {
+    for (final x in items) {
+      if (cond) {
+        emit(x);
+        return;
+      } else {
+        continue;
+      }
+      emit(0);
+    }
+  }
+}
+''';
+        final goodParse = parseString(content: goodCode);
+        final goodFlagged = <AstNode>[];
+        for (final declaration
+            in goodParse.unit.declarations.whereType<ClassDeclaration>()) {
+          goodFlagged.addAll(
+            AvoidMultipleSynchronousEmits.findViolations(declaration),
+          );
+        }
+        expect(goodFlagged, isEmpty);
+
+        const badCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void multiIterContinue(List<int> items) {
+    do {
+      this.emit(1);
+      continue;
+    } while (items.isNotEmpty);
+  }
+
+  void continueCarriesEmitToPostLoop(List<int> items, bool cond) {
+    for (final x in items) {
+      if (cond) {
+        emit(x);
+        continue;
+      }
+      break;
+    }
+    try {
+      switch (items.length) {
+        case 1:
+          other.emit(1);
+          break;
+      }
+    } finally {
+      emit(99);
+    }
+  }
+
+  Future<void> _asyncBlockHelper() async {
+    await Future<void>.delayed(Duration.zero);
+    emit(1);
+  }
+
+  Future<void> _asyncArrowHelper() async =>
+      await Future<void>.delayed(Duration.zero);
+}
+''';
+        final badParse = parseString(content: badCode);
+        final badFlagged = <AstNode>[];
+        for (final declaration
+            in badParse.unit.declarations.whereType<ClassDeclaration>()) {
+          badFlagged.addAll(
+            AvoidMultipleSynchronousEmits.findViolations(declaration),
+          );
+        }
+        expect(badFlagged, hasLength(3));
+      },
+    );
+
+    test(
+      '(Issue #329: R15) resolves intra-switch continue caseLabel jumps and '
+      'preserves unlabeled continue inside switch for enclosing loops',
+      () {
+        const goodCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void safeSwitchContinue(int x) {
+    switch (x) {
+      case 1:
+        continue sharedCase;
+      sharedCase:
+      case 2:
+        emit(1);
+        break;
+    }
+  }
+
+  void safeLoopWithSwitchContinue(List<int> items) {
+    for (final x in items) {
+      switch (x) {
+        case 1:
+          emit(1);
+          return;
+        default:
+          continue;
+      }
+      emit(2);
+    }
+  }
+}
+''';
+        final goodParse = parseString(content: goodCode);
+        final goodFlagged = <AstNode>[];
+        for (final declaration
+            in goodParse.unit.declarations.whereType<ClassDeclaration>()) {
+          goodFlagged.addAll(
+            AvoidMultipleSynchronousEmits.findViolations(declaration),
+          );
+        }
+        expect(goodFlagged, isEmpty);
+
+        const badCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void emitBeforeSwitchContinue(int x, bool jump) {
+    switch (x) {
+      case 1:
+        emit(1);
+        if (jump) {
+          continue sharedCase;
+        }
+        break;
+      sharedCase:
+      case 2:
+        emit(2);
+        break;
+    }
+  }
+
+  void emitAfterSwitchContinue(int x) {
+    switch (x) {
+      case 1:
+        continue sharedCase;
+      sharedCase:
+      case 2:
+        emit(1);
+        break;
+    }
+    emit(2);
+  }
+}
+''';
+        final badParse = parseString(content: badCode);
+        final badFlagged = <AstNode>[];
+        for (final declaration
+            in badParse.unit.declarations.whereType<ClassDeclaration>()) {
+          badFlagged.addAll(
+            AvoidMultipleSynchronousEmits.findViolations(declaration),
+          );
+        }
+        expect(badFlagged, hasLength(2));
+      },
+    );
   });
 }

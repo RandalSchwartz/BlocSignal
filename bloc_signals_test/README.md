@@ -43,7 +43,7 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 - 🎯 **Declarative Assertions**: Verify emitted states in exact order using `expect`.
 - ⏱️ **Async Support**: Await asynchronous event handlers or timers using `wait`.
 - ⏭️ **State Skipping**: Skip initial emissions using `skip`.
-- 🚨 **Error Testing**: Verify exceptions caught in `onError` using `errors`.
+- 🚨 **Error Testing**: Verify exceptions reported to `onError`, rethrown `Error` subtypes (for example `StateError` or `ArgumentError`), and direct `CubitSignal` method throws using `errors`.
 - 🧹 **Automatic Cleanup**: Guarantees observer restoration and `bloc.close()` post-test.
 
 ---

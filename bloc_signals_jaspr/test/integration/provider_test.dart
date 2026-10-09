@@ -230,6 +230,152 @@ void main() {
       await tester.pump();
       expect(selectorCalls, callsBefore);
     });
+
+    testComponents(
+        '(Issue #327: R13) deterministically disposes selector subscription '
+        'when root component is replaced via pumpComponent without relying on '
+        'AssertionError', (tester) async {
+      final handed = CounterCubit();
+      addTearDown(handed.close);
+
+      tester.pumpComponent(
+        BlocSignalProvider<CounterCubit>.value(
+          value: handed,
+          child: const SelectingChild(),
+        ),
+      );
+      await tester.pump();
+      expect(builds, ['select:0']);
+
+      // Replace the root tree directly without deactivating the previous root.
+      tester.pumpComponent(const Component.empty());
+      await tester.pump();
+
+      final callsBefore = selectorCalls;
+      handed.increment();
+      await tester.pump();
+      handed.increment();
+      await tester.pump();
+
+      expect(selectorCalls, callsBefore);
+      expect(builds, ['select:0']);
+    });
+
+    testComponents(
+        '(Issue #327: R13) deterministically disposes selector subscription '
+        'when provider subtree unmounts', (tester) async {
+      final handed = CounterCubit();
+      addTearDown(handed.close);
+
+      tester.pumpComponent(
+        Host(
+          (generation) => generation == 0
+              ? BlocSignalProvider<CounterCubit>.value(
+                  value: handed,
+                  child: const SelectingChild(),
+                )
+              : const Component.empty(),
+        ),
+      );
+      await tester.pump();
+      expect(builds, ['select:0']);
+
+      HostState.current!.bump();
+      await tester.pump();
+      final callsBefore = selectorCalls;
+
+      handed.increment();
+      await tester.pump();
+      expect(selectorCalls, callsBefore);
+      expect(builds, ['select:0']);
+    });
+
+    testComponents(
+        '(Issue #327: R13) updates inherited element reference when ancestor '
+        'provider element is replaced above GlobalKey child', (tester) async {
+      final first = CounterCubit();
+      final second = CounterCubit(10);
+      addTearDown(first.close);
+      addTearDown(second.close);
+
+      const childKey = GlobalObjectKey('selecting_child_r13');
+
+      tester.pumpComponent(
+        Host(
+          (generation) => generation == 0
+              ? BlocSignalProvider<CounterCubit>.value(
+                  key: const ValueKey('p1'),
+                  value: first,
+                  child: const SelectingChild(key: childKey),
+                )
+              : BlocSignalProvider<CounterCubit>.value(
+                  key: const ValueKey('p2'),
+                  value: second,
+                  child: const SelectingChild(key: childKey),
+                ),
+        ),
+      );
+      await tester.pump();
+      expect(builds, ['select:0']);
+
+      HostState.current!.bump();
+      await tester.pump();
+      expect(builds, ['select:0', 'select:10']);
+
+      second.increment();
+      await tester.pump();
+      expect(builds, ['select:0', 'select:10', 'select:11']);
+    });
+
+    testComponents(
+        '(Issue #327: R13) preserves selector subscription when entire '
+        'provider subtree is reparented via GlobalKey', (tester) async {
+      final cubit = CounterCubit();
+      addTearDown(cubit.close);
+
+      const subtreeKey = GlobalObjectKey('provider_subtree_r13');
+      final subtree = Component.element(
+        tag: 'div',
+        key: subtreeKey,
+        children: [
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: const SelectingChild(),
+          ),
+        ],
+      );
+
+      tester.pumpComponent(
+        Host(
+          (generation) => generation == 0
+              ? Component.element(tag: 'div', children: [subtree])
+              : Component.element(
+                  tag: 'section',
+                  children: [
+                    Component.element(tag: 'div', children: [subtree]),
+                  ],
+                ),
+        ),
+      );
+      await tester.pump();
+      expect(builds, ['select:0']);
+      expect(selectorCalls, 1);
+
+      HostState.current!.bump();
+      await tester.pump();
+      expect(
+        selectorCalls,
+        1,
+        reason: 'reparenting via GlobalKey must preserve the existing '
+            'subscription without tearing down and re-evaluating the selector',
+      );
+      expect(builds, ['select:0', 'select:0']);
+
+      cubit.increment();
+      await tester.pump();
+      expect(selectorCalls, 2);
+      expect(builds, ['select:0', 'select:0', 'select:1']);
+    });
   });
 
   group('a watching child', () {

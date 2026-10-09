@@ -207,17 +207,13 @@ class _BlocSignalProviderInheritedElement<T extends BlocSignalBase<dynamic>>
 
   @override
   void deactivateDependent(Element dependent) {
-    final selectorState = _elementSelectors[dependent];
-    if (selectorState != null) {
-      for (final sub in selectorState.subscriptions) {
-        _selectFinalizer.detach(sub);
-        sub.dispose();
+    final weakDependent = WeakReference<Element>(dependent);
+    scheduleMicrotask(() {
+      final el = weakDependent.target;
+      if (el != null && !_isMountedUnderProvider(el, this)) {
+        _disposeSelectorsForProvider(el, this);
       }
-      selectorState.subscriptions.clear();
-      selectorState
-        ..index = 0
-        ..lastAccessedIndex = 0;
-    }
+    });
     super.deactivateDependent(dependent);
   }
 }
@@ -276,12 +272,13 @@ extension BlocSignalProviderExtension on BuildContext {
     if (currentIndex < selectorState.subscriptions.length) {
       subscription = (selectorState.subscriptions[currentIndex]
           as _SelectSubscription<T, R>)
-        ..update(bloc, selector);
+        ..update(bloc, selector, inheritedElement);
     } else {
       subscription = _SelectSubscription<T, R>(
         bloc: bloc,
         selector: selector,
         element: element,
+        inheritedElement: inheritedElement,
       );
       selectorState.subscriptions.add(subscription);
       _selectFinalizer.attach(element, subscription, detach: subscription);
@@ -381,43 +378,89 @@ class _SelectorState {
   final List<_SelectSubscription<dynamic, dynamic>> subscriptions = [];
 }
 
+void _disposeSelectorsForProvider(Element element, Element provider) {
+  final selectorState = _elementSelectors[element];
+  if (selectorState != null) {
+    selectorState.subscriptions.removeWhere((sub) {
+      if (identical(sub.inheritedElement, provider)) {
+        _selectFinalizer.detach(sub);
+        sub.dispose();
+        return true;
+      }
+      return false;
+    });
+    selectorState
+      ..index = 0
+      ..lastAccessedIndex = 0;
+  }
+}
+
+bool _isMountedUnderProvider(Element el, Element inherited) {
+  final root = el.binding.rootElement;
+  var seenInherited = false;
+  Element? current = el;
+  while (current != null) {
+    if (identical(current, inherited)) {
+      seenInherited = true;
+    }
+    if (identical(current, root)) {
+      return seenInherited;
+    }
+    current = current.parent;
+  }
+  return false;
+}
+
 class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   _SelectSubscription({
     required T bloc,
     required R Function(T) selector,
     required Element element,
+    required _BlocSignalProviderInheritedElement<T> inheritedElement,
   })  : _bloc = bloc,
         _selector = selector,
-        _elementRef = WeakReference(element) {
-    _computed = computed(
-      () => _selector(_bloc),
-      options: ComputedOptions<R>(
-        name: 'context.select<$T, $R>.computed',
-      ),
-    );
-    _selectedValue = _computed.value;
+        _elementRef = WeakReference(element),
+        _inheritedRef = WeakReference(inheritedElement) {
+    _initSubscription();
+  }
 
+  T _bloc;
+  R Function(T) _selector;
+  final WeakReference<Element> _elementRef;
+  WeakReference<_BlocSignalProviderInheritedElement<T>> _inheritedRef;
+  late R _selectedValue;
+  late void Function() _dispose;
+  bool _isDisposed = false;
+
+  R get value => _selectedValue;
+
+  Element? get inheritedElement => _inheritedRef.target;
+
+  bool _isActive() {
+    final el = _elementRef.target;
+    final inherited = _inheritedRef.target;
+    return el != null &&
+        inherited != null &&
+        _isMountedUnderProvider(el, inherited);
+  }
+
+  void _initSubscription() {
+    var isInitial = true;
     _dispose = effect(
       () {
-        if (_isDisposed) return;
-        final el = _elementRef.target;
-        if (el == null) {
+        if (isInitial) {
+          isInitial = false;
+          _selectedValue = _selector(_bloc);
+          return;
+        }
+        if (!_isActive()) {
           dispose();
           return;
         }
-        final newValue = _computed.value;
+        final newValue = _selector(_bloc);
         if (newValue != _selectedValue) {
           _selectedValue = newValue;
-          try {
-            el.markNeedsBuild();
-            // ignore: avoid_catching_errors, Jaspr throws AssertionError on defunct elements.
-          } on AssertionError catch (e) {
-            if (e.toString().contains('defunct')) {
-              dispose();
-            } else {
-              rethrow;
-            }
-          }
+          _elementRef.target?.markNeedsBuild();
         }
       },
       options: EffectOptions(
@@ -426,58 +469,20 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
     );
   }
 
-  T _bloc;
-  R Function(T) _selector;
-  final WeakReference<Element> _elementRef;
-  late Computed<R> _computed;
-  late R _selectedValue;
-  late void Function() _dispose;
-  bool _isDisposed = false;
-
-  R get value => _selectedValue;
-
-  void update(T newBloc, R Function(T) newSelector) {
+  void update(
+    T newBloc,
+    R Function(T) newSelector,
+    _BlocSignalProviderInheritedElement<T> newInheritedElement,
+  ) {
     if (_isDisposed) return;
+    _inheritedRef = WeakReference(newInheritedElement);
     if (_bloc != newBloc || _selector != newSelector) {
       this
         .._bloc = newBloc
         .._selector = newSelector;
 
       _dispose();
-      _computed = computed(
-        () => _selector(_bloc),
-        options: ComputedOptions<R>(
-          name: 'context.select<$T, $R>.computed',
-        ),
-      );
-      _selectedValue = _computed.value;
-      _dispose = effect(
-        () {
-          if (_isDisposed) return;
-          final el = _elementRef.target;
-          if (el == null) {
-            dispose();
-            return;
-          }
-          final newValue = _computed.value;
-          if (newValue != _selectedValue) {
-            _selectedValue = newValue;
-            try {
-              el.markNeedsBuild();
-              // ignore: avoid_catching_errors, Jaspr throws AssertionError on defunct elements.
-            } on AssertionError catch (e) {
-              if (e.toString().contains('defunct')) {
-                dispose();
-              } else {
-                rethrow;
-              }
-            }
-          }
-        },
-        options: EffectOptions(
-          name: 'context.select<$T, $R>.effect',
-        ),
-      );
+      _initSubscription();
     }
   }
 

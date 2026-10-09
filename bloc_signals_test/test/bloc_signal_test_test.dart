@@ -14,6 +14,15 @@ class CounterCubit extends CubitSignal<int> {
     emit(stateValue + 1);
     emit(stateValue + 1);
   }
+
+  void failSync() {
+    throw StateError('cubit sync state error');
+  }
+
+  Future<void> failAsync() async {
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    throw StateError('cubit async state error');
+  }
 }
 
 // Sample Bloc for testing
@@ -24,6 +33,14 @@ class IncrementEvent extends CounterEvent {}
 class DelayedIncrementEvent extends CounterEvent {}
 
 class ErrorEvent extends CounterEvent {}
+
+class StateErrorEvent extends CounterEvent {}
+
+class AsyncErrorEvent extends CounterEvent {}
+
+class ImmediateAsyncErrorEvent extends CounterEvent {}
+
+class _UnregisteredEvent extends CounterEvent {}
 
 class CounterBloc extends BlocSignal<CounterEvent, int> {
   CounterBloc({int initial = 0}) : super(initialState: initial) {
@@ -36,6 +53,16 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
     });
     on<ErrorEvent>((event, emit) {
       throw Exception('something went wrong');
+    });
+    on<StateErrorEvent>((event, emit) {
+      throw StateError('handler state error');
+    });
+    on<AsyncErrorEvent>((event, emit) async {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      throw ArgumentError('async handler argument error');
+    });
+    on<ImmediateAsyncErrorEvent>((event, emit) async {
+      throw ArgumentError('immediate async handler argument error');
     });
   }
 }
@@ -343,6 +370,218 @@ void main() {
         'captures errors emitted during build construction',
         build: _ConstructorErrorCubit.new,
         errors: () => [isA<Exception>()],
+      );
+    });
+
+    group('(Issue #328: R14) Capture rethrown Error subtypes in blocSignalTest',
+        () {
+      blocSignalTest<CounterBloc, int>(
+        'captures synchronous StateError rethrown by BlocSignal event handler '
+        'without duplicating onError entry',
+        build: CounterBloc.new,
+        act: (bloc) => bloc.add(StateErrorEvent()),
+        expect: () => <int>[],
+        errors: () => [
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'handler state error',
+          ),
+        ],
+      );
+
+      blocSignalTest<CounterBloc, int>(
+        'captures StateError rethrown on unregistered event dispatch '
+        'without duplicating onError entry',
+        build: CounterBloc.new,
+        act: (bloc) => bloc.add(_UnregisteredEvent()),
+        expect: () => <int>[],
+        errors: () => [isA<StateError>()],
+      );
+
+      blocSignalTest<CounterBloc, int>(
+        'captures asynchronous ArgumentError rethrown by async BlocSignal '
+        'handler with wait',
+        build: CounterBloc.new,
+        act: (bloc) => bloc.add(AsyncErrorEvent()),
+        wait: const Duration(milliseconds: 30),
+        expect: () => <int>[],
+        errors: () => [
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            'async handler argument error',
+          ),
+        ],
+      );
+
+      blocSignalTest<CounterBloc, int>(
+        'captures immediate asynchronous ArgumentError rethrown by async '
+        'BlocSignal handler without wait',
+        build: CounterBloc.new,
+        act: (bloc) => bloc.add(ImmediateAsyncErrorEvent()),
+        expect: () => <int>[],
+        errors: () => [
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            'immediate async handler argument error',
+          ),
+        ],
+      );
+
+      blocSignalTest<CounterCubit, int>(
+        'captures synchronous StateError thrown directly by CubitSignal method',
+        build: CounterCubit.new,
+        act: (cubit) => cubit.failSync(),
+        expect: () => <int>[],
+        errors: () => [
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'cubit sync state error',
+          ),
+        ],
+      );
+
+      blocSignalTest<CounterCubit, int>(
+        'captures asynchronous StateError thrown directly by CubitSignal '
+        'method',
+        build: CounterCubit.new,
+        act: (cubit) => cubit.failAsync(),
+        expect: () => <int>[],
+        errors: () => [
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'cubit async state error',
+          ),
+        ],
+      );
+
+      blocSignalTest<CounterCubit, int>(
+        'captures unawaited asynchronous StateError thrown inside act during '
+        'wait',
+        build: CounterCubit.new,
+        act: (_) {
+          unawaited(
+            Future<void>.microtask(
+              () => throw StateError('unawaited async'),
+            ),
+          );
+        },
+        wait: const Duration(milliseconds: 10),
+        expect: () => <int>[],
+        errors: () => [
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'unawaited async',
+          ),
+        ],
+      );
+
+      test(
+        'rethrows synchronous StateError from BlocSignal handler when errors '
+        'is omitted and cleans up container and observer',
+        () async {
+          final baseline = TrackingObserver();
+          BlocSignalObserver.observer = baseline;
+          addTearDown(() => BlocSignalObserver.observer = null);
+
+          CounterBloc? builtBloc;
+          await expectLater(
+            runBlocSignalTest<CounterBloc, int>(
+              build: () => builtBloc = CounterBloc(),
+              act: (bloc) => bloc.add(StateErrorEvent()),
+            ),
+            throwsA(isA<StateError>()),
+          );
+
+          expect(builtBloc, isNotNull);
+          expect(builtBloc!.isClosed, isTrue);
+          expect(BlocSignalObserver.observer, same(baseline));
+        },
+      );
+
+      test(
+        'rethrows asynchronous ArgumentError from BlocSignal handler when '
+        'errors is omitted and cleans up container and observer',
+        () async {
+          final baseline = TrackingObserver();
+          BlocSignalObserver.observer = baseline;
+          addTearDown(() => BlocSignalObserver.observer = null);
+
+          CounterBloc? builtBloc;
+          await expectLater(
+            runBlocSignalTest<CounterBloc, int>(
+              build: () => builtBloc = CounterBloc(),
+              act: (bloc) => bloc.add(AsyncErrorEvent()),
+              wait: const Duration(milliseconds: 30),
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+
+          expect(builtBloc, isNotNull);
+          expect(builtBloc!.isClosed, isTrue);
+          expect(BlocSignalObserver.observer, same(baseline));
+        },
+      );
+
+      test(
+        'rethrows synchronous StateError from CubitSignal method when errors '
+        'is omitted and cleans up container and observer',
+        () async {
+          final baseline = TrackingObserver();
+          BlocSignalObserver.observer = baseline;
+          addTearDown(() => BlocSignalObserver.observer = null);
+
+          CounterCubit? builtCubit;
+          await expectLater(
+            runBlocSignalTest<CounterCubit, int>(
+              build: () => builtCubit = CounterCubit(),
+              act: (cubit) => cubit.failSync(),
+            ),
+            throwsA(isA<StateError>()),
+          );
+
+          expect(builtCubit, isNotNull);
+          expect(builtCubit!.isClosed, isTrue);
+          expect(BlocSignalObserver.observer, same(baseline));
+        },
+      );
+
+      test(
+        '(Issue #328: R14, Blocker 1) forwards late asynchronous errors '
+        'occurring after wait completion to parent zone handleUncaughtError',
+        () async {
+          final lateErrors = <Object>[];
+          final lateCompleter = Completer<void>();
+
+          await runZonedGuarded(
+            () async {
+              await runBlocSignalTest<CounterCubit, int>(
+                build: CounterCubit.new,
+                act: (cubit) {
+                  Timer(
+                    const Duration(milliseconds: 30),
+                    () => throw StateError('late background crash'),
+                  );
+                },
+                wait: const Duration(milliseconds: 5),
+              );
+            },
+            (error, stackTrace) {
+              lateErrors.add(error);
+              if (!lateCompleter.isCompleted) {
+                lateCompleter.complete();
+              }
+            },
+          );
+
+          await lateCompleter.future.timeout(const Duration(milliseconds: 200));
+          expect(lateErrors, [isA<StateError>()]);
+        },
       );
     });
   });

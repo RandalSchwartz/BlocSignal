@@ -34,7 +34,7 @@ void main() {
 ### Key Declarative Testing Guidelines
 * **Observer Setup Timing**: `blocSignalTest` automatically sets up `BlocSignalObserver.observer` **before** invoking `build()` so `onCreate` lifecycle events are captured cleanly.
 * **Automatic De-duplication**: `BlocSignal` automatically suppresses duplicate state emissions using `==` equality. Re-emitting an identical state will not produce a test emission.
-* **Exceptions & Error Routing**: Use `errors: () => [isA<MyException>()]` to assert operational exceptions captured by `onError`.
+* **Exceptions & Error Routing**: Use `errors: () => [isA<MyException>()]` to assert operational exceptions reported to `onError`, rethrown `Error` subtypes (such as `StateError` or `ArgumentError`), and direct synchronous or asynchronous throws from `CubitSignal` methods during `act` and `wait` (deduplicated by object identity so `onError` + rethrow produces a single entry). When `errors:` is omitted, unhandled errors are rethrown to fail the test immediately.
 * **Telemetry & Concurrency Assertions**: Use `expectTelemetry: () => [isTelemetry('event_name', metadata: {'key': 'val'})]` to assert operational telemetry emitted via `emitTelemetry` and concurrency transformers (`BlocTelemetryKeys`). Matchers support partial metadata matching.
 
 ---

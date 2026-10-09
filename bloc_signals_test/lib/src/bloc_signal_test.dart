@@ -33,7 +33,11 @@ import 'package:test/test.dart' as test_pkg;
 /// [verify] is an optional callback invoked after expectations are verified.
 ///
 /// [errors] is an optional callback returning an [Iterable] or
-/// [test_pkg.Matcher] of expected errors.
+/// [test_pkg.Matcher] of expected errors. When provided, captures errors
+/// reported to `onError` as well as rethrown [Error] subtypes (such as
+/// [StateError] or [ArgumentError]) and direct synchronous or asynchronous
+/// throws during [act] and [wait]. When omitted, unhandled errors are rethrown
+/// to fail the test immediately.
 ///
 /// [expectTelemetry] is an optional callback returning an [Iterable] or
 /// [test_pkg.Matcher] of expected telemetry records (such as [isTelemetry]).
@@ -56,109 +60,183 @@ void blocSignalTest<B extends BlocSignalBase<State>, State>(
 }) {
   test_pkg.test(
     description,
-    () async {
-      final baselineObserver = BlocSignalObserver.observer;
-      await setUp?.call();
-      final activeObserver = BlocSignalObserver.observer;
-      final states = <State>[];
-      final caughtErrors = <Object>[];
-      final caughtTelemetry = <BlocTelemetryEntry>[];
-      B? bloc;
-
-      final initialErrors = <(Object, Object)>[];
-      final initialTelemetry = <(Object, BlocTelemetryEntry)>[];
-
-      final testObserver = _TestBlocSignalObserver(
-        parent: activeObserver,
-        onErrorCallback: (b, error, stackTrace) {
-          if (bloc == null) {
-            initialErrors.add((b, error));
-          } else if (identical(b, bloc)) {
-            caughtErrors.add(error);
-          }
-        },
-        onTelemetryCallback: (b, name, {event, metadata}) {
-          final entry = BlocTelemetryEntry(
-            name: name,
-            event: event,
-            metadata: metadata,
-          );
-          if (bloc == null) {
-            initialTelemetry.add((b, entry));
-          } else if (identical(b, bloc)) {
-            caughtTelemetry.add(entry);
-          }
-        },
-      );
-      BlocSignalObserver.observer = testObserver;
-
-      void Function()? disposeListener;
-      try {
-        bloc = build();
-        for (final pair in initialErrors) {
-          if (identical(pair.$1, bloc)) {
-            caughtErrors.add(pair.$2);
-          }
-        }
-        for (final pair in initialTelemetry) {
-          if (identical(pair.$1, bloc)) {
-            caughtTelemetry.add(pair.$2);
-          }
-        }
-
-        var initialSkipped = false;
-        disposeListener = bloc.state.subscribe((value) {
-          if (!initialSkipped) {
-            initialSkipped = true;
-            return;
-          }
-          states.add(value);
-        });
-
-        if (act != null) {
-          final actResult = act(bloc);
-          if (actResult is Future) {
-            await actResult;
-          }
-        }
-
-        if (wait != null) {
-          await Future<void>.delayed(wait);
-        }
-
-        if (expect != null) {
-          final expectedStates = expect();
-          final actualEmitted = states.skip(skip).toList();
-          test_pkg.expect(actualEmitted, expectedStates);
-        }
-
-        if (errors != null) {
-          final expectedErrors = errors();
-          test_pkg.expect(caughtErrors, expectedErrors);
-        }
-
-        if (expectTelemetry != null) {
-          final expectedTelemetry = expectTelemetry();
-          test_pkg.expect(caughtTelemetry, expectedTelemetry);
-        }
-
-        if (verify != null) {
-          final verifyResult = verify(bloc);
-          if (verifyResult is Future) {
-            await verifyResult;
-          }
-        }
-      } finally {
-        disposeListener?.call();
-        if (bloc != null) {
-          await bloc.close();
-        }
-        BlocSignalObserver.observer = baselineObserver;
-        await tearDown?.call();
-      }
-    },
+    () => runBlocSignalTest<B, State>(
+      build: build,
+      setUp: setUp,
+      act: act,
+      wait: wait,
+      skip: skip,
+      expect: expect,
+      verify: verify,
+      errors: errors,
+      expectTelemetry: expectTelemetry,
+      tearDown: tearDown,
+    ),
     tags: tags,
   );
+}
+
+/// Internal runner for [blocSignalTest], exposed for testing error propagation
+/// and lifecycle teardown guarantees.
+///
+/// ```dart
+/// await runBlocSignalTest<CounterCubit, int>(
+///   build: CounterCubit.new,
+///   act: (cubit) => cubit.increment(),
+///   expect: () => [1],
+/// );
+/// ```
+@visibleForTesting
+Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
+  required B Function() build,
+  FutureOr<void> Function()? setUp,
+  FutureOr<void> Function(B bloc)? act,
+  Duration? wait,
+  int skip = 0,
+  Object? Function()? expect,
+  FutureOr<void> Function(B bloc)? verify,
+  Object? Function()? errors,
+  Object? Function()? expectTelemetry,
+  FutureOr<void> Function()? tearDown,
+}) async {
+  final baselineObserver = BlocSignalObserver.observer;
+  await setUp?.call();
+  final activeObserver = BlocSignalObserver.observer;
+  final states = <State>[];
+  final caughtErrors = <Object>[];
+  final caughtTelemetry = <BlocTelemetryEntry>[];
+  B? bloc;
+
+  final initialErrors = <(Object, Object)>[];
+  final initialTelemetry = <(Object, BlocTelemetryEntry)>[];
+
+  final testObserver = _TestBlocSignalObserver(
+    parent: activeObserver,
+    onErrorCallback: (b, error, stackTrace) {
+      if (bloc == null) {
+        initialErrors.add((b, error));
+      } else if (identical(b, bloc)) {
+        caughtErrors.add(error);
+      }
+    },
+    onTelemetryCallback: (b, name, {event, metadata}) {
+      final entry = BlocTelemetryEntry(
+        name: name,
+        event: event,
+        metadata: metadata,
+      );
+      if (bloc == null) {
+        initialTelemetry.add((b, entry));
+      } else if (identical(b, bloc)) {
+        caughtTelemetry.add(entry);
+      }
+    },
+  );
+  BlocSignalObserver.observer = testObserver;
+
+  void Function()? disposeListener;
+  try {
+    bloc = build();
+    for (final pair in initialErrors) {
+      if (identical(pair.$1, bloc)) {
+        caughtErrors.add(pair.$2);
+      }
+    }
+    for (final pair in initialTelemetry) {
+      if (identical(pair.$1, bloc)) {
+        caughtTelemetry.add(pair.$2);
+      }
+    }
+
+    var initialSkipped = false;
+    disposeListener = bloc.state.subscribe((value) {
+      if (!initialSkipped) {
+        initialSkipped = true;
+        return;
+      }
+      states.add(value);
+    });
+
+    final unhandledErrors = <(Object, StackTrace)>[];
+    final parentZone = Zone.current;
+    final completer = Completer<void>();
+    void recordError(Object error, StackTrace stackTrace) {
+      if (completer.isCompleted) {
+        parentZone.handleUncaughtError(error, stackTrace);
+        return;
+      }
+      if (errors == null) {
+        unhandledErrors.add((error, stackTrace));
+      } else if (!caughtErrors.any((existing) => identical(existing, error))) {
+        caughtErrors.add(error);
+      }
+    }
+
+    final targetBloc = bloc;
+    unawaited(
+      runZonedGuarded(
+        () async {
+          try {
+            if (act != null) {
+              try {
+                final actResult = act(targetBloc);
+                if (actResult is Future) {
+                  await actResult;
+                }
+              } on Object catch (error, stackTrace) {
+                recordError(error, stackTrace);
+              }
+            }
+
+            await Future<void>.delayed(Duration.zero);
+
+            if (wait != null) {
+              await Future<void>.delayed(wait);
+            }
+          } finally {
+            completer.complete();
+          }
+        },
+        recordError,
+      ),
+    );
+    await completer.future;
+
+    if (unhandledErrors.isNotEmpty) {
+      final (error, stackTrace) = unhandledErrors.first;
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+
+    if (expect != null) {
+      final expectedStates = expect();
+      final actualEmitted = states.skip(skip).toList();
+      test_pkg.expect(actualEmitted, expectedStates);
+    }
+
+    if (errors != null) {
+      final expectedErrors = errors();
+      test_pkg.expect(caughtErrors, expectedErrors);
+    }
+
+    if (expectTelemetry != null) {
+      final expectedTelemetry = expectTelemetry();
+      test_pkg.expect(caughtTelemetry, expectedTelemetry);
+    }
+
+    if (verify != null) {
+      final verifyResult = verify(bloc);
+      if (verifyResult is Future) {
+        await verifyResult;
+      }
+    }
+  } finally {
+    disposeListener?.call();
+    if (bloc != null) {
+      await bloc.close();
+    }
+    BlocSignalObserver.observer = baselineObserver;
+    await tearDown?.call();
+  }
 }
 
 class _TestBlocSignalObserver extends BlocSignalObserver {

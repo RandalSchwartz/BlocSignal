@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (test)**: Capture rethrown Error subtypes in blocSignalTest when errors matcher is provided (#328).
+
 ## 1.0.1
 
 - **Fix (test)**: Delegate `onEventCompleted` to parent observer in `_TestBlocSignalObserver` (#297).

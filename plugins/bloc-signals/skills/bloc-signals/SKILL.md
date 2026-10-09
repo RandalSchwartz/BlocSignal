@@ -75,8 +75,8 @@ Load only the references needed for the task.
   futures are observed for errors but are not returned or cancelled by `close`.
 - `on<E>` registration is runtime routing. Duplicate exact types throw `StateError`; registration
   does not give sealed-class exhaustiveness. An `onEvent` override must call `super.onEvent`.
-- `close` returns `Future<void>`, disposes effects registered through `createEffect`, and disposes
-  the internal model. New events are dropped after closure. A post-close `emit` asserts in debug
+- `close` is idempotent, returns `Future<void>`, and disposes effects registered through
+  `createEffect`. New events are dropped after closure. A post-close `emit` asserts in debug
   mode and returns without updating state in release mode.
 - A non-equal event transition runs before state mutation. `onChange` runs after mutation. Both
   local hooks require `super`; equal emits run neither hook.

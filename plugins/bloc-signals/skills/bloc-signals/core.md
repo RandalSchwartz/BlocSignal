@@ -21,7 +21,7 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 | `BlocSignalBase(..., options: ...)` | Accepts optional `SignalOptions<StateType>` to configure signal settings (such as debug `name`). Defaults debug name to `'$runtimeType.state'`. |
 | `createEffect(callback, options: ..., onDispose: ...)` | Creates an effect immediately, assigning `options?.name` (defaulting to `'$runtimeType.effect#N'`) and registering its disposer with the base. |
 | `isClosed` | Reports whether `close()` has run. |
-| `close()` | Returns `Future<void>`, disposes registered effects and the internal `SignalModel`, and is idempotent. |
+| `close()` | Returns `Future<void>`, disposes registered effects, and is idempotent. |
 | `toString()` | Overridden by `BlocSignalBase` to output `'$runtimeType($stateValue)'`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses. |
 | `signal.toBlocSignal()` | Adapts any `ReadonlySignal<T>` (including `Signal`, `Computed`, `StreamSignal`, and `value.$`) into a `SignalBlocSignal<T>`. |
 | `future.toBlocSignal(required initialState:)` | Adapts any `Future<T>` into a `FutureBlocSignal<T>` holding raw values with an initial state. |
@@ -517,7 +517,7 @@ post-close emissions are safely dropped without crashing.
 - `onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change)` after the state write;
 - `onError(BlocSignalBase<dynamic> bloc, error, stackTrace)` for reported failures;
 - `onTelemetry(BlocSignalBase<dynamic> bloc, String name, {Object? event, Map<String, dynamic>? metadata})` for operational telemetry and concurrency diagnostics;
-- `onClose(BlocSignalBase<dynamic> bloc)` after owned effects and the internal model are disposed.
+- `onClose(BlocSignalBase<dynamic> bloc)` after owned effects are disposed.
 
 Use `CompositeBlocSignalObserver` or `BlocSignalObserver.addObserver()` when logging, DevTools,
 and telemetry must run together:

@@ -74,5 +74,76 @@ void main() {
         expect(cubit.state.name, equals('SampleCubit.state'));
       },
     );
+
+    group('(Issue #323: R9) SignalOptions lifecycle callbacks', () {
+      test(
+        '(Issue #323: R9) SignalOptions(watched, unwatched) does not fire on '
+        'construction and fires on external subscribe/unsubscribe for '
+        'CubitSignal and BlocSignal',
+        () {
+          var cubitWatched = 0;
+          var cubitUnwatched = 0;
+          final cubit = SampleCubit(
+            options: SignalOptions<int>(
+              watched: () => cubitWatched++,
+              unwatched: () => cubitUnwatched++,
+            ),
+          );
+          addTearDown(cubit.close);
+
+          expect(cubitWatched, equals(0));
+          expect(cubitUnwatched, equals(0));
+
+          final disposeCubitSub = cubit.state.subscribe((_) {});
+          expect(cubitWatched, equals(1));
+          expect(cubitUnwatched, equals(0));
+
+          disposeCubitSub();
+          expect(cubit.isClosed, isFalse);
+          expect(cubitUnwatched, equals(1));
+
+          var blocWatched = 0;
+          var blocUnwatched = 0;
+          final bloc = SampleBloc(
+            options: SignalOptions<int>(
+              watched: () => blocWatched++,
+              unwatched: () => blocUnwatched++,
+            ),
+          );
+          addTearDown(bloc.close);
+
+          expect(blocWatched, equals(0));
+          expect(blocUnwatched, equals(0));
+
+          final disposeBlocSub = bloc.state.subscribe((_) {});
+          expect(blocWatched, equals(1));
+          expect(blocUnwatched, equals(0));
+
+          disposeBlocSub();
+          expect(bloc.isClosed, isFalse);
+          expect(blocUnwatched, equals(1));
+        },
+      );
+
+      test(
+        '(Issue #323: R9) SignalOptions(autoDispose: true) disposes state '
+        'signal when external watchers detach while container is open',
+        () {
+          final cubit = SampleCubit(
+            options: const SignalOptions<int>(autoDispose: true),
+          );
+          addTearDown(cubit.close);
+
+          expect(cubit.state.disposed, isFalse);
+
+          final unsubscribe = cubit.state.subscribe((_) {});
+          expect(cubit.state.disposed, isFalse);
+
+          unsubscribe();
+          expect(cubit.isClosed, isFalse);
+          expect(cubit.state.disposed, isTrue);
+        },
+      );
+    });
   });
 }

@@ -37,7 +37,6 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   bool get isClosed => _isClosed;
 
   late final Signal<StateType> _state;
-  late final SignalModel<void> _lifecycleModel;
   final List<void Function()> _effectsToDispose = [];
 
   bool Function(StateType previous, StateType current)? _customEquals;
@@ -98,16 +97,6 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
       ),
     );
 
-    final modelConstructor = createModel(() {
-      effect(
-        () {
-          _onStateChangedInternal(_state.value);
-        },
-        options: EffectOptions(name: '$runtimeType.lifecycleEffect'),
-      );
-      return null;
-    });
-    _lifecycleModel = modelConstructor();
     try {
       BlocSignalObserver.observer?.onCreate(this);
     } on Object catch (e, stackTrace) {
@@ -276,10 +265,6 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
     }
   }
 
-  void _onStateChangedInternal(StateType latestState) {
-    // Hooks for logging or syncing inside the SignalModel lifecycle
-  }
-
   @override
   @protected
   void Function() createEffect(
@@ -309,9 +294,6 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
       dispose();
     }
     _effectsToDispose.clear();
-    if (_isInitialized) {
-      _lifecycleModel.dispose();
-    }
     try {
       BlocSignalObserver.observer?.onClose(this);
     } on Object catch (e, stackTrace) {

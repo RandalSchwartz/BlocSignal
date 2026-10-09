@@ -245,7 +245,7 @@ types do have reactive dependencies; `FutureSignal` and `StreamSignal` expose re
 reload operations, while `StreamSignal` can pause and resume. Those are signal operations, not
 Riverpod provider lifecycle equivalents.
 
-`BlocSignalBase.close()` disposes effects registered through `createEffect` and the internal model.
+`BlocSignalBase.close()` disposes effects registered through `createEffect`.
 A subclass that owns a raw `computed`, `effect`, subscription, `FutureSignal`, `StreamSignal`,
 timer, cancellation token, or `SignalContainer` must override `close`, dispose those resources,
 then await `super.close()`. External subscribers to `bloc.state` remain the subscriber's

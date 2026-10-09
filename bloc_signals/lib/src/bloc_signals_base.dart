@@ -404,8 +404,7 @@ abstract class BlocSignalBase<StateType> {
     void Function()? onDispose,
   });
 
-  /// Shuts down all internal effects and disposes of the
-  /// underlying [SignalModel].
+  /// Shuts down all internal effects registered via [createEffect].
   @mustCallSuper
   Future<void> close();
 }

@@ -207,7 +207,7 @@ class AlwaysEmitBloc extends BlocSignal<CounterEvent, CounterState> {
 | **Constructor Initial State** | Positional `: super(initialState)` | Named `: super(initialState: ...)` |
 | **Reading Current State Value** | `state` returns `StateType` | `stateValue` returns `StateType`, `state` returns `ReadonlySignal<StateType>` |
 | **Rebuilding** | Tree-based rebuild filter (`buildWhen`) | Fine-grained reactivity (Signal updates) |
-| **Lifecycle** | Manual close / Provider-driven | `SignalModel` lifecycle scope |
+| **Lifecycle** | Manual close / Provider-driven | `createEffect` & `close()` lifecycle scope |
 
 > [!IMPORTANT]
 > ### Critical API Differences from Felix BLoC (`package:bloc`)

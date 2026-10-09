@@ -297,5 +297,170 @@ void main() {
         ),
       );
     });
+
+    test(
+      'restartable does not emit false task_preempted when active async '
+      'handler completes before superseded slow handler (Issue #324: R10)',
+      () async {
+        final completer1 = Completer<void>();
+        final completer2 = Completer<void>();
+        final completer3 = Completer<void>();
+
+        final bloc = _MixedRestartableTelemetryBloc({
+          1: completer1.future,
+          2: completer2.future,
+          3: completer3.future,
+        });
+        addTearDown(bloc.close);
+
+        // Event 1 (slow) starts.
+        bloc.add(SlowIncrement(0, 1));
+        await Future<void>.microtask(() {});
+
+        // Event 2 (fast) supersedes Event 1.
+        bloc.add(SlowIncrement(0, 2));
+        await Future<void>.microtask(() {});
+
+        // Event 2 completes while Event 1 is still pending.
+        completer2.complete();
+        await Future<void>.microtask(() {});
+        expect(bloc.stateValue, equals(2));
+
+        // Event 3 arrives while Event 1 is still pending.
+        bloc.add(SlowIncrement(0, 3));
+        await Future<void>.microtask(() {});
+
+        completer3.complete();
+        completer1.complete();
+        await Future<void>.microtask(() {});
+        expect(bloc.stateValue, equals(3));
+
+        final preemptedLogs = observer.telemetryLogs
+            .where((l) => l.name == BlocTelemetryKeys.taskPreempted)
+            .toList();
+
+        expect(preemptedLogs, hasLength(1));
+        final preemptedEvent = preemptedLogs.first.event! as SlowIncrement;
+        expect(preemptedEvent.value, equals(1));
+      },
+    );
+
+    test(
+      'restartable synchronous fast-path completion after superseding slow '
+      'async handler does not emit false task_preempted on subsequent event '
+      '(Issue #324: R10)',
+      () async {
+        final completer1 = Completer<void>();
+        final completer3 = Completer<void>();
+
+        final bloc = _MixedRestartableTelemetryBloc(
+          {
+            1: completer1.future,
+            3: completer3.future,
+          },
+          syncValues: {2},
+        );
+        addTearDown(bloc.close);
+
+        // Event 1 (slow async) starts.
+        bloc.add(SlowIncrement(0, 1));
+        await Future<void>.microtask(() {});
+
+        // Event 2 (synchronous fast-path) supersedes Event 1 and completes
+        // immediately in the same frame while Event 1 is still pending.
+        bloc.add(SlowIncrement(0, 2));
+        expect(bloc.stateValue, equals(2));
+
+        // Event 3 arrives while Event 1 is still pending.
+        bloc.add(SlowIncrement(0, 3));
+        await Future<void>.microtask(() {});
+
+        completer3.complete();
+        completer1.complete();
+        await Future<void>.microtask(() {});
+        expect(bloc.stateValue, equals(3));
+
+        final preemptedLogs = observer.telemetryLogs
+            .where((l) => l.name == BlocTelemetryKeys.taskPreempted)
+            .toList();
+
+        expect(preemptedLogs, hasLength(1));
+        final preemptedEvent = preemptedLogs.first.event! as SlowIncrement;
+        expect(preemptedEvent.value, equals(1));
+      },
+    );
+
+    test(
+      'restartable synchronous throwing handler clears active execution token '
+      'cleanly without leaking state to subsequent events (Issue #324: R10)',
+      () async {
+        final completer1 = Completer<void>();
+        final completer3 = Completer<void>();
+
+        final bloc = _MixedRestartableTelemetryBloc(
+          {
+            1: completer1.future,
+            3: completer3.future,
+          },
+          throwingValues: {2},
+        );
+        addTearDown(bloc.close);
+
+        // Event 1 (slow async) starts.
+        bloc.add(SlowIncrement(0, 1));
+        await Future<void>.microtask(() {});
+
+        // Event 2 supersedes Event 1 and throws synchronously.
+        bloc.add(SlowIncrement(0, 2));
+        expect(observer.errorLogs, hasLength(1));
+
+        // Event 3 arrives while Event 1 is still pending; since Event 2 threw
+        // and terminated synchronously, Event 3 must NOT report Event 2 as
+        // preempted.
+        bloc.add(SlowIncrement(0, 3));
+        await Future<void>.microtask(() {});
+
+        completer3.complete();
+        completer1.complete();
+        await Future<void>.microtask(() {});
+        expect(bloc.stateValue, equals(3));
+
+        final preemptedLogs = observer.telemetryLogs
+            .where((l) => l.name == BlocTelemetryKeys.taskPreempted)
+            .toList();
+
+        expect(preemptedLogs, hasLength(1));
+        final preemptedEvent = preemptedLogs.first.event! as SlowIncrement;
+        expect(preemptedEvent.value, equals(1));
+      },
+    );
   });
+}
+
+class _MixedRestartableTelemetryBloc extends BlocSignal<CounterEvent, int> {
+  _MixedRestartableTelemetryBloc(
+    this._futures, {
+    this.syncValues = const {},
+    this.throwingValues = const {},
+  }) : super(initialState: 0) {
+    on<SlowIncrement>(
+      (event, emit) {
+        if (throwingValues.contains(event.value)) {
+          throw Exception('Sync failure for ${event.value}');
+        }
+        if (syncValues.contains(event.value)) {
+          emit(event.value);
+          return null;
+        }
+        return _futures[event.value]!.then((_) {
+          emit(event.value);
+        });
+      },
+      transformer: restartable(),
+    );
+  }
+
+  final Map<int, Future<void>> _futures;
+  final Set<int> syncValues;
+  final Set<int> throwingValues;
 }

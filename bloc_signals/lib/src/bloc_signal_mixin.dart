@@ -78,7 +78,10 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
   /// Dispatches an event to the [onEvent] handler.
   ///
   /// Notifies the global [BlocSignalObserver] of the incoming event and catches
-  /// errors thrown in [onEvent], delegating them to [onError].
+  /// errors thrown in [onEvent], delegating them to [onError]. Any [Error]
+  /// instance (such as a [StateError] thrown when dispatching an unregistered
+  /// event to an [on]-based bloc) is reported to [onError] and rethrown
+  /// synchronously.
   void add(Event event) {
     if (isClosed) return;
     final currentObserver = BlocSignalObserver.observer;
@@ -229,10 +232,20 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
 
   /// Handles incoming events and delegates them to registered handlers.
   ///
+  /// Throws a [StateError] if handlers have been registered via [on] and no
+  /// registered handler matches [event].
+  ///
   /// Can be overridden to customize event routing or behavior.
   @mustCallSuper
   FutureOr<void> onEvent(Event event) {
     final matched = _handlers.where((h) => h.isType(event));
+    if (_handlers.isNotEmpty && matched.isEmpty) {
+      throw StateError(
+        'add(${event.runtimeType}) was called without a registered event '
+        'handler. Make sure to register a handler via '
+        'on<${event.runtimeType}>((event, emit) {...}) in the constructor.',
+      );
+    }
     List<Future<dynamic>>? futures;
     for (final registry in matched) {
       final result = registry.handler(event, emit) as dynamic;

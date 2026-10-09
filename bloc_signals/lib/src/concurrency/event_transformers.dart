@@ -309,10 +309,10 @@ EventTransformer<E, StateType> restartable<E, StateType>({
   BlocSignalBase<dynamic>? bloc,
 }) {
   var executionToken = 0;
-  var inFlight = 0;
-  E? lastInFlightEvent;
+  int? activeExecutionToken;
+  E? activeEvent;
   return (event, handler, emit) {
-    if (inFlight > 0 && BlocSignalObserver.observer != null) {
+    if (activeExecutionToken != null && BlocSignalObserver.observer != null) {
       final host = bloc ??
           (Zone.current[BlocSignalBase.ambientZoneBlocKey]
               as BlocSignalBase<dynamic>?);
@@ -320,19 +320,19 @@ EventTransformer<E, StateType> restartable<E, StateType>({
         emitContainerTelemetry(
           host,
           BlocTelemetryKeys.taskPreempted,
-          event: lastInFlightEvent,
+          event: activeEvent,
           metadata: _restartablePreemptedMetadata,
         );
       }
     }
-    lastInFlightEvent = event;
     final currentToken = ++executionToken;
-    inFlight++;
+    activeExecutionToken = currentToken;
+    activeEvent = event;
 
     void onComplete() {
-      inFlight--;
-      if (inFlight == 0) {
-        lastInFlightEvent = null;
+      if (activeExecutionToken == currentToken) {
+        activeExecutionToken = null;
+        activeEvent = null;
       }
     }
 

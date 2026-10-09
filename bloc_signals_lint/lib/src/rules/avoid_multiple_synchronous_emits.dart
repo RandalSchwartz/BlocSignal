@@ -36,39 +36,72 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
     ErrorReporter reporter,
     CustomLintContext context,
   ) {
-    context.registry.addClassDeclaration((node) {
-      final classElement = node.declaredFragment?.element;
-      final extendsClause = node.extendsClause?.superclass.toSource();
-      final withClause = node.withClause?.toSource();
+    context.registry
+      ..addClassDeclaration((node) {
+        final classElement = node.declaredFragment?.element;
+        final extendsClause = node.extendsClause?.superclass.toSource();
+        final withClause = node.withClause?.toSource();
 
-      final isBlocContainer = (classElement != null &&
-              _blocSignalBaseChecker.isSuperOf(classElement)) ||
-          (extendsClause != null &&
-              (extendsClause.contains('BlocSignal') ||
-                  extendsClause.contains('CubitSignal') ||
-                  extendsClause.contains('ReplayCubit') ||
-                  extendsClause.contains('ReplayBloc'))) ||
-          (withClause != null &&
-              (withClause.contains('CubitSignalMixin') ||
-                  withClause.contains('BlocSignalMixin')));
+        final isBlocContainer = (classElement != null &&
+                _blocSignalBaseChecker.isSuperOf(classElement)) ||
+            (extendsClause != null &&
+                (extendsClause.contains('BlocSignal') ||
+                    extendsClause.contains('CubitSignal') ||
+                    extendsClause.contains('ReplayCubit') ||
+                    extendsClause.contains('ReplayBloc'))) ||
+            (withClause != null &&
+                (withClause.contains('CubitSignalMixin') ||
+                    withClause.contains('BlocSignalMixin')));
 
-      if (!isBlocContainer) return;
+        if (!isBlocContainer) return;
 
-      final violations = findViolations(node);
-      for (final violation in violations) {
-        if (violation is MethodInvocation) {
-          reporter.atNode(violation.methodName, code);
-        } else {
-          reporter.atNode(violation, code);
-        }
+        _reportViolations(findViolations(node), reporter);
+      })
+      ..addMixinDeclaration((node) {
+        if (!_isBlocContainerMixin(node)) return;
+        _reportViolations(findMixinViolations(node), reporter);
+      });
+  }
+
+  void _reportViolations(List<AstNode> violations, ErrorReporter reporter) {
+    for (final violation in violations) {
+      if (violation is MethodInvocation) {
+        reporter.atNode(violation.methodName, code);
       }
-    });
+    }
+  }
+
+  static bool _isBlocContainerMixin(MixinDeclaration node) {
+    final onClause = node.onClause;
+    if (onClause == null) return false;
+    for (final constraint in onClause.superclassConstraints) {
+      final type = constraint.type;
+      if (type != null && _blocSignalBaseChecker.isAssignableFromType(type)) {
+        return true;
+      }
+      final source = constraint.toSource();
+      if (source.contains('BlocSignal') ||
+          source.contains('CubitSignal') ||
+          source.contains('ReplayCubit') ||
+          source.contains('ReplayBloc')) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Identifies all AST nodes in [classNode] representing a secondary or
   /// subsequent synchronous state emission along the same linear path.
-  static List<AstNode> findViolations(ClassDeclaration classNode) {
-    final emittingMethods = _findSynchronousEmittingMethods(classNode);
+  static List<AstNode> findViolations(ClassDeclaration classNode) =>
+      _findMemberViolations(classNode.members);
+
+  /// Identifies all AST nodes in [mixinNode] representing a secondary or
+  /// subsequent synchronous state emission along the same linear path.
+  static List<AstNode> findMixinViolations(MixinDeclaration mixinNode) =>
+      _findMemberViolations(mixinNode.members);
+
+  static List<AstNode> _findMemberViolations(NodeList<ClassMember> members) {
+    final emittingMethods = _findSynchronousEmittingMethods(members);
     final violations = <AstNode>[];
     final reported = <AstNode>{};
 
@@ -78,7 +111,7 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
       }
     }
 
-    for (final member in classNode.members) {
+    for (final member in members) {
       if (member is MethodDeclaration) {
         _analyzeFunctionBody(
           member.body,
@@ -102,7 +135,7 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
         recordViolation,
       );
     });
-    for (final member in classNode.members) {
+    for (final member in members) {
       member.accept(visitor);
     }
 
@@ -110,14 +143,14 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
   }
 
   static Set<String> _findSynchronousEmittingMethods(
-    ClassDeclaration classNode,
+    NodeList<ClassMember> members,
   ) {
     final emittingMethods = <String>{};
 
     var changed = true;
     while (changed) {
       changed = false;
-      for (final method in classNode.members.whereType<MethodDeclaration>()) {
+      for (final method in members.whereType<MethodDeclaration>()) {
         final name = method.name.lexeme;
         if (!emittingMethods.contains(name)) {
           if (_doesBodyEmitSynchronously(method.body, emittingMethods)) {
@@ -141,57 +174,36 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
     if (body is! BlockFunctionBody) return false;
 
     for (final stmt in body.block.statements) {
-      if (_statementAwaitsFirst(stmt)) {
-        return false;
-      }
-      if (_statementEmitsSynchronously(stmt, emittingMethods)) {
-        return true;
-      }
+      var awaited = false;
+      var emitted = false;
+      stmt.accept(
+        _LinearAstVisitor(
+          onAwait: () => awaited = true,
+          onEmit: (node) {
+            if (!awaited && _isEmitOrHelper(node, emittingMethods)) {
+              emitted = true;
+            }
+          },
+          stopOnAwait: true,
+        ),
+      );
+      if (emitted) return true;
+      if (awaited) return false;
     }
     return false;
-  }
-
-  static bool _statementAwaitsFirst(Statement stmt) {
-    var awaitsFirst = false;
-    stmt.accept(
-      _LinearAstVisitor(
-        onAwait: () => awaitsFirst = true,
-        onEmit: (_) {},
-        stopOnAwait: true,
-      ),
-    );
-    return awaitsFirst;
-  }
-
-  static bool _statementEmitsSynchronously(
-    Statement stmt,
-    Set<String> emittingMethods,
-  ) {
-    var emits = false;
-    stmt.accept(
-      _LinearAstVisitor(
-        onAwait: () {},
-        onEmit: (node) {
-          if (_isEmitOrHelper(node, emittingMethods)) {
-            emits = true;
-          }
-        },
-        stopOnAwait: true,
-      ),
-    );
-    return emits;
   }
 
   static bool _expressionEmitsSynchronously(
     Expression expr,
     Set<String> emittingMethods,
   ) {
+    var awaited = false;
     var emits = false;
     expr.accept(
       _LinearAstVisitor(
-        onAwait: () {},
+        onAwait: () => awaited = true,
         onEmit: (node) {
-          if (_isEmitOrHelper(node, emittingMethods)) {
+          if (!awaited && _isEmitOrHelper(node, emittingMethods)) {
             emits = true;
           }
         },
@@ -206,7 +218,7 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
     Set<String> emittingMethods,
   ) {
     final name = node.methodName.name;
-    final target = node.target;
+    final target = node.realTarget;
     final isThisOrImplicit = target == null || target is ThisExpression;
     if (!isThisOrImplicit) return false;
 
@@ -223,6 +235,13 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
     if (body is BlockFunctionBody) {
       _analyzeStatements(
         body.block.statements,
+        [_PathState()],
+        emittingMethods,
+        onViolation,
+      );
+    } else if (body is ExpressionFunctionBody) {
+      _evaluateExpression(
+        body.expression,
         [_PathState()],
         emittingMethods,
         onViolation,
@@ -352,6 +371,13 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
       final active = incomingPaths.where((p) => !p.isTerminated).toList();
       if (active.isEmpty) return incomingPaths;
 
+      final labeledMembers = <String, SwitchMember>{};
+      for (final member in stmt.members) {
+        for (final label in member.labels) {
+          labeledMembers[label.label.name] = member;
+        }
+      }
+
       final casePaths = <_PathState>[];
       var hasDefault = false;
 
@@ -360,12 +386,46 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
           hasDefault = true;
         }
         final memberInput = active.map((p) => p.clone()).toList();
-        final afterMember = _analyzeStatements(
+        var afterMember = _analyzeStatements(
           member.statements,
           memberInput,
           emittingMethods,
           onViolation,
         );
+
+        var remainingHops = stmt.members.length;
+        while (remainingHops > 0 &&
+            afterMember.any(
+              (p) =>
+                  p.isContinued && labeledMembers.containsKey(p.continueLabel),
+            )) {
+          remainingHops--;
+          final nextAfterMember = <_PathState>[];
+          for (final path in afterMember) {
+            final label = path.continueLabel;
+            if (path.isContinued &&
+                label != null &&
+                labeledMembers.containsKey(label)) {
+              final targetMember = labeledMembers[label]!;
+              path
+                ..isContinued = false
+                ..isTerminated = false
+                ..continueLabel = null;
+              nextAfterMember.addAll(
+                _analyzeStatements(
+                  targetMember.statements,
+                  [path],
+                  emittingMethods,
+                  onViolation,
+                ),
+              );
+            } else {
+              nextAfterMember.add(path);
+            }
+          }
+          afterMember = nextAfterMember;
+        }
+
         for (final path in afterMember) {
           if (path.isBroken) {
             path
@@ -392,6 +452,17 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
       return incomingPaths;
     }
 
+    if (stmt is ContinueStatement) {
+      final labelName = stmt.label?.name;
+      for (final path in incomingPaths) {
+        path
+          ..isTerminated = true
+          ..isContinued = true
+          ..continueLabel = labelName;
+      }
+      return incomingPaths;
+    }
+
     if (stmt is ForStatement || stmt is WhileStatement || stmt is DoStatement) {
       final Statement body;
       if (stmt is ForStatement) {
@@ -409,6 +480,15 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
         emittingMethods,
         onViolation,
       );
+
+      for (final path in afterIter1) {
+        if (path.isContinued) {
+          path
+            ..isContinued = false
+            ..isTerminated = false
+            ..continueLabel = null;
+        }
+      }
 
       // Simulate iteration 2 to catch loops repeating synchronous emits.
       // Only paths that neither terminated (for example return) nor broke
@@ -549,16 +629,22 @@ class _PathState {
     this.hasEmitted = false,
     this.isTerminated = false,
     this.isBroken = false,
+    this.isContinued = false,
+    this.continueLabel,
   });
 
   bool hasEmitted;
   bool isTerminated;
   bool isBroken;
+  bool isContinued;
+  String? continueLabel;
 
   _PathState clone() => _PathState(
         hasEmitted: hasEmitted,
         isTerminated: isTerminated,
         isBroken: isBroken,
+        isContinued: isContinued,
+        continueLabel: continueLabel,
       );
 }
 

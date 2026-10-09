@@ -2,6 +2,7 @@ import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_multiple_synchronous_emits.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_top_level_bloc_signal_instances.dart';
@@ -671,6 +672,220 @@ class CounterCubit extends ReplayCubit<int> {
         }
 
         expect(skipped, isTrue);
+      },
+    );
+
+    test(
+      '(Issue #329: R15) AvoidMultipleSynchronousEmits detects multiple '
+      'synchronous emit() calls inside MixinDeclaration on CubitSignal',
+      () async {
+        const code = '''
+mixin PricingMixin on CubitSignal<int> {
+  void applyDiscount() {
+    emit(1);
+    emit(2);
+  }
+}
+
+mixin UnresolvedReplayMixin on ReplayCubit<int> {
+  void emit(int v) {}
+  void applyReplay() {
+    emit(1);
+    emit(2);
+  }
+}
+
+mixin PlainMixin {
+  void emit(int v) {}
+  void applyDiscount() {
+    emit(1);
+    emit(2);
+  }
+}
+
+mixin ObjectMixin on Object {
+  void emit(int v) {}
+  void applyDiscount() {
+    emit(1);
+    emit(2);
+  }
+}
+
+class PlainClass extends Object with PlainMixin {}
+''';
+        final lints = await runLintRule(
+          const AvoidMultipleSynchronousEmits(),
+          code,
+        );
+        expect(lints, hasLength(2));
+        expect(lints.first.lexeme, equals('emit'));
+      },
+    );
+
+    test(
+      '(Issue #329: R15) AvoidMultipleSynchronousEmits detects cascade emit() '
+      'calls in ExpressionFunctionBody arrow method and closure',
+      () async {
+        const code = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void badArrow() => this
+    ..emit(1)
+    ..emit(2);
+
+  void badClosureHost() {
+    final fn = () => this
+      ..emit(3)
+      ..emit(4);
+    fn();
+  }
+
+  void safeForeignCascade(CubitSignal<int> other) => other..emit(1)..emit(2);
+}
+''';
+        final lints = await runLintRule(
+          const AvoidMultipleSynchronousEmits(),
+          code,
+        );
+        expect(lints, hasLength(2));
+      },
+    );
+
+    test(
+      '(Issue #329: R15) AvoidMultipleSynchronousEmits handles '
+      'ContinueStatement without false-positive same-iteration fallthrough '
+      'while catching multi-iteration emits',
+      () async {
+        const goodCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void safeLoopWithContinueAndReturn(List<int> items, bool cond) {
+    for (final x in items) {
+      if (cond) {
+        emit(x);
+        return;
+      } else {
+        continue;
+      }
+      emit(0);
+    }
+  }
+
+  void safeLoopWithContinueThenBreak(bool skipFirst) {
+    while (true) {
+      if (skipFirst) {
+        continue;
+      }
+      emit(1);
+      break;
+    }
+  }
+}
+''';
+        final goodLints = await runLintRule(
+          const AvoidMultipleSynchronousEmits(),
+          goodCode,
+        );
+        expect(goodLints, isEmpty);
+
+        const badCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void multiIterContinue(List<int> items, bool cond) {
+    for (final x in items) {
+      if (cond) {
+        emit(x);
+        continue;
+      }
+      emit(0);
+    }
+  }
+}
+''';
+        final badLints = await runLintRule(
+          const AvoidMultipleSynchronousEmits(),
+          badCode,
+        );
+        expect(badLints, isNotEmpty);
+      },
+    );
+
+    test(
+      '(Issue #329: R15) AvoidMultipleSynchronousEmits resolves intra-switch '
+      'continue caseLabel jumps and preserves loop continue semantics',
+      () async {
+        const goodCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void safeSwitchContinue(int x) {
+    switch (x) {
+      case 1:
+        continue sharedCase;
+      sharedCase:
+      case 2:
+        emit(1);
+        break;
+    }
+  }
+
+  void safeLoopWithSwitchContinue(List<int> items) {
+    for (final x in items) {
+      switch (x) {
+        case 1:
+          emit(1);
+          return;
+        default:
+          continue;
+      }
+      emit(2);
+    }
+  }
+}
+''';
+        final goodLints = await runLintRule(
+          const AvoidMultipleSynchronousEmits(),
+          goodCode,
+        );
+        expect(goodLints, isEmpty);
+
+        const badCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void emitBeforeSwitchContinue(int x) {
+    switch (x) {
+      case 1:
+        emit(1);
+        continue sharedCase;
+      sharedCase:
+      case 2:
+        emit(2);
+        break;
+    }
+  }
+
+  void emitAfterSwitchContinue(int x) {
+    switch (x) {
+      case 1:
+        continue sharedCase;
+      sharedCase:
+      case 2:
+        emit(1);
+        break;
+    }
+    emit(2);
+  }
+}
+''';
+        final badLints = await runLintRule(
+          const AvoidMultipleSynchronousEmits(),
+          badCode,
+        );
+        expect(badLints, hasLength(2));
       },
     );
   });

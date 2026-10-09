@@ -54,7 +54,7 @@ These packages provide streaming state machines and Flutter widgets for Google's
 
 - 🚀 **Synchronous State Propagation**: Eliminates microtask-queue latency found in Stream-based BLoC implementations.
 - 🎯 **Fine-Grained Reactivity**: Leverages Rody Davis's signals v7 primitives for highly performant and precise rebuilds.
-- 🧹 **Automatic Lifecycle Management**: Automatically manages and tears down effects and listeners via `SignalModel` integration on close.
+- 🧹 **Automatic Lifecycle Management**: Automatically manages and tears down registered effects and listeners on close.
 - 🔍 **Global Observation**: Hook in a `BlocSignalObserver` to easily log, trace, and monitor events and transitions globally.
 - 🔀 **Automatic De-duplication**: State transitions are automatically de-duplicated using standard `==` equality or custom `equals`.
 - 🛠️ **DevTools & VM Service RPC**: Remote action dispatching, trace panels, diff inspectors, and leak detection via `bloc_signals_devtools`.

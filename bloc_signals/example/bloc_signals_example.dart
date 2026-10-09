@@ -60,6 +60,6 @@ void main() {
 
   print('Synchronous Updated State Value: ${bloc.stateValue}'); // Prints: 1
 
-  // Clean up resources, cancel the internally managed SignalModel lifecycle and any downstream effects
+  // Clean up resources, dispose registered effects, and notify lifecycle observers
   bloc.close();
 }

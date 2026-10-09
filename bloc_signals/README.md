@@ -205,7 +205,6 @@ All `BlocSignalBase` containers (`CubitSignal`, `BlocSignal`), side-effect handl
 ### 1. Automatic & Custom Debug Names
 By default, state signals and internal effects are assigned rich diagnostic names in VM Service / DevTools telemetry:
 - State Signal: `'$runtimeType.state'` (for example `'CounterCubit.state'`)
-- Lifecycle Effect: `'$runtimeType.lifecycleEffect'`
 - Custom Effects: `'$runtimeType.effect#1'`, `'$runtimeType.effect#2'`
 
 You can customize debug names using the `options:` parameter:

@@ -14,7 +14,7 @@ class Increment extends CounterEvent {}
 class Decrement extends CounterEvent {}
 
 class CounterBloc extends BlocSignal<CounterEvent, int> {
-  CounterBloc() : super(initialState: 0);
+  CounterBloc({super.options}) : super(initialState: 0);
 
   @override
   void onEvent(CounterEvent event) {
@@ -29,7 +29,7 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
 }
 
 class CounterCubit extends CubitSignal<int> {
-  CounterCubit() : super(initialState: 0);
+  CounterCubit({super.options}) : super(initialState: 0);
 
   void increment() => emit(stateValue + 1);
   void decrement() => emit(stateValue - 1);
@@ -593,6 +593,38 @@ void main() {
         expect(changes[0].nextState, equals(1));
 
         unawaited(bloc.close());
+      });
+    });
+
+    group('(Issue #323: R9) SignalOptions watched, unwatched, and autoDispose',
+        () {
+      test(
+          '(Issue #323: R9) SignalOptions(watched, unwatched) fires watched on '
+          'external subscribe and unwatched on external unsubscribe while '
+          'CubitSignal is still open', () {
+        var watchedCount = 0;
+        var unwatchedCount = 0;
+
+        final cubit = CounterCubit(
+          options: SignalOptions<int>(
+            watched: () => watchedCount++,
+            unwatched: () => unwatchedCount++,
+          ),
+        );
+        addTearDown(cubit.close);
+
+        // No internal phantom watcher should have triggered watched on init.
+        expect(watchedCount, equals(0));
+        expect(unwatchedCount, equals(0));
+
+        final unsubscribe = cubit.state.subscribe((_) {});
+        expect(watchedCount, equals(1));
+        expect(unwatchedCount, equals(0));
+
+        unsubscribe();
+        expect(cubit.isClosed, isFalse);
+        expect(watchedCount, equals(1));
+        expect(unwatchedCount, equals(1));
       });
     });
   });

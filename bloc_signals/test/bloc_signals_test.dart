@@ -13,6 +13,8 @@ class Increment extends CounterEvent {}
 
 class Decrement extends CounterEvent {}
 
+class UnregisteredEvent extends CounterEvent {}
+
 class CounterBloc extends BlocSignal<CounterEvent, int> {
   CounterBloc({super.options}) : super(initialState: 0);
 
@@ -24,6 +26,8 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
         emit(stateValue + 1);
       case Decrement():
         emit(stateValue - 1);
+      case UnregisteredEvent():
+        break;
     }
   }
 }
@@ -627,7 +631,79 @@ void main() {
         expect(unwatchedCount, equals(1));
       });
     });
+
+    group(
+      '(Issue #325: R11) Unregistered event handling in on<E>-based BlocSignal',
+      () {
+        test(
+          '(Issue #325: R11) throws StateError synchronously and routes to '
+          'onError when dispatching an unregistered event to an on<E>-based '
+          'BlocSignal',
+          () {
+            final bloc = RegistryBloc();
+            const expectedMessage =
+                'add(UnregisteredEvent) was called without a registered event '
+                'handler. Make sure to register a handler via '
+                'on<UnregisteredEvent>((event, emit) {...}) in the '
+                'constructor.';
+
+            expect(
+              () => bloc.add(UnregisteredEvent()),
+              throwsA(
+                isA<StateError>().having(
+                  (e) => e.message,
+                  'message',
+                  equals(expectedMessage),
+                ),
+              ),
+            );
+            expect(
+              observer.logs,
+              contains('error: Bad state: $expectedMessage'),
+            );
+            expect(
+              observer.logs,
+              contains("completed: Instance of 'UnregisteredEvent'"),
+            );
+
+            unawaited(bloc.close());
+          },
+        );
+
+        test(
+          '(Issue #325: R11) does not throw StateError when onEvent is '
+          'overridden directly without any on<E> registrations',
+          () {
+            final bloc = CounterBloc();
+
+            expect(() => bloc.add(Increment()), returnsNormally);
+            expect(bloc.stateValue, equals(1));
+
+            unawaited(bloc.close());
+          },
+        );
+
+        test(
+          '(Issue #325: R11) does not throw StateError when a supertype '
+          'handler is registered via on<CounterEvent>',
+          () {
+            final bloc = SupertypeRegistryBloc();
+
+            expect(() => bloc.add(UnregisteredEvent()), returnsNormally);
+            expect(bloc.stateValue, equals(1));
+
+            unawaited(bloc.close());
+          },
+        );
+      },
+    );
   });
+}
+
+class SupertypeRegistryBloc extends BlocSignal<CounterEvent, int> {
+  SupertypeRegistryBloc() : super(initialState: 0) {
+    on<CounterEvent>((event, emit) => emit(stateValue + 1));
+  }
 }
 
 class _ParityObserver extends BlocSignalObserver {

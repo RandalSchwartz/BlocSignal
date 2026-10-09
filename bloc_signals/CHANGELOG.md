@@ -1,5 +1,6 @@
 ## Unreleased
 
+- **Fix (core)**: Throw `StateError` when dispatching an unregistered event to an `on<E>`-based `BlocSignal` (#325).
 - **Fix (concurrency)**: Track active execution token in `restartable()` to prevent false `task_preempted` telemetry when an active handler completes while an earlier superseded handler is still in flight (#324).
 - **Fix (core)**: Remove dead internal `_lifecycleModel` no-op effect in `CubitSignalMixin` that held a permanent subscription to `_state` and prevented `SignalOptions` `watched`, `unwatched`, and `autoDispose` callbacks from firing (#323).
 - **Feat (core)**: Remove `@protected` annotation from `BlocSignalBase.equals` and `CubitSignalMixin.equals` so UI bindings and external adapters can evaluate container state equality without violating visibility diagnostics (#320).

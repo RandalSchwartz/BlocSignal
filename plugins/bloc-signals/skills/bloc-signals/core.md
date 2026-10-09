@@ -282,8 +282,11 @@ final class CounterBloc extends BlocSignal<CounterEvent, int> {
 ```
 
 Registration throws `StateError` for a duplicate exact type in every build mode. Matching uses
-`is E`, so an event can match handlers registered for both a subtype and a supertype. Synchronous
-handlers run in registry order. Returned futures are joined with `Future.wait` inside `onEvent`.
+`is E`, so an event can match handlers registered for both a subtype and a supertype. If at least
+one handler is registered via `on<E>` and an incoming event matches no registered handler,
+`onEvent` throws a `StateError` synchronously (which `add` reports to `onError` and rethrows).
+Synchronous handlers run in registry order. Returned futures are joined with `Future.wait` inside
+`onEvent`.
 
 ### Event Concurrency & Transformers
 

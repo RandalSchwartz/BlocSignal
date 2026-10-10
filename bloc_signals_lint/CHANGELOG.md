@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Refactor (lint)**: Remove dead `stopOnAwait` parameter and field in `_LinearAstVisitor` inside `AvoidMultipleSynchronousEmits` (#358).
 - **Fix (lint)**: Recognize `ReplayMixin`, `HydratedMixin`, `HydratedCubitSignal`, and `HydratedBlocSignal` in AST and semantic container checks across `AvoidPseudoEventsInTelemetry`, `RequireEmitInHelperName`, `AvoidMultipleSynchronousEmits`, `AvoidRawSignalEffectsInBloc`, `AvoidDirectSignalMutationOutsideBloc`, and `AvoidPrimitiveEventTypes` (#333).
 
 ## 1.3.2

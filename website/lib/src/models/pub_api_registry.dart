@@ -144,6 +144,11 @@ enum DocSymbol(
   blocSignalTest('blocSignalTest', 'bloc_signals_test', 'blocSignalTest.html'),
 
   // Hydrate (bloc_signals_hydrate)
+  hydratedMixin(
+    'HydratedMixin',
+    'bloc_signals_hydrate',
+    'HydratedMixin-mixin.html',
+  ),
   hydratedCubitSignal(
     'HydratedCubitSignal',
     'bloc_signals_hydrate',
@@ -171,12 +176,13 @@ enum DocSymbol(
   ),
 
   // Replay (bloc_signals_replay)
+  replayMixin('ReplayMixin', 'bloc_signals_replay', 'ReplayMixin-mixin.html'),
   replayCubit('ReplayCubit', 'bloc_signals_replay', 'ReplayCubit-class.html'),
   replayBloc('ReplayBloc', 'bloc_signals_replay', 'ReplayBloc-class.html'),
   replayCubitMixin(
     'ReplayCubitMixin',
     'bloc_signals_replay',
-    'ReplayCubitMixin-mixin.html',
+    'ReplayCubitMixin.html',
   ),
   replayBlocMixin(
     'ReplayBlocMixin',

@@ -306,6 +306,183 @@ void main() {
       },
     );
   });
+
+  group('(Issue #333: R19) HydratedMixin standalone composition', () {
+    test(
+      'hydrates initial state and persists emissions when mixed directly with '
+      'CubitSignalMixin',
+      () async {
+        storage.write('CustomHydratedMixinCounter_custom_1', 7);
+
+        final counter = CustomHydratedMixinCounter(
+          id: 'custom_1',
+          storageOverride: storage,
+        );
+        expect(counter.stateValue, equals(7));
+
+        counter.increment();
+        expect(counter.stateValue, equals(8));
+        expect(storage.read('CustomHydratedMixinCounter_custom_1'), equals(8));
+
+        // Emitting equal state does not re-persist
+        counter.emitSelf();
+        expect(counter.stateValue, equals(8));
+
+        await counter.close();
+        counter.increment();
+        expect(counter.stateValue, equals(8));
+        expect(storage.read('CustomHydratedMixinCounter_custom_1'), equals(8));
+      },
+    );
+
+    test(
+      'keeps initialState when no persisted state exists in storage and uses '
+      'default id and storageOverride getters',
+      () async {
+        final counter = _DefaultGettersHydratedMixinCounter();
+        addTearDown(counter.close);
+        expect(counter.id, isNull);
+        expect(counter.storageOverride, isNull);
+        expect(counter.stateValue, equals(0));
+      },
+    );
+
+    test(
+      'deserializes Map<String, String> and Map<String, double> and deletes '
+      'storage entry when toJson returns null',
+      () async {
+        storage
+          ..write(' _StringMapCubit'.trim(), <dynamic, dynamic>{'k': 'v'})
+          ..write('_DoubleMapCubit', <dynamic, dynamic>{'pi': 3.14});
+
+        final stringMapCubit = _StringMapCubit();
+        final doubleMapCubit = _DoubleMapCubit();
+        final nullableCubit = _NullableToJsonCubit();
+        addTearDown(stringMapCubit.close);
+        addTearDown(doubleMapCubit.close);
+        addTearDown(nullableCubit.close);
+
+        expect(stringMapCubit.stateValue, equals({'k': 'v'}));
+        expect(doubleMapCubit.stateValue, equals({'pi': 3.14}));
+
+        nullableCubit.setValue(10);
+        expect(storage.read('_NullableToJsonCubit'), equals(10));
+        nullableCubit.setValue(null);
+        expect(storage.read('_NullableToJsonCubit'), isNull);
+
+        expect(const _ConstStorageSub().read('x'), isNull);
+        expect(HydratedStorage.isInitialized, isTrue);
+        storage.clear();
+        expect(storage.read('_DoubleMapCubit'), isNull);
+        HydratedStorage.reset();
+        expect(HydratedStorage.isInitialized, isFalse);
+      },
+    );
+
+    test(
+      'isHydrated transitions from false to true on hydrate() and subsequent '
+      'hydrate() calls are idempotent no-ops',
+      () async {
+        storage.write('DeferredHydratedMixinCounter', 10);
+
+        final counter = DeferredHydratedMixinCounter();
+        addTearDown(counter.close);
+
+        expect(counter.isHydrated, isFalse);
+        expect(counter.stateValue, equals(0));
+
+        counter.hydrate();
+        expect(counter.isHydrated, isTrue);
+        expect(counter.stateValue, equals(10));
+
+        // Emit a new state and overwrite storage externally; calling hydrate()
+        // again must be a safe idempotent no-op.
+        counter.increment();
+        expect(counter.stateValue, equals(11));
+        storage.write('DeferredHydratedMixinCounter', 999);
+
+        counter.hydrate();
+        expect(counter.isHydrated, isTrue);
+        expect(counter.stateValue, equals(11));
+      },
+    );
+  });
+}
+
+class DeferredHydratedMixinCounter
+    with CubitSignalMixin<int>, HydratedMixin<int> {
+  DeferredHydratedMixinCounter() {
+    initCubitSignal(initialState: initialState);
+  }
+
+  @override
+  int get initialState => 0;
+
+  void increment() => emit(stateValue + 1);
+}
+
+class _ConstStorageSub extends HydratedStorage {
+  const _ConstStorageSub();
+
+  @override
+  dynamic read(String key) => null;
+
+  @override
+  void write(String key, dynamic value) {}
+
+  @override
+  void delete(String key) {}
+
+  @override
+  void clear() {}
+}
+
+class _StringMapCubit extends HydratedCubitSignal<Map<String, String>> {
+  _StringMapCubit() : super(initialState: const {});
+}
+
+class _DoubleMapCubit extends HydratedCubitSignal<Map<String, double>> {
+  _DoubleMapCubit() : super(initialState: const {});
+}
+
+class _NullableToJsonCubit extends HydratedCubitSignal<int?> {
+  _NullableToJsonCubit() : super(initialState: 0);
+
+  void setValue(int? v) => emit(v);
+}
+
+class _DefaultGettersHydratedMixinCounter
+    with CubitSignalMixin<int>, HydratedMixin<int> {
+  _DefaultGettersHydratedMixinCounter() {
+    initCubitSignal(initialState: initialState);
+    hydrate();
+  }
+
+  @override
+  int get initialState => 0;
+}
+
+class CustomHydratedMixinCounter
+    with CubitSignalMixin<int>, HydratedMixin<int> {
+  CustomHydratedMixinCounter({
+    this.id,
+    this.storageOverride,
+  }) {
+    initCubitSignal(initialState: initialState);
+    hydrate();
+  }
+
+  @override
+  int get initialState => 0;
+
+  @override
+  final String? id;
+
+  @override
+  final HydratedStorage? storageOverride;
+
+  void increment() => emit(stateValue + 1);
+  void emitSelf() => emit(stateValue);
 }
 
 class _TestObserver extends BlocSignalObserver {

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (lint)**: Recognize `ReplayMixin`, `HydratedMixin`, `HydratedCubitSignal`, and `HydratedBlocSignal` in AST and semantic container checks across `AvoidPseudoEventsInTelemetry`, `RequireEmitInHelperName`, `AvoidMultipleSynchronousEmits`, `AvoidRawSignalEffectsInBloc`, `AvoidDirectSignalMutationOutsideBloc`, and `AvoidPrimitiveEventTypes` (#333).
+
 ## 1.3.2
 
 - **Fix (lint)**: Support `MixinDeclaration` on state containers, `ExpressionFunctionBody` arrow methods/closures, and `ContinueStatement` control flow in `AvoidMultipleSynchronousEmits` (#329).

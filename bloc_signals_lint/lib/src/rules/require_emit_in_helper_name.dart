@@ -82,10 +82,16 @@ class RequireEmitInHelperName extends DartLintRule {
               (extendsClause.contains('BlocSignal') ||
                   extendsClause.contains('CubitSignal') ||
                   extendsClause.contains('ReplayCubit') ||
-                  extendsClause.contains('ReplayBloc'))) ||
+                  extendsClause.contains('ReplayBloc') ||
+                  extendsClause.contains('HydratedCubit') ||
+                  extendsClause.contains('HydratedBloc'))) ||
           (withClause != null &&
               (withClause.contains('CubitSignalMixin') ||
-                  withClause.contains('BlocSignalMixin')));
+                  withClause.contains('BlocSignalMixin') ||
+                  withClause.contains('ReplayMixin') ||
+                  withClause.contains('ReplayCubitMixin') ||
+                  withClause.contains('ReplayBlocMixin') ||
+                  withClause.contains('HydratedMixin')));
 
       if (!isBlocContainer) return;
 

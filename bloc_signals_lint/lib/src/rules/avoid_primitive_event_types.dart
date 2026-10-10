@@ -112,6 +112,7 @@ class AvoidPrimitiveEventTypes extends DartLintRule {
     return name == 'BlocSignal' ||
         name == 'ReplayBloc' ||
         name == 'HydratedBloc' ||
+        name == 'HydratedBlocSignal' ||
         name == 'BlocSignalMixin' ||
         name == 'ReplayBlocMixin';
   }

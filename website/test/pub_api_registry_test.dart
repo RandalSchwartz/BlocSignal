@@ -55,10 +55,12 @@ void main() {
       expect(names, contains('BlocSignalConsumer'));
       expect(names, contains('BlocSignalSelector'));
       expect(names, contains('blocSignalTest'));
+      expect(names, contains('HydratedMixin'));
       expect(names, contains('HydratedCubitSignal'));
       expect(names, contains('HydratedBlocSignal'));
       expect(names, contains('ClassicBlocSignal'));
       expect(names, contains('ClassicCubitSignal'));
+      expect(names, contains('ReplayMixin'));
       expect(names, contains('ReplayCubit'));
       expect(names, contains('ReplayBloc'));
       expect(names, contains('on'));

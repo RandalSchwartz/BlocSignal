@@ -45,7 +45,7 @@ class CounterBloc extends ReplayBloc<CounterEvent, int> {
 }
 
 class CounterBlocMixin extends BlocSignal<CounterEvent, int>
-    with ReplayBlocMixin<CounterEvent, int> {
+    with ReplayMixin<int>, ReplayBlocMixin<CounterEvent, int> {
   CounterBlocMixin({
     int? limit,
     bool Function(int state)? shouldReplayCallback,

@@ -80,7 +80,9 @@ String get storageToken => '$storagePrefix${id != null ? '_$id' : ''}';
 
 ## 4. Troubleshooting & Best Practices
 
-- **Frame 1 Synchronous Hydration**: Because hydration happens during class constructor execution (`initHydratedState`), your initial UI frame always displays restored state directly—no loading spinner or initial state flicker.
+- **Frame 1 Synchronous Hydration**: Because hydration happens during class constructor execution (`hydrate()` / `initHydratedState`), your initial UI frame always displays restored state directly—no loading spinner or initial state flicker.
+- **Direct Mixin Composition (`CubitSignalMixin` + `HydratedMixin`)**: `HydratedMixin` includes `hydrate()`, `isHydrated`, and `@override void emit(StateType newState)` persistence logic directly. When mixing `HydratedMixin` into a custom class with `CubitSignalMixin` or `BlocSignalMixin` (without extending `HydratedCubitSignal` or `HydratedBlocSignal`), call `hydrate()` in the constructor immediately after `initCubitSignal(initialState: initialState)`. `hydrate()` is idempotent—subsequent invocations after `isHydrated == true` are safe no-ops.
+- **Combining `HydratedMixin` with `ReplayMixin` (`bloc_signals_replay`)**: `HydratedMixin` and `ReplayMixin` (or `ReplayCubitMixin` / `ReplayBlocMixin`) can be composed in either order (`extends HydratedCubitSignal<S> with ReplayMixin<S>` or `extends CubitSignal<S> with ReplayMixin<S>, HydratedMixin<S>`). Restoring states via `undo()` and `redo()` invokes the full `this.emit` chain while `_isReplaying` is active, automatically persisting the restored state to `HydratedStorage` without duplicating replay history entries.
 - **Listing Stored Keys**: The `HydratedStorage` interface (`read`, `write`, `delete`, `clear`) does not include a `listKeys()` method to keep storage contracts backend-agnostic. Query the underlying storage engine directly (for example `prefs.getKeys()`).
 - **Test Tear-Down**: Always invoke `HydratedStorage.reset()` inside `tearDown(() => ...)` in tests to prevent cross-test storage leakage.
 

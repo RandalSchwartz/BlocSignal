@@ -192,6 +192,49 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
     if (isClosed) return;
     super.emit(initialState);
   }
+
+  bool _isHydrated = false;
+
+  /// Whether [hydrate] has completed on this container.
+  bool get isHydrated => _isHydrated;
+
+  /// Restores persisted state from [activeStorage] into this container.
+  ///
+  /// Call [hydrate] in the constructor after initializing the signal state
+  /// when mixing [HydratedMixin] directly into a [CubitSignalMixin] or
+  /// [BlocSignalMixin] class. [HydratedCubitSignal] and
+  /// [HydratedBlocSignal] invoke [hydrate] automatically in their
+  /// constructors.
+  ///
+  /// ```dart
+  /// class Counter with CubitSignalMixin<int>, HydratedMixin<int> {
+  ///   Counter() {
+  ///     initCubitSignal(initialState: initialState);
+  ///     hydrate();
+  ///   }
+  ///
+  ///   @override
+  ///   int get initialState => 0;
+  /// }
+  /// ```
+  void hydrate() {
+    if (_isHydrated) return;
+    _isHydrated = true;
+    final restored = initHydratedState(initialState);
+    if (!equals(stateValue, restored)) {
+      super.emit(restored);
+    }
+  }
+
+  @override
+  void emit(StateType newState) {
+    if (isClosed) return;
+    final previousState = stateValue;
+    super.emit(newState);
+    if (!isClosed && !equals(previousState, stateValue)) {
+      persist(stateValue);
+    }
+  }
 }
 
 /// A reactive [CubitSignal] container that automatically persists and restores
@@ -215,7 +258,7 @@ abstract class HydratedCubitSignal<StateType> extends CubitSignal<StateType>
     HydratedStorage? storage,
   })  : _storageOverride = storage,
         super(initialState: initialState) {
-    _hydrateState();
+    hydrate();
   }
 
   @override
@@ -228,23 +271,6 @@ abstract class HydratedCubitSignal<StateType> extends CubitSignal<StateType>
 
   @override
   HydratedStorage? get storageOverride => _storageOverride;
-
-  void _hydrateState() {
-    final restored = initHydratedState(initialState);
-    if (!equals(initialState, restored)) {
-      super.emit(restored);
-    }
-  }
-
-  @override
-  void emit(StateType newState) {
-    if (isClosed) return;
-    final previousState = stateValue;
-    super.emit(newState);
-    if (!isClosed && !equals(previousState, stateValue)) {
-      persist(stateValue);
-    }
-  }
 }
 
 /// A reactive [BlocSignal] container that automatically persists and restores
@@ -269,7 +295,7 @@ abstract class HydratedBlocSignal<Event, StateType>
     HydratedStorage? storage,
   })  : _storageOverride = storage,
         super(initialState: initialState) {
-    _hydrateState();
+    hydrate();
   }
 
   @override
@@ -282,21 +308,4 @@ abstract class HydratedBlocSignal<Event, StateType>
 
   @override
   HydratedStorage? get storageOverride => _storageOverride;
-
-  void _hydrateState() {
-    final restored = initHydratedState(initialState);
-    if (!equals(initialState, restored)) {
-      super.emit(restored);
-    }
-  }
-
-  @override
-  void emit(StateType newState) {
-    if (isClosed) return;
-    final previousState = stateValue;
-    super.emit(newState);
-    if (!isClosed && !equals(previousState, stateValue)) {
-      persist(stateValue);
-    }
-  }
 }

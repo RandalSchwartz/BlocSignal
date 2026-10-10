@@ -3,12 +3,14 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_multiple_synchronous_emits.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_pseudo_events_in_telemetry.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_top_level_bloc_signal_instances.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_unused_select_result.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_named_replay_constructor.dart';
 import 'package:bloc_signals_lint/src/rules/require_cubit_signal_mixin_init.dart';
+import 'package:bloc_signals_lint/src/rules/require_emit_in_helper_name.dart';
 import 'package:bloc_signals_lint/src/rules/require_super_on_event.dart';
 import 'package:test/test.dart';
 
@@ -886,6 +888,169 @@ class CounterCubit extends CubitSignal<int> {
           badCode,
         );
         expect(badLints, hasLength(2));
+      },
+    );
+
+    test(
+      '(Issue #333: R19) AvoidPseudoEventsInTelemetry, '
+      'RequireEmitInHelperName, AvoidMultipleSynchronousEmits, '
+      'AvoidRawSignalEffectsInBloc, and AvoidDirectSignalMutationOutsideBloc '
+      'handle ReplayMixin and HydratedMixin containers accurately',
+      () async {
+        const telemetryCode = '''
+class ReplayMixinCubit extends BaseService with ReplayMixin<int> {
+  void emitTelemetry(String name) {}
+  void act() {
+    emitTelemetry('SavePressed');
+  }
+}
+
+class HydratedMixinCubit extends BaseService with HydratedMixin<int> {
+  void emitTelemetry(String name) {}
+  void act() {
+    emitTelemetry('RefreshRequested');
+  }
+}
+
+class ReplayBlocWithMixins extends BlocSignal<Object, int>
+    with ReplayMixin<int>, ReplayBlocMixin<Object, int>, HydratedMixin<int> {
+  ReplayBlocWithMixins() : super(initialState: 0);
+  void act() {
+    emitTelemetry('BlocEventPressed');
+  }
+}
+
+class HydratedBlocSub extends HydratedBloc<Object, int> {
+  void emitTelemetry(String name) {}
+  void act() {
+    emitTelemetry('BlocEventPressed');
+  }
+}
+''';
+        final parseResult = parseString(content: telemetryCode);
+        final telemetryViolations = <AstNode>[];
+        for (final decl
+            in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+          telemetryViolations.addAll(
+            AvoidPseudoEventsInTelemetry.findViolations(decl),
+          );
+        }
+        expect(telemetryViolations, hasLength(2));
+
+        const multiEmitCode = '''
+class HydratedOnlyClass extends HydratedCubit<int> {
+  void emit(int s) {}
+  void bad() {
+    emit(1);
+    emit(2);
+  }
+}
+
+class ReplayMixinOnlyClass extends Object with ReplayMixin<int> {
+  void emit(int s) {}
+  void bad() {
+    emit(1);
+    emit(2);
+  }
+}
+
+mixin CustomOnReplayMixin on ReplayMixin<int> {
+  void emit(int s) {}
+  void bad() {
+    emit(1);
+    emit(2);
+  }
+}
+
+mixin CustomOnHydratedMixin on HydratedMixin<int> {
+  void emit(int s) {}
+  void bad() {
+    emit(1);
+    emit(2);
+  }
+}
+''';
+        final multiEmitLints = await runLintRule(
+          const AvoidMultipleSynchronousEmits(),
+          multiEmitCode,
+        );
+        expect(multiEmitLints, hasLength(4));
+
+        const rawEffectCode = '''
+class ReplayCubitClass extends ReplayCubit<int> {
+  ReplayCubitClass() : super(initialState: 0) {
+    effect(() {});
+  }
+}
+
+class HydratedMixinClass extends Object with HydratedMixin<int> {
+  HydratedMixinClass() {
+    effect(() {});
+  }
+}
+''';
+        final rawEffectLints = await runLintRule(
+          const AvoidRawSignalEffectsInBloc(),
+          rawEffectCode,
+        );
+        expect(rawEffectLints, hasLength(2));
+
+        const helperEmitCode = '''
+class HydratedOnlyClass extends HydratedCubit<int> {
+  void emit(int s) {}
+  void _badHelper() {
+    emit(1);
+  }
+}
+
+class ReplayMixinOnlyClass extends Object with ReplayMixin<int> {
+  void emit(int s) {}
+  void _badHelper() {
+    emit(1);
+  }
+}
+''';
+        final helperEmitLints = await runLintRule(
+          const RequireEmitInHelperName(),
+          helperEmitCode,
+        );
+        expect(helperEmitLints, hasLength(2));
+
+        const allowedClassCode = '''
+class ReplayClass extends ReplayCubit<int> {}
+class HydratedMixinClass extends Object with HydratedMixin<int> {}
+mixin OnReplayMixin on ReplayMixin<int> {}
+mixin OnHydratedMixin on HydratedMixin<int> {}
+''';
+        final allowedUnit = parseString(content: allowedClassCode).unit;
+        final classes =
+            allowedUnit.declarations.whereType<ClassDeclaration>().toList();
+        final mixins =
+            allowedUnit.declarations.whereType<MixinDeclaration>().toList();
+        expect(
+          AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+            enclosingClass: classes[0],
+          ),
+          isTrue,
+        );
+        expect(
+          AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+            enclosingClass: classes[1],
+          ),
+          isTrue,
+        );
+        expect(
+          AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+            enclosingMixin: mixins[0],
+          ),
+          isTrue,
+        );
+        expect(
+          AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+            enclosingMixin: mixins[1],
+          ),
+          isTrue,
+        );
       },
     );
   });

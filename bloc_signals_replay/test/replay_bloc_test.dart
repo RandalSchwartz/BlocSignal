@@ -877,7 +877,98 @@ void main() {
         );
       });
     });
+
+    group('(Issue #333: R19) ReplayMixin unified base mixin', () {
+      test(
+        'ReplayBloc and ReplayBlocMixin are instances of ReplayMixin',
+        () async {
+          final bloc = CounterBloc();
+          final mixinBloc = CounterBlocMixin();
+          addTearDown(bloc.close);
+          addTearDown(mixinBloc.close);
+
+          expect(bloc, isA<ReplayMixin<int>>());
+          expect(mixinBloc, isA<ReplayMixin<int>>());
+        },
+      );
+
+      test(
+        'invokes downstream emit overrides (such as HydratedMixin) on undo and '
+        'redo regardless of mixin composition order',
+        () async {
+          final prePersisted = <int>[];
+          final postPersisted = <int>[];
+          final preBloc = _PrePersistedReplayBloc(prePersisted.add);
+          final postBloc = _PostPersistedReplayBloc(postPersisted.add);
+          addTearDown(preBloc.close);
+          addTearDown(postBloc.close);
+
+          preBloc
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed());
+          postBloc
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed());
+          expect(prePersisted, equals([1, 2]));
+          expect(postPersisted, equals([1, 2]));
+
+          preBloc.undo();
+          postBloc.undo();
+          expect(preBloc.stateValue, equals(1));
+          expect(postBloc.stateValue, equals(1));
+          expect(prePersisted, equals([1, 2, 1]));
+          expect(postPersisted, equals([1, 2, 1]));
+
+          preBloc.redo();
+          postBloc.redo();
+          expect(preBloc.stateValue, equals(2));
+          expect(postBloc.stateValue, equals(2));
+          expect(prePersisted, equals([1, 2, 1, 2]));
+          expect(postPersisted, equals([1, 2, 1, 2]));
+        },
+      );
+    });
   });
+}
+
+mixin _BlocPersistenceTrackingMixin<State> on BlocSignalBase<State> {
+  void Function(State state) get onPersist;
+
+  @override
+  void emit(State newState) {
+    if (isClosed) return;
+    final previousState = stateValue;
+    super.emit(newState);
+    if (!isClosed && !this.equals(previousState, stateValue)) {
+      onPersist(stateValue);
+    }
+  }
+}
+
+class _PrePersistedReplayBloc extends BlocSignal<CounterEvent, int>
+    with
+        _BlocPersistenceTrackingMixin<int>,
+        ReplayMixin<int>,
+        ReplayBlocMixin<CounterEvent, int> {
+  _PrePersistedReplayBloc(this.onPersist) : super(initialState: 0) {
+    on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
+  }
+
+  @override
+  final void Function(int state) onPersist;
+}
+
+class _PostPersistedReplayBloc extends BlocSignal<CounterEvent, int>
+    with
+        ReplayMixin<int>,
+        ReplayBlocMixin<CounterEvent, int>,
+        _BlocPersistenceTrackingMixin<int> {
+  _PostPersistedReplayBloc(this.onPersist) : super(initialState: 0) {
+    on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
+  }
+
+  @override
+  final void Function(int state) onPersist;
 }
 
 class _CustomReplayEvent extends ReplayEvent {

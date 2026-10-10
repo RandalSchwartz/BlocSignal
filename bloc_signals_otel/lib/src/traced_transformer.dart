@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:bloc_signals/bloc_signals.dart';
-import 'package:opentelemetry/api.dart' as otel;
+import 'package:dartastic_opentelemetry_api/dartastic_opentelemetry_api.dart'
+    as otel;
 
 /// Wraps an [EventTransformer] in a [BlocEventTransformer] that records
 /// an OpenTelemetry trace span for each event processed by the transformer.
@@ -10,7 +11,7 @@ import 'package:opentelemetry/api.dart' as otel;
 /// type (`event.type`). Any unhandled exceptions that escape the transformer or
 /// its handler are recorded on the span before being rethrown.
 ///
-/// If [tracer] is omitted, [otel.globalTracerProvider] is used to resolve
+/// If [tracer] is omitted, [otel.OTelAPI.tracerProvider] is used to resolve
 /// the `'bloc_signals_otel'` tracer.
 ///
 /// An optional [spanName] can be specified to override the default span name
@@ -29,7 +30,7 @@ import 'package:opentelemetry/api.dart' as otel;
 /// ```
 BlocEventTransformer<E, StateType> traced<E, StateType>(
   EventTransformer<E, StateType> transformer, {
-  otel.Tracer? tracer,
+  otel.APITracer? tracer,
   String? spanName,
 }) {
   return tracedBloc(
@@ -45,7 +46,7 @@ BlocEventTransformer<E, StateType> traced<E, StateType>(
 /// type (`event.type`). Any unhandled exceptions that escape the transformer or
 /// its handler are recorded on the span before being rethrown.
 ///
-/// If [tracer] is omitted, [otel.globalTracerProvider] is used to resolve
+/// If [tracer] is omitted, [otel.OTelAPI.tracerProvider] is used to resolve
 /// the `'bloc_signals_otel'` tracer.
 ///
 /// An optional [spanName] can be specified to override the default span name
@@ -62,19 +63,19 @@ BlocEventTransformer<E, StateType> traced<E, StateType>(
 /// ```
 BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
   BlocEventTransformer<E, StateType> transformer, {
-  otel.Tracer? tracer,
+  otel.APITracer? tracer,
   String? spanName,
 }) {
   return (bloc, event, handler, emit) {
     final effectiveTracer =
-        tracer ?? otel.globalTracerProvider.getTracer('bloc_signals_otel');
+        tracer ?? otel.OTelAPI.tracerProvider().getTracer('bloc_signals_otel');
     final name = spanName ?? '${bloc.runtimeType}.${event.runtimeType}';
     final span = effectiveTracer.startSpan(
       name,
-      attributes: [
-        otel.Attribute.fromString('bloc.type', bloc.runtimeType.toString()),
-        otel.Attribute.fromString('event.type', event.runtimeType.toString()),
-      ],
+      attributes: otel.OTelAPI.attributesFromMap({
+        'bloc.type': bloc.runtimeType.toString(),
+        'event.type': event.runtimeType.toString(),
+      }),
     );
 
     var exceptionRecorded = false;
@@ -85,7 +86,7 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
         exceptionRecorded = true;
         span
           ..recordException(error, stackTrace: stackTrace)
-          ..setStatus(otel.StatusCode.error, error.toString());
+          ..setStatus(otel.SpanStatusCode.Error, error.toString());
       }
     }
 
@@ -93,7 +94,7 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
       if (!spanEnded && !exceptionRecorded) {
         spanEnded = true;
         span
-          ..setStatus(otel.StatusCode.ok)
+          ..setStatus(otel.SpanStatusCode.Ok)
           ..end();
       }
     }

@@ -5,7 +5,7 @@ import 'dart:async';
 
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_otel/bloc_signals_otel.dart';
-import 'package:opentelemetry/sdk.dart' as otel_sdk;
+import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart';
 
 /// 1. Define the Events
 sealed class CounterEvent {}
@@ -16,46 +16,41 @@ class Increment extends CounterEvent {}
 /// 2. Implement the BlocSignal
 class CounterBloc extends BlocSignal<CounterEvent, int> {
   /// Create a counter bloc with initial state 0.
-  CounterBloc() : super(initialState: 0);
-
-  @override
-  void onEvent(CounterEvent event) {
-    unawaited(Future.value(super.onEvent(event)));
-    switch (event) {
-      case Increment():
-        emit(stateValue + 1);
-    }
+  CounterBloc() : super(initialState: 0) {
+    on<Increment>((event, emit) => emit(stateValue + 1));
   }
 }
 
-/// A simple [otel_sdk.SpanExporter] that prints spans to the console.
-class SimpleConsoleExporter implements otel_sdk.SpanExporter {
+/// A simple [SpanExporter] that prints spans to the console.
+class SimpleConsoleExporter implements SpanExporter {
   @override
-  void export(List<otel_sdk.ReadOnlySpan> spans) {
+  Future<void> export(List<Span> spans) async {
     for (final span in spans) {
       print(
         'Exported Span: "${span.name}" '
-        '[Attributes: ${span.attributes}, Status: ${span.status.code}]',
+        '[Status: ${span.status}]',
       );
     }
   }
 
   @override
-  void forceFlush() {}
+  Future<void> forceFlush() async {}
 
   @override
-  void shutdown() {}
+  Future<void> shutdown() async {}
 }
 
-void main() {
+Future<void> main() async {
   // 3. Initialize OpenTelemetry SDK with our Simple Console Exporter
-  final tracerProvider = otel_sdk.TracerProviderBase(
-    processors: [
-      otel_sdk.SimpleSpanProcessor(SimpleConsoleExporter()),
-    ],
+  await OTel.initialize(
+    serviceName: 'bloc_signals_otel_example',
+    spanProcessor: SimpleSpanProcessor(SimpleConsoleExporter()),
+    enableMetrics: false,
+    enableLogs: false,
+    detectPlatformResources: false,
   );
 
-  final tracer = tracerProvider.getTracer('otel_bloc_signals_example');
+  final tracer = OTel.tracerProvider().getTracer('otel_bloc_signals_example');
 
   // 4. Register the global OtelBlocSignalObserver
   BlocSignalObserver.observer = OtelBlocSignalObserver(tracer: tracer);
@@ -65,10 +60,10 @@ void main() {
   final bloc = CounterBloc()
     ..add(Increment())
     ..add(Increment());
-  unawaited(bloc.close());
+  await bloc.close();
 
-  // Shut down the tracer provider to flush the remaining spans to console
-  tracerProvider.shutdown();
+  // Shut down OpenTelemetry to flush any remaining spans to the console
+  await OTel.shutdown();
 
   print('--- Finished CounterBloc instrumentation example ---');
 }

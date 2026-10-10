@@ -45,7 +45,7 @@ class const DocsPkgOtelPage({super.key}) extends StatelessComponent {
         const DocsCodeBlock(
           title: 'terminal',
           language: 'bash',
-          code: 'dart pub add bloc_signals_otel bloc_signals opentelemetry',
+          code: 'dart pub add bloc_signals_otel bloc_signals dartastic_opentelemetry dartastic_opentelemetry_api',
         ),
       ]),
 
@@ -65,10 +65,12 @@ class const DocsPkgOtelPage({super.key}) extends StatelessComponent {
           code: '''
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_otel/bloc_signals_otel.dart';
-import 'package:opentelemetry/opentelemetry.dart';
+import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart';
+import 'package:dartastic_opentelemetry_api/dartastic_opentelemetry_api.dart';
 
-void main() {
-  final tracer = globalTracerProvider.getTracer('my_app_tracer');
+Future<void> main() async {
+  await OTel.initialize(serviceName: 'my_app');
+  final tracer = OTelAPI.tracerProvider().getTracer('my_app_tracer');
 
   // Register the OpenTelemetry observer
   BlocSignalObserver.observer = OtelBlocSignalObserver(

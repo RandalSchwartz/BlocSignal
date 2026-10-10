@@ -11,6 +11,34 @@ class _NullComponent extends StatelessComponent {
   Component build(BuildContext context) => const Component.empty();
 }
 
+/// An interface for [BlocSignalProvider] components that can be merged by
+/// [MultiBlocSignalProvider] into a single linear component hierarchy.
+///
+/// Example:
+/// ```dart
+/// final List<BlocSignalProviderSingleChildComponent> providers = [
+///   BlocSignalProvider<AuthBloc>(create: (context) => AuthBloc()),
+///   BlocSignalProvider<ThemeBloc>(create: (context) => ThemeBloc()),
+/// ];
+/// ```
+abstract class BlocSignalProviderSingleChildComponent implements Component {
+  /// Clones this provider component with a new [child] component.
+  Component copyWith(Component child);
+}
+
+/// Alias for [BlocSignalProviderSingleChildComponent] for API symmetry with
+/// `package:bloc_signals_flutter`.
+///
+/// Example:
+/// ```dart
+/// final List<BlocSignalProviderSingleChildWidget> providers = [
+///   BlocSignalProvider<AuthBloc>(create: (context) => AuthBloc()),
+///   BlocSignalProvider<ThemeBloc>(create: (context) => ThemeBloc()),
+/// ];
+/// ```
+typedef BlocSignalProviderSingleChildWidget
+    = BlocSignalProviderSingleChildComponent;
+
 /// A Jaspr component that provides a [BlocSignal] to its descendants via
 /// the component tree and automatically disposes of it when the provider
 /// is unmounted.
@@ -23,7 +51,8 @@ class _NullComponent extends StatelessComponent {
 /// )
 /// ```
 class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
-    extends StatefulComponent {
+    extends StatefulComponent
+    implements BlocSignalProviderSingleChildComponent {
   /// Creates a [BlocSignalProvider] that manages the lifecycle of a new
   /// [BlocSignal] returned by [create].
   const BlocSignalProvider({
@@ -78,6 +107,7 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
   }
 
   /// Clones this provider with a new child component.
+  @override
   BlocSignalProvider<T> copyWith(Component child) {
     if (create != null) {
       return BlocSignalProvider<T>(
@@ -349,8 +379,9 @@ class MultiBlocSignalProvider extends StatelessComponent {
     super.key,
   });
 
-  /// The list of provider components (such as [BlocSignalProvider]) to inject.
-  final List<dynamic> providers;
+  /// The list of [BlocSignalProviderSingleChildComponent] components (such as
+  /// [BlocSignalProvider]) to inject.
+  final List<BlocSignalProviderSingleChildComponent> providers;
 
   /// The child component subtree that will have access to all provided blocs.
   final Component child;
@@ -359,9 +390,7 @@ class MultiBlocSignalProvider extends StatelessComponent {
   Component build(BuildContext context) {
     var current = child;
     for (final provider in providers.reversed) {
-      if (provider is BlocSignalProvider) {
-        current = (provider as dynamic).copyWith(current) as Component;
-      }
+      current = provider.copyWith(current);
     }
     return current;
   }

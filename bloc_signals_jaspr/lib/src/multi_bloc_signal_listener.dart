@@ -26,8 +26,9 @@ class MultiBlocSignalListener extends StatelessComponent {
     super.key,
   });
 
-  /// The list of listener components (such as [BlocSignalListener]) to run.
-  final List<dynamic> listeners;
+  /// The list of [BlocSignalListenerSingleChildComponent] components (such as
+  /// [BlocSignalListener]) to run.
+  final List<BlocSignalListenerSingleChildComponent> listeners;
 
   /// The child component subtree.
   final Component child;
@@ -36,9 +37,7 @@ class MultiBlocSignalListener extends StatelessComponent {
   Component build(BuildContext context) {
     var current = child;
     for (final listener in listeners.reversed) {
-      if (listener is BlocSignalListener) {
-        current = (listener as dynamic).copyWith(current) as Component;
-      }
+      current = listener.copyWith(current);
     }
     return current;
   }

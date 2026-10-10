@@ -1895,5 +1895,136 @@ void main() {
         expect(A2uiSurfaceBloc.debugRegexCacheSize, equals(100));
       });
     });
+
+    group('(Issue #332: R18) maxResponseHistory', () {
+      test('(Issue #332: R18) default maxResponseHistory is 100', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        expect(bloc.maxResponseHistory, equals(100));
+      });
+
+      test(
+          '(Issue #332: R18) maxResponseHistory: 2 bounds _responseHistory '
+          'to 2 most recent responses in FIFO order while live listeners '
+          'receive all 3', () async {
+        final bloc = A2uiSurfaceBloc(maxResponseHistory: 2);
+        addTearDown(bloc.close);
+
+        expect(bloc.maxResponseHistory, equals(2));
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 'surf_hist',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'surf_hist',
+              components: const [
+                {'id': 'btn_1', 'component': 'Text', 'text': 'Submit'},
+              ],
+            ),
+          ]),
+        );
+
+        final liveResponses = <A2uiActionResponse>[];
+        final liveSub = bloc.actionResponses.listen(liveResponses.add);
+        addTearDown(liveSub.cancel);
+        await Future<void>.microtask(() {});
+
+        for (final name in ['act_1', 'act_2', 'act_3']) {
+          bloc
+            ..add(
+              SubmitAction(
+                actionName: name,
+                sourceComponentId: 'btn_1',
+                surfaceId: 'surf_hist',
+              ),
+            )
+            ..add(const CompleteAction(surfaceId: 'surf_hist'));
+          await Future<void>.microtask(() {});
+          await Future<void>.microtask(() {});
+        }
+
+        expect(
+          liveResponses.map((r) => r.actionName).toList(),
+          equals(['act_1', 'act_2', 'act_3']),
+        );
+
+        final replayedResponses = <A2uiActionResponse>[];
+        final lateSub = bloc.actionResponses.listen(replayedResponses.add);
+        addTearDown(lateSub.cancel);
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+
+        expect(
+          replayedResponses.map((r) => r.actionName).toList(),
+          equals(['act_2', 'act_3']),
+        );
+      });
+
+      test(
+          '(Issue #332: R18) maxResponseHistory: 0 disables replay buffering '
+          'for late subscribers while delivering live broadcast events',
+          () async {
+        final bloc = A2uiSurfaceBloc(maxResponseHistory: 0);
+        addTearDown(bloc.close);
+
+        expect(bloc.maxResponseHistory, equals(0));
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              surfaceId: 'surf_zero',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              surfaceId: 'surf_zero',
+              components: const [
+                {'id': 'btn_1', 'component': 'Text', 'text': 'Submit'},
+              ],
+            ),
+          ]),
+        );
+
+        final liveResponses = <A2uiActionResponse>[];
+        final liveSub = bloc.actionResponses.listen(liveResponses.add);
+        addTearDown(liveSub.cancel);
+        await Future<void>.microtask(() {});
+
+        bloc
+          ..add(
+            const SubmitAction(
+              actionName: 'live_act',
+              sourceComponentId: 'btn_1',
+              surfaceId: 'surf_zero',
+            ),
+          )
+          ..add(const CompleteAction(surfaceId: 'surf_zero'));
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+
+        expect(
+          liveResponses.map((r) => r.actionName).toList(),
+          equals(['live_act']),
+        );
+
+        final replayedResponses = <A2uiActionResponse>[];
+        final lateSub = bloc.actionResponses.listen(replayedResponses.add);
+        addTearDown(lateSub.cancel);
+        await Future<void>.microtask(() {});
+
+        expect(replayedResponses, isEmpty);
+      });
+
+      test('(Issue #332: R18) maxResponseHistory: -1 throws AssertionError',
+          () {
+        expect(
+          () => A2uiSurfaceBloc(maxResponseHistory: -1),
+          throwsA(isA<AssertionError>()),
+        );
+      });
+    });
   });
 }

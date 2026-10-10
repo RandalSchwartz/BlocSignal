@@ -59,12 +59,22 @@ When `DevToolsBlocSignalObserver` is registered, the following VM Service RPC en
 | `ext.bloc_signal.dispatch` | `{"instanceHashCode": 123, "event": {...}}` | Synthetically dispatches an event over RPC (handles JSON-RPC -32602 on bad format). |
 
 ### Custom Event Deserialization
-For complex event objects dispatched from DevTools, register deserializers in your app bootstrap:
+For complex event objects dispatched from DevTools, register deserializers by container type or `eventName` in your app bootstrap, and unregister or clear them when tearing down scoped modules or tests:
 
 ```dart
-DevToolsService.registerEventDeserializer('AddToCartEvent', (json) {
-  return AddToCartEvent(itemId: json['itemId'] as String);
+// Register by container type (or optional eventName):
+DevToolsService.instance.registerEventDeserializer<CartBloc>((raw) {
+  if (raw is Map<String, dynamic> && raw['type'] == 'AddToCartEvent') {
+    return AddToCartEvent(itemId: raw['itemId'] as String);
+  }
+  return raw;
 });
+
+// Unregister a specific container type or eventName:
+DevToolsService.instance.unregisterEventDeserializer<CartBloc>();
+
+// Clear all registered deserializers (for example in test tearDown):
+DevToolsService.instance.clearEventDeserializers();
 ```
 
 ### Zero Release Overhead (`DevToolsService.isEnabled`)

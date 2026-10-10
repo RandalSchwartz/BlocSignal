@@ -26,16 +26,27 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// If [maxSurfaces] is provided (must be greater than `0`), enforces bounded
   /// Least-Recently-Used (LRU) eviction of inactive surfaces when the number of
   /// tracked surfaces exceeds [maxSurfaces].
+  /// [maxResponseHistory] (defaults to `100`, must be greater than or equal to
+  /// `0`) bounds the number of submitted [A2uiActionResponse] items buffered in
+  /// memory for replay to late [actionResponses] subscribers.
   ///
   /// ```dart
-  /// final bloc = A2uiSurfaceBloc(maxSurfaces: 10);
+  /// final bloc = A2uiSurfaceBloc(
+  ///   maxSurfaces: 10,
+  ///   maxResponseHistory: 50,
+  /// );
   /// ```
   A2uiSurfaceBloc({
     List<Catalog<ComponentApi, FunctionImplementation>>? catalogs,
     this.maxSurfaces,
+    this.maxResponseHistory = 100,
   })  : assert(
           maxSurfaces == null || maxSurfaces > 0,
           'maxSurfaces must be null or greater than 0.',
+        ),
+        assert(
+          maxResponseHistory >= 0,
+          'maxResponseHistory must be greater than or equal to 0.',
         ),
         catalogs = catalogs ??
             [
@@ -74,6 +85,18 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   ///
   /// When `null`, surface count is unbounded.
   final int? maxSurfaces;
+
+  /// Maximum number of submitted [A2uiActionResponse] instances retained in
+  /// memory for replay to late subscribers on [actionResponses].
+  ///
+  /// Defaults to `100`. When set to `0`, historical replay buffering is
+  /// disabled while live broadcast delivery remains active.
+  ///
+  /// ```dart
+  /// final bloc = A2uiSurfaceBloc(maxResponseHistory: 25);
+  /// print(bloc.maxResponseHistory); // 25
+  /// ```
+  final int maxResponseHistory;
 
   late final MessageProcessor<ComponentApi> _processor;
 
@@ -245,7 +268,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           onDone: controller.close,
         );
 
-        _responseHistory.forEach(controller.add);
+        List<A2uiActionResponse>.of(_responseHistory).forEach(controller.add);
       },
       onCancel: () async {
         await sub?.cancel();
@@ -555,6 +578,12 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     );
 
     _responseHistory.add(response);
+    if (_responseHistory.length > maxResponseHistory) {
+      _responseHistory.removeRange(
+        0,
+        _responseHistory.length - maxResponseHistory,
+      );
+    }
     _actionResponsesController.add(response);
   }
 

@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Feat (devtools)**: Add `DevToolsService.unregisterEventDeserializer` and `DevToolsService.clearEventDeserializers` for scoped event deserializer lifecycle management (#332).
+
 ## 1.6.0
 
 - **Fix (core)**: Throw `StateError` when dispatching an unregistered event to an `on<E>`-based `BlocSignal` (#325).

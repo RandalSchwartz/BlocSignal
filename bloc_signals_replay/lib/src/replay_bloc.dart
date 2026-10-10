@@ -51,7 +51,8 @@ class _Undo extends ReplayEvent {
 /// ```
 /// {@endtemplate}
 abstract class ReplayBloc<Event extends ReplayEvent, State>
-    extends BlocSignal<Event, State> with ReplayBlocMixin<Event, State> {
+    extends BlocSignal<Event, State>
+    with ReplayMixin<State>, ReplayBlocMixin<Event, State> {
   /// {@macro replay_bloc}
   ReplayBloc({
     required super.initialState,
@@ -83,20 +84,20 @@ abstract class ReplayBloc<Event extends ReplayEvent, State>
 }
 
 /// A mixin which enables `undo` and `redo` operations for [BlocSignal] classes.
+///
+/// Apply alongside [ReplayMixin] (or [ReplayCubitMixin]) when composing onto a
+/// [BlocSignal] class:
+///
+/// ```dart
+/// class CounterBloc extends BlocSignal<CounterEvent, int>
+///     with ReplayMixin<int>, ReplayBlocMixin<CounterEvent, int> {
+///   CounterBloc() : super(initialState: 0) {
+///     on<Increment>((event, emit) => emit(stateValue + 1));
+///   }
+/// }
+/// ```
 mixin ReplayBlocMixin<Event extends ReplayEvent, State>
-    on BlocSignal<Event, State> {
-  late final _changeStack = _ChangeStack<State>(shouldReplay: shouldReplay);
-
-  /// The internal `undo`/`redo` size limit.
-  ///
-  /// If `null`, there is no limit.
-  int? get limit => _changeStack.limit;
-
-  /// Sets the internal `undo`/`redo` size limit.
-  ///
-  /// By default there is no limit.
-  set limit(int? limit) => _changeStack.limit = limit;
-
+    on BlocSignal<Event, State>, ReplayMixin<State> {
   @override
   @protected
   void handleTransition(Object event, State oldState, State newState) {
@@ -162,8 +163,6 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
     }
   }
 
-  bool _isReplaying = false;
-
   @override
   void emit(State newState) {
     if (isClosed) return;
@@ -178,7 +177,7 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
             final event = _Redo();
             _notifyReplayEvent(event);
             runZoned(
-              () => super.emit(newState),
+              () => emit(newState),
               zoneValues: {
                 zoneEventKey: event,
                 zoneBlocKey: this,
@@ -189,7 +188,7 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
             final event = _Undo();
             _notifyReplayEvent(event);
             runZoned(
-              () => super.emit(val),
+              () => emit(val),
               zoneValues: {
                 zoneEventKey: event,
                 zoneBlocKey: this,
@@ -199,44 +198,12 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
         ),
       );
     }
-    super.emit(newState);
-  }
-
-  /// Undo the last change.
-  void undo() {
-    if (isClosed) return;
+    final previousReplaying = _isReplaying;
     _isReplaying = true;
     try {
-      _changeStack.undo();
+      super.emit(newState);
     } finally {
-      _isReplaying = false;
+      _isReplaying = previousReplaying;
     }
   }
-
-  /// Redo the previous change.
-  void redo() {
-    if (isClosed) return;
-    _isReplaying = true;
-    try {
-      _changeStack.redo();
-    } finally {
-      _isReplaying = false;
-    }
-  }
-
-  /// Checks whether the undo/redo stack can perform an undo operation.
-  bool get canUndo => _changeStack.canUndo;
-
-  /// Checks whether the undo/redo stack can perform a redo operation.
-  bool get canRedo => _changeStack.canRedo;
-
-  /// Clears internal undo/redo history.
-  void clearHistory() => _changeStack.clear();
-
-  /// Checks whether the given state should be replayed from the undo/redo
-  /// stack.
-  ///
-  /// This is called at the time the state is being restored.
-  /// By default [shouldReplay] always returns `true`.
-  bool shouldReplay(State state) => true;
 }

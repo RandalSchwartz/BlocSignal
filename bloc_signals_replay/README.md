@@ -31,7 +31,7 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 
 `bloc_signals_replay` brings automatic undo and redo state management capabilities to `BlocSignal` and `CubitSignal`, mirroring Felix Angelov's `replay_bloc` package architecture.
 
-- **`ReplayCubit` / `ReplayCubitMixin`**: Undo and redo stack support for method-driven `CubitSignal` containers.
+- **`ReplayMixin` / `ReplayCubit` / `ReplayCubitMixin`**: Undo and redo stack support for `BlocSignalBase` and method-driven `CubitSignal` containers.
 - **`ReplayBloc` / `ReplayBlocMixin`**: Undo and redo stack support for event-driven `BlocSignal` containers, with synthetic `_Undo` and `_Redo` transition tracing.
 - **`_ChangeStack`**: Configurable history limits and `shouldReplay` state filtering.
 
@@ -47,7 +47,7 @@ Extend `ReplayCubit` to automatically track state changes:
 import 'package:bloc_signals_replay/bloc_signals_replay.dart';
 
 class CounterCubit extends ReplayCubit<int> {
-  CounterCubit() : super(0);
+  CounterCubit() : super(initialState: 0);
 
   void increment() => emit(stateValue + 1);
 }
@@ -81,7 +81,7 @@ final class Increment extends CounterEvent {
 }
 
 class CounterBloc extends ReplayBloc<CounterEvent, int> {
-  CounterBloc() : super(0) {
+  CounterBloc() : super(initialState: 0) {
     on<Increment>((event, emit) => emit(stateValue + 1));
   }
 }
@@ -102,7 +102,7 @@ Pass a `limit` parameter or override `shouldReplay` to control undo/redo behavio
 ```dart
 class BoundedCubit extends ReplayCubit<int> {
   // Cap undo stack depth to 5 states
-  BoundedCubit() : super(0, limit: 5);
+  BoundedCubit() : super(initialState: 0, limit: 5);
 
   // Skip even states during replay
   @override

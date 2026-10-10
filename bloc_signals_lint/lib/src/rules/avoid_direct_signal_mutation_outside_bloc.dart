@@ -44,8 +44,16 @@ class AvoidDirectSignalMutationOutsideBloc extends DartLintRule {
           enclosingClass.implementsClause?.toSource() ?? '';
       if (extendsSource.contains('BlocSignal') ||
           extendsSource.contains('CubitSignal') ||
+          extendsSource.contains('ReplayCubit') ||
+          extendsSource.contains('ReplayBloc') ||
+          extendsSource.contains('HydratedCubit') ||
+          extendsSource.contains('HydratedBloc') ||
           withSource.contains('BlocSignalMixin') ||
           withSource.contains('CubitSignalMixin') ||
+          withSource.contains('ReplayMixin') ||
+          withSource.contains('ReplayCubitMixin') ||
+          withSource.contains('ReplayBlocMixin') ||
+          withSource.contains('HydratedMixin') ||
           implementsSource.contains('BlocSignalBase')) {
         return true;
       }
@@ -66,7 +74,14 @@ class AvoidDirectSignalMutationOutsideBloc extends DartLintRule {
             return true;
           }
           final source = constraint.toSource();
-          if (source.contains('BlocSignal') || source.contains('CubitSignal')) {
+          if (source.contains('BlocSignal') ||
+              source.contains('CubitSignal') ||
+              source.contains('ReplayCubit') ||
+              source.contains('ReplayBloc') ||
+              source.contains('ReplayMixin') ||
+              source.contains('HydratedCubit') ||
+              source.contains('HydratedBloc') ||
+              source.contains('HydratedMixin')) {
             return true;
           }
         }

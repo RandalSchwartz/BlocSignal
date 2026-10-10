@@ -62,9 +62,17 @@ abstract class ReplayCubit<State> extends CubitSignal<State>
   }
 }
 
-/// A mixin which enables `undo` and `redo` operations for [BlocSignalBase] and
-/// [CubitSignal] classes.
-mixin ReplayCubitMixin<State> on BlocSignalBase<State> {
+/// A base mixin which enables `undo` and `redo` operations for
+/// [BlocSignalBase] classes.
+///
+/// ```dart
+/// class CounterCubit extends CubitSignal<int> with ReplayMixin<int> {
+///   CounterCubit() : super(initialState: 0);
+///
+///   void increment() => emit(stateValue + 1);
+/// }
+/// ```
+mixin ReplayMixin<State> on BlocSignalBase<State> {
   late final _changeStack = _ChangeStack<State>(shouldReplay: shouldReplay);
 
   /// The internal `undo`/`redo` size limit.
@@ -90,8 +98,8 @@ mixin ReplayCubitMixin<State> on BlocSignalBase<State> {
         _Change<State>(
           oldState,
           newState,
-          () => super.emit(newState),
-          (val) => super.emit(val),
+          () => emit(newState),
+          emit,
         ),
       );
     }
@@ -136,3 +144,15 @@ mixin ReplayCubitMixin<State> on BlocSignalBase<State> {
   /// By default [shouldReplay] always returns `true`.
   bool shouldReplay(State state) => true;
 }
+
+/// A mixin which enables `undo` and `redo` operations for [BlocSignalBase] and
+/// [CubitSignal] classes.
+///
+/// ```dart
+/// class CounterCubit extends CubitSignal<int> with ReplayCubitMixin<int> {
+///   CounterCubit() : super(initialState: 0);
+///
+///   void increment() => emit(stateValue + 1);
+/// }
+/// ```
+typedef ReplayCubitMixin<State> = ReplayMixin<State>;

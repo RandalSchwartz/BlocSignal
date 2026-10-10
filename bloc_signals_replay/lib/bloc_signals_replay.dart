@@ -2,7 +2,8 @@
 /// containers.
 ///
 /// Get started by extending `ReplayCubit` or `ReplayBloc`, or applying
-/// `ReplayCubitMixin` or `ReplayBlocMixin` to existing state containers.
+/// `ReplayMixin`, `ReplayCubitMixin`, or `ReplayBlocMixin` to existing state
+/// containers.
 library;
 
 export 'package:bloc_signals/bloc_signals.dart';

@@ -113,6 +113,24 @@ class CounterCubit extends HydratedCubitSignal<int> {
 }
 ```
 
+### 3b. Mixing `HydratedMixin` Directly with `CubitSignalMixin`
+
+When composing `HydratedMixin` onto a class using `CubitSignalMixin` or `BlocSignalMixin` (without extending `HydratedCubitSignal` or `HydratedBlocSignal`), call `hydrate()` in the constructor after `initCubitSignal`:
+
+```dart
+class Counter with CubitSignalMixin<int>, HydratedMixin<int> {
+  Counter() {
+    initCubitSignal(initialState: initialState);
+    hydrate();
+  }
+
+  @override
+  int get initialState => 0;
+
+  void increment() => emit(stateValue + 1);
+}
+```
+
 ### 4. Built-in Storage Adapters (`SharedPreferences` & `FlutterSecureStorage`)
 
 `package:bloc_signals_hydrate` provides pre-built, tree-shakable adapters for `SharedPreferences` and `FlutterSecureStorage` via sub-library entrypoints:

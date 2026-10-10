@@ -64,7 +64,8 @@ class AvoidPseudoEventsInTelemetry extends DartLintRule {
         (classElement != null && _blocSignalChecker.isSuperOf(classElement)) ||
             (extendsClause != null &&
                 (extendsClause.contains('BlocSignal') ||
-                    extendsClause.contains('ReplayBloc'))) ||
+                    extendsClause.contains('ReplayBloc') ||
+                    extendsClause.contains('HydratedBloc'))) ||
             (withClause != null &&
                 (withClause.contains('BlocSignalMixin') ||
                     withClause.contains('ReplayBlocMixin')));
@@ -73,14 +74,19 @@ class AvoidPseudoEventsInTelemetry extends DartLintRule {
 
     final isCubit = (classElement != null &&
             (_cubitSignalChecker.isSuperOf(classElement) ||
-                _cubitSignalMixinChecker.isSuperOf(classElement))) ||
+                _cubitSignalMixinChecker.isSuperOf(classElement)) &&
+            !_blocSignalChecker.isSuperOf(classElement)) ||
         (extendsClause != null &&
             (extendsClause.contains('CubitSignal') ||
                 extendsClause.contains('ReplayCubit') ||
                 extendsClause.contains('HydratedCubit'))) ||
         (withClause != null &&
+            !withClause.contains('BlocSignalMixin') &&
+            !withClause.contains('ReplayBlocMixin') &&
             (withClause.contains('CubitSignalMixin') ||
-                withClause.contains('ReplayCubitMixin')));
+                withClause.contains('ReplayCubitMixin') ||
+                withClause.contains('ReplayMixin') ||
+                withClause.contains('HydratedMixin')));
 
     if (!isCubit) return const [];
 

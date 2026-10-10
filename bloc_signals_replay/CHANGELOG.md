@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Refactor (replay)**: Extract shared undo/redo state and methods (`limit`, `undo()`, `redo()`, `canUndo`, `canRedo`, `clearHistory()`, `shouldReplay()`) into `ReplayMixin` base mixin shared by `ReplayCubitMixin` and `ReplayBlocMixin`, and route `undo()` / `redo()` restorations through `emit()` so downstream mixins (such as `HydratedMixin`) persist restored states regardless of mixin composition order (#333).
+
 ## 1.2.0
 
 - **Fix (replay)**: Trim existing history when lowering `limit` at runtime, clear history and redos when `limit <= 0`, enforce history limits during `redo()`, and implement atomic single-pass traversal for `shouldReplay` evaluation in `undo()` and `redo()` (#319).

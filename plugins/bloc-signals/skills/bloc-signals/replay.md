@@ -6,8 +6,9 @@ The `bloc_signals_replay` package provides automatic undo and redo state trackin
 
 ## ⚡ Key Components
 
-- **`ReplayCubit<State>` & `ReplayCubitMixin<State>`**: Extends or mixes into `CubitSignal<State>` to provide `undo()`, `redo()`, `canUndo`, `canRedo`, `clearHistory()`, `limit`, and `shouldReplay(state)`.
-- **`ReplayBloc<Event, State>` & `ReplayBlocMixin<Event, State>`**: Extends or mixes into `BlocSignal<Event, State>` to provide undo/redo history tracking. Emits synthetic `_Undo` and `_Redo` events into `onEvent` and `onTransition` so observers track replay actions.
+- **`ReplayMixin<State>`**: Shared base mixin on `BlocSignalBase<State>` providing `undo()`, `redo()`, `canUndo`, `canRedo`, `clearHistory()`, `limit`, `shouldReplay(state)`, and `emit(newState)` history recording.
+- **`ReplayCubit<State>` & `ReplayCubitMixin<State>`**: Extends or mixes into `CubitSignal<State>` (with `ReplayCubitMixin<State>` aliased to `ReplayMixin<State>`) to provide undo/redo history tracking.
+- **`ReplayBloc<Event, State>` & `ReplayBlocMixin<Event, State>`**: Extends or mixes into `BlocSignal<Event, State>` alongside `ReplayMixin<State>` to provide undo/redo history tracking. Emits synthetic `_Undo` and `_Redo` events into `onEvent` and `onTransition` so observers track replay actions.
 - **`ReplayEvent`**: Base event class for `ReplayBloc` events.
 
 ---
@@ -110,8 +111,8 @@ class SelectiveCubit extends ReplayCubit<MyState> {
 
 ## 🛡️ Replay Execution Protection & Lifecycle Gating
 
-### Duplicate Emission Protection
-Calling `undo()` or `redo()` internally triggers an `emit()` to restore the selected state. To prevent these internal restorations from pushing duplicate entries into the undo stack or erasing the redo stack, `ReplayCubitMixin` and `ReplayBlocMixin` use internal reentrancy flags (`_isReplaying`).
+### Duplicate Emission Protection & Mixin Composition Order Independence
+Calling `undo()` or `redo()` internally triggers `this.emit()` to restore the selected state while `_isReplaying` is `true`. Because replay restorations route through `this.emit()` while guarding `_changeStack.add` behind `!_isReplaying`, downstream `emit()` overrides such as `HydratedMixin` (`package:bloc_signals_hydrate`) execute and persist restored states regardless of whether `HydratedMixin` is mixed before or after `ReplayMixin` / `ReplayBlocMixin`, without pushing duplicate entries into the undo stack or erasing the redo stack.
 
 ### Lifecycle Gating
 - **Post-Close Safety**: Once `close()` has been called, subsequent emissions (for example from pending asynchronous tasks) are strictly prevented from mutating or appending to the undo/redo history stack.

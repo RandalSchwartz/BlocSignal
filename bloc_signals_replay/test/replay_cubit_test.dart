@@ -979,6 +979,126 @@ void main() {
       );
     });
   });
+
+  group('(Issue #333: R19) ReplayMixin unified base mixin', () {
+    test(
+      'ReplayCubit and ReplayCubitMixin are instances of ReplayMixin',
+      () async {
+        final cubit = CounterCubit();
+        final mixinCubit = CounterCubitMixin();
+        addTearDown(cubit.close);
+        addTearDown(mixinCubit.close);
+
+        expect(cubit, isA<ReplayMixin<int>>());
+        expect(mixinCubit, isA<ReplayMixin<int>>());
+      },
+    );
+
+    test(
+      'standalone CubitSignal with ReplayMixin supports undo, redo, limit, '
+      'clearHistory, and shouldReplay',
+      () async {
+        final cubit = _StandaloneReplayMixinCubit()
+          ..limit = 2
+          ..increment()
+          ..increment()
+          ..increment();
+        addTearDown(cubit.close);
+
+        expect(cubit.limit, equals(2));
+        expect(cubit.stateValue, equals(3));
+        expect(cubit.canUndo, isTrue);
+
+        cubit.undo();
+        expect(cubit.stateValue, equals(2));
+        expect(cubit.canRedo, isTrue);
+
+        cubit.redo();
+        expect(cubit.stateValue, equals(3));
+
+        cubit.clearHistory();
+        expect(cubit.canUndo, isFalse);
+        expect(cubit.canRedo, isFalse);
+      },
+    );
+
+    test(
+      'invokes downstream emit overrides (such as HydratedMixin) on undo and '
+      'redo regardless of mixin composition order',
+      () async {
+        final prePersisted = <int>[];
+        final postPersisted = <int>[];
+        final preCubit = _PrePersistedReplayCubit(prePersisted.add);
+        final postCubit = _PostPersistedReplayCubit(postPersisted.add);
+        addTearDown(preCubit.close);
+        addTearDown(postCubit.close);
+
+        preCubit
+          ..increment()
+          ..increment();
+        postCubit
+          ..increment()
+          ..increment();
+        expect(prePersisted, equals([1, 2]));
+        expect(postPersisted, equals([1, 2]));
+
+        preCubit.undo();
+        postCubit.undo();
+        expect(preCubit.stateValue, equals(1));
+        expect(postCubit.stateValue, equals(1));
+        expect(prePersisted, equals([1, 2, 1]));
+        expect(postPersisted, equals([1, 2, 1]));
+
+        preCubit.redo();
+        postCubit.redo();
+        expect(preCubit.stateValue, equals(2));
+        expect(postCubit.stateValue, equals(2));
+        expect(prePersisted, equals([1, 2, 1, 2]));
+        expect(postPersisted, equals([1, 2, 1, 2]));
+      },
+    );
+  });
+}
+
+mixin _PersistenceTrackingMixin<State> on BlocSignalBase<State> {
+  void Function(State state) get onPersist;
+
+  @override
+  void emit(State newState) {
+    if (isClosed) return;
+    final previousState = stateValue;
+    super.emit(newState);
+    if (!isClosed && !this.equals(previousState, stateValue)) {
+      onPersist(stateValue);
+    }
+  }
+}
+
+class _PrePersistedReplayCubit extends CubitSignal<int>
+    with _PersistenceTrackingMixin<int>, ReplayMixin<int> {
+  _PrePersistedReplayCubit(this.onPersist) : super(initialState: 0);
+
+  @override
+  final void Function(int state) onPersist;
+
+  void increment() => emit(stateValue + 1);
+}
+
+class _PostPersistedReplayCubit extends CubitSignal<int>
+    with ReplayMixin<int>, _PersistenceTrackingMixin<int> {
+  _PostPersistedReplayCubit(this.onPersist) : super(initialState: 0);
+
+  @override
+  final void Function(int state) onPersist;
+
+  void increment() => emit(stateValue + 1);
+}
+
+class _StandaloneReplayMixinCubit extends CubitSignal<int>
+    with ReplayMixin<int> {
+  _StandaloneReplayMixinCubit() : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
 }
 
 class _NamedCounterCubit extends ReplayCubit<int> {

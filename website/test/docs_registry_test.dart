@@ -361,4 +361,56 @@ void main() {
       );
     });
   });
+
+  group('(Issue #334: R20) Consolidated DocSectionItem Metadata & Lookup', () {
+    test('every DocSectionItem directly exposes non-empty headings and a valid sourcePath', () {
+      final allSections = DocsRegistry.categories
+          .expand((c) => c.sections)
+          .toList();
+      expect(allSections, isNotEmpty);
+
+      for (final section in allSections) {
+        expect(
+          section.headings,
+          isNotEmpty,
+          reason:
+              'Section "${section.id}" must directly expose non-empty headings',
+        );
+        expect(
+          section.headings,
+          equals(DocsContent.getHeadingsForSection(section.id)),
+        );
+
+        expect(
+          section.sourcePath,
+          startsWith('website/lib/src/components/docs/pages/docs_'),
+          reason:
+              'Section "${section.id}" sourcePath must point to a docs page component',
+        );
+        expect(section.sourcePath, endsWith('.dart'));
+        expect(
+          section.sourcePath,
+          equals(DocsContent.getSourcePathForSection(section.id)),
+        );
+      }
+    });
+
+    test('maybeResolveSection returns matching DocSectionItem or null on unknown section', () {
+      final overview = DocsRegistry.maybeResolveSection('overview');
+      expect(overview, isNotNull);
+      expect(overview!.id, equals('overview'));
+
+      final pkgBloc = DocsRegistry.maybeResolveSection(
+        '/docs/pkg-bloc/index.html',
+      );
+      expect(pkgBloc, isNotNull);
+      expect(pkgBloc!.id, equals('pkg-bloc'));
+
+      final unknown = DocsRegistry.maybeResolveSection('nonexistent_section');
+      expect(unknown, isNull);
+
+      final fallback = DocsRegistry.resolveSection('nonexistent_section');
+      expect(fallback.id, equals('overview'));
+    });
+  });
 }

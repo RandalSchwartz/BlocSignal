@@ -1,11 +1,8 @@
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
-class const TocHeading({
-  required final String title,
-  required final String anchor,
-  final int level = 2,
-});
+import '../../models/docs_models.dart' show TocHeading;
+export '../../models/docs_models.dart' show TocHeading;
 
 /// Renders the On-This-Page table of contents on the right sidebar.
 class const DocsToc({

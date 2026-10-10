@@ -4,6 +4,7 @@ All notable changes to `bloc_signals_genui_flutter` will be documented in this f
 
 ## Unreleased
 
+- **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).
 - **Docs (genui_flutter)**: Document intentional `on Object catch` component isolation boundary in `A2uiSurfaceView` (#340).
 - **Fix (genui_flutter)**: Wrapped per-component rendering in `_SurfaceTreeRenderer` inside reactive `_BoundComponentWidget` instances subscribed to `binder.resolvedProps` with ancestor-path circular reference protection, enabling granular leaf component rebuilds when `DataModel` bindings update directly (#321).
 - Decoupled active surface viewport observation and added surface closure helpers (#292):

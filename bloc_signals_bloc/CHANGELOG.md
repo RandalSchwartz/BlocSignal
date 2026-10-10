@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).
+
 ## 1.0.2
 
 - Correct `ClassicBlocSignal` and `ClassicCubitSignal` documentation and README to accurately describe classic BLoC stream latency contracts (Issue #303).

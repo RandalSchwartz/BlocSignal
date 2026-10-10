@@ -3,6 +3,23 @@ import 'dart:io';
 /// Runs tests across all workspace packages in isolation to prevent
 /// path resolution and symbol compilation collisions.
 void main(List<String> args) {
+  final examplePackages =
+      Directory('examples')
+          .listSync()
+          .whereType<Directory>()
+          .where(
+            (dir) =>
+                File('${dir.path}/pubspec.yaml').existsSync() &&
+                Directory('${dir.path}/test').existsSync(),
+          )
+          .map(
+            (dir) =>
+                'examples/'
+                '${dir.uri.pathSegments.where((s) => s.isNotEmpty).last}',
+          )
+          .toList()
+        ..sort();
+
   final packages = [
     '.', // Root workspace tests
     'bloc_signals',
@@ -18,8 +35,7 @@ void main(List<String> args) {
     'bloc_signals_devtools',
     'bloc_signals_genui',
     'bloc_signals_genui_flutter',
-    'examples/genui_tui_agent',
-    'examples/genui_flight_booking',
+    ...examplePackages,
     'website',
   ];
 
@@ -29,17 +45,17 @@ void main(List<String> args) {
 
   for (final pkg in packages) {
     final isWebsite = pkg == 'website';
+    final isRoot = pkg == '.';
+    final isExample = pkg.startsWith('examples/');
     final executable = isWebsite ? 'dart' : 'flutter';
+    final filteredArgs = (isWebsite || isRoot || isExample)
+        ? args.where((a) => !a.startsWith('--coverage')).toList()
+        : args;
     final commandArgs = isWebsite
-        ? [
-            'test',
-            '-p',
-            'chrome',
-            ...args.where((a) => !a.startsWith('--coverage')),
-          ]
-        : ['test', ...args];
+        ? ['test', '-p', 'chrome', ...filteredArgs]
+        : ['test', ...filteredArgs];
 
-    print('➡️ Running tests in $pkg ($executable test ${args.join(' ')})');
+    print('➡️ Running tests in $pkg ($executable ${commandArgs.join(' ')})');
 
     final process = Process.runSync(
       executable,

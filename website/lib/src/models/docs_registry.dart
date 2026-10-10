@@ -45,6 +45,9 @@ class const DocsRegistry() {
           category: 'Getting Started',
           description: '0ms synchronous reactivity, signals graph integration, and comparison matrix.',
           builder: DocsOverviewPage.new,
+          headings: DocsOverviewPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_overview.dart',
         ),
         DocSectionItem(
           id: 'installation',
@@ -54,6 +57,9 @@ class const DocsRegistry() {
           description:
               'Platform-specific installation and monorepo package catalog.',
           builder: DocsInstallationPage.new,
+          headings: DocsInstallationPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_installation.dart',
         ),
         DocSectionItem(
           id: 'quickstart',
@@ -62,6 +68,9 @@ class const DocsRegistry() {
           category: 'Getting Started',
           description: '5-minute tutorial covering Cubit, Bloc, Flutter UI, and testing.',
           builder: DocsQuickstartPage.new,
+          headings: DocsQuickstartPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_quickstart.dart',
         ),
         DocSectionItem(
           id: 'decision-matrix',
@@ -70,6 +79,9 @@ class const DocsRegistry() {
           category: 'Getting Started',
           description: 'Interactive selector and decision guide: Signal vs. CubitSignal vs. BlocSignal vs. Hydrate.',
           builder: DocsDecisionMatrixPage.new,
+          headings: DocsDecisionMatrixPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_decision_matrix.dart',
         ),
       ],
     ),
@@ -84,6 +96,9 @@ class const DocsRegistry() {
           category: 'Core Concepts',
           description: 'Choosing between direct method invocation and event-driven architectures.',
           builder: DocsCubitVsBlocPage.new,
+          headings: DocsCubitVsBlocPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_cubit_vs_bloc.dart',
         ),
         DocSectionItem(
           id: 'state-modeling',
@@ -92,6 +107,9 @@ class const DocsRegistry() {
           category: 'Core Concepts',
           description: 'Immutable data models, Dart Records, Fast Immutable Collections (FIC), and custom equality comparators.',
           builder: DocsStateModelingPage.new,
+          headings: DocsStateModelingPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_state_modeling.dart',
         ),
         DocSectionItem(
           id: 'events-and-handlers',
@@ -100,6 +118,8 @@ class const DocsRegistry() {
           category: 'Core Concepts',
           description: 'Registering typed event handlers with on<E>(), concurrency coordination, and error tracking.',
           builder: DocsEventsAndHandlersPage.new,
+          headings: DocsEventsAndHandlersPage.headings,
+          sourcePath: 'website/lib/src/components/docs/pages/docs_events_and_handlers.dart',
         ),
         DocSectionItem(
           id: 'event-transformers',
@@ -108,6 +128,8 @@ class const DocsRegistry() {
           category: 'Core Concepts',
           description: 'droppable(), sequential(), restartable(), and custom streamless event Transformers.',
           builder: DocsEventTransformersPage.new,
+          headings: DocsEventTransformersPage.headings,
+          sourcePath: 'website/lib/src/components/docs/pages/docs_event_transformers.dart',
         ),
         DocSectionItem(
           id: 'lifecycle-and-observers',
@@ -116,6 +138,8 @@ class const DocsRegistry() {
           category: 'Core Concepts',
           description: 'State container lifecycles, isClosed guarantees, and global observability with BlocSignalObserver.',
           builder: DocsLifecycleAndObserversPage.new,
+          headings: DocsLifecycleAndObserversPage.headings,
+          sourcePath: 'website/lib/src/components/docs/pages/docs_lifecycle_and_observers.dart',
         ),
         DocSectionItem(
           id: 'signals-reactivity',
@@ -124,6 +148,8 @@ class const DocsRegistry() {
           category: 'Core Concepts',
           description: 'Preact signals v7 integration, 0ms synchronous propagation, computed signals, and effects.',
           builder: DocsSignalsReactivityPage.new,
+          headings: DocsSignalsReactivityPage.headings,
+          sourcePath: 'website/lib/src/components/docs/pages/docs_signals_reactivity.dart',
         ),
       ],
     ),
@@ -138,6 +164,8 @@ class const DocsRegistry() {
           category: 'Flutter Integration',
           description: 'BlocSignalProvider scoping, lazy loading, and O(1) InheritedElement resolution.',
           builder: DocsFlutterProvidersPage.new,
+          headings: DocsFlutterProvidersPage.headings,
+          sourcePath: 'website/lib/src/components/docs/pages/docs_flutter_providers.dart',
         ),
         DocSectionItem(
           id: 'flutter-widgets',
@@ -146,6 +174,9 @@ class const DocsRegistry() {
           category: 'Flutter Integration',
           description: 'BlocSignalBuilder, BlocSignalListener, BlocSignalConsumer, and fine-grained BlocSignalSelector.',
           builder: DocsFlutterWidgetsPage.new,
+          headings: DocsFlutterWidgetsPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_flutter_widgets.dart',
         ),
         DocSectionItem(
           id: 'flutter-context',
@@ -154,6 +185,9 @@ class const DocsRegistry() {
           category: 'Flutter Integration',
           description: 'context.read<T>(), context.watch<T>(), and two-type-parameter context.select<B, R>().',
           builder: DocsFlutterContextPage.new,
+          headings: DocsFlutterContextPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_flutter_context.dart',
         ),
       ],
     ),
@@ -168,6 +202,9 @@ class const DocsRegistry() {
           category: 'Testing',
           description: 'Declarative unit testing, observer scoping, lifecycle verification, and async frame expectations.',
           builder: DocsTestingGuidePage.new,
+          headings: DocsTestingGuidePage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_testing_guide.dart',
         ),
       ],
     ),
@@ -182,6 +219,9 @@ class const DocsRegistry() {
           category: 'Satellite Packages',
           description: 'Synchronous frame 1 state persistence across restarts.',
           builder: DocsPkgHydratePage.new,
+          headings: DocsPkgHydratePage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_pkg_hydrate.dart',
         ),
         DocSectionItem(
           id: 'pkg-replay',
@@ -190,6 +230,9 @@ class const DocsRegistry() {
           category: 'Satellite Packages',
           description: 'Undo and redo history management with ReplayCubit and ReplayBloc.',
           builder: DocsPkgReplayPage.new,
+          headings: DocsPkgReplayPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_pkg_replay.dart',
         ),
         DocSectionItem(
           id: 'pkg-riverpod',
@@ -199,6 +242,9 @@ class const DocsRegistry() {
           description:
               'Bidirectional Riverpod 2 & 3 interoperability adapters.',
           builder: DocsPkgRiverpodPage.new,
+          headings: DocsPkgRiverpodPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_pkg_riverpod.dart',
         ),
         DocSectionItem(
           id: 'pkg-bloc',
@@ -208,6 +254,9 @@ class const DocsRegistry() {
           description:
               'Bidirectional classic BLoC 8 & 9 interoperability adapters.',
           builder: DocsPkgBlocPage.new,
+          headings: DocsPkgBlocPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_pkg_bloc.dart',
         ),
         DocSectionItem(
           id: 'pkg-otel',
@@ -217,6 +266,9 @@ class const DocsRegistry() {
           description:
               'OpenTelemetry distributed tracing and observability spans.',
           builder: DocsPkgOtelPage.new,
+          headings: DocsPkgOtelPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_pkg_otel.dart',
         ),
         DocSectionItem(
           id: 'pkg-devtools',
@@ -225,6 +277,9 @@ class const DocsRegistry() {
           category: 'Satellite Packages',
           description: 'DevTools timeline inspection and leak detector badge.',
           builder: DocsPkgDevtoolsPage.new,
+          headings: DocsPkgDevtoolsPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_pkg_devtools.dart',
         ),
         DocSectionItem(
           id: 'pkg-lint',
@@ -233,6 +288,9 @@ class const DocsRegistry() {
           category: 'Satellite Packages',
           description: 'Static analysis rules and automated IDE quick-fixes.',
           builder: DocsPkgLintPage.new,
+          headings: DocsPkgLintPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_pkg_lint.dart',
         ),
         DocSectionItem(
           id: 'pkg-jaspr',
@@ -242,6 +300,9 @@ class const DocsRegistry() {
           description:
               'High-performance web state management for Jaspr web apps.',
           builder: DocsPkgJasprPage.new,
+          headings: DocsPkgJasprPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_pkg_jaspr.dart',
         ),
       ],
     ),
@@ -256,6 +317,9 @@ class const DocsRegistry() {
           category: 'Architecture & Recipes',
           description: 'Handling snackbars, dialogs, and navigation without polluting domain state.',
           builder: DocsRecipeOneShotPage.new,
+          headings: DocsRecipeOneShotPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_recipe_one_shot.dart',
         ),
         DocSectionItem(
           id: 'recipe-form-validation',
@@ -264,6 +328,8 @@ class const DocsRegistry() {
           category: 'Architecture & Recipes',
           description: 'Primary input signals paired with computed() derived validation states.',
           builder: DocsRecipeFormValidationPage.new,
+          headings: DocsRecipeFormValidationPage.headings,
+          sourcePath: 'website/lib/src/components/docs/pages/docs_recipe_form_validation.dart',
         ),
         DocSectionItem(
           id: 'recipe-controllers',
@@ -272,6 +338,8 @@ class const DocsRegistry() {
           category: 'Architecture & Recipes',
           description: 'Bidirectional syncing of TextEditingControllers without build-phase mutation loops.',
           builder: DocsRecipeControllersPage.new,
+          headings: DocsRecipeControllersPage.headings,
+          sourcePath: 'website/lib/src/components/docs/pages/docs_recipe_controllers.dart',
         ),
         DocSectionItem(
           id: 'recipe-caching',
@@ -280,6 +348,9 @@ class const DocsRegistry() {
           category: 'Architecture & Recipes',
           description: 'Managing asynchronous server data with automatic cache invalidation.',
           builder: DocsRecipeCachingPage.new,
+          headings: DocsRecipeCachingPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_recipe_caching.dart',
         ),
         DocSectionItem(
           id: 'recipe-batching',
@@ -288,6 +359,9 @@ class const DocsRegistry() {
           category: 'Architecture & Recipes',
           description: 'State atomicity, avoiding multi-emit batching anti-patterns, and cross-bloc coordination.',
           builder: DocsRecipeBatchingPage.new,
+          headings: DocsRecipeBatchingPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_recipe_batching.dart',
         ),
         DocSectionItem(
           id: 'recipe-domain-mixins',
@@ -296,6 +370,8 @@ class const DocsRegistry() {
           category: 'Architecture & Recipes',
           description: 'Decomposing complex domain rules into modular mixins with computed signals.',
           builder: DocsRecipeDomainMixinsPage.new,
+          headings: DocsRecipeDomainMixinsPage.headings,
+          sourcePath: 'website/lib/src/components/docs/pages/docs_recipe_domain_mixins.dart',
         ),
       ],
     ),
@@ -310,6 +386,9 @@ class const DocsRegistry() {
           category: 'Migration Guides',
           description: 'Step-by-step migration guide from classic BLoC / flutter_bloc to BlocSignal.',
           builder: DocsMigrationBlocPage.new,
+          headings: DocsMigrationBlocPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_migration_bloc.dart',
         ),
         DocSectionItem(
           id: 'migration-riverpod',
@@ -318,6 +397,8 @@ class const DocsRegistry() {
           category: 'Migration Guides',
           description: 'Step-by-step migration guide from Riverpod providers to BlocSignal.',
           builder: DocsMigrationRiverpodPage.new,
+          headings: DocsMigrationRiverpodPage.headings,
+          sourcePath: 'website/lib/src/components/docs/pages/docs_migration_riverpod.dart',
         ),
       ],
     ),
@@ -327,12 +408,13 @@ class const DocsRegistry() {
   /// combining top-level pages with every registered documentation section.
   static List<String> get allStaticRoutes => allWebsiteStaticRoutes;
 
-  /// Resolves a section by its ID or returns the default overview.
-  static DocSectionItem resolveSection(String id) {
+  /// Resolves a section by its ID or path, or returns `null` if not found.
+  static DocSectionItem? maybeResolveSection(String id) {
     var cleanId = id.trim();
     if (cleanId.startsWith('/')) cleanId = cleanId.substring(1);
-    if (cleanId.endsWith('/'))
+    if (cleanId.endsWith('/')) {
       cleanId = cleanId.substring(0, cleanId.length - 1);
+    }
     if (cleanId.endsWith('/index.html')) {
       cleanId = cleanId.substring(0, cleanId.length - '/index.html'.length);
     } else if (cleanId.endsWith('index.html')) {
@@ -354,7 +436,12 @@ class const DocsRegistry() {
         }
       }
     }
-    return categories.first.sections.first;
+    return null;
+  }
+
+  /// Resolves a section by its ID or returns the default overview.
+  static DocSectionItem resolveSection(String id) {
+    return maybeResolveSection(id) ?? categories.first.sections.first;
   }
 
   /// Resolves the next and previous section items for footer pagination.

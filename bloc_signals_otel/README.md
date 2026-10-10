@@ -47,13 +47,14 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 
 ## 🚀 Getting Started
 
-Add `bloc_signals_otel` to your `pubspec.yaml`:
+Add `bloc_signals_otel` and `dartastic_opentelemetry` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^1.0.0
-  bloc_signals_otel: ^1.0.0
-  opentelemetry: ^0.1.0
+  bloc_signals: ^1.5.0
+  bloc_signals_otel: ^1.1.2
+  dartastic_opentelemetry: ^0.11.0
+  dartastic_opentelemetry_api: ^0.11.0
 ```
 
 ---
@@ -63,10 +64,13 @@ dependencies:
 ```dart
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_otel/bloc_signals_otel.dart';
-import 'package:opentelemetry/api.dart' as otel;
+import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart';
+import 'package:dartastic_opentelemetry_api/dartastic_opentelemetry_api.dart';
 
-void main() {
-  final tracer = otel.globalTracerProvider.getTracer('my_app');
+Future<void> main() async {
+  await OTel.initialize(serviceName: 'my_app');
+
+  final APITracer tracer = OTelAPI.tracerProvider().getTracer('my_app');
 
   // Register OpenTelemetry observer globally
   BlocSignalObserver.observer = OtelBlocSignalObserver(tracer: tracer);

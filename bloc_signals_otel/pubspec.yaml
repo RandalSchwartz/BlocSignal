@@ -10,9 +10,10 @@ environment:
 
 dependencies:
   bloc_signals: ^1.5.0
+  dartastic_opentelemetry_api: ">=0.11.0 <2.0.0"
   meta: ">=1.11.0 <2.0.0"
-  opentelemetry: ">=0.18.10 <0.19.0"
 
 dev_dependencies:
+  dartastic_opentelemetry: ">=0.11.0 <2.0.0"
   test: ^1.25.6
   very_good_analysis: ">=10.3.0 <12.0.0"

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **BREAKING (otel)**: Pivot from legacy Workiva `opentelemetry` to `dartastic_opentelemetry_api` and `dartastic_opentelemetry` (#352).
+
 ## 1.1.2
 
 - Correct `OtelBlocSignalObserver` documentation and README to accurately specify FIFO (oldest-span) eviction instead of LRU (Issue #303).

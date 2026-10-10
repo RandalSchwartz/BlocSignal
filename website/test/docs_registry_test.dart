@@ -310,6 +310,24 @@ void main() {
           equals('website/lib/src/models/docs_registry.dart'),
         );
       });
+
+      test(
+        '(Issue #313) testing-guide includes widget-golden-mocking TOC heading',
+        () {
+          final headings = DocsContent.getHeadingsForSection('testing-guide');
+          expect(
+            headings.map((h) => h.anchor),
+            contains('widget-golden-mocking'),
+          );
+          final mockingHeading = headings.firstWhere(
+            (h) => h.anchor == 'widget-golden-mocking',
+          );
+          expect(
+            mockingHeading.title,
+            equals('7. Mocking & Faking (Widget & Golden Tests)'),
+          );
+        },
+      );
     },
   );
 

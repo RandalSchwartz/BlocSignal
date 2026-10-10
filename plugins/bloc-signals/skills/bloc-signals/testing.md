@@ -208,6 +208,53 @@ For `BlocSignalProvider(create:)`, remove the provider from the tree and assert 
 
 For `BlocSignalListener` and `BlocSignalConsumer`, assert that mount does not call the listener, then emit a change and check the callback. Test `listenWhen` with a rejected and accepted change, an unrelated parent rebuild, unmount cleanup, and explicit bloc replacement.
 
+### Mocking & Faking in Widget & Golden Tests
+
+1. **Why Classic `when(() => cubit.state).thenReturn(MyLoadedState())` Fails**:
+   In `BlocSignal`, `cubit.state` is a reactive `ReadonlySignal<S>`, whereas `cubit.value` (and `cubit.stateValue`) returns the raw `S` snapshot. UI bindings (`BlocSignalBuilder`, `BlocSignalListener`, `BlocSignalSelector`, and `context.select`) subscribe to `bloc.state.value` inside reactive effects/computeds and invoke `bloc.equals(previous, current)`. Passing a raw state object to `thenReturn` on `cubit.state` fails with `The argument type 'MyLoadedState' can't be assigned to the parameter type 'ReadonlySignal'`.
+
+2. **Recommended Pattern — Constructor Seeding or Lightweight `Fake`**:
+   Because `CubitSignal` and `BlocSignal` are streamless and propagate state synchronously in the same frame, prefer passing a real container seeded via `initialState:` for static golden tests, or writing a lightweight `Fake` class extending `CubitSignal<S>` (or `BlocSignal<E, S>`) and implementing your container type:
+
+   ```dart
+   class FakeUserCubit extends CubitSignal<UserState> implements UserCubit {
+     FakeUserCubit({super.initialState = const UserInitial()});
+
+     void emitState(UserState state) => emit(state);
+
+     @override
+     Future<void> refresh() async {}
+   }
+   ```
+
+   Inject `fakeCubit` via `BlocSignalProvider<UserCubit>.value(value: fakeCubit, child: ...)` and drive transitions synchronously with `fakeCubit.emitState(const UserLoaded('Alice')); await tester.pump();`.
+
+3. **Stubbing with `mocktail` and a Backing `signal<S>()`**:
+   When a test requires `mocktail` call verification (for example, `verify(() => mockCubit.refresh()).called(1)`), back `mock.state` with a real `signal<S>()`, register a fallback state value via `setUpAll(() => registerFallbackValue(...))` for `equals(any(), any())`, and stub the container contract (`value`, `stateValue`, `equals`, `isClosed`, and `close` disposing `stateSignal` via `addTearDown(mockCubit.close)`):
+
+   ```dart
+   class MockUserCubit extends Mock implements UserCubit {}
+
+   setUpAll(() => registerFallbackValue(const UserInitial()));
+
+   final mockCubit = MockUserCubit();
+   final stateSignal = signal<UserState>(const UserInitial());
+   addTearDown(mockCubit.close);
+
+   when(() => mockCubit.state).thenReturn(stateSignal);
+   when(() => mockCubit.value).thenAnswer((_) => stateSignal.value);
+   when(() => mockCubit.stateValue).thenAnswer((_) => stateSignal.value);
+   when(() => mockCubit.equals(any(), any())).thenAnswer(
+     (inv) => inv.positionalArguments[0] == inv.positionalArguments[1],
+   );
+   when(() => mockCubit.isClosed).thenReturn(false);
+   when(() => mockCubit.close()).thenAnswer((_) async => stateSignal.dispose());
+
+   // Mutate stateSignal.value and pump to trigger widget rebuilds:
+   stateSignal.value = const UserLoaded('Alice');
+   await tester.pump();
+   ```
+
 ---
 
 ## Test Discovery Configuration

@@ -37,7 +37,7 @@ class _NavbarState() extends State<Navbar> {
             return context.select<NavigationCubit, AppRoute>(
               (c) => c.stateValue,
             );
-          } on Object catch (_) {
+          } on StateError catch (_) {
             return AppRoute.home;
           }
         })();

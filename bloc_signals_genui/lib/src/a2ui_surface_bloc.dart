@@ -375,7 +375,9 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
             _activeStreamSubscription = null;
           }
           if (!completer.isCompleted) completer.complete();
-          if (error is Error) throw error;
+          if (error is Error) {
+            Error.throwWithStackTrace(error, stackTrace);
+          }
         },
         onDone: () {
           if (identical(_activeStreamSubscription, subscription)) {

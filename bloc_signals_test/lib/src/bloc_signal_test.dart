@@ -183,6 +183,8 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
                 if (actResult is Future) {
                   await actResult;
                 }
+                // Intentional `on Object catch` (SCAR-ERR-02): capture any
+                // throwable from `act` so `errors` matcher can assert on it.
               } on Object catch (error, stackTrace) {
                 recordError(error, stackTrace);
               }

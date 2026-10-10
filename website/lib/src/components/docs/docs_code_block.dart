@@ -37,6 +37,9 @@ class _DocsCodeBlockState() extends State<DocsCodeBlock> {
   }
 
   void _copyToClipboard(String codeToCopy) {
+    // Intentional on Object catch (SCAR-ERR-02):
+    // web.window.navigator.clipboard throws UnsupportedError in SSR or
+    // DOMException when clipboard permission is denied.
     try {
       web.window.navigator.clipboard.writeText(codeToCopy);
       setState(() {
@@ -67,7 +70,7 @@ class _DocsCodeBlockState() extends State<DocsCodeBlock> {
     String globalVersion = '3.13';
     try {
       globalVersion = context.read<DocsCubit>().stateValue.selectedDartVersion;
-    } on Object catch (_) {}
+    } on StateError catch (_) {}
     final activeTab = _overrideTab ?? globalVersion;
     final activeCode = _currentCode(activeTab);
 

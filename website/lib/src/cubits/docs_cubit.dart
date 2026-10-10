@@ -33,6 +33,8 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
       _syncFromBrowser();
     }).toJS;
 
+    // Intentional on Object catch (SCAR-ERR-02): web.window throws
+    // UnsupportedError during Jaspr SSR pre-rendering.
     try {
       web.window.addEventListener('popstate', _popStateListener);
       web.window.addEventListener('hashchange', _hashChangeListener);
@@ -45,6 +47,8 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
   late final JSFunction _hashChangeListener;
 
   static String _resolveInitialSectionFromBrowser() {
+    // Intentional on Object catch (SCAR-ERR-02): web.window throws
+    // UnsupportedError during Jaspr SSR pre-rendering.
     try {
       final path = web.window.location.pathname;
       final hash = web.window.location.hash;
@@ -100,6 +104,8 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
     }
 
     if (pushHistory) {
+      // Intentional on Object catch (SCAR-ERR-02): web.window throws
+      // UnsupportedError during Jaspr SSR pre-rendering.
       try {
         web.window.history.pushState(null, '', targetSection.path);
       } on Object catch (_) {}
@@ -119,7 +125,9 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
 
     _trackDocsPageView(targetSection.id);
 
-    // Scroll to top of article on next animation frame to prevent click hijacking
+    // Scroll to top of article on next animation frame to prevent click hijacking.
+    // Intentional on Object catch (SCAR-ERR-02): web.window throws
+    // UnsupportedError during Jaspr SSR pre-rendering.
     try {
       web.window.requestAnimationFrame(
         ((JSNumber _) {
@@ -167,6 +175,8 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
   }
 
   void _trackDocsPageView(String sectionId) {
+    // Intentional on Object catch (SCAR-ERR-02): JS interop binding throws
+    // when invoked outside a browser or during Jaspr SSR pre-rendering.
     try {
       _trackGaPageView('/docs/$sectionId'.toJS);
     } on Object catch (_) {}
@@ -174,6 +184,8 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
 
   @override
   Future<void> close() async {
+    // Intentional on Object catch (SCAR-ERR-02): web.window throws
+    // UnsupportedError during Jaspr SSR pre-rendering.
     try {
       web.window.removeEventListener('popstate', _popStateListener);
       web.window.removeEventListener('hashchange', _hashChangeListener);

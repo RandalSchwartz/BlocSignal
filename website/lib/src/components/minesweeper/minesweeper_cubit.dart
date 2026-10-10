@@ -13,6 +13,8 @@ external void _trackMinesweeperEvent(
 );
 
 void _trackAnalytics(String eventName, String difficulty, [int val = 0]) {
+  // Intentional on Object catch (SCAR-ERR-02): JS interop binding throws
+  // when invoked outside a browser or during Jaspr SSR pre-rendering.
   try {
     _trackMinesweeperEvent(eventName.toJS, difficulty.toJS, val.toJS);
   } on Object catch (_) {}
@@ -156,11 +158,16 @@ class MinesweeperCubit({Difficulty difficulty = Difficulty.beginner})
   this : super(initialState: _loadInitialState(difficulty));
 
   static MinesweeperState _loadInitialState(Difficulty difficulty) {
+    // Intentional on Object catch (SCAR-ERR-02): web.window.localStorage
+    // throws UnsupportedError during Jaspr SSR pre-rendering or SecurityError
+    // in restricted iframes.
     try {
       final saved = web.window.localStorage.getItem(_storageKey);
       if (saved != null && saved.isNotEmpty) {
-        final decoded = jsonDecode(saved) as Map<String, dynamic>;
-        return MinesweeperState.fromJson(decoded);
+        final decoded = jsonDecode(saved);
+        if (decoded is Map<String, dynamic>) {
+          return MinesweeperState.fromJson(decoded);
+        }
       }
     } on Object catch (_) {}
     return _generateNewGame(difficulty: difficulty);
@@ -225,6 +232,9 @@ class MinesweeperCubit({Difficulty difficulty = Difficulty.beginner})
   }
 
   void _persistState(MinesweeperState state) {
+    // Intentional on Object catch (SCAR-ERR-02): web.window.localStorage
+    // throws UnsupportedError during Jaspr SSR pre-rendering or SecurityError
+    // in restricted iframes.
     try {
       web.window.localStorage.setItem(_storageKey, jsonEncode(state.toJson()));
     } on Object catch (_) {}
@@ -513,7 +523,7 @@ class MinesweeperCubit({Difficulty difficulty = Difficulty.beginner})
       _trackAnalytics('minesweeper_load_seed', diff.name);
       resetGame(difficulty: diff, seed: seed);
       return true;
-    } on Object catch (_) {
+    } on FormatException catch (_) {
       return false;
     }
   }

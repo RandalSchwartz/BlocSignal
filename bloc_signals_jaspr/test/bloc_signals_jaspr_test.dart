@@ -541,8 +541,7 @@ void main() {
     );
 
     testComponents(
-      'MultiBlocSignalProvider accepts List<dynamic> with different generic '
-      'types',
+      'MultiBlocSignalProvider accepts typed list with different generic types',
       (tester) async {
         late CounterCubit cubit;
         late ThemeCubit themeCubit;
@@ -915,6 +914,190 @@ void main() {
       );
     },
   );
+
+  group(
+    'Typed MultiBlocSignalProvider & MultiBlocSignalListener (Issue #331: R17)',
+    () {
+      testComponents(
+        'MultiBlocSignalProvider.providers is typed as '
+        'List<BlocSignalProviderSingleChildComponent> (with '
+        'BlocSignalProviderSingleChildWidget alias) and merges heterogeneous '
+        'providers and custom implementations in reverse order',
+        (tester) async {
+          final counterCubit = CounterCubit();
+          final themeCubit = ThemeCubit();
+          final copyOrder = <String>[];
+
+          final providers = <BlocSignalProviderSingleChildComponent>[
+            _CustomJasprProviderSingleChildComponent(
+              label: 'first-provider',
+              onCopyWith: copyOrder.add,
+            ),
+            BlocSignalProvider<CounterCubit>.value(value: counterCubit),
+            BlocSignalProvider<ThemeCubit>.value(value: themeCubit),
+            _CustomJasprProviderSingleChildComponent(
+              label: 'last-provider',
+              onCopyWith: copyOrder.add,
+            ),
+          ];
+
+          final widgetAliasProviders = <BlocSignalProviderSingleChildWidget>[
+            ...providers,
+          ];
+          expect(
+            providers,
+            isA<List<BlocSignalProviderSingleChildWidget>>(),
+          );
+
+          final multiProvider = MultiBlocSignalProvider(
+            providers: widgetAliasProviders,
+            child: Builder(
+              builder: (context) {
+                final readCounter = context.read<CounterCubit>();
+                final readTheme = context.read<ThemeCubit>();
+                return div([
+                  Component.text(
+                    'Counter:${readCounter.value},Theme:${readTheme.value}',
+                  ),
+                ]);
+              },
+            ),
+          );
+
+          expect(
+            multiProvider.providers,
+            isA<List<BlocSignalProviderSingleChildComponent>>(),
+          );
+          expect(multiProvider.providers, hasLength(4));
+
+          tester.pumpComponent(multiProvider);
+
+          expect(copyOrder, equals(['last-provider', 'first-provider']));
+          expect(find.text('Counter:0,Theme:light'), findsOneComponent);
+
+          await counterCubit.close();
+          await themeCubit.close();
+        },
+      );
+
+      testComponents(
+        'MultiBlocSignalListener.listeners is typed as '
+        'List<BlocSignalListenerSingleChildComponent> (with '
+        'BlocSignalListenerSingleChildWidget alias) and merges heterogeneous '
+        'listeners and custom implementations in reverse order',
+        (tester) async {
+          final counterCubit = CounterCubit();
+          final themeCubit = ThemeCubit();
+          final events = <String>[];
+          final copyOrder = <String>[];
+
+          final listeners = <BlocSignalListenerSingleChildComponent>[
+            _CustomJasprListenerSingleChildComponent(
+              label: 'first-listener',
+              onCopyWith: copyOrder.add,
+            ),
+            BlocSignalListener<CounterCubit, int>(
+              bloc: counterCubit,
+              listener: (context, state) => events.add('counter:$state'),
+            ),
+            BlocSignalListener<ThemeCubit, String>(
+              bloc: themeCubit,
+              listener: (context, state) => events.add('theme:$state'),
+            ),
+            _CustomJasprListenerSingleChildComponent(
+              label: 'last-listener',
+              onCopyWith: copyOrder.add,
+            ),
+          ];
+
+          final widgetAliasListeners = <BlocSignalListenerSingleChildWidget>[
+            ...listeners,
+          ];
+          expect(
+            listeners,
+            isA<List<BlocSignalListenerSingleChildWidget>>(),
+          );
+
+          final multiListener = MultiBlocSignalListener(
+            listeners: widgetAliasListeners,
+            child: const div([Component.text('JasprChild')]),
+          );
+
+          expect(
+            multiListener.listeners,
+            isA<List<BlocSignalListenerSingleChildComponent>>(),
+          );
+          expect(multiListener.listeners, hasLength(4));
+
+          tester.pumpComponent(multiListener);
+
+          expect(copyOrder, equals(['last-listener', 'first-listener']));
+          expect(find.text('JasprChild'), findsOneComponent);
+
+          counterCubit.increment();
+          themeCubit.toggle();
+          await tester.pump();
+
+          expect(events, equals(['counter:1', 'theme:dark']));
+
+          await counterCubit.close();
+          await themeCubit.close();
+        },
+      );
+    },
+  );
+}
+
+class _CustomJasprProviderSingleChildComponent extends StatelessComponent
+    implements BlocSignalProviderSingleChildComponent {
+  const _CustomJasprProviderSingleChildComponent({
+    required this.label,
+    required this.onCopyWith,
+    this.child = const Component.empty(),
+  });
+
+  final String label;
+  final void Function(String label) onCopyWith;
+  final Component child;
+
+  @override
+  Component copyWith(Component child) {
+    onCopyWith(label);
+    return _CustomJasprProviderSingleChildComponent(
+      label: label,
+      onCopyWith: onCopyWith,
+      child: child,
+    );
+  }
+
+  @override
+  Component build(BuildContext context) => child;
+}
+
+class _CustomJasprListenerSingleChildComponent extends StatelessComponent
+    implements BlocSignalListenerSingleChildWidget {
+  const _CustomJasprListenerSingleChildComponent({
+    required this.label,
+    required this.onCopyWith,
+    this.child = const Component.empty(),
+  });
+
+  final String label;
+  final void Function(String label) onCopyWith;
+  final Component child;
+
+  @override
+  Component copyWith(Component child) {
+    onCopyWith(label);
+    return _CustomJasprListenerSingleChildComponent(
+      label: label,
+      onCopyWith: onCopyWith,
+      child: child,
+    );
+  }
+
+  @override
+  Component build(BuildContext context) => child;
 }
 
 @immutable

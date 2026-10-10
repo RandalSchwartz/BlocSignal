@@ -4,6 +4,21 @@ import 'package:bloc_signals/bloc_signals.dart';
 import 'package:flutter/widgets.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+/// An interface for [BlocSignalProvider] widgets that can be merged by
+/// [MultiBlocSignalProvider] into a single linear widget hierarchy.
+///
+/// Example:
+/// ```dart
+/// final List<BlocSignalProviderSingleChildWidget> providers = [
+///   BlocSignalProvider<AuthBloc>(create: (context) => AuthBloc()),
+///   BlocSignalProvider<ThemeBloc>(create: (context) => ThemeBloc()),
+/// ];
+/// ```
+abstract class BlocSignalProviderSingleChildWidget implements Widget {
+  /// Clones this provider widget with a new [child] widget.
+  Widget copyWith(Widget child);
+}
+
 /// A Flutter widget that provides a [BlocSignal] to its descendants via
 /// the element tree and automatically disposes of it when the provider
 /// is removed from the tree.
@@ -16,7 +31,7 @@ import 'package:signals_flutter/signals_flutter.dart';
 /// )
 /// ```
 class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
-    extends StatefulWidget {
+    extends StatefulWidget implements BlocSignalProviderSingleChildWidget {
   /// Creates a [BlocSignalProvider] that manages the lifecycle of a new
   /// [BlocSignal] returned by [create].
   const BlocSignalProvider({
@@ -71,6 +86,7 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
   }
 
   /// Clones this provider with a new child widget.
+  @override
   BlocSignalProvider<T> copyWith(Widget child) {
     if (create != null) {
       return BlocSignalProvider<T>(
@@ -411,8 +427,9 @@ class MultiBlocSignalProvider extends StatelessWidget {
     super.key,
   });
 
-  /// The list of provider widgets (such as [BlocSignalProvider]) to inject.
-  final List<dynamic> providers;
+  /// The list of [BlocSignalProviderSingleChildWidget] widgets (such as
+  /// [BlocSignalProvider]) to inject.
+  final List<BlocSignalProviderSingleChildWidget> providers;
 
   /// The child widget subtree that will have access to all provided blocs.
   final Widget child;
@@ -421,9 +438,7 @@ class MultiBlocSignalProvider extends StatelessWidget {
   Widget build(BuildContext context) {
     var current = child;
     for (final provider in providers.reversed) {
-      if (provider is BlocSignalProvider) {
-        current = (provider as dynamic).copyWith(current) as Widget;
-      }
+      current = provider.copyWith(current);
     }
     return current;
   }

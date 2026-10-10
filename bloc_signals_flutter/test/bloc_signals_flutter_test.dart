@@ -1448,6 +1448,174 @@ void main() {
       );
     },
   );
+
+  group(
+    'Typed MultiBlocSignalProvider & MultiBlocSignalListener (Issue #331: R17)',
+    () {
+      testWidgets(
+        'MultiBlocSignalProvider.providers is typed as '
+        'List<BlocSignalProviderSingleChildWidget> and merges heterogeneous '
+        'providers and custom implementations in reverse order',
+        (tester) async {
+          final bloc = CounterBloc();
+          final cubit = CounterCubit();
+          final order = <String>[];
+
+          final providers = <BlocSignalProviderSingleChildWidget>[
+            _CustomProviderSingleChildWidget(
+              label: 'first',
+              onCopyWith: order.add,
+            ),
+            BlocSignalProvider<CounterBloc>.value(value: bloc),
+            BlocSignalProvider<CounterCubit>.value(value: cubit),
+            _CustomProviderSingleChildWidget(
+              label: 'last',
+              onCopyWith: order.add,
+            ),
+          ];
+
+          final multiProvider = MultiBlocSignalProvider(
+            providers: providers,
+            child: Builder(
+              builder: (context) {
+                final readBloc = context.read<CounterBloc>();
+                final readCubit = context.read<CounterCubit>();
+                return Text('Bloc:${readBloc.value},Cubit:${readCubit.value}');
+              },
+            ),
+          );
+
+          expect(
+            multiProvider.providers,
+            isA<List<BlocSignalProviderSingleChildWidget>>(),
+          );
+          expect(multiProvider.providers, hasLength(4));
+
+          await tester.pumpWidget(MaterialApp(home: multiProvider));
+
+          expect(order, equals(['last', 'first']));
+          expect(find.text('Bloc:0,Cubit:0'), findsOneWidget);
+
+          await bloc.close();
+          await cubit.close();
+        },
+      );
+
+      testWidgets(
+        'MultiBlocSignalListener.listeners is typed as '
+        'List<BlocSignalListenerSingleChildWidget> and merges heterogeneous '
+        'listeners and custom implementations in reverse order',
+        (tester) async {
+          final bloc = CounterBloc();
+          final labelCubit = _LabelCubit();
+          final events = <String>[];
+          final copyOrder = <String>[];
+
+          final listeners = <BlocSignalListenerSingleChildWidget>[
+            _CustomListenerSingleChildWidget(
+              label: 'first-listener',
+              onCopyWith: copyOrder.add,
+            ),
+            BlocSignalListener<CounterBloc, int>(
+              bloc: bloc,
+              listener: (context, state) => events.add('count:$state'),
+            ),
+            BlocSignalListener<_LabelCubit, String>(
+              bloc: labelCubit,
+              listener: (context, state) => events.add('label:$state'),
+            ),
+            _CustomListenerSingleChildWidget(
+              label: 'last-listener',
+              onCopyWith: copyOrder.add,
+            ),
+          ];
+
+          final multiListener = MultiBlocSignalListener(
+            listeners: listeners,
+            child: const Text('ChildWidget'),
+          );
+
+          expect(
+            multiListener.listeners,
+            isA<List<BlocSignalListenerSingleChildWidget>>(),
+          );
+          expect(multiListener.listeners, hasLength(4));
+
+          await tester.pumpWidget(MaterialApp(home: multiListener));
+
+          expect(copyOrder, equals(['last-listener', 'first-listener']));
+          expect(find.text('ChildWidget'), findsOneWidget);
+
+          bloc.add(Increment());
+          labelCubit.setLabel('updated');
+          await tester.pump();
+
+          expect(events, equals(['count:1', 'label:updated']));
+
+          await bloc.close();
+          await labelCubit.close();
+        },
+      );
+    },
+  );
+}
+
+class _LabelCubit extends CubitSignal<String> {
+  _LabelCubit() : super(initialState: 'initial');
+
+  void setLabel(String value) => emit(value);
+}
+
+class _CustomProviderSingleChildWidget extends StatelessWidget
+    implements BlocSignalProviderSingleChildWidget {
+  const _CustomProviderSingleChildWidget({
+    required this.label,
+    required this.onCopyWith,
+    this.child = const SizedBox.shrink(),
+  });
+
+  final String label;
+  final void Function(String label) onCopyWith;
+  final Widget child;
+
+  @override
+  Widget copyWith(Widget child) {
+    onCopyWith(label);
+    return _CustomProviderSingleChildWidget(
+      label: label,
+      onCopyWith: onCopyWith,
+      child: child,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => child;
+}
+
+class _CustomListenerSingleChildWidget extends StatelessWidget
+    implements BlocSignalListenerSingleChildWidget {
+  const _CustomListenerSingleChildWidget({
+    required this.label,
+    required this.onCopyWith,
+    this.child = const SizedBox.shrink(),
+  });
+
+  final String label;
+  final void Function(String label) onCopyWith;
+  final Widget child;
+
+  @override
+  Widget copyWith(Widget child) {
+    onCopyWith(label);
+    return _CustomListenerSingleChildWidget(
+      label: label,
+      onCopyWith: onCopyWith,
+      child: child,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => child;
 }
 
 @immutable

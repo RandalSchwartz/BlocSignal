@@ -26,8 +26,9 @@ class MultiBlocSignalListener extends StatelessWidget {
     super.key,
   });
 
-  /// The list of listener widgets (such as [BlocSignalListener]) to run.
-  final List<dynamic> listeners;
+  /// The list of [BlocSignalListenerSingleChildWidget] widgets (such as
+  /// [BlocSignalListener]) to run.
+  final List<BlocSignalListenerSingleChildWidget> listeners;
 
   /// The child widget subtree.
   final Widget child;
@@ -36,9 +37,7 @@ class MultiBlocSignalListener extends StatelessWidget {
   Widget build(BuildContext context) {
     var current = child;
     for (final listener in listeners.reversed) {
-      if (listener is BlocSignalListener) {
-        current = (listener as dynamic).copyWith(current) as Widget;
-      }
+      current = listener.copyWith(current);
     }
     return current;
   }

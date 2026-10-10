@@ -3,6 +3,25 @@ import 'package:bloc_signals_flutter/src/bloc_signal_provider.dart';
 import 'package:flutter/widgets.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
+/// An interface for [BlocSignalListener] widgets that can be merged by
+/// `MultiBlocSignalListener` into a single linear widget hierarchy.
+///
+/// Example:
+/// ```dart
+/// final List<BlocSignalListenerSingleChildWidget> listeners = [
+///   BlocSignalListener<AuthBloc, AuthState>(
+///     listener: (context, state) {},
+///   ),
+///   BlocSignalListener<ThemeBloc, ThemeState>(
+///     listener: (context, state) {},
+///   ),
+/// ];
+/// ```
+abstract class BlocSignalListenerSingleChildWidget implements Widget {
+  /// Clones this listener widget with a new [child] widget.
+  Widget copyWith(Widget child);
+}
+
 /// A widget that listens to a [BlocSignal] and runs a callback
 /// when its state updates.
 ///
@@ -17,8 +36,8 @@ import 'package:signals_flutter/signals_flutter.dart';
 ///   child: const LoginForm(),
 /// )
 /// ```
-class BlocSignalListener<T extends BlocSignalBase<S>, S>
-    extends StatefulWidget {
+class BlocSignalListener<T extends BlocSignalBase<S>, S> extends StatefulWidget
+    implements BlocSignalListenerSingleChildWidget {
   /// Creates a [BlocSignalListener] widget.
   const BlocSignalListener({
     required this.listener,
@@ -44,6 +63,7 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S>
   final Widget child;
 
   /// Clones this listener with a new child widget.
+  @override
   BlocSignalListener<T, S> copyWith(Widget child) {
     return BlocSignalListener<T, S>(
       key: key,

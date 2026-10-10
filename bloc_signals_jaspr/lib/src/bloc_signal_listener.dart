@@ -10,6 +10,42 @@ class _NullComponent extends StatelessComponent {
   Component build(BuildContext context) => const Component.empty();
 }
 
+/// An interface for [BlocSignalListener] components that can be merged by
+/// `MultiBlocSignalListener` into a single linear component hierarchy.
+///
+/// Example:
+/// ```dart
+/// final List<BlocSignalListenerSingleChildComponent> listeners = [
+///   BlocSignalListener<AuthBloc, AuthState>(
+///     listener: (context, state) {},
+///   ),
+///   BlocSignalListener<ThemeBloc, ThemeState>(
+///     listener: (context, state) {},
+///   ),
+/// ];
+/// ```
+abstract class BlocSignalListenerSingleChildComponent implements Component {
+  /// Clones this listener component with a new [child] component.
+  Component copyWith(Component child);
+}
+
+/// Alias for [BlocSignalListenerSingleChildComponent] for API symmetry with
+/// `package:bloc_signals_flutter`.
+///
+/// Example:
+/// ```dart
+/// final List<BlocSignalListenerSingleChildWidget> listeners = [
+///   BlocSignalListener<AuthBloc, AuthState>(
+///     listener: (context, state) {},
+///   ),
+///   BlocSignalListener<ThemeBloc, ThemeState>(
+///     listener: (context, state) {},
+///   ),
+/// ];
+/// ```
+typedef BlocSignalListenerSingleChildWidget
+    = BlocSignalListenerSingleChildComponent;
+
 /// A Jaspr component that listens to a [BlocSignal] and runs a callback
 /// when its state updates.
 ///
@@ -25,7 +61,8 @@ class _NullComponent extends StatelessComponent {
 /// )
 /// ```
 class BlocSignalListener<T extends BlocSignalBase<S>, S>
-    extends StatefulComponent {
+    extends StatefulComponent
+    implements BlocSignalListenerSingleChildComponent {
   /// Creates a [BlocSignalListener] component.
   const BlocSignalListener({
     required this.listener,
@@ -51,6 +88,7 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S>
   final Component child;
 
   /// Clones this listener with a new child component.
+  @override
   BlocSignalListener<T, S> copyWith(Component child) {
     return BlocSignalListener<T, S>(
       key: key,

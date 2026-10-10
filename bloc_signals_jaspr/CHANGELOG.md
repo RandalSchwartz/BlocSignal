@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Feat (jaspr)**: Replace `List<dynamic>` in `MultiBlocSignalProvider` and `MultiBlocSignalListener` with typed `BlocSignalProviderSingleChildComponent` and `BlocSignalListenerSingleChildComponent` interfaces and `*SingleChildWidget` aliases (#331).
+
 ## 1.2.0
 
 - **Fix (jaspr)**: Replace brittle `'defunct'` `AssertionError` substring check in `context.select` with deterministic element lifecycle and root-attachment tracking (#327).

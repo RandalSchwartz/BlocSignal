@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Feat (flutter)**: Replace `List<dynamic>` in `MultiBlocSignalProvider` and `MultiBlocSignalListener` with typed `BlocSignalProviderSingleChildWidget` and `BlocSignalListenerSingleChildWidget` interfaces (#331).
+
 ## 1.4.0
 
 - **Feat (flutter)**: Respect container `bloc.equals(previous, current)` in `BlocSignalBuilder` and `BlocSignalListener`, support custom `equals` and `SignalOptions.equalityCheck` in `BlocSignalSelector` while re-initializing `computed` when `options` or `equals` changes in `didUpdateWidget`, and pass `listen: true` when falling back to `BlocSignalProvider.of<T>(context, listen: true)` in `didUpdateWidget` (#320).

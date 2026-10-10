@@ -183,7 +183,7 @@ Give the selected type meaningful equality and avoid mutating a selected object 
 selector is reinitialized when its bloc or selector callback changes. It cleans up its
 effect and rebinds automatically when its bloc instance or selector changes.
 
-`MultiBlocSignalListener` nests several listeners around one child. Individual listeners do not require a placeholder `child` parameter:
+`MultiBlocSignalListener` nests several listeners around one child via the typed `List<BlocSignalListenerSingleChildWidget>` contract. Individual listeners do not require a placeholder `child` parameter:
 
 ```dart
 MultiBlocSignalListener(
@@ -208,7 +208,7 @@ For transient UI actions (dialogs, snackbars, navigation) that should not pollut
 
 ## Multiple providers
 
-`MultiBlocSignalProvider` nests its providers in list order. Individual providers do not require a placeholder `child` parameter:
+`MultiBlocSignalProvider` nests its providers in list order via the typed `List<BlocSignalProviderSingleChildWidget>` contract. Individual providers do not require a placeholder `child` parameter:
 
 ```dart
 MultiBlocSignalProvider(

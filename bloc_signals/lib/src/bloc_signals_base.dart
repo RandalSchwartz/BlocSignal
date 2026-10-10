@@ -118,9 +118,11 @@ abstract class BlocSignalObserver {
 /// A composite [BlocSignalObserver] that broadcasts lifecycle notifications
 /// to multiple inner observers in the order they were registered.
 ///
-/// Exceptions thrown by individual observers are isolated: an error thrown by
-/// one observer will not prevent subsequent observers from receiving the hook,
-/// and the failure is forwarded to [BlocSignalBase.onError].
+/// Exceptions ([Exception]) thrown by individual observers are isolated: an
+/// exception thrown by one observer will not prevent subsequent observers from
+/// receiving the hook, and the failure is forwarded to
+/// [BlocSignalBase.onError]. Fatal Dart [Error] subtypes (such as
+/// [AssertionError] or [StateError]) are not caught and fail fast.
 class CompositeBlocSignalObserver extends BlocSignalObserver {
   /// Creates a [CompositeBlocSignalObserver] with the provided [observers].
   CompositeBlocSignalObserver([Iterable<BlocSignalObserver>? observers])
@@ -153,7 +155,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
     for (final observer in _observers) {
       try {
         observer.onCreate(bloc);
-      } on Object catch (e, stackTrace) {
+      } on Exception catch (e, stackTrace) {
         bloc.onError(e, stackTrace);
       }
     }
@@ -164,7 +166,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
     for (final observer in _observers) {
       try {
         observer.onEvent(bloc, event);
-      } on Object catch (e, stackTrace) {
+      } on Exception catch (e, stackTrace) {
         bloc.onError(e, stackTrace);
       }
     }
@@ -175,7 +177,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
     for (final observer in _observers) {
       try {
         observer.onEventCompleted(bloc, event);
-      } on Object catch (e, stackTrace) {
+      } on Exception catch (e, stackTrace) {
         bloc.onError(e, stackTrace);
       }
     }
@@ -190,7 +192,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
     for (final observer in _observers) {
       try {
         observer.onTransition(bloc, event, state);
-      } on Object catch (e, stackTrace) {
+      } on Exception catch (e, stackTrace) {
         bloc.onError(e, stackTrace);
       }
     }
@@ -201,7 +203,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
     for (final observer in _observers) {
       try {
         observer.onChange(bloc, change);
-      } on Object catch (e, stackTrace) {
+      } on Exception catch (e, stackTrace) {
         bloc.onError(e, stackTrace);
       }
     }
@@ -216,8 +218,8 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
     for (final observer in _observers) {
       try {
         observer.onError(bloc, error, stackTrace);
-      } on Object catch (_) {
-        // Prevent observer error in onError from causing infinite recursion
+      } on Exception catch (_) {
+        // Prevent observer exception in onError from causing infinite recursion
       }
     }
   }
@@ -237,7 +239,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
           event: event,
           metadata: metadata,
         );
-      } on Object catch (e, stackTrace) {
+      } on Exception catch (e, stackTrace) {
         bloc.onError(e, stackTrace);
       }
     }
@@ -248,7 +250,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
     for (final observer in _observers) {
       try {
         observer.onClose(bloc);
-      } on Object catch (e, stackTrace) {
+      } on Exception catch (e, stackTrace) {
         bloc.onError(e, stackTrace);
       }
     }

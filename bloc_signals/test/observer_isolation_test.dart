@@ -438,4 +438,284 @@ void main() {
       unawaited(cubit.close());
     });
   });
+
+  group(
+      '(Issue #340) Observer & Lifecycle Error Fail-Fast vs Exception '
+      'Isolation', () {
+    test(
+        '(Issue #340) single observer throwing StateError in hooks fails fast '
+        'and propagates synchronously', () {
+      BlocSignalObserver.observer = _ErrorThrowingObserver(
+        errorToThrow: StateError('fatal onCreate bug'),
+        hookToThrow: 'onCreate',
+      );
+      expect(TestCubit.new, throwsStateError);
+
+      BlocSignalObserver.observer = null;
+      final cubit = TestCubit();
+      addTearDown(cubit.close);
+
+      BlocSignalObserver.observer = _ErrorThrowingObserver(
+        errorToThrow: StateError('fatal onTransition bug'),
+        hookToThrow: 'onTransition',
+      );
+      expect(cubit.increment, throwsStateError);
+
+      BlocSignalObserver.observer = _ErrorThrowingObserver(
+        errorToThrow: StateError('fatal onChange bug'),
+        hookToThrow: 'onChange',
+      );
+      expect(cubit.increment, throwsStateError);
+
+      BlocSignalObserver.observer = _ErrorThrowingObserver(
+        errorToThrow: StateError('fatal onError bug'),
+        hookToThrow: 'onError',
+      );
+      expect(() => cubit.triggerError(Exception('trigger')), throwsStateError);
+
+      BlocSignalObserver.observer = _ErrorThrowingObserver(
+        errorToThrow: StateError('fatal onTelemetry bug'),
+        hookToThrow: 'onTelemetry',
+      );
+      expect(() => cubit.triggerTelemetry('metric'), throwsStateError);
+
+      BlocSignalObserver.observer = _ErrorThrowingObserver(
+        errorToThrow: StateError('fatal onClose bug'),
+        hookToThrow: 'onClose',
+      );
+      expect(cubit.close, throwsStateError);
+    });
+
+    test(
+        '(Issue #340) single observer throwing AssertionError in BlocSignal '
+        'hooks (onEvent, onTransition, onEventCompleted) fails fast', () {
+      final bloc = _SyncTestBloc();
+      addTearDown(() {
+        BlocSignalObserver.observer = null;
+        return bloc.close();
+      });
+
+      BlocSignalObserver.observer = _ErrorThrowingObserver(
+        errorToThrow: AssertionError('fatal onEvent assertion'),
+        hookToThrow: 'onEvent',
+      );
+      expect(() => bloc.add('test'), throwsA(isA<AssertionError>()));
+
+      BlocSignalObserver.observer = _ErrorThrowingObserver(
+        errorToThrow: AssertionError('fatal bloc onTransition assertion'),
+        hookToThrow: 'onTransition',
+      );
+      expect(() => bloc.add('test'), throwsA(isA<AssertionError>()));
+
+      BlocSignalObserver.observer = _ErrorThrowingObserver(
+        errorToThrow: AssertionError('fatal onEventCompleted assertion'),
+        hookToThrow: 'onEventCompleted',
+      );
+      expect(() => bloc.add('test'), throwsA(isA<AssertionError>()));
+    });
+
+    test(
+        '(Issue #340) CompositeBlocSignalObserver isolates Exception in '
+        'onEventCompleted but propagates StateError across all 8 hooks', () {
+      final obs1 = _ErrorThrowingObserver(
+        errorToThrow: Exception('recoverable onEventCompleted'),
+        hookToThrow: 'onEventCompleted',
+      );
+      final obs2 = ThrowingObserver();
+      BlocSignalObserver.observer = CompositeBlocSignalObserver([obs1, obs2]);
+
+      final bloc = _SyncTestBloc()..add('test');
+      expect(bloc.stateValue, equals(1));
+      expect(
+        bloc.errors.any(
+          (e) => e.toString().contains('recoverable onEventCompleted'),
+        ),
+        isTrue,
+      );
+
+      for (final hook in [
+        'onEvent',
+        'onEventCompleted',
+        'onTransition',
+        'onChange',
+        'onError',
+        'onTelemetry',
+      ]) {
+        BlocSignalObserver.observer = CompositeBlocSignalObserver([
+          _ErrorThrowingObserver(
+            errorToThrow: StateError('composite fatal $hook'),
+            hookToThrow: hook,
+          ),
+        ]);
+        if (hook == 'onTelemetry') {
+          expect(
+            () => bloc.triggerTelemetry('m'),
+            throwsStateError,
+            reason: 'Composite $hook should fail fast on StateError',
+          );
+        } else if (hook == 'onError') {
+          expect(
+            () => bloc.triggerError(Exception('e')),
+            throwsStateError,
+            reason: 'Composite $hook should fail fast on StateError',
+          );
+        } else {
+          expect(
+            () => bloc.add('test_$hook'),
+            throwsStateError,
+            reason: 'Composite $hook should fail fast on StateError',
+          );
+        }
+      }
+
+      BlocSignalObserver.observer = CompositeBlocSignalObserver([
+        _ErrorThrowingObserver(
+          errorToThrow: StateError('composite fatal onCreate'),
+          hookToThrow: 'onCreate',
+        ),
+      ]);
+      expect(TestCubit.new, throwsStateError);
+
+      BlocSignalObserver.observer = CompositeBlocSignalObserver([
+        _ErrorThrowingObserver(
+          errorToThrow: StateError('composite fatal onClose'),
+          hookToThrow: 'onClose',
+        ),
+      ]);
+      expect(bloc.close, throwsStateError);
+    });
+
+    test(
+        '(Issue #340) container override hooks (onChange, handleTransition) '
+        'propagate StateError instead of swallowing', () {
+      final changeCubit = _FatalOnChangeCubit();
+      addTearDown(changeCubit.close);
+      expect(changeCubit.increment, throwsStateError);
+
+      final transitionBloc = _FatalHandleTransitionBloc();
+      addTearDown(transitionBloc.close);
+      expect(() => transitionBloc.add('go'), throwsStateError);
+    });
+  });
+}
+
+class _SyncTestBloc extends BlocSignal<String, int> {
+  _SyncTestBloc() : super(initialState: 0) {
+    on<String>((event, emit) => emit(stateValue + 1));
+  }
+
+  final List<Object> errors = [];
+
+  void triggerTelemetry(String name) => emitTelemetry(name);
+
+  void triggerError(Object error) => emitError(error);
+
+  @override
+  void onError(Object error, StackTrace stackTrace) {
+    errors.add(error);
+    super.onError(error, stackTrace);
+  }
+}
+
+class _ErrorThrowingObserver extends BlocSignalObserver {
+  _ErrorThrowingObserver({
+    required this.errorToThrow,
+    required this.hookToThrow,
+  });
+
+  final Object errorToThrow;
+  final String hookToThrow;
+
+  @override
+  void onCreate(BlocSignalBase<dynamic> bloc) {
+    if (hookToThrow == 'onCreate') {
+      Error.throwWithStackTrace(errorToThrow, StackTrace.current);
+    }
+  }
+
+  @override
+  void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {
+    if (hookToThrow == 'onEvent') {
+      Error.throwWithStackTrace(errorToThrow, StackTrace.current);
+    }
+  }
+
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+    if (hookToThrow == 'onEventCompleted') {
+      Error.throwWithStackTrace(errorToThrow, StackTrace.current);
+    }
+  }
+
+  @override
+  void onTransition(
+    BlocSignalBase<dynamic> bloc,
+    Object? event,
+    Object? state,
+  ) {
+    if (hookToThrow == 'onTransition') {
+      Error.throwWithStackTrace(errorToThrow, StackTrace.current);
+    }
+  }
+
+  @override
+  void onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change) {
+    if (hookToThrow == 'onChange') {
+      Error.throwWithStackTrace(errorToThrow, StackTrace.current);
+    }
+  }
+
+  @override
+  void onError(
+    BlocSignalBase<dynamic> bloc,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    if (hookToThrow == 'onError') {
+      Error.throwWithStackTrace(errorToThrow, StackTrace.current);
+    }
+  }
+
+  @override
+  void onTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {
+    if (hookToThrow == 'onTelemetry') {
+      Error.throwWithStackTrace(errorToThrow, StackTrace.current);
+    }
+  }
+
+  @override
+  void onClose(BlocSignalBase<dynamic> bloc) {
+    if (hookToThrow == 'onClose') {
+      Error.throwWithStackTrace(errorToThrow, StackTrace.current);
+    }
+  }
+}
+
+class _FatalOnChangeCubit extends CubitSignal<int> {
+  _FatalOnChangeCubit() : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
+
+  @override
+  void onChange(Change<int> change) {
+    super.onChange(change);
+    throw StateError('Fatal onChange invariant failure');
+  }
+}
+
+class _FatalHandleTransitionBloc extends BlocSignal<String, int> {
+  _FatalHandleTransitionBloc() : super(initialState: 0) {
+    on<String>((event, emit) => emit(stateValue + 1));
+  }
+
+  @override
+  void handleTransition(Object event, int oldState, int newState) {
+    super.handleTransition(event, oldState, newState);
+    throw StateError('Fatal handleTransition invariant failure');
+  }
 }

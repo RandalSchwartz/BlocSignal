@@ -47,7 +47,7 @@ class ListenableBlocSignal<T> extends CubitSignal<T> {
     if (!isClosed) {
       try {
         emit(_readState());
-      } on Object catch (error, stackTrace) {
+      } on Exception catch (error, stackTrace) {
         onError(error, stackTrace);
       }
     }

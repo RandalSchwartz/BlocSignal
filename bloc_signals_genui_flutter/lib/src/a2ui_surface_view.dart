@@ -687,6 +687,10 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
         key: ValueKey('a2ui_$componentId'),
         child: childWidget,
       );
+      // Intentional `on Object catch` (SCAR-A2UI-03 / SCAR-ERR-02): localized
+      // per-component error boundary isolates any throwable (`TypeError`,
+      // `FormatException`, `StateError`) produced by stochastic LLM payloads
+      // into `errorFallbackBuilder` without tearing down the entire surface.
     } on Object catch (error) {
       return KeyedSubtree(
         key: ValueKey('a2ui_error_$componentId'),

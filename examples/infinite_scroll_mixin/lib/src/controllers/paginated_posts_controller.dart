@@ -151,7 +151,7 @@ class PaginatedPostsController extends ScrollController
               posts: [...stateValue.posts, ...posts],
               hasReachedMax: stateValue.posts.length + posts.length >= 30,
             ));
-    } catch (_) {
+    } on Exception catch (_) {
       emit(stateValue.copyWith(status: PostsStatus.failure));
     }
   }

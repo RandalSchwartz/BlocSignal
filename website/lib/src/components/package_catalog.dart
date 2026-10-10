@@ -181,9 +181,12 @@ class _PackageCatalogState() extends State<PackageCatalog> {
   }
 
   void _copyCommand(PackageItem pkg) {
+    // Intentional on Object catch (SCAR-ERR-02):
+    // web.window.navigator.clipboard throws UnsupportedError in SSR or
+    // DOMException when clipboard permission is denied.
     try {
       web.window.navigator.clipboard.writeText(pkg.installCmd);
-    } catch (_) {
+    } on Object catch (_) {
       // Ignore if clipboard API is restricted in headless/iframe contexts.
     }
     setState(() {

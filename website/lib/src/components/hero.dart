@@ -45,9 +45,12 @@ class _HeroBannerContentState() extends State<_HeroBannerContent> {
   }
 
   void _copyCommand(String activeCommand) {
+    // Intentional on Object catch (SCAR-ERR-02):
+    // web.window.navigator.clipboard throws UnsupportedError in SSR or
+    // DOMException when clipboard permission is denied.
     try {
       web.window.navigator.clipboard.writeText(activeCommand);
-    } catch (_) {
+    } on Object catch (_) {
       // Ignore if clipboard API is restricted in headless/iframe contexts.
     }
     setState(() {

@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (hydrate)**: Narrow `initHydratedState`, `persist`, and `clear` error handling from `on Object catch` and unfiltered `.catchError` to `on Exception catch` and `test: (e) => e is Exception` so programming defects (`Error` subtypes) surface immediately while runtime storage and serialization exceptions continue routing to `onError` (#340).
+
 ## 1.0.4
 
 - **Fix (hydrate)**: Replace silent `e?.toString()` list element coercion with strict `e as String?` casting in `HydratedMixin.fromJson`, preventing non-string JSON list elements (`[1, 2, 3]`, `[{'a': 1}]`) from being corrupted into strings when `StateType` is assignable from `List<String?>` (#318).

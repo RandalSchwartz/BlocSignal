@@ -72,6 +72,25 @@ void main() {
       controller.dispose();
     });
 
+    test(
+      '(Issue #340) fetchInstances does NOT swallow fatal Error subtypes '
+      '(StateError / TypeError) and resets reentrancy lock via finally',
+      () async {
+        final controller = BlocSignalsDevToolsController(
+          callExtensionRpc: (method, [args]) async {
+            throw StateError('Fatal programmer invariant in RPC handler');
+          },
+        );
+        addTearDown(controller.dispose);
+
+        await expectLater(
+          controller.fetchInstances(),
+          throwsStateError,
+        );
+        expect(controller.errorMessage, isNull);
+      },
+    );
+
     test('fetchInstances enforces reentrancy guard', () async {
       var callCount = 0;
       final completer = Completer<Map<String, dynamic>>();
@@ -448,6 +467,45 @@ void main() {
         expect(controller.history.length, equals(2));
 
         controller.dispose();
+      },
+    );
+
+    test(
+      '(Issue #340) fetchHistoryForInstance catches Exception gracefully '
+      'while fatal Error (StateError / TypeError) fails fast and propagates',
+      () async {
+        var callMode = 'exception';
+        final controller = BlocSignalsDevToolsController(
+          callExtensionRpc: (method, [args]) async {
+            if (callMode == 'exception') {
+              throw Exception('RPC network timeout');
+            }
+            if (callMode == 'state_error') {
+              throw StateError('fatal state bug');
+            }
+            // Returns malformed 'history' value causing TypeError on cast
+            return {'history': 42};
+          },
+        );
+        addTearDown(controller.dispose);
+
+        // 1. Recoverable Exception is caught and falls back gracefully
+        await controller.fetchHistoryForInstance(9001);
+        expect(controller.history, isEmpty);
+
+        // 2. Fatal StateError fails fast and propagates
+        callMode = 'state_error';
+        await expectLater(
+          controller.fetchHistoryForInstance(9001),
+          throwsStateError,
+        );
+
+        // 3. Fatal TypeError during JSON cast fails fast and propagates
+        callMode = 'type_error';
+        await expectLater(
+          controller.fetchHistoryForInstance(9001),
+          throwsA(isA<TypeError>()),
+        );
       },
     );
 

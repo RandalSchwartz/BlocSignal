@@ -1,5 +1,6 @@
 ## Unreleased
 
+- **Fix (flutter)**: Narrow `ListenableBlocSignal._onListenableChanged` from `on Object catch` to `on Exception catch` so programming defects in `readValue` propagate while runtime exceptions route to `onError`, and upgrade bare `catch` in `BlocSignalProvider` lazy factory caching to explicit `on Object catch` (#340).
 - **Feat (flutter)**: Replace `List<dynamic>` in `MultiBlocSignalProvider` and `MultiBlocSignalListener` with typed `BlocSignalProviderSingleChildWidget` and `BlocSignalListenerSingleChildWidget` interfaces (#331).
 
 ## 1.4.0

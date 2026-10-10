@@ -29,12 +29,14 @@ class NavigationCubit() extends CubitSignal<AppRoute> {
   late final JSFunction _hashChangeListener;
 
   static AppRoute _resolveCurrentRoute() {
+    // Intentional on Object catch (SCAR-ERR-02): web.window throws
+    // UnsupportedError during Jaspr SSR pre-rendering.
     try {
       return AppRoute.fromLocation(
         path: web.window.location.pathname,
         hash: web.window.location.hash,
       );
-    } catch (_) {
+    } on Object catch (_) {
       return AppRoute.home;
     }
   }
@@ -51,9 +53,11 @@ class NavigationCubit() extends CubitSignal<AppRoute> {
   void navigate(AppRoute targetRoute) {
     if (stateValue == targetRoute) return;
 
+    // Intentional on Object catch (SCAR-ERR-02): web.window throws
+    // UnsupportedError during Jaspr SSR pre-rendering.
     try {
       web.window.history.pushState(null, '', targetRoute.path);
-    } catch (_) {
+    } on Object catch (_) {
       // Fallback or non-browser context
     }
 
@@ -62,19 +66,23 @@ class NavigationCubit() extends CubitSignal<AppRoute> {
   }
 
   void _trackPageView(AppRoute route) {
+    // Intentional on Object catch (SCAR-ERR-02): JS interop binding throws
+    // when invoked outside a browser or during Jaspr SSR pre-rendering.
     try {
       _trackGaPageView(route.path.toJS);
-    } catch (_) {
+    } on Object catch (_) {
       // Ignore if outside browser or JS binding is unavailable.
     }
   }
 
   @override
   Future<void> close() async {
+    // Intentional on Object catch (SCAR-ERR-02): web.window throws
+    // UnsupportedError during Jaspr SSR pre-rendering.
     try {
       web.window.removeEventListener('popstate', _popStateListener);
       web.window.removeEventListener('hashchange', _hashChangeListener);
-    } catch (_) {}
+    } on Object catch (_) {}
     await super.close();
   }
 }

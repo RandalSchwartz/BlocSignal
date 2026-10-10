@@ -1,5 +1,6 @@
 ## Unreleased
 
+- **Fix (core)**: Narrow observer hook error isolation across `CubitSignalMixin`, `BlocSignalMixin`, and `CompositeBlocSignalObserver` from `on Object catch` to `on Exception catch` so programming defects (`Error` subtypes such as `AssertionError`, `TypeError`, and `StateError`) propagate instead of being swallowed, and upgrade bare `catch` blocks in event dispatch and concurrency transformers to explicit `on Object catch` (#340).
 - **Feat (devtools)**: Add `DevToolsService.unregisterEventDeserializer` and `DevToolsService.clearEventDeserializers` for scoped event deserializer lifecycle management (#332).
 
 ## 1.6.0

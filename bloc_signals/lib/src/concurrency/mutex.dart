@@ -34,7 +34,9 @@ class Mutex {
       try {
         await previous.future;
       } on Object catch (_) {
-        // Ignored; previous failure does not block the queue execution.
+        // Intentional `on Object catch` (SCAR-ERR-02): a prior computation
+        // failing with either `Exception` or `Error` must never permanently
+        // deadlock the mutex queue for subsequent callers.
       }
     }
 

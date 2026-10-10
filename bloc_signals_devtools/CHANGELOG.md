@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (devtools)**: Narrow `BlocSignalsDevToolsController.fetchInstances` and `fetchHistoryForInstance` from `on Object` to `on Exception` so programming defects (`Error` subtypes such as `StateError` and `TypeError`) surface immediately while VM Service RPC exceptions are handled gracefully (#340).
+
 ## 1.0.2
 
 - Package and distribute dedicated DevTools extension with `extension/devtools/config.yaml` and precompiled web assets (`extension/devtools/build/`).

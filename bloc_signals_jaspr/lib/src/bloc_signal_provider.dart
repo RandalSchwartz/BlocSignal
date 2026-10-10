@@ -140,7 +140,11 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
     if (!_isInitialized) {
       try {
         _bloc = component.create!(context);
-      } catch (e, s) {
+        // Intentional `on Object catch` (SCAR-ERR-02): cache any factory
+        // throwable (`Exception` or `Error`) before rethrowing so subsequent
+        // rebuilds deterministically rethrow `_error` instead of hitting a
+        // secondary `NullCheckError` on `_bloc!`.
+      } on Object catch (e, s) {
         _error = (e, s);
         rethrow;
       } finally {
@@ -161,7 +165,9 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
     if (!component.lazy && component.create != null) {
       try {
         _bloc = component.create!(context);
-      } catch (e, s) {
+        // Intentional `on Object catch` (SCAR-ERR-02): cache any factory
+        // throwable before rethrowing for deterministic rebuild behavior.
+      } on Object catch (e, s) {
         _error = (e, s);
         rethrow;
       } finally {

@@ -115,7 +115,7 @@ class BlocSignalsDevToolsController with ChangeNotifier {
       _instances = rawInstances?.cast<Map<String, dynamic>>().toList() ?? [];
       _isLoading = false;
       notifyListeners();
-    } on Object catch (e) {
+    } on Exception catch (e) {
       _isLoading = false;
       _errorMessage =
           'Could not fetch containers. Ensure DevToolsBlocSignalObserver is '
@@ -260,7 +260,7 @@ class BlocSignalsDevToolsController with ChangeNotifier {
         _trimHistory();
         notifyListeners();
       }
-    } on Object {
+    } on Exception {
       // Historical buffer load failure falls back safely to live history
       // stream.
     }

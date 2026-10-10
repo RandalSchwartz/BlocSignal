@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Docs (test)**: Document intentional `on Object catch` boundary in `blocSignalTest` (#340).
+
 ## 1.0.2
 
 - **Fix (test)**: Capture rethrown Error subtypes in blocSignalTest when errors matcher is provided (#328).

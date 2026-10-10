@@ -54,10 +54,6 @@ class MarvelRepository {
   /// Fetches single character details by [id].
   Future<MarvelCharacter?> fetchCharacterById(String id) async {
     await Future<void>.delayed(const Duration(milliseconds: 50));
-    try {
-      return _mockCharacters.firstWhere((c) => c.id == id);
-    } catch (_) {
-      return null;
-    }
+    return _mockCharacters.where((c) => c.id == id).firstOrNull;
   }
 }

@@ -20,6 +20,7 @@ typedef _Outcome = ({
   List<Object> reported,
   List<Object?> completed,
   List<Object> escaped,
+  List<StackTrace> escapedStackTraces,
 });
 
 /// Captures what `A2uiSurfaceBloc` forwards to the global observer slot.
@@ -68,7 +69,8 @@ class _Feed {
 
   void add(Object? chunk) => controller.add(chunk);
 
-  void addError(Object error) => controller.addError(error);
+  void addError(Object error, [StackTrace? stackTrace]) =>
+      controller.addError(error, stackTrace);
 
   Future<void> close() => controller.close();
 }
@@ -277,6 +279,7 @@ Future<_Outcome> _session(
   final observer = _RecordingObserver();
   final states = <A2uiSurfaceState>[];
   final escaped = <Object>[];
+  final escapedStackTraces = <StackTrace>[];
 
   final previousObserver = BlocSignalObserver.observer;
   BlocSignalObserver.observer = observer;
@@ -301,7 +304,10 @@ Future<_Outcome> _session(
           if (!finished.isCompleted) finished.complete();
         }
       },
-      (error, stackTrace) => escaped.add(error),
+      (error, stackTrace) {
+        escaped.add(error);
+        escapedStackTraces.add(stackTrace);
+      },
     ),
   );
 
@@ -319,6 +325,7 @@ Future<_Outcome> _session(
     reported: observer.errors,
     completed: observer.completed,
     escaped: escaped,
+    escapedStackTraces: escapedStackTraces,
   );
 }
 
@@ -905,16 +912,20 @@ void main() {
     });
 
     test(
-        '(Issue #300: Blocker 1) fatal Error in chunk processing resolves '
-        'completer and finishes handler', () async {
+        '(Issue #300: Blocker 1 / Issue #340) fatal Error in chunk processing '
+        'resolves completer, finishes handler, and preserves original '
+        'StackTrace', () async {
       late _Feed feed;
       final failure = StateError('fatal chunk error');
+      final customTrace = StackTrace.fromString(
+        '#0      customStreamOrigin (package:app/stream.dart:42:7)\n',
+      );
       final outcome = await _session((bloc, observer) async {
         feed = _Feed();
         bloc.add(IngestStream(feed.controller.stream));
         await feed.listened;
 
-        feed.addError(failure);
+        feed.addError(failure, customTrace);
         await _settle();
 
         await feed.close();
@@ -922,12 +933,17 @@ void main() {
 
       expect(feed.isCancelled, isTrue);
       expect(outcome.completed.whereType<IngestStream>(), hasLength(1));
+      expect(outcome.escaped, [same(failure)]);
+      expect(
+        outcome.escapedStackTraces.single.toString(),
+        contains('customStreamOrigin'),
+      );
     });
 
     test(
         'stream cancel failure during close is routed to onError and close completes',
         () async {
-      final cancelFailure = StateError('cancel failed on close');
+      final cancelFailure = Exception('cancel failed on close');
       final feed = _ThrowingCancelStream(cancelFailure);
       final outcome = await _session((bloc, observer) async {
         bloc.add(IngestStream(feed));
@@ -939,14 +955,14 @@ void main() {
       expect(
         outcome.escaped,
         isEmpty,
-        reason: 'close must not rethrow cancel error',
+        reason: 'close must not rethrow cancel exception',
       );
     });
 
     test(
         'stream cancel failure during stream replacement is routed to onError without crashing handler',
         () async {
-      final cancelFailure = StateError('cancel failed on superseding');
+      final cancelFailure = Exception('cancel failed on superseding');
       final feed1 = _ThrowingCancelStream(cancelFailure);
       final feed2 = _Feed();
       final outcome = await _session((bloc, observer) async {
@@ -962,6 +978,20 @@ void main() {
 
       expect(outcome.reported, contains(same(cancelFailure)));
       expect(outcome.completed.whereType<IngestStream>(), hasLength(2));
+    });
+
+    test(
+        '(Issue #340) fatal Error (StateError) during stream cancel is NOT '
+        'swallowed by _safeCancel and propagates out of close', () async {
+      final fatalError = StateError('fatal cancel state bug');
+      final feed = _ThrowingCancelStream(fatalError);
+      final outcome = await _session((bloc, observer) async {
+        bloc.add(IngestStream(feed));
+        await feed.listened;
+        await expectLater(bloc.close(), throwsStateError);
+      });
+
+      expect(outcome.reported, isNot(contains(same(fatalError))));
     });
   });
 }

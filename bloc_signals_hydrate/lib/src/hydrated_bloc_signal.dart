@@ -42,6 +42,10 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
     if (json is StateType) {
       return json;
     }
+    // Intentional `on Object catch` ladder (SCAR-TYPE-06 / SCAR-ERR-02):
+    // primitive collection deserialization probes candidate element/value casts
+    // (`as String`, `as num`) which throw `TypeError` (an `Error` subtype) on
+    // mismatch before falling through to the next candidate type.
     if (json is List) {
       try {
         final dynamic list = List<dynamic>.from(json);
@@ -99,6 +103,10 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
 
   /// Initializes hydration by loading stored state during constructor
   /// execution.
+  ///
+  /// Recoverable storage or deserialization [Exception] instances are caught
+  /// and forwarded to [onError], falling back to [initial]. Fatal Dart [Error]
+  /// subtypes fail fast.
   @protected
   StateType initHydratedState(StateType initial) {
     final storage = activeStorage;
@@ -128,13 +136,16 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
           );
         }
       }
-    } on Object catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       onError(error, stackTrace);
     }
     return initial;
   }
 
   /// Persists [state] to [activeStorage].
+  ///
+  /// Recoverable serialization and storage I/O [Exception] instances are
+  /// forwarded to [onError], whereas fatal Dart [Error] subtypes fail fast.
   @protected
   void persist(StateType state) {
     final storage = activeStorage;
@@ -154,15 +165,18 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
           ? storage.write(storageToken, json)
           : storage.delete(storageToken);
       if (result is Future<void>) {
-        unawaited(result.catchError(onError));
+        unawaited(result.catchError(onError, test: (e) => e is Exception));
       }
-    } on Object catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       onError(error, stackTrace);
     }
   }
 
   /// Deletes stored state from storage and resets container state to
   /// [initialState].
+  ///
+  /// Recoverable storage I/O [Exception] instances are caught and forwarded to
+  /// [onError], whereas fatal Dart [Error] subtypes fail fast.
   Future<void> clear() async {
     final storage = activeStorage;
     if (storage != null) {
@@ -171,7 +185,7 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
         if (result is Future<void>) {
           await result;
         }
-      } on Object catch (error, stackTrace) {
+      } on Exception catch (error, stackTrace) {
         onError(error, stackTrace);
       }
     }

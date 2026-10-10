@@ -141,7 +141,7 @@ class WeatherBloc extends BlocSignal<WeatherEvent, WeatherState> {
       try {
         final weather = await _repository.getWeather(event.city);
         emit(WeatherSuccess(weather));
-      } catch (e) {
+      } on Exception catch (e) {
         emit(WeatherFailure(e.toString()));
       }
     }, transformer: restartable());

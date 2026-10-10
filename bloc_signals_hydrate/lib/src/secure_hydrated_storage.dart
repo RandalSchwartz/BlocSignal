@@ -61,7 +61,7 @@ class SecureHydratedStorage implements HydratedStorage {
             : entry.key;
         try {
           cache[rawKey] = jsonDecode(entry.value);
-        } on Object {
+        } on FormatException {
           cache[rawKey] = entry.value;
         }
       }

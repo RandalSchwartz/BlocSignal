@@ -25,6 +25,10 @@ class const DocsTestingGuidePage({super.key}) extends StatelessComponent {
       title: '6. Observer Scoping & Lifecycle',
       anchor: 'observer-verification',
     ),
+    TocHeading(
+      title: '7. Mocking & Faking (Widget & Golden Tests)',
+      anchor: 'widget-golden-mocking',
+    ),
   ];
 
   @override
@@ -261,6 +265,272 @@ blocSignalTest<UserBloc, UserState>(
             ' is invoked when the container is closed at the end of the test run.',
           ),
         ]),
+      ]),
+
+      section(id: 'widget-golden-mocking', classes: 'docs-section', [
+        h2([Component.text('7. Mocking & Faking (Widget & Golden Tests)')]),
+        p([
+          Component.text(
+            'When migrating from classic BLoC to BlocSignal, a common stumbling block in widget and golden tests is attempting to stub ',
+          ),
+          code([
+            Component.text(
+              'when(() => myCubit.state).thenReturn(MyLoadedState())',
+            ),
+          ]),
+          Component.text(' with '),
+          code([Component.text('mocktail')]),
+          Component.text('. This produces a compiler error: '),
+          code([
+            Component.text(
+              "The argument type 'MyLoadedState' can't be assigned to the parameter type 'ReadonlySignal'",
+            ),
+          ]),
+          Component.text('.'),
+        ]),
+        p([
+          Component.text('In BlocSignal, '),
+          code([Component.text('cubit.state')]),
+          Component.text(' is a reactive '),
+          code([Component.text('ReadonlySignal<S>')]),
+          Component.text(' that UI widgets ('),
+          code([Component.text('BlocSignalBuilder')]),
+          Component.text(', '),
+          code([Component.text('BlocSignalListener')]),
+          Component.text(', '),
+          code([Component.text('BlocSignalSelector')]),
+          Component.text(', and '),
+          code([Component.text('context.select')]),
+          Component.text(
+            ') subscribe to inside reactive effects and computed signals, whereas ',
+          ),
+          code([Component.text('cubit.value')]),
+          Component.text(' (and its alias '),
+          code([Component.text('cubit.stateValue')]),
+          Component.text(') returns the raw '),
+          code([Component.text('S')]),
+          Component.text(' snapshot.'),
+        ]),
+        const DocsCallout(
+          type: CalloutType.tip,
+          title: 'Prefer Lightweight Fakes or Constructor Seeding Over Mocks',
+          children: [
+            p([
+              Component.text(
+                'Because CubitSignal and BlocSignal are streamless and propagate state synchronously in the exact same frame, you rarely need mocktail in widget tests. For static golden tests, pass a real container seeded via initialState: into BlocSignalProvider.value. For interactive widget tests, create a 3-line Fake class extending CubitSignal<S> (or BlocSignal<E, S>) and implementing your container interface with a helper method: void emitState(S newState) => emit(newState);.',
+              ),
+            ]),
+          ],
+        ),
+        const DocsCodeBlock(
+          title: 'Idiomatic Fake Cubit for Widget & Golden Tests',
+          dart313Code: '''
+import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+// 1. Define a lightweight Fake extending CubitSignal (or BlocSignal<UserEvent, UserState>)
+class FakeUserCubit({super.initialState = const UserInitial()})
+    extends CubitSignal<UserState>
+    implements UserCubit {
+  void emitState(UserState newState) => emit(newState);
+
+  @override
+  Future<void> refresh() async {}
+}
+
+void main() {
+  testWidgets('renders UserLoaded state and reacts to synchronous updates', (tester) async {
+    final fakeCubit = FakeUserCubit(initialState: const UserLoading());
+    addTearDown(fakeCubit.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocSignalProvider<UserCubit>.value(
+          value: fakeCubit,
+          child: const UserProfileView(),
+        ),
+      ),
+    );
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    // 2. Drive state transitions synchronously and pump the next frame
+    fakeCubit.emitState(const UserLoaded('Alice'));
+    await tester.pump();
+
+    expect(find.text('Alice'), findsOneWidget);
+  });
+}
+''',
+          dart35Code: '''
+import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+// 1. Define a lightweight Fake extending CubitSignal (or BlocSignal<UserEvent, UserState>)
+class FakeUserCubit extends CubitSignal<UserState> implements UserCubit {
+  FakeUserCubit({UserState initialState = const UserInitial()})
+      : super(initialState: initialState);
+
+  void emitState(UserState newState) => emit(newState);
+
+  @override
+  Future<void> refresh() async {}
+}
+
+void main() {
+  testWidgets('renders UserLoaded state and reacts to synchronous updates', (WidgetTester tester) async {
+    final fakeCubit = FakeUserCubit(initialState: const UserLoading());
+    addTearDown(fakeCubit.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocSignalProvider<UserCubit>.value(
+          value: fakeCubit,
+          child: const UserProfileView(),
+        ),
+      ),
+    );
+
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    // 2. Drive state transitions synchronously and pump the next frame
+    fakeCubit.emitState(const UserLoaded('Alice'));
+    await tester.pump();
+
+    expect(find.text('Alice'), findsOneWidget);
+  });
+}
+''',
+        ),
+        p([
+          Component.text('For event-driven containers, '),
+          code([
+            Component.text(
+              'FakeUserBloc extends BlocSignal<UserEvent, UserState> implements UserBloc',
+            ),
+          ]),
+          Component.text(
+            ' works identically—providing real reactive signal subscriptions, equality checks, and lifecycle semantics without mock boilerplate.',
+          ),
+        ]),
+        p([
+          Component.text(
+            'If your test suite requires interaction verification with ',
+          ),
+          code([Component.text('mocktail')]),
+          Component.text(' (for example, '),
+          code([Component.text('verify(() => mockCubit.refresh()).called(1)')]),
+          Component.text('), back the mock with a real '),
+          code([Component.text('signal<S>()')]),
+          Component.text(
+            ' so reactive widgets and selectors can subscribe to ',
+          ),
+          code([Component.text('mockCubit.state')]),
+          Component.text('. Register a fallback state value via '),
+          code([Component.text('setUpAll(() => registerFallbackValue(...))')]),
+          Component.text(' for '),
+          code([Component.text('equals(any(), any())')]),
+          Component.text(', and wire '),
+          code([Component.text('mockCubit.close()')]),
+          Component.text(' to '),
+          code([Component.text('stateSignal.dispose()')]),
+          Component.text(' via '),
+          code([Component.text('addTearDown(mockCubit.close)')]),
+          Component.text(':'),
+        ]),
+        const DocsCodeBlock(
+          title: 'Stubbing with mocktail and a Backing Signal',
+          dart313Code: '''
+import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockUserCubit extends Mock implements UserCubit {}
+
+void main() {
+  setUpAll(() => registerFallbackValue(const UserInitial()));
+
+  testWidgets('stubs MockUserCubit with a backing signal', (tester) async {
+    final mockCubit = MockUserCubit();
+    final stateSignal = signal<UserState>(const UserInitial());
+    addTearDown(mockCubit.close);
+
+    // Wire the backing signal and container contract
+    when(() => mockCubit.state).thenReturn(stateSignal);
+    when(() => mockCubit.value).thenAnswer((_) => stateSignal.value);
+    when(() => mockCubit.stateValue).thenAnswer((_) => stateSignal.value);
+    when(() => mockCubit.equals(any(), any())).thenAnswer(
+      (inv) => inv.positionalArguments[0] == inv.positionalArguments[1],
+    );
+    when(() => mockCubit.isClosed).thenReturn(false);
+    when(() => mockCubit.close()).thenAnswer((_) async => stateSignal.dispose());
+    when(() => mockCubit.refresh()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocSignalProvider<UserCubit>.value(
+          value: mockCubit,
+          child: const UserProfileView(),
+        ),
+      ),
+    );
+
+    // Mutate the backing signal to trigger reactive widget rebuilds
+    stateSignal.value = const UserLoaded('Alice');
+    await tester.pump();
+
+    expect(find.text('Alice'), findsOneWidget);
+  });
+}
+''',
+          dart35Code: '''
+import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockUserCubit extends Mock implements UserCubit {}
+
+void main() {
+  setUpAll(() => registerFallbackValue(const UserInitial()));
+
+  testWidgets('stubs MockUserCubit with a backing signal', (WidgetTester tester) async {
+    final mockCubit = MockUserCubit();
+    final stateSignal = signal<UserState>(const UserInitial());
+    addTearDown(mockCubit.close);
+
+    // Wire the backing signal and container contract
+    when(() => mockCubit.state).thenReturn(stateSignal);
+    when(() => mockCubit.value).thenAnswer((_) => stateSignal.value);
+    when(() => mockCubit.stateValue).thenAnswer((_) => stateSignal.value);
+    when(() => mockCubit.equals(any(), any())).thenAnswer(
+      (Invocation inv) => inv.positionalArguments[0] == inv.positionalArguments[1],
+    );
+    when(() => mockCubit.isClosed).thenReturn(false);
+    when(() => mockCubit.close()).thenAnswer((_) async => stateSignal.dispose());
+    when(() => mockCubit.refresh()).thenAnswer((_) async {});
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocSignalProvider<UserCubit>.value(
+          value: mockCubit,
+          child: const UserProfileView(),
+        ),
+      ),
+    );
+
+    // Mutate the backing signal to trigger reactive widget rebuilds
+    stateSignal.value = const UserLoaded('Alice');
+    await tester.pump();
+
+    expect(find.text('Alice'), findsOneWidget);
+  });
+}
+''',
+        ),
       ]),
     ]);
   }

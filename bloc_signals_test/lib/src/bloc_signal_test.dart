@@ -13,7 +13,19 @@ import 'package:test/test.dart' as test_pkg;
 /// ```dart
 /// build: () => CounterBloc(initialState: 5),
 /// ```
-
+///
+/// ### Widget & Golden Testing (`BlocSignalProvider.value`)
+/// When injecting a test double into widget or golden tests via
+/// `BlocSignalProvider.value`, note that `bloc.state` is a reactive
+/// `ReadonlySignal<State>` whereas `bloc.value` (and `bloc.stateValue`) returns
+/// the raw `State` snapshot. Prefer a lightweight Fake extending
+/// [CubitSignal] or [BlocSignal] with `void emitState(State s) => emit(s);`,
+/// or back a `mocktail` `Mock` with a `signal<State>(initial)` returned from
+/// `when(() => mock.state).thenReturn(stateSignal)` alongside
+/// `registerFallbackValue` for `mock.equals(any(), any())`, stubs for
+/// `mock.value`, `mock.stateValue`, `mock.isClosed`, and
+/// `when(() => mock.close()).thenAnswer((_) async => stateSignal.dispose())`
+/// registered with `addTearDown(mock.close)`.
 ///
 /// [setUp] is an optional callback invoked prior to building the state
 /// container.

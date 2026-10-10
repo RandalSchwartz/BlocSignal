@@ -95,6 +95,70 @@ blocSignalTest<DataBloc, DataState>(
 );
 ```
 
+### 3. Mocking & Faking for Widget & Golden Tests
+
+In `BlocSignal`, `cubit.state` is a reactive `ReadonlySignal<S>` (which `BlocSignalBuilder`, `BlocSignalListener`, `BlocSignalSelector`, and `context.select` subscribe to inside reactive effects and computeds), while `cubit.value` (and `cubit.stateValue`) returns the raw `S` snapshot. Attempting to stub `when(() => cubit.state).thenReturn(MyLoadedState())` with `mocktail` will fail because `MyLoadedState` is not a `ReadonlySignal<MyState>`.
+
+#### Idiomatic Fake (Recommended)
+
+Because `CubitSignal` and `BlocSignal` are streamless and propagate state synchronously in the same frame, the cleanest pattern for widget and golden tests is either seeding a real container via `initialState:` or creating a lightweight `Fake` class:
+
+```dart
+class FakeUserCubit extends CubitSignal<UserState> implements UserCubit {
+  FakeUserCubit({super.initialState = const UserInitial()});
+
+  void emitState(UserState newState) => emit(newState);
+
+  @override
+  Future<void> refresh() async {}
+}
+
+// In testWidgets:
+final fakeCubit = FakeUserCubit(initialState: const UserLoading());
+addTearDown(fakeCubit.close);
+
+await tester.pumpWidget(
+  MaterialApp(
+    home: BlocSignalProvider<UserCubit>.value(
+      value: fakeCubit,
+      child: const UserProfileView(),
+    ),
+  ),
+);
+
+fakeCubit.emitState(const UserLoaded('Alice'));
+await tester.pump();
+```
+
+#### Stubbing with `mocktail` and a Backing `signal<S>()`
+
+When you need `mocktail` verification (for example, `verify(() => mockCubit.refresh()).called(1)`), back `mockCubit.state` with a real `signal<S>()`, register a fallback state value for `equals(any(), any())`, and dispose the backing signal in `close()` via `addTearDown(mockCubit.close)`:
+
+```dart
+class MockUserCubit extends Mock implements UserCubit {}
+
+// In main():
+setUpAll(() => registerFallbackValue(const UserInitial()));
+
+// In testWidgets:
+final mockCubit = MockUserCubit();
+final stateSignal = signal<UserState>(const UserInitial());
+addTearDown(mockCubit.close);
+
+when(() => mockCubit.state).thenReturn(stateSignal);
+when(() => mockCubit.value).thenAnswer((_) => stateSignal.value);
+when(() => mockCubit.stateValue).thenAnswer((_) => stateSignal.value);
+when(() => mockCubit.equals(any(), any())).thenAnswer(
+  (inv) => inv.positionalArguments[0] == inv.positionalArguments[1],
+);
+when(() => mockCubit.isClosed).thenReturn(false);
+when(() => mockCubit.close()).thenAnswer((_) async => stateSignal.dispose());
+
+// Trigger reactive widget rebuilds by mutating stateSignal.value:
+stateSignal.value = const UserLoaded('Alice');
+await tester.pump();
+```
+
 ---
 
 ## 🤖 AI Coding Assistant Skill

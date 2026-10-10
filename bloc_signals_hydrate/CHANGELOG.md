@@ -1,5 +1,6 @@
 ## Unreleased
 
+- **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).
 - **Refactor (hydrate)**: Move `hydrate()` (with idempotency and `isHydrated` getter) and `emit()` persistence logic into `HydratedMixin` so custom containers mixing `CubitSignalMixin` and `HydratedMixin` automatically persist state emissions without duplicating logic across `HydratedCubitSignal` and `HydratedBlocSignal` (#333).
 - **Fix (hydrate)**: Narrow `initHydratedState`, `persist`, and `clear` error handling from `on Object catch` and unfiltered `.catchError` to `on Exception catch` and `test: (e) => e is Exception` so programming defects (`Error` subtypes) surface immediately while runtime storage and serialization exceptions continue routing to `onError` (#340).
 

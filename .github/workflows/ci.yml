@@ -49,4 +49,4 @@ jobs:
         run: dart run tool/run_workspace_tests.dart --coverage
 
       - name: Enforce Coverage Thresholds
-        run: dart run tool/calculate_coverage.dart --min=75
+        run: dart run tool/calculate_coverage.dart --min=75 --per-package-min=75

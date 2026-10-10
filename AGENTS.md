@@ -111,7 +111,7 @@ To protect developer context while preventing catastrophic regressions, full sca
 | **Container Mixin Emission** | False positive flags on `this.emit()` in container mixins & nested class leakage | `AvoidDirectSignalMutationOutsideBloc` checks mixins on `CubitSignal`/`BlocSignal` and enforces strict nearest-declaration scope isolation. |
 | **Kaisel 1.1 Guards** | Infinite redirect loops & initial auth flash | Dynamically compute `initial:` route from current state; route guards must have idempotent self-bypass. |
 | **Constructor Migration** | Breaking changes on positional `super(...)` | Preserve backward compatibility via `@Deprecated` named positional constructors (`ReplayCubit.positional`). |
-| **Website Docs TOC** | Missing switch cases in `docs_content.dart` | Map new sections in `_getHeadingsForSection` and `_getSourcePathForSection`; guarded by CI tests. |
+| **Website Docs TOC** | Missing TOC headings or sourcePath on `DocSectionItem` | Populate `headings` and `sourcePath` directly on every `DocSectionItem` in `DocsRegistry`; guarded by CI tests. |
 | **Constructor Quick-Fixes** | Assuming first argument is always positional | Query `args.where((arg) => arg is! NamedExpression).firstOrNull`; handle leading named arguments cleanly. |
 | **AST NamedType Tokens** | `.name` vs `.name2` across analyzer 6/7/8 | Query `type.toSource()` or `TypeChecker` instead of accessing `.name` / `.name2` directly. |
 | **PR Review Skill Ingestion**| Missing domain rules via keyword routing | CI unconditionally ingests all `plugins/bloc-signals/skills/bloc-signals/*.md` files into review prompt. |

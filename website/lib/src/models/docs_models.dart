@@ -1,5 +1,12 @@
 import 'package:jaspr/jaspr.dart';
 
+/// Represents an anchor heading inside a documentation article's Table of Contents.
+class const TocHeading({
+  required final String title,
+  required final String anchor,
+  final int level = 2,
+});
+
 /// Represents a single documentation article or topic page.
 class const DocSectionItem({
   required final String id,
@@ -9,6 +16,8 @@ class const DocSectionItem({
   required final String description,
   final String? badge,
   required final Component Function() builder,
+  required final List<TocHeading> headings,
+  required final String sourcePath,
 });
 
 /// Represents a grouping category in the Docs navigation tree.

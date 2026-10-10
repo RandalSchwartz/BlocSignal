@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).
 - **Refactor (lint)**: Remove dead `stopOnAwait` parameter and field in `_LinearAstVisitor` inside `AvoidMultipleSynchronousEmits` (#358).
 - **Fix (lint)**: Recognize `ReplayMixin`, `HydratedMixin`, `HydratedCubitSignal`, and `HydratedBlocSignal` in AST and semantic container checks across `AvoidPseudoEventsInTelemetry`, `RequireEmitInHelperName`, `AvoidMultipleSynchronousEmits`, `AvoidRawSignalEffectsInBloc`, `AvoidDirectSignalMutationOutsideBloc`, and `AvoidPrimitiveEventTypes` (#333).
 

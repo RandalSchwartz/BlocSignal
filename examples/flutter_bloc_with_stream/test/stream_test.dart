@@ -30,11 +30,16 @@ void main() {
   });
 
   group('StreamInteropApp Widget Test', () {
-    testWidgets('renders cards and stream interop titles',
-        (widgetTester) async {
-      await widgetTester.pumpWidget(const StreamInteropApp());
-      expect(find.text('Stream Interop Example'), findsOneWidget);
-      expect(find.text('Reactive Signal View (Watch)'), findsOneWidget);
-    });
+    testWidgets(
+      'renders cards and stream interop titles (Issue #334: R20)',
+      (widgetTester) async {
+        await widgetTester.pumpWidget(const StreamInteropApp());
+        expect(find.text('Stream Interop Example'), findsOneWidget);
+        expect(
+          find.text('Reactive Signal View (BlocSignalBuilder)'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

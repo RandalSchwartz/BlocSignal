@@ -39,6 +39,7 @@ void main() {
 
   tearDown(() {
     BlocSignalObserver.observer = originalObserver;
+    DevToolsService.instance.clearEventDeserializers();
   });
 
   group('DevToolsService RPC Extensions', () {
@@ -267,6 +268,192 @@ void main() {
         contains('Failed to deserialize event for CounterBloc'),
       );
       await bloc.close();
+    });
+
+    group(
+        '(Issue #332: R18) unregisterEventDeserializer and '
+        'clearEventDeserializers', () {
+      test(
+          '(Issue #332: R18) unregisterEventDeserializer<T>() removes typed '
+          'deserializer and stops invoking it on handleDispatch', () async {
+        final bloc = CounterBloc();
+        addTearDown(bloc.close);
+
+        var deserializerCalls = 0;
+        DevToolsService.instance.registerEventDeserializer<CounterBloc>((raw) {
+          deserializerCalls++;
+          if (raw is Map && raw['action'] == 'plus') return 'inc';
+          return raw;
+        });
+
+        final res1 = await DevToolsService.instance.handleDispatch(
+          'ext.bloc_signal.dispatch',
+          {
+            'hashCode': bloc.hashCode.toString(),
+            'event': '{"action":"plus"}',
+          },
+        );
+        final json1 = jsonDecode(res1.result!) as Map<String, dynamic>;
+        expect(json1['success'], isTrue);
+        expect(bloc.stateValue, equals(1));
+        expect(deserializerCalls, equals(1));
+
+        // Unregistering returns true the first time, false when already absent
+        expect(
+          DevToolsService.instance.unregisterEventDeserializer<CounterBloc>(),
+          isTrue,
+        );
+        expect(
+          DevToolsService.instance.unregisterEventDeserializer<CounterBloc>(),
+          isFalse,
+        );
+
+        // Subsequent dispatch no longer runs the removed deserializer
+        final res2 = await DevToolsService.instance.handleDispatch(
+          'ext.bloc_signal.dispatch',
+          {
+            'hashCode': bloc.hashCode.toString(),
+            'event': '{"action":"plus"}',
+          },
+        );
+        expect(res2.errorCode, equals(-32602));
+        expect(deserializerCalls, equals(1));
+      });
+
+      test(
+          '(Issue #332: R18) registerEventDeserializer and '
+          'unregisterEventDeserializer support named eventName lookup',
+          () async {
+        final bloc = CounterBloc();
+        addTearDown(bloc.close);
+
+        var namedCalls = 0;
+        DevToolsService.instance.registerEventDeserializer(
+          (raw) {
+            namedCalls++;
+            return 'inc';
+          },
+          eventName: 'customInc',
+        );
+
+        // Verify dispatch via JSON payload 'event', 'type', 'name', 'action'
+        for (final key in ['event', 'type', 'name', 'action']) {
+          final resMapKey = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {
+              'hashCode': bloc.hashCode.toString(),
+              'event': '{"$key":"customInc"}',
+            },
+          );
+          expect(
+            (jsonDecode(resMapKey.result!) as Map<String, dynamic>)['success'],
+            isTrue,
+          );
+        }
+        expect(bloc.stateValue, equals(4));
+        expect(namedCalls, equals(4));
+
+        // Verify dispatch via parameter 'eventName'
+        final resParam = await DevToolsService.instance.handleDispatch(
+          'ext.bloc_signal.dispatch',
+          {
+            'hashCode': bloc.hashCode.toString(),
+            'event': 'raw_payload',
+            'eventName': 'customInc',
+          },
+        );
+        expect(
+          (jsonDecode(resParam.result!) as Map<String, dynamic>)['success'],
+          isTrue,
+        );
+        expect(bloc.stateValue, equals(5));
+        expect(namedCalls, equals(5));
+
+        // Verify non-String map key value (for example {"event": 123}) and
+        // non-matching map fall through without invoking the deserializer
+        final resNonStringKey = await DevToolsService.instance.handleDispatch(
+          'ext.bloc_signal.dispatch',
+          {
+            'hashCode': bloc.hashCode.toString(),
+            'event': '{"event":123}',
+          },
+        );
+        expect(resNonStringKey.errorCode, equals(-32602));
+        expect(namedCalls, equals(5));
+
+        final resUnmatchedParam = await DevToolsService.instance.handleDispatch(
+          'ext.bloc_signal.dispatch',
+          {
+            'hashCode': bloc.hashCode.toString(),
+            'event': '{"other":"value"}',
+            'eventName': 'unknownEventName',
+          },
+        );
+        expect(resUnmatchedParam.errorCode, equals(-32602));
+        expect(namedCalls, equals(5));
+
+        // Unregister by eventName
+        expect(
+          DevToolsService.instance.unregisterEventDeserializer('customInc'),
+          isTrue,
+        );
+        expect(
+          DevToolsService.instance.unregisterEventDeserializer('customInc'),
+          isFalse,
+        );
+
+        final resAfter = await DevToolsService.instance.handleDispatch(
+          'ext.bloc_signal.dispatch',
+          {
+            'hashCode': bloc.hashCode.toString(),
+            'event': '{"type":"customInc"}',
+          },
+        );
+        expect(resAfter.errorCode, equals(-32602));
+        expect(namedCalls, equals(5));
+
+        // Register with both <CounterBloc> and eventName: 'bothEvent'
+        DevToolsService.instance.registerEventDeserializer<CounterBloc>(
+          (raw) => 'inc',
+          eventName: 'bothEvent',
+        );
+        expect(
+          DevToolsService.instance
+              .unregisterEventDeserializer<CounterBloc>('bothEvent'),
+          isTrue,
+        );
+        expect(
+          DevToolsService.instance
+              .unregisterEventDeserializer<CounterBloc>('bothEvent'),
+          isFalse,
+        );
+      });
+
+      test(
+          '(Issue #332: R18) clearEventDeserializers removes all registered '
+          'deserializers at once', () async {
+        final bloc = CounterBloc();
+        addTearDown(bloc.close);
+
+        DevToolsService.instance.registerEventDeserializer<CounterBloc>(
+          (raw) => 'inc',
+        );
+        DevToolsService.instance.registerEventDeserializer(
+          (raw) => 'inc',
+          eventName: 'namedInc',
+        );
+
+        DevToolsService.instance.clearEventDeserializers();
+
+        expect(
+          DevToolsService.instance.unregisterEventDeserializer<CounterBloc>(),
+          isFalse,
+        );
+        expect(
+          DevToolsService.instance.unregisterEventDeserializer('namedInc'),
+          isFalse,
+        );
+      });
     });
   });
 }

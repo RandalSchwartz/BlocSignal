@@ -59,10 +59,14 @@ class DevToolsService {
 
   final Map<int, WeakReference<BlocSignalBase<dynamic>>> _containers = {};
   final Map<int, List<DevToolsHistoryEntry>> _history = {};
-  final Map<Type, Object? Function(dynamic raw)> _eventDeserializers = {};
+  final Map<Object, Object? Function(dynamic raw)> _eventDeserializers = {};
   bool _extensionsRegistered = false;
 
-  /// Registers an event deserializer callback for containers of type [T].
+  static bool _hasExplicitTypeBound<T extends BlocSignalBase<dynamic>>() =>
+      T != (BlocSignalBase<dynamic>) && T != (BlocSignalBase<Object?>);
+
+  /// Registers an event deserializer callback for containers of type [T]
+  /// and/or a specific [eventName].
   ///
   /// This allows the DevTools `dispatch` RPC to reconstruct typed events from
   /// JSON maps or strings when interacting with strongly-typed blocs.
@@ -76,9 +80,51 @@ class DevToolsService {
   /// });
   /// ```
   void registerEventDeserializer<T extends BlocSignalBase<dynamic>>(
-    Object? Function(dynamic raw) deserializer,
-  ) {
-    _eventDeserializers[T] = deserializer;
+    Object? Function(dynamic raw) deserializer, {
+    String? eventName,
+  }) {
+    if (eventName != null) {
+      _eventDeserializers[eventName] = deserializer;
+    }
+    if (_hasExplicitTypeBound<T>() || eventName == null) {
+      _eventDeserializers[T] = deserializer;
+    }
+  }
+
+  /// Unregisters a previously registered event deserializer for container type
+  /// [T] and/or [eventName].
+  ///
+  /// Returns `true` if a registered deserializer was found and removed, or
+  /// `false` if no matching deserializer was registered.
+  ///
+  /// ```dart
+  /// final removed =
+  ///     DevToolsService.instance.unregisterEventDeserializer<CounterBloc>();
+  /// ```
+  bool unregisterEventDeserializer<T extends BlocSignalBase<dynamic>>([
+    String? eventName,
+  ]) {
+    var removed = false;
+    if (eventName != null && _eventDeserializers.remove(eventName) != null) {
+      removed = true;
+    }
+    if ((_hasExplicitTypeBound<T>() || eventName == null) &&
+        _eventDeserializers.remove(T) != null) {
+      removed = true;
+    }
+    return removed;
+  }
+
+  /// Clears all registered event deserializers from [DevToolsService].
+  ///
+  /// Useful when resetting global state during application teardown or between
+  /// unit test runs.
+  ///
+  /// ```dart
+  /// DevToolsService.instance.clearEventDeserializers();
+  /// ```
+  void clearEventDeserializers() {
+    _eventDeserializers.clear();
   }
 
   static bool get _inDebugMode {
@@ -277,6 +323,33 @@ class DevToolsService {
     );
   }
 
+  Object? Function(dynamic raw)? _resolveDeserializer(
+    Type containerType,
+    Map<String, String> parameters,
+    dynamic eventPayload,
+  ) {
+    final typed = _eventDeserializers[containerType];
+    if (typed != null) return typed;
+
+    final paramEventName = parameters['eventName'];
+    if (paramEventName != null) {
+      final byParam = _eventDeserializers[paramEventName];
+      if (byParam != null) return byParam;
+    }
+
+    if (eventPayload is Map) {
+      final rawName = eventPayload['event'] ??
+          eventPayload['type'] ??
+          eventPayload['name'] ??
+          eventPayload['action'];
+      if (rawName is String) {
+        return _eventDeserializers[rawName];
+      }
+    }
+
+    return null;
+  }
+
   /// RPC Handler: `ext.bloc_signal.dispatch`
   Future<developer.ServiceExtensionResponse> handleDispatch(
     String method,
@@ -312,7 +385,11 @@ class DevToolsService {
         }
       }
 
-      final deserializer = _eventDeserializers[bloc.runtimeType];
+      final deserializer = _resolveDeserializer(
+        bloc.runtimeType,
+        parameters,
+        eventPayload,
+      );
       if (deserializer != null) {
         try {
           eventPayload = deserializer(eventPayload);

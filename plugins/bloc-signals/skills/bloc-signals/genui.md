@@ -41,6 +41,7 @@ In Google's **A2UI / GenUI** streaming protocol, AI models (such as Google Gemin
 │  - Reactive activeSurfaceId ReadonlySignal   │
 │  - Per-surface _surfaceVersions counters     │
 │  - Bounded LRU eviction via maxSurfaces      │
+│  - Bounded FIFO history: maxResponseHistory  │
 └──────────────────────┬───────────────────────┘
                        │ 2. Synchronous Signals
                        ▼
@@ -87,6 +88,7 @@ Inject the `A2uiSurfaceBloc` via `BlocSignalProvider` and display `A2uiSurfaceVi
 BlocSignalProvider<A2uiSurfaceBloc>(
   create: (context) => A2uiSurfaceBloc(
     maxSurfaces: 10,
+    maxResponseHistory: 100,
   )..add(IngestStream(stream)),
   child: Scaffold(
     body: A2uiSurfaceView(
@@ -107,7 +109,7 @@ Never rebuild the entire surface when a user types into a form input or when a s
 1. **Uncaught Stream Errors**: Never allow stream parse exceptions to crash the UI isolate. Route them through `onError()` on `BlocSignalObserver` and transition the surface to `SurfaceError`.
 2. **Defensive Property Parsing**: Component properties received from LLMs can be malformed (for example strings where integers are expected). Use defensive type coercers (`SafePropParser`) with fallback defaults.
 3. **Unknown Component Graceful Fallback**: When an agent streams an unrecognized component type, render an inline fallback container rather than throwing an exception.
-4. **Action Response Replay**: Buffer action responses so late-mounted listeners do not drop responses.
+4. **Bounded Action Response Replay (`maxResponseHistory`)**: Buffer submitted `A2uiActionResponse` items so late-mounted listeners on `actionResponses` do not drop responses. Capacity defaults to `maxResponseHistory: 100` with FIFO eviction of the oldest entry when full (or set `maxResponseHistory: 0` to disable replay buffering while preserving live broadcast delivery).
 5. **Submission Recovery & Lifecycle Completion**: Action submissions (`SubmitAction`) transition the state to `SurfaceSubmitting`. If an agent action fails, encounters a network timeout, or completes without streaming a new UI tree, the surface must transition back to `SurfaceReady` via `CancelSubmission({String? error, String? surfaceId})` or `CompleteAction({String? error, String? surfaceId})`. This dismisses the `ModalBarrier` overlay, preserves all active form inputs and component models, sets `isValid: false`, and renders error notifications via `validationErrorsBuilder`.
 6. **Multi-Surface Navigation, Split-Pane Isolation & Bounded LRU Eviction (`SCAR-GENUI-7`)**: An agent may stream multiple distinct surfaces (for example conversational sidebars, main content panes, or modal sheets) over the same connection. Surfaces register dynamically in `availableSurfaceIds`.
    - Dispatch `SelectSurface({required String surfaceId})` (or call `componentContext.selectSurface(id)` / `adapter.selectSurface(id)`) to switch `bloc.activeSurfaceId` synchronously without incrementing surface content versions.

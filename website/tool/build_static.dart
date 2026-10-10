@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:blocsignal_website/src/models/docs_registry.dart';
+
 /// Builds the static web bundle for blocsignal.dev, compiling Dart to JS
 /// and creating static route fallbacks for Firebase Hosting and static web servers.
 Future<void> main() async {
@@ -54,41 +56,7 @@ Future<void> main() async {
     exit(1);
   }
 
-  final routes = [
-    'showcase',
-    'ported-examples',
-    'minesweeper',
-    'publications',
-    'docs',
-    'docs/overview',
-    'docs/installation',
-    'docs/quickstart',
-    'docs/decision-matrix',
-    'docs/cubit-vs-bloc',
-    'docs/state-modeling',
-    'docs/events-and-handlers',
-    'docs/event-transformers',
-    'docs/lifecycle-and-observers',
-    'docs/signals-reactivity',
-    'docs/flutter-providers',
-    'docs/flutter-widgets',
-    'docs/flutter-context',
-    'docs/testing-guide',
-    'docs/pkg-hydrate',
-    'docs/pkg-replay',
-    'docs/pkg-riverpod',
-    'docs/pkg-otel',
-    'docs/pkg-devtools',
-    'docs/pkg-lint',
-    'docs/pkg-jaspr',
-    'docs/recipe-one-shot',
-    'docs/recipe-form-validation',
-    'docs/recipe-controllers',
-    'docs/recipe-caching',
-    'docs/recipe-batching',
-    'docs/migration-bloc',
-    'docs/migration-riverpod',
-  ];
+  final routes = DocsRegistry.allStaticRoutes;
 
   print('🗺️ Generating static route fallbacks for ${routes.length} routes...');
   for (final route in routes) {

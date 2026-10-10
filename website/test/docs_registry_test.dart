@@ -1,6 +1,7 @@
 import 'package:blocsignal_website/src/components/docs/docs_content.dart';
 import 'package:blocsignal_website/src/models/app_route.dart';
 import 'package:blocsignal_website/src/models/docs_registry.dart';
+import 'package:blocsignal_website/src/models/string_escape.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -311,4 +312,52 @@ void main() {
       });
     },
   );
+
+  group('(Issue #330: R16) Static Routes & Publication String Escaping', () {
+    test('DocsRegistry.allStaticRoutes includes all top-level and section routes without duplicates', () {
+      final allStaticRoutes = DocsRegistry.allStaticRoutes;
+      expect(
+        allStaticRoutes,
+        containsAll([
+          'showcase',
+          'ported-examples',
+          'minesweeper',
+          'publications',
+          'docs',
+        ]),
+      );
+      expect(allStaticRoutes, contains('docs/pkg-bloc'));
+      expect(allStaticRoutes, contains('docs/recipe-domain-mixins'));
+
+      for (final category in DocsRegistry.categories) {
+        for (final section in category.sections) {
+          expect(
+            allStaticRoutes,
+            contains('docs/${section.id}'),
+            reason: 'Missing static route for section ${section.id}',
+          );
+        }
+      }
+
+      expect(
+        allStaticRoutes.toSet().length,
+        equals(allStaticRoutes.length),
+        reason: 'allStaticRoutes must not contain duplicate entries',
+      );
+    });
+
+    test('escapeDartString properly escapes backslashes, dollar signs, quotes, and newlines', () {
+      expect(escapeDartString(r'\'), equals(r'\\'));
+      expect(
+        escapeDartString(r'$100 and ${foo}'),
+        equals(r'\$100 and \${foo}'),
+      );
+      expect(escapeDartString("It's"), equals(r"It\'s"));
+      expect(escapeDartString('a\r\nb'), equals(r'a\r\nb'));
+      expect(
+        escapeDartString(r"Cost: $50 \ 'quote'"),
+        equals(r"Cost: \$50 \\ \'quote\'"),
+      );
+    });
+  });
 }

@@ -220,10 +220,10 @@ enum DocSymbol(
   traced('traced', 'bloc_signals_otel', 'traced.html'),
   tracedBloc('tracedBloc', 'bloc_signals_otel', 'tracedBloc.html'),
 
-  // DevTools (bloc_signals_devtools)
+  // DevTools (exported by bloc_signals, re-exported by bloc_signals_devtools)
   devToolsBlocSignalObserver(
     'DevToolsBlocSignalObserver',
-    'bloc_signals_devtools',
+    'bloc_signals',
     'DevToolsBlocSignalObserver-class.html',
   ),
 

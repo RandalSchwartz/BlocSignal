@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:blocsignal_website/src/models/string_escape.dart';
+
 /// Automated tool to fetch the latest DEV.to articles for @randalschwartz
 /// and regenerate `website/lib/src/pages/publications_page.dart`.
 Future<void> main() async {
@@ -147,11 +149,8 @@ Future<void> main() async {
   buffer.writeln('const List<PublicationItem> _publications = [');
 
   for (final article in articles) {
-    final title = (article['title'] as String).replaceAll("'", "\\'");
-    final description = (article['description'] as String).replaceAll(
-      "'",
-      "\\'",
-    );
+    final title = escapeDartString(article['title'] as String);
+    final description = escapeDartString(article['description'] as String);
     final url = article['canonical_url'] ?? article['url'];
     final readTime = '${article['reading_time_minutes']} min read';
     String publishDate = article['readable_publish_date']?.toString() ?? '';

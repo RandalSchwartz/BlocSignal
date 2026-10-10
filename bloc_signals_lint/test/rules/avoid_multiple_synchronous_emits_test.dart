@@ -3,7 +3,11 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_multiple_synchronous_emits.dart';
 import 'package:test/test.dart';
 
+import '../src/lint_test_harness.dart';
+
 void main() {
+  tearDownAll(disposeLintTestHarness);
+
   group('AvoidMultipleSynchronousEmits AST Detection', () {
     test('rule metadata is properly configured', () {
       const rule = AvoidMultipleSynchronousEmits();
@@ -700,6 +704,88 @@ class CounterCubit extends CubitSignal<int> {
           );
         }
         expect(badFlagged, hasLength(2));
+      },
+    );
+
+    test(
+      '(Issue #358) accepts compound expressions and arrow helpers where '
+      'await precedes sibling emit()',
+      () async {
+        const goodCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  Future<void> compoundStatement() async {
+    emit(1);
+    final _ = [await Future<void>.delayed(Duration.zero), emit(2)];
+  }
+
+  Future<void> callAsyncCompoundHelper() async {
+    _helperEmit();
+    emit(2);
+  }
+
+  Future<void> callAsyncArrowHelper() async {
+    _arrowHelperEmit();
+    emit(2);
+  }
+
+  Future<void> _helperEmit() async {
+    final _ = [await Future<void>.delayed(Duration.zero), emit(1)];
+  }
+
+  Future<List<void>> _arrowHelperEmit() async =>
+      [await Future<void>.delayed(Duration.zero), emit(1)];
+}
+''';
+        final parseResult = parseString(content: goodCode);
+        final flaggedNodes = <AstNode>[];
+        for (final declaration
+            in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+          flaggedNodes.addAll(
+            AvoidMultipleSynchronousEmits.findViolations(declaration),
+          );
+        }
+        expect(flaggedNodes, isEmpty);
+
+        final lints = await runLintRule(
+          const AvoidMultipleSynchronousEmits(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
+      },
+    );
+
+    test(
+      '(Issue #358) detects multiple synchronous emit() calls occurring after '
+      'an await within the same compound expression',
+      () async {
+        const badCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  Future<void> compoundMultiplePostAwait() async {
+    final _ = [await Future<void>.delayed(Duration.zero), emit(1), emit(2)];
+  }
+}
+''';
+        final parseResult = parseString(content: badCode);
+        final flaggedNodes = <AstNode>[];
+        for (final declaration
+            in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+          flaggedNodes.addAll(
+            AvoidMultipleSynchronousEmits.findViolations(declaration),
+          );
+        }
+        expect(flaggedNodes, hasLength(1));
+        expect(flaggedNodes.single.toSource(), equals('emit(2)'));
+
+        final lints = await runLintRule(
+          const AvoidMultipleSynchronousEmits(),
+          badCode,
+        );
+        expect(lints, hasLength(1));
+        expect(lints.single.lexeme, equals('emit'));
       },
     );
   });

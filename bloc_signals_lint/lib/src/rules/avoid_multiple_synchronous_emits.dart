@@ -188,13 +188,15 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
       var emitted = false;
       stmt.accept(
         _LinearAstVisitor(
+          // onAwait flips awaited = true so subsequent sibling emit() calls
+          // visited in the same statement are ignored by the !awaited guard in
+          // onEmit.
           onAwait: () => awaited = true,
           onEmit: (node) {
             if (!awaited && _isEmitOrHelper(node, emittingMethods)) {
               emitted = true;
             }
           },
-          stopOnAwait: true,
         ),
       );
       if (emitted) return true;
@@ -211,13 +213,15 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
     var emits = false;
     expr.accept(
       _LinearAstVisitor(
+        // onAwait flips awaited = true so subsequent sibling emit() calls
+        // visited in the same expression are ignored by the !awaited guard in
+        // onEmit.
         onAwait: () => awaited = true,
         onEmit: (node) {
           if (!awaited && _isEmitOrHelper(node, emittingMethods)) {
             emits = true;
           }
         },
-        stopOnAwait: true,
       ),
     );
     return emits;
@@ -675,13 +679,11 @@ class _LinearAstVisitor extends RecursiveAstVisitor<void> {
     required this.onAwait,
     required this.onEmit,
     this.onConditional,
-    this.stopOnAwait = false,
   });
 
   final void Function() onAwait;
   final void Function(MethodInvocation node) onEmit;
   final void Function(ConditionalExpression node)? onConditional;
-  final bool stopOnAwait;
 
   @override
   void visitFunctionExpression(FunctionExpression node) {
@@ -703,7 +705,6 @@ class _LinearAstVisitor extends RecursiveAstVisitor<void> {
   void visitAwaitExpression(AwaitExpression node) {
     node.expression.accept(this);
     onAwait();
-    if (stopOnAwait) return;
   }
 
   @override

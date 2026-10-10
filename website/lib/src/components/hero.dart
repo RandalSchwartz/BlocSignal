@@ -47,7 +47,7 @@ class _HeroBannerContentState() extends State<_HeroBannerContent> {
   void _copyCommand(String activeCommand) {
     try {
       web.window.navigator.clipboard.writeText(activeCommand);
-    } catch (_) {
+    } on Object catch (_) {
       // Ignore if clipboard API is restricted in headless/iframe contexts.
     }
     setState(() {

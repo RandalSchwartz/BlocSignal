@@ -170,7 +170,7 @@ class GithubSearchBlocSignal
       } else {
         emit(SearchSuccess(items));
       }
-    } catch (e) {
+    } on Exception catch (e) {
       emit(SearchError(e.toString()));
     }
   }

@@ -199,7 +199,10 @@ EventTransformer<E, StateType> droppable<E, StateType>({
         });
       }
       isProcessing = false;
-    } catch (_) {
+      // Intentional `on Object catch` (SCAR-ERR-02): reset `isProcessing`
+      // concurrency flag before rethrowing any synchronous `Exception` or
+      // `Error` so subsequent events are never permanently dropped.
+    } on Object catch (_) {
       isProcessing = false;
       rethrow;
     }
@@ -349,7 +352,9 @@ EventTransformer<E, StateType> restartable<E, StateType>({
         return result.whenComplete(onComplete);
       }
       onComplete();
-    } catch (_) {
+      // Intentional `on Object catch` (SCAR-ERR-02): clear active execution
+      // token on synchronous `Exception` or `Error` before rethrowing.
+    } on Object catch (_) {
       onComplete();
       rethrow;
     }

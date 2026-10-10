@@ -258,6 +258,5 @@ HydratedStorage.storage = tenantStorage;
 
 ### Disk-First Atomic Writes & Error Routing
 - **Atomic Disk Commits**: Storage adapters write directly to persistent disk before updating internal in-memory caches, guaranteeing cache consistency during unexpected process termination.
-- **Asynchronous Error Routing**: Any background storage write or delete error is automatically captured and routed to `onError()` on the active container and notified through `BlocSignalObserver.onError()`.
+- **Asynchronous Exception Routing & `Error` Propagation**: Any synchronous or background storage write, read, or delete `Exception` is automatically captured (`on Exception catch` and `.catchError(onError, test: (e) => e is Exception)`) and routed to `onError()` on the active container and notified through `BlocSignalObserver.onError()`. Programming defects (`Error` subtypes such as `AssertionError` or `TypeError` inside user `toJson` / `fromJson` implementations) are never swallowed and propagate immediately.
 - **Constructor Write-Back Prevention**: State restoration during constructor initialization is recognized as hydration rather than a mutation, eliminating redundant disk write cycles on startup.
-

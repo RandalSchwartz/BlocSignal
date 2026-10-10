@@ -98,7 +98,7 @@ class PubSearchBloc extends BlocSignal<PubSearchEvent, PubSearchState> {
     try {
       final packages = await _repository.search(query);
       emit(PubSearchSuccess(packages));
-    } catch (error) {
+    } on Exception catch (error) {
       emit(PubSearchError(error.toString()));
     }
   }

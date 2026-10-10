@@ -333,7 +333,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
               _emitSurfaceSnapshot(emit, messageCount: messageCount);
             }
-          } catch (error, stackTrace) {
+            // Intentional `on Object catch` (SCAR-ERR-02): report stream chunk
+            // failures to `onError`, clean up active stream completer/pointer,
+            // and rethrow fatal `Error` subtypes via `if (error is Error) rethrow;`.
+          } on Object catch (error, stackTrace) {
             onError(error, stackTrace);
             if (!isClosed &&
                 !_isClosing &&
@@ -386,7 +389,9 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         cancelOnError: true,
       );
       _activeStreamSubscription = subscription;
-    } catch (e, st) {
+      // Intentional `on Object catch` (SCAR-ERR-02): complete stream completer
+      // and report subscription setup failure to `onError` before rethrowing.
+    } on Object catch (e, st) {
       if (!completer.isCompleted) completer.complete();
       _activeStreamCompleter = null;
       onError(e, st);
@@ -415,7 +420,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       _enforceMaxSurfacesBound();
       _messageCount++;
       _emitSurfaceSnapshot(emit);
-    } catch (error, stackTrace) {
+      // Intentional `on Object catch` (SCAR-ERR-02): report to `onError` and
+      // rethrow fatal `Error` subtypes via `if (error is Error) rethrow;`
+      // before emitting `SurfaceError` for recoverable exceptions.
+    } on Object catch (error, stackTrace) {
       onError(error, stackTrace);
       if (error is Error) rethrow;
       emit(
@@ -439,7 +447,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       _enforceMaxSurfacesBound();
       _messageCount++;
       _emitSurfaceSnapshot(emit);
-    } catch (error, stackTrace) {
+      // Intentional `on Object catch` (SCAR-ERR-02): report to `onError` and
+      // rethrow fatal `Error` subtypes via `if (error is Error) rethrow;`
+      // before emitting `SurfaceError` for recoverable exceptions.
+    } on Object catch (error, stackTrace) {
       onError(error, stackTrace);
       if (error is Error) rethrow;
       emit(
@@ -463,7 +474,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       _enforceMaxSurfacesBound();
       _messageCount += normalizedMessages.length;
       _emitSurfaceSnapshot(emit);
-    } catch (error, stackTrace) {
+      // Intentional `on Object catch` (SCAR-ERR-02): report to `onError` and
+      // rethrow fatal `Error` subtypes via `if (error is Error) rethrow;`
+      // before emitting `SurfaceError` for recoverable exceptions.
+    } on Object catch (error, stackTrace) {
       onError(error, stackTrace);
       if (error is Error) rethrow;
       emit(
@@ -1064,7 +1078,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     if (sub == null) return;
     try {
       await sub.cancel();
-    } catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       onError(error, stackTrace);
     }
   }

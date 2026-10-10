@@ -34,7 +34,7 @@ class NavigationCubit() extends CubitSignal<AppRoute> {
         path: web.window.location.pathname,
         hash: web.window.location.hash,
       );
-    } catch (_) {
+    } on Object catch (_) {
       return AppRoute.home;
     }
   }
@@ -53,7 +53,7 @@ class NavigationCubit() extends CubitSignal<AppRoute> {
 
     try {
       web.window.history.pushState(null, '', targetRoute.path);
-    } catch (_) {
+    } on Object catch (_) {
       // Fallback or non-browser context
     }
 
@@ -64,7 +64,7 @@ class NavigationCubit() extends CubitSignal<AppRoute> {
   void _trackPageView(AppRoute route) {
     try {
       _trackGaPageView(route.path.toJS);
-    } catch (_) {
+    } on Object catch (_) {
       // Ignore if outside browser or JS binding is unavailable.
     }
   }
@@ -74,7 +74,7 @@ class NavigationCubit() extends CubitSignal<AppRoute> {
     try {
       web.window.removeEventListener('popstate', _popStateListener);
       web.window.removeEventListener('hashchange', _hashChangeListener);
-    } catch (_) {}
+    } on Object catch (_) {}
     await super.close();
   }
 }

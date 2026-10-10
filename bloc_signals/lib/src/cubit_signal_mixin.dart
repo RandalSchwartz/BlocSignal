@@ -99,7 +99,7 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
 
     try {
       BlocSignalObserver.observer?.onCreate(this);
-    } on Object catch (e, stackTrace) {
+    } on Exception catch (e, stackTrace) {
       onError(e, stackTrace);
     }
   }
@@ -168,13 +168,13 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
     if (event != null) {
       try {
         handleTransition(event as Object, oldState, newState);
-      } on Object catch (e, stackTrace) {
+      } on Exception catch (e, stackTrace) {
         onError(e, stackTrace);
       }
     } else {
       try {
         BlocSignalObserver.observer?.onTransition(this, null, newState);
-      } on Object catch (e, stackTrace) {
+      } on Exception catch (e, stackTrace) {
         onError(e, stackTrace);
       }
     }
@@ -187,7 +187,7 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
     );
     try {
       onChange(change);
-    } on Object catch (e, stackTrace) {
+    } on Exception catch (e, stackTrace) {
       onError(e, stackTrace);
     }
   }
@@ -202,7 +202,7 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   void onChange(Change<StateType> change) {
     try {
       BlocSignalObserver.observer?.onChange(this, change);
-    } on Object catch (e, stackTrace) {
+    } on Exception catch (e, stackTrace) {
       onError(e, stackTrace);
     }
   }
@@ -215,8 +215,8 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
     if (currentObserver != null) {
       try {
         currentObserver.onError(this, error, stackTrace);
-      } on Object catch (_) {
-        // Prevent observer error in onError from causing infinite recursion
+      } on Exception catch (_) {
+        // Prevent observer exception in onError from causing infinite recursion
       }
     }
   }
@@ -260,7 +260,7 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
         event: event,
         metadata: metadata,
       );
-    } on Object catch (e, stackTrace) {
+    } on Exception catch (e, stackTrace) {
       onError(e, stackTrace);
     }
   }
@@ -296,7 +296,7 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
     _effectsToDispose.clear();
     try {
       BlocSignalObserver.observer?.onClose(this);
-    } on Object catch (e, stackTrace) {
+    } on Exception catch (e, stackTrace) {
       onError(e, stackTrace);
     }
   }

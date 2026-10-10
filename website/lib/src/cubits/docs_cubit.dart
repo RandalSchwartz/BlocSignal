@@ -36,7 +36,7 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
     try {
       web.window.addEventListener('popstate', _popStateListener);
       web.window.addEventListener('hashchange', _hashChangeListener);
-    } catch (_) {}
+    } on Object catch (_) {}
 
     _trackDocsPageView(stateValue.activeSectionId);
   }
@@ -58,7 +58,7 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
       if (hashSlug.isNotEmpty && hashSlug != 'docs') {
         return DocsRegistry.resolveSection(hashSlug).id;
       }
-    } catch (_) {}
+    } on Object catch (_) {}
     return 'overview';
   }
 
@@ -102,7 +102,7 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
     if (pushHistory) {
       try {
         web.window.history.pushState(null, '', targetSection.path);
-      } catch (_) {}
+      } on Object catch (_) {}
     }
 
     // Ensure category of target section is expanded
@@ -126,7 +126,7 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
           web.window.scrollTo(web.ScrollToOptions(top: 0, left: 0));
         }).toJS,
       );
-    } catch (_) {}
+    } on Object catch (_) {}
   }
 
   /// Updates navigation search query.
@@ -169,7 +169,7 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
   void _trackDocsPageView(String sectionId) {
     try {
       _trackGaPageView('/docs/$sectionId'.toJS);
-    } catch (_) {}
+    } on Object catch (_) {}
   }
 
   @override
@@ -177,7 +177,7 @@ class DocsCubit({String? initialSectionId}) extends CubitSignal<DocsState> {
     try {
       web.window.removeEventListener('popstate', _popStateListener);
       web.window.removeEventListener('hashchange', _hashChangeListener);
-    } catch (_) {}
+    } on Object catch (_) {}
     await super.close();
   }
 }

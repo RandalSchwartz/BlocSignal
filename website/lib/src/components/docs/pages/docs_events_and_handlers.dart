@@ -245,7 +245,7 @@ class SearchBloc(final SearchService service)
       try {
         final results = await service.search(event.query);
         emit(SearchSuccess(results));
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         emit(SearchError(e.toString()));
       }
     }, transformer: restartable());
@@ -259,7 +259,7 @@ class SearchBloc extends BlocSignal<SearchEvent, SearchState> {
       try {
         final results = await _service.search(event.query);
         emit(SearchSuccess(results));
-      } catch (e, stack) {
+      } on Exception catch (e, stack) {
         emit(SearchError(e.toString()));
       }
     }, transformer: restartable());

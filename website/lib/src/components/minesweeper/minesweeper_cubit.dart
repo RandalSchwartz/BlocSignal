@@ -15,7 +15,7 @@ external void _trackMinesweeperEvent(
 void _trackAnalytics(String eventName, String difficulty, [int val = 0]) {
   try {
     _trackMinesweeperEvent(eventName.toJS, difficulty.toJS, val.toJS);
-  } catch (_) {}
+  } on Object catch (_) {}
 }
 
 enum Difficulty({
@@ -162,7 +162,7 @@ class MinesweeperCubit({Difficulty difficulty = Difficulty.beginner})
         final decoded = jsonDecode(saved) as Map<String, dynamic>;
         return MinesweeperState.fromJson(decoded);
       }
-    } catch (_) {}
+    } on Object catch (_) {}
     return _generateNewGame(difficulty: difficulty);
   }
 
@@ -227,7 +227,7 @@ class MinesweeperCubit({Difficulty difficulty = Difficulty.beginner})
   void _persistState(MinesweeperState state) {
     try {
       web.window.localStorage.setItem(_storageKey, jsonEncode(state.toJson()));
-    } catch (_) {}
+    } on Object catch (_) {}
   }
 
   void resetGame({Difficulty? difficulty, int? seed}) {
@@ -513,7 +513,7 @@ class MinesweeperCubit({Difficulty difficulty = Difficulty.beginner})
       _trackAnalytics('minesweeper_load_seed', diff.name);
       resetGame(difficulty: diff, seed: seed);
       return true;
-    } catch (_) {
+    } on Object catch (_) {
       return false;
     }
   }

@@ -87,7 +87,7 @@ class TaskRepository {
           ..remove(id);
         _optimisticPatches.value = updated;
       });
-    } catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       // Rollback atomically using batch(): silently revert override and set sync error
       batch(() {
         final updated = Map<String, bool>.from(_optimisticPatches.value)

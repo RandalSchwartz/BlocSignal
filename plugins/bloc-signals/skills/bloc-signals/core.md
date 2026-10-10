@@ -540,11 +540,11 @@ BlocSignalObserver.observer = CompositeBlocSignalObserver([
 ```
 
 ### Observer Exception Isolation
-All observer hooks (`onCreate`, `onEvent`, `onTransition`, `onChange`, `onTelemetry`, and `onClose`)
-are wrapped in defensive isolation boundaries. Exceptions thrown by an observer are automatically
+All observer hooks (`onCreate`, `onEvent`, `onTransition`, `onChange`, `onTelemetry`, `onEventCompleted`, and `onClose`)
+are wrapped in defensive `on Exception catch` isolation boundaries. Recoverable `Exception` instances thrown by an observer are automatically
 captured and forwarded to `bloc.onError()`, ensuring that a failing observer cannot abort synchronous
 state emissions (`_state.value = newState`) or corrupt container lifecycles. In composite observers,
-failure in one observer does not prevent subsequent observers from receiving the notification.
+an `Exception` in one observer does not prevent subsequent observers from receiving the notification. Programming defects (`Error` subtypes such as `AssertionError`, `TypeError`, or `StateError`) are not swallowed and propagate immediately to the caller.
 
 `onCreate` runs before the subclass constructor body and late fields are initialized, so
 observers should not read subtype-specific fields there. Local `onTransition`, `onChange`,

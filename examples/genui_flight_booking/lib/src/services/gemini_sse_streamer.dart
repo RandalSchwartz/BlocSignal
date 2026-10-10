@@ -44,7 +44,7 @@ class GeminiSseStreamer {
               if (parsed is Map<String, dynamic>) {
                 yield parsed;
               }
-            } catch (_) {
+            } on FormatException catch (_) {
               // Ignore partial or non-JSON chunk
             }
           }

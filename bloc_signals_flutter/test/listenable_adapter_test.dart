@@ -14,6 +14,24 @@ class TestChangeNotifier extends ChangeNotifier {
   }
 }
 
+class _DirectListenable implements Listenable {
+  int count = 0;
+  final List<VoidCallback> _listeners = [];
+
+  @override
+  void addListener(VoidCallback listener) => _listeners.add(listener);
+
+  @override
+  void removeListener(VoidCallback listener) => _listeners.remove(listener);
+
+  void increment() {
+    count++;
+    for (final listener in List<VoidCallback>.from(_listeners)) {
+      listener();
+    }
+  }
+}
+
 class TestCubit extends CubitSignal<int> {
   TestCubit({super.initialState = 0, super.equals, super.options});
 
@@ -156,6 +174,42 @@ void main() {
       expect(capturedError, isA<FormatException>());
       await blocSignal.close();
     });
+
+    test(
+      '(Issue #340) fatal Error (StateError / AssertionError) thrown by '
+      'readState fails fast and propagates out of _onListenableChanged '
+      'without being swallowed into onError',
+      () async {
+        Object? capturedOnError;
+        final directListenable = _DirectListenable();
+        Object? errorToThrow;
+
+        final blocSignal = ErrorCapturingListenableBlocSignal<int>(
+          directListenable,
+          readState: () {
+            if (errorToThrow != null) {
+              Error.throwWithStackTrace(errorToThrow, StackTrace.current);
+            }
+            return directListenable.count;
+          },
+          onErrorCallback: (error, stackTrace) {
+            capturedOnError = error;
+          },
+        );
+        addTearDown(blocSignal.close);
+
+        errorToThrow = StateError('fatal readState bug');
+        expect(directListenable.increment, throwsStateError);
+        expect(capturedOnError, isNull);
+
+        errorToThrow = AssertionError('fatal readState assertion');
+        expect(
+          directListenable.increment,
+          throwsA(isA<AssertionError>()),
+        );
+        expect(capturedOnError, isNull);
+      },
+    );
 
     test('adapts BlocSignal to ValueListenable via toValueListenable()',
         () async {

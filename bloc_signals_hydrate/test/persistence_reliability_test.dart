@@ -241,7 +241,139 @@ void main() {
       bloc.add(2);
       expect(storage.writeCount, equals(1));
     });
+
+    test(
+      '(Issue #340) synchronous Exception in storage.read, write, and delete '
+      'is caught and routed to onError',
+      () async {
+        final readStorage = _ConfigurableThrowingStorage(
+          onRead: () => throw const FormatException('sync read exception'),
+        );
+        final readCubit = TestReliabilityCubit(storage: readStorage);
+        addTearDown(readCubit.close);
+        expect(readCubit.capturedErrors, hasLength(1));
+        expect(readCubit.capturedErrors.first, isA<FormatException>());
+
+        final writeStorage = _ConfigurableThrowingStorage(
+          onWrite: () => throw Exception('sync write exception'),
+          onDelete: () => throw Exception('sync delete exception'),
+        );
+        final writeCubit = TestReliabilityCubit(storage: writeStorage)
+          ..increment();
+        addTearDown(writeCubit.close);
+        expect(writeCubit.capturedErrors, hasLength(1));
+        expect(
+          writeCubit.capturedErrors.first.toString(),
+          contains('sync write exception'),
+        );
+
+        await writeCubit.clear();
+        expect(writeCubit.capturedErrors, hasLength(2));
+        expect(
+          writeCubit.capturedErrors.last.toString(),
+          contains('sync delete exception'),
+        );
+      },
+    );
+
+    test(
+      '(Issue #340) fatal Error (StateError / AssertionError) in synchronous '
+      'hydrate, persist, and clear is NOT swallowed and fails fast',
+      () async {
+        final fatalReadStorage = _ConfigurableThrowingStorage(
+          onRead: () => throw StateError('fatal read bug'),
+        );
+        expect(
+          () => TestReliabilityCubit(storage: fatalReadStorage),
+          throwsStateError,
+        );
+
+        final fatalWriteStorage = _ConfigurableThrowingStorage(
+          onWrite: () => throw AssertionError('fatal write assertion'),
+        );
+        final writeCubit = TestReliabilityCubit(storage: fatalWriteStorage);
+        addTearDown(writeCubit.close);
+        expect(
+          writeCubit.increment,
+          throwsA(isA<AssertionError>()),
+        );
+        expect(writeCubit.capturedErrors, isEmpty);
+
+        final fatalDeleteStorage = _ConfigurableThrowingStorage(
+          onDelete: () => throw StateError('fatal delete bug'),
+        );
+        final deleteCubit = TestReliabilityCubit(storage: fatalDeleteStorage);
+        addTearDown(deleteCubit.close);
+        await expectLater(
+          deleteCubit.clear(),
+          throwsStateError,
+        );
+        expect(deleteCubit.capturedErrors, isEmpty);
+      },
+    );
+
+    test(
+      '(Issue #340) async StateError in storage.write is NOT swallowed by '
+      'catchError(onError, test: (e) => e is Exception) and surfaces as '
+      'uncaught zone error',
+      () async {
+        final parentZone = Zone.current;
+        final uncaughtCompleter = Completer<Object>();
+        final asyncFatalStorage = _ConfigurableThrowingStorage(
+          onWrite: () => Future<void>.error(StateError('async fatal write')),
+        );
+        final cubit = TestReliabilityCubit(storage: asyncFatalStorage);
+        addTearDown(cubit.close);
+
+        runZonedGuarded(
+          cubit.increment,
+          (error, stackTrace) {
+            if (uncaughtCompleter.isCompleted) {
+              parentZone.handleUncaughtError(error, stackTrace);
+              return;
+            }
+            uncaughtCompleter.complete(error);
+          },
+        );
+
+        final uncaught = await uncaughtCompleter.future.timeout(
+          const Duration(milliseconds: 200),
+        );
+        expect(uncaught, isA<StateError>());
+        expect(cubit.capturedErrors, isEmpty);
+      },
+    );
   });
+}
+
+class _ConfigurableThrowingStorage extends MemoryHydratedStorage {
+  _ConfigurableThrowingStorage({
+    this.onRead,
+    this.onWrite,
+    this.onDelete,
+  });
+
+  final dynamic Function()? onRead;
+  final FutureOr<void> Function()? onWrite;
+  final FutureOr<void> Function()? onDelete;
+
+  @override
+  dynamic read(String key) {
+    if (onRead != null) return onRead!();
+    return super.read(key);
+  }
+
+  @override
+  FutureOr<void> write(String key, dynamic value) {
+    if (onWrite != null) return onWrite!();
+    super.write(key, value);
+  }
+
+  @override
+  FutureOr<void> delete(String key) {
+    if (onDelete != null) return onDelete!();
+    super.delete(key);
+  }
 }
 
 class _TestObserver extends BlocSignalObserver {

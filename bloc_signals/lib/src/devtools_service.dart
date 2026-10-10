@@ -393,6 +393,10 @@ class DevToolsService {
       if (deserializer != null) {
         try {
           eventPayload = deserializer(eventPayload);
+          // Intentional `on Object catch` (SCAR-ERR-02): VM Service RPC
+          // extensions must return a structured JSON-RPC error response rather
+          // than crashing the target isolate if a custom deserializer throws
+          // `TypeError` or `StateError`.
         } on Object catch (e) {
           return developer.ServiceExtensionResponse.error(
             developer.ServiceExtensionResponse.invalidParams,
@@ -403,6 +407,10 @@ class DevToolsService {
 
       try {
         bloc.add(eventPayload);
+        // Intentional `on Object catch` (SCAR-ERR-02): VM Service RPC
+        // extensions must return a structured JSON-RPC error response rather
+        // than crashing the target isolate when dispatching an invalid or
+        // unregistered event throws `TypeError` or `StateError`.
       } on Object catch (e) {
         return developer.ServiceExtensionResponse.error(
           developer.ServiceExtensionResponse.invalidParams,

@@ -50,7 +50,7 @@ class _DocsCodeBlockState() extends State<DocsCodeBlock> {
           });
         }
       });
-    } catch (_) {}
+    } on Object catch (_) {}
   }
 
   @override
@@ -67,7 +67,7 @@ class _DocsCodeBlockState() extends State<DocsCodeBlock> {
     String globalVersion = '3.13';
     try {
       globalVersion = context.read<DocsCubit>().stateValue.selectedDartVersion;
-    } catch (_) {}
+    } on Object catch (_) {}
     final activeTab = _overrideTab ?? globalVersion;
     final activeCode = _currentCode(activeTab);
 

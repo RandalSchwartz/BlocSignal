@@ -183,7 +183,7 @@ class _PackageCatalogState() extends State<PackageCatalog> {
   void _copyCommand(PackageItem pkg) {
     try {
       web.window.navigator.clipboard.writeText(pkg.installCmd);
-    } catch (_) {
+    } on Object catch (_) {
       // Ignore if clipboard API is restricted in headless/iframe contexts.
     }
     setState(() {

@@ -65,6 +65,7 @@ class TaskBoardCubit extends CubitSignal<TaskBoardState> {
         (Object error, StackTrace st) {
           onError(error, st);
         },
+        test: (e) => e is Exception,
       ),
     );
   }
@@ -74,7 +75,7 @@ class TaskBoardCubit extends CubitSignal<TaskBoardState> {
     _isDeletingTaskId.value = id;
     try {
       await _repository.deleteTask(id);
-    } catch (error, stackTrace) {
+    } on Exception catch (error, stackTrace) {
       onError(error, stackTrace);
     } finally {
       if (!isClosed) {

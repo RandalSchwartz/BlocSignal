@@ -78,7 +78,7 @@ class MarvelCharacterBloc extends BlocSignal<MarvelEvent, MarvelState> {
     try {
       final characters = await _repository.fetchCharacters(query: event.query);
       emit(MarvelLoaded(characters));
-    } catch (e) {
+    } on Exception catch (e) {
       emit(MarvelError(e.toString()));
     }
   }

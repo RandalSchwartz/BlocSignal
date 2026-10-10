@@ -197,7 +197,7 @@ EventTransformer<E, S> debounce<E, S>(Duration duration) {
       try {
         await handler(event, emit);
         completer.complete();
-      } catch (error, stack) {
+      } on Object catch (error, stack) {
         completer.completeError(error, stack);
       }
     });
@@ -221,7 +221,7 @@ EventTransformer<E, S> debounce<E, S>(Duration duration) {
       try {
         await handler(event, emit);
         completer.complete();
-      } catch (error, stack) {
+      } on Object catch (error, stack) {
         completer.completeError(error, stack);
       }
     });
@@ -263,7 +263,7 @@ EventTransformer<E, S> circuitBreaker<E, S>({
     try {
       await handler(event, emit);
       failureCount = 0; // Success! Reset failures
-    } catch (e) {
+    } on Exception catch (e) {
       failureCount++;
       if (failureCount >= failureThreshold) {
         trippedAt = DateTime.now(); // Trip circuit OPEN!
@@ -299,7 +299,7 @@ EventTransformer<E, S> circuitBreaker<E, S>({
     try {
       await handler(event, emit);
       failureCount = 0; // Success! Reset failures
-    } catch (e) {
+    } on Exception catch (e) {
       failureCount++;
       if (failureCount >= failureThreshold) {
         trippedAt = DateTime.now(); // Trip circuit OPEN!

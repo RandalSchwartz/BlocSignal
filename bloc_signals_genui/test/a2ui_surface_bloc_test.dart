@@ -2026,5 +2026,87 @@ void main() {
         );
       });
     });
+
+    group('(Issue #340) _safeCancel Exception Isolation vs Error Fail-Fast',
+        () {
+      test(
+          '(Issue #340) _safeCancel isolates Exception thrown by '
+          'StreamSubscription.cancel() to onError while propagating StateError',
+          () async {
+        final capturedErrors = <Object>[];
+        final bloc1 = _TrackingMultiSurfaceBloc(
+          onErrorCallback: capturedErrors.add,
+        );
+
+        final exceptionCancelStream = _CustomCancelStream<dynamic>(
+          onCancel: () => throw Exception('cancel socket exception'),
+        );
+        bloc1.add(IngestStream(exceptionCancelStream));
+        await Future<void>.microtask(() {});
+
+        await bloc1.close();
+        expect(
+          capturedErrors.any(
+            (e) => e.toString().contains('cancel socket exception'),
+          ),
+          isTrue,
+        );
+
+        final bloc2 = _TrackingMultiSurfaceBloc();
+        final fatalCancelStream = _CustomCancelStream<dynamic>(
+          onCancel: () => throw StateError('fatal cancel state error'),
+        );
+        bloc2.add(IngestStream(fatalCancelStream));
+        await Future<void>.microtask(() {});
+
+        await expectLater(bloc2.close(), throwsStateError);
+      });
+    });
   });
+}
+
+class _CustomCancelStream<T> extends Stream<T> {
+  _CustomCancelStream({required this.onCancel});
+
+  final FutureOr<void> Function() onCancel;
+
+  @override
+  StreamSubscription<T> listen(
+    void Function(T event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _CustomCancelSubscription<T>(onCancel);
+  }
+}
+
+class _CustomCancelSubscription<T> implements StreamSubscription<T> {
+  _CustomCancelSubscription(this._onCancel);
+
+  final FutureOr<void> Function() _onCancel;
+
+  @override
+  Future<void> cancel() async => await _onCancel();
+
+  @override
+  Future<E> asFuture<E>([E? futureValue]) => Completer<E>().future;
+
+  @override
+  bool get isPaused => false;
+
+  @override
+  void onData(void Function(T data)? handleData) {}
+
+  @override
+  void onDone(void Function()? handleDone) {}
+
+  @override
+  void onError(Function? handleError) {}
+
+  @override
+  void pause([Future<void>? resumeSignal]) {}
+
+  @override
+  void resume() {}
 }

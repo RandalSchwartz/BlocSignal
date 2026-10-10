@@ -120,7 +120,7 @@ class NewsFeedCubit extends CubitSignal<CacheEntry<List<String>>?> {
         fetchedAt: DateTime.now(),
         isRefreshing: false,
       ));
-    } catch (error) {
+    } on Exception catch (error) {
       // Revert refreshing indicator while preserving existing data
       if (current != null) {
         emit(current.copyWith(isRefreshing: false));

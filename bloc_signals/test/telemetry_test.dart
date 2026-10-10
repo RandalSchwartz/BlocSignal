@@ -129,7 +129,19 @@ class _FaultyObserver extends BlocSignalObserver {
     Object? event,
     Map<String, dynamic>? metadata,
   }) {
-    throw StateError('Observer pipeline exploded');
+    throw Exception('Observer pipeline exploded');
+  }
+}
+
+class _FatalErrorObserver extends BlocSignalObserver {
+  @override
+  void onTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {
+    throw StateError('Observer fatal invariant violated');
   }
 }
 
@@ -200,6 +212,18 @@ void main() {
       expect(cubit.incrementWithTelemetry, returnsNormally);
       expect(cubit.stateValue, equals(1));
     });
+
+    test(
+      '(Issue #340) observer Error (StateError) inside onTelemetry is NOT '
+      'swallowed and fails fast',
+      () {
+        BlocSignalObserver.observer = _FatalErrorObserver();
+        final cubit = TelemetryCounterCubit();
+        addTearDown(cubit.close);
+
+        expect(cubit.incrementWithTelemetry, throwsStateError);
+      },
+    );
 
     test('short-circuits telemetry immediately when observer is null', () {
       BlocSignalObserver.observer = null;

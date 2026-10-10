@@ -47,7 +47,7 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
     try {
       BlocSignalObserver.observer
           ?.onTransition(this, transition.event, transition.nextState);
-    } on Object catch (e, stackTrace) {
+    } on Exception catch (e, stackTrace) {
       onError(e, stackTrace);
     }
   }
@@ -69,7 +69,7 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
     if (currentObserver != null) {
       try {
         currentObserver.onEventCompleted(this, event);
-      } on Object catch (e, stackTrace) {
+      } on Exception catch (e, stackTrace) {
         onError(e, stackTrace);
       }
     }
@@ -78,7 +78,7 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
   /// Dispatches an event to the [onEvent] handler.
   ///
   /// Notifies the global [BlocSignalObserver] of the incoming event and catches
-  /// errors thrown in [onEvent], delegating them to [onError]. Any [Error]
+  /// exceptions thrown in [onEvent], delegating them to [onError]. Any [Error]
   /// instance (such as a [StateError] thrown when dispatching an unregistered
   /// event to an [on]-based bloc) is reported to [onError] and rethrown
   /// synchronously.
@@ -88,7 +88,7 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
     if (currentObserver != null) {
       try {
         currentObserver.onEvent(this, event);
-      } on Object catch (e, stackTrace) {
+      } on Exception catch (e, stackTrace) {
         onError(e, stackTrace);
       }
     }
@@ -102,7 +102,10 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
           } else {
             _notifyEventCompleted(event);
           }
-        } catch (e, stackTrace) {
+          // Intentional `on Object catch` (SCAR-ERR-02): notify `onError` and
+          // complete event telemetry for any throwable before rethrowing fatal
+          // `Error` subtypes synchronously.
+        } on Object catch (e, stackTrace) {
           onError(e, stackTrace);
           _notifyEventCompleted(event);
           if (e is Error) rethrow;
@@ -118,7 +121,10 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
   Future<void> _handleAsyncResult(Future<dynamic> result, Event event) async {
     try {
       await result;
-    } catch (e, stackTrace) {
+      // Intentional `on Object catch` (SCAR-ERR-02): report asynchronous
+      // handler throwables to `onError` and rethrow fatal `Error` subtypes
+      // while isolating `Exception` instances.
+    } on Object catch (e, stackTrace) {
       onError(e, stackTrace);
       if (e is Error) {
         Error.throwWithStackTrace(e, stackTrace);

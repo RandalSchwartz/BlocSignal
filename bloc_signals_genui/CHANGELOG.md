@@ -4,6 +4,7 @@ All notable changes to `bloc_signals_genui` will be documented in this file.
 
 ## Unreleased
 
+- **Fix (genui)**: Narrow `A2uiSurfaceBloc._safeCancel` from bare `catch` to `on Exception catch` so programming defects in subscription cancellation surface immediately, and upgrade bare `catch` blocks at stream/JSON boundaries to explicit `on Object catch` (#340).
 - **Fix (genui)**: Add `maxResponseHistory` parameter (defaulting to 100) to `A2uiSurfaceBloc` to bound `_responseHistory` with FIFO eviction (#332).
 - **Fix (genui)**: Replaced shallow map/list equality and collection-length hash codes on `A2uiActionResponse`, `SurfaceReady`, and `SurfaceSubmitting` with recursive `deepEquals` and `deepHashCode` helpers (`deep_collection_equality.dart`), and added a bounded 100-entry validation regular expression cache in `A2uiSurfaceBloc._validateForm` that caches malformed patterns as `null` on `FormatException` (#321).
 - Decoupled active surface navigation coordinates from per-surface content revisions and added bounded surface lifecycle management (#292):

@@ -124,7 +124,10 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
             } else {
               endSpanOk();
             }
-          } catch (error, stackTrace) {
+            // Intentional `on Object catch` (SCAR-OTEL-02 / SCAR-ERR-02):
+            // record span error status and close the OpenTelemetry span on any
+            // synchronous `Exception` or `Error` before rethrowing.
+          } on Object catch (error, stackTrace) {
             endSpanError(error, stackTrace);
             rethrow;
           }
@@ -142,7 +145,9 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
       }
 
       endSpanOk();
-    } catch (error, stackTrace) {
+      // Intentional `on Object catch` (SCAR-OTEL-02 / SCAR-ERR-02): ensure
+      // outer transformer span is closed with error status before rethrowing.
+    } on Object catch (error, stackTrace) {
       endSpanError(error, stackTrace);
       rethrow;
     }

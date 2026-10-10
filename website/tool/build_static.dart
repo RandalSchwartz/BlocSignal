@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:blocsignal_website/src/models/docs_registry.dart';
+import 'package:blocsignal_website/src/models/static_routes.dart';
 
 /// Builds the static web bundle for blocsignal.dev, compiling Dart to JS
 /// and creating static route fallbacks for Firebase Hosting and static web servers.
@@ -56,7 +56,7 @@ Future<void> main() async {
     exit(1);
   }
 
-  final routes = DocsRegistry.allStaticRoutes;
+  const routes = allWebsiteStaticRoutes;
 
   print('🗺️ Generating static route fallbacks for ${routes.length} routes...');
   for (final route in routes) {

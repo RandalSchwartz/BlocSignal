@@ -329,16 +329,17 @@ void main() {
       expect(allStaticRoutes, contains('docs/pkg-bloc'));
       expect(allStaticRoutes, contains('docs/recipe-domain-mixins'));
 
-      for (final category in DocsRegistry.categories) {
-        for (final section in category.sections) {
-          expect(
-            allStaticRoutes,
-            contains('docs/${section.id}'),
-            reason: 'Missing static route for section ${section.id}',
-          );
-        }
-      }
+      final expectedRoutes = [
+        'showcase',
+        'ported-examples',
+        'minesweeper',
+        'publications',
+        'docs',
+        for (final category in DocsRegistry.categories)
+          for (final section in category.sections) 'docs/${section.id}',
+      ];
 
+      expect(allStaticRoutes, equals(expectedRoutes));
       expect(
         allStaticRoutes.toSet().length,
         equals(allStaticRoutes.length),

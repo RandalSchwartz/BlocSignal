@@ -75,20 +75,17 @@ void main() {
       expect(names, contains('createPlugin'));
     });
 
-    test(
-      '(Issue #330: R16) devToolsBlocSignalObserver maps to bloc_signals package',
-      () {
-        expect(
-          DocSymbol.devToolsBlocSignalObserver.package,
-          equals('bloc_signals'),
-        );
-        expect(
-          DocSymbol.devToolsBlocSignalObserver.url,
-          equals(
-            'https://pub.dev/documentation/bloc_signals/latest/bloc_signals/DevToolsBlocSignalObserver-class.html',
-          ),
-        );
-      },
-    );
+    test('(Issue #330: R16) devToolsBlocSignalObserver maps to bloc_signals package', () {
+      expect(
+        DocSymbol.devToolsBlocSignalObserver.package,
+        equals('bloc_signals'),
+      );
+      expect(
+        DocSymbol.devToolsBlocSignalObserver.url,
+        equals(
+          'https://pub.dev/documentation/bloc_signals/latest/bloc_signals/DevToolsBlocSignalObserver-class.html',
+        ),
+      );
+    });
   });
 }

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.2
 
 - **Fix (lint)**: Support `MixinDeclaration` on state containers, `ExpressionFunctionBody` arrow methods/closures, and `ContinueStatement` control flow in `AvoidMultipleSynchronousEmits` (#329).
 - **Fix (lint)**: Add enclosing closure guard in `AvoidContextWatchForBlocState` and receiver guards in `AvoidInvalidContextSelectGenerics` and `AvoidManualCloseOnProvidedBloc` (#326).

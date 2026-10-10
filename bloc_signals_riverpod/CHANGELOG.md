@@ -1,8 +1,9 @@
 # Changelog
 
-## Unreleased
+## 1.1.3
 
 - **Fix (riverpod)**: Remove obsolete `invalid_use_of_protected_member` ignore comment following `BlocSignalBase.equals` visibility update (#320).
+- **Dependencies**: Bump `bloc_signals` to `^1.6.0`.
 
 ## 1.1.2
 

@@ -87,7 +87,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals')],
                   ),
                 ]),
-                td([Component.text('^1.2.0')]),
+                td([Component.text('^1.6.0')]),
                 td([
                   Component.text(
                     'Core Pure Dart state containers (BlocSignal, CubitSignal, Transformers, Observers).',
@@ -104,7 +104,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_flutter')],
                   ),
                 ]),
-                td([Component.text('^1.2.2')]),
+                td([Component.text('^1.4.0')]),
                 td([
                   Component.text(
                     'Flutter bindings, O(1) providers, builders, listeners, selectors, and context extensions.',
@@ -121,7 +121,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_jaspr')],
                   ),
                 ]),
-                td([Component.text('^1.0.1')]),
+                td([Component.text('^1.2.0')]),
                 td([
                   Component.text(
                     'Jaspr web component integration, InheritedComponent providers, builders, and listeners.',
@@ -138,7 +138,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_test')],
                   ),
                 ]),
-                td([Component.text('^1.0.0')]),
+                td([Component.text('^1.0.2')]),
                 td([
                   Component.text(
                     'Declarative unit testing utilities and test observers for state assertions.',
@@ -155,7 +155,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_lint')],
                   ),
                 ]),
-                td([Component.text('^1.3.0')]),
+                td([Component.text('^1.3.2')]),
                 td([
                   Component.text(
                     'Custom analyzer lints and automated IDE quick-fixes for enforcing best practices.',
@@ -172,7 +172,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_hydrate')],
                   ),
                 ]),
-                td([Component.text('^1.0.1')]),
+                td([Component.text('^1.0.4')]),
                 td([
                   Component.text(
                     'Synchronous frame 1 state persistence across app restarts.',
@@ -189,7 +189,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_replay')],
                   ),
                 ]),
-                td([Component.text('^1.1.0')]),
+                td([Component.text('^1.2.0')]),
                 td([
                   Component.text(
                     'Undo and redo state history management with customizable bounds.',
@@ -206,7 +206,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_riverpod')],
                   ),
                 ]),
-                td([Component.text('^1.1.1')]),
+                td([Component.text('^1.1.3')]),
                 td([
                   Component.text(
                     'Bidirectional read-and-mutate Riverpod 2 & 3 interoperability adapters.',
@@ -223,7 +223,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_bloc')],
                   ),
                 ]),
-                td([Component.text('^1.0.0')]),
+                td([Component.text('^1.0.2')]),
                 td([
                   Component.text(
                     'Bidirectional classic BLoC 8 & 9 interoperability adapters and event bridges.',
@@ -240,7 +240,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_otel')],
                   ),
                 ]),
-                td([Component.text('^1.0.0+1')]),
+                td([Component.text('^2.0.0')]),
                 td([
                   Component.text(
                     'OpenTelemetry distributed tracing and event telemetry.',
@@ -257,7 +257,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_devtools')],
                   ),
                 ]),
-                td([Component.text('^1.0.0')]),
+                td([Component.text('^1.0.2')]),
                 td([
                   Component.text(
                     'Custom Flutter DevTools extension for timeline visualization and memory leak detection.',

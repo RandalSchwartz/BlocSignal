@@ -1,7 +1,8 @@
-## Unreleased
+## 1.4.0
 
-- **Fix (flutter)**: Respect container `bloc.equals(previous, current)` in `BlocSignalBuilder` and `BlocSignalListener`, support custom `equals` and `SignalOptions.equalityCheck` in `BlocSignalSelector` while re-initializing `computed` when `options` or `equals` changes in `didUpdateWidget`, and pass `listen: true` when falling back to `BlocSignalProvider.of<T>(context, listen: true)` in `didUpdateWidget` (#320).
+- **Feat (flutter)**: Respect container `bloc.equals(previous, current)` in `BlocSignalBuilder` and `BlocSignalListener`, support custom `equals` and `SignalOptions.equalityCheck` in `BlocSignalSelector` while re-initializing `computed` when `options` or `equals` changes in `didUpdateWidget`, and pass `listen: true` when falling back to `BlocSignalProvider.of<T>(context, listen: true)` in `didUpdateWidget` (#320).
 - **Fix (flutter)**: Lazily subscribe to the source container in `BlocSignalListenableExtension.toValueListenable()` and `toListenable()` (`0 -> 1` listener attach, `1 -> 0` detach) and delegate `.value` directly to `bloc.stateValue`, preventing permanent effect leaks when passed inline to `ValueListenableBuilder` (#316).
+- **Dependencies**: Bump `bloc_signals` to `^1.6.0`.
 
 ## 1.3.3
 

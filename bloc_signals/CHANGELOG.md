@@ -1,4 +1,4 @@
-## Unreleased
+## 1.6.0
 
 - **Fix (core)**: Throw `StateError` when dispatching an unregistered event to an `on<E>`-based `BlocSignal` (#325).
 - **Fix (concurrency)**: Track active execution token in `restartable()` to prevent false `task_preempted` telemetry when an active handler completes while an earlier superseded handler is still in flight (#324).

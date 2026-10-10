@@ -1,4 +1,4 @@
-## Unreleased
+## 1.2.0
 
 - **Fix (replay)**: Trim existing history when lowering `limit` at runtime, clear history and redos when `limit <= 0`, enforce history limits during `redo()`, and implement atomic single-pass traversal for `shouldReplay` evaluation in `undo()` and `redo()` (#319).
 - **Fix (replay)**: Isolate observer exceptions in `ReplayBlocMixin` (`onTransition`, `onEvent`, and `_notifyReplayEvent`) using `on Exception catch` and filtered `catchError(..., test: (e) => e is Exception)`, routing recoverable exceptions to `onError` without aborting `undo()` / `redo()` state transitions while allowing fatal Dart `Error`s to fail fast (#317).

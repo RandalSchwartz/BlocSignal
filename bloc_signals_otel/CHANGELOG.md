@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.0.0
 
 - **BREAKING (otel)**: Pivot from legacy Workiva `opentelemetry` to `dartastic_opentelemetry_api` and `dartastic_opentelemetry` (#352).
 

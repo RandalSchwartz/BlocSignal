@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.3
 
 - **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).
 - **Refactor (lint)**: Remove dead `stopOnAwait` parameter and field in `_LinearAstVisitor` inside `AvoidMultipleSynchronousEmits` (#358).

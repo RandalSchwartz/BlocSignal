@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.3
 
 - **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).
 

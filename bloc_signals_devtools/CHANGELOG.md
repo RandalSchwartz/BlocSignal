@@ -1,4 +1,4 @@
-## Unreleased
+## 1.0.3
 
 - **Fix (devtools)**: Narrow `BlocSignalsDevToolsController.fetchInstances` and `fetchHistoryForInstance` from `on Object` to `on Exception` so programming defects (`Error` subtypes such as `StateError` and `TypeError`) surface immediately while VM Service RPC exceptions are handled gracefully (#340).
 

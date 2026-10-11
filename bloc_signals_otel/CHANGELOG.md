@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.0.1
 
 - **Fix (otel)**: Upgrade bare `catch` blocks in `traced` and `tracedBloc` span error-recording rethrow boundaries to explicit `on Object catch` (#340).
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.0
 
 - **Fix (jaspr)**: Upgrade bare `catch` in `BlocSignalProvider` lazy factory error caching to explicit `on Object catch` (#340).
 - **Feat (jaspr)**: Replace `List<dynamic>` in `MultiBlocSignalProvider` and `MultiBlocSignalListener` with typed `BlocSignalProviderSingleChildComponent` and `BlocSignalListenerSingleChildComponent` interfaces and `*SingleChildWidget` aliases (#331).

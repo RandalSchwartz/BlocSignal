@@ -17,7 +17,7 @@ class const PackageItem({
 const List<PackageItem> _allPackages = [
   PackageItem(
     name: 'bloc_signals',
-    version: '1.6.0',
+    version: '1.7.0',
     desc: 'Core pure Dart reactive state container bridging BLoC semantics with Preact Signals v7 primitives.',
     icon: '⚡',
     category: 'Core & UI',
@@ -26,7 +26,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_flutter',
-    version: '1.4.0',
+    version: '1.5.0',
     desc: 'Flutter UI bindings, InheritedWidget providers, builders, listeners, selectors, and Listenable interop.',
     icon: '💙',
     category: 'Core & UI',
@@ -35,7 +35,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_bloc',
-    version: '1.0.2',
+    version: '1.0.3',
     desc: 'Bidirectional classic BLoC (package:bloc 8 & 9) interop adapters and event bridges.',
     icon: '🔄',
     category: 'State & Interop',
@@ -44,7 +44,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_jaspr',
-    version: '1.2.0',
+    version: '1.3.0',
     desc: 'Jaspr web component integration, InheritedComponent providers, builders, listeners, and selectors.',
     icon: '🌐',
     category: 'Core & UI',
@@ -62,7 +62,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_hydrate',
-    version: '1.0.4',
+    version: '1.1.0',
     desc: 'Synchronous state persistence across app restarts with primitive and collection storage support.',
     icon: '💾',
     category: 'State & Interop',
@@ -71,7 +71,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_replay',
-    version: '1.2.0',
+    version: '1.3.0',
     desc: 'Replay, undo, and redo state tracking utilities (ReplayCubit, ReplayBloc, ReplayEvent).',
     icon: '↩️',
     category: 'State & Interop',
@@ -80,7 +80,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_otel',
-    version: '2.0.0',
+    version: '2.0.1',
     desc: 'OpenTelemetry lifecycle tracing, transition metrics, and distributed span correlation.',
     icon: '🔭',
     category: 'DevTools & Tooling',
@@ -89,7 +89,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_devtools',
-    version: '1.0.2',
+    version: '1.0.3',
     desc: 'Custom Flutter DevTools extension for timeline tracing, state diffing, and memory leak detection.',
     icon: '🛠️',
     category: 'DevTools & Tooling',
@@ -116,7 +116,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_test',
-    version: '1.0.2',
+    version: '1.0.3',
     desc: 'Declarative unit testing utilities and test observers for BlocSignal and CubitSignal.',
     icon: '🧪',
     category: 'DevTools & Tooling',
@@ -125,7 +125,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_lint',
-    version: '1.3.2',
+    version: '1.3.3',
     desc: 'Analyzer plugin with 20 static analysis lint rules and 8 automated IDE quick-fixes.',
     icon: '🛡️',
     category: 'DevTools & Tooling',

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.3
 
 - **Docs (test)**: Document idiomatic Fake/Stub classes and `mocktail` backing-signal patterns for widget and golden testing (#313).
 - **Docs (test)**: Document intentional `on Object catch` boundary in `blocSignalTest` (#340).

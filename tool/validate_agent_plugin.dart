@@ -213,6 +213,7 @@ void _validateSkill(Directory root) {
     'agents/openai.yaml',
     'core.md',
     'flutter.md',
+    'genui.md',
     'migration.md',
     'riverpod_migration.md',
     'otel.md',

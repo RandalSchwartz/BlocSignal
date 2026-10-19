@@ -1,6 +1,27 @@
 # Generative UI & A2UI Protocol Integration (`bloc_signals_genui` & `bloc_signals_genui_flutter`)
 
-This document defines the architectural patterns, streaming state machine lifecycles, Flutter surface rendering, and developer preview guidelines for integrating `BlocSignal` with Google's **A2UI (Agent-to-User Interface)** protocol.
+[![pub package](https://img.shields.io/pub/v/bloc_signals_genui.svg)](https://pub.dev/packages/bloc_signals_genui)
+[![pub points](https://img.shields.io/pub/points/bloc_signals_genui?color=2E8B57&label=pub%20points)](https://pub.dev/packages/bloc_signals_genui/score)
+[![pub package](https://img.shields.io/pub/v/bloc_signals_genui_flutter.svg)](https://pub.dev/packages/bloc_signals_genui_flutter)
+[![pub points](https://img.shields.io/pub/points/bloc_signals_genui_flutter?color=2E8B57&label=pub%20points)](https://pub.dev/packages/bloc_signals_genui_flutter/score)
+
+This document defines the architectural patterns, streaming state machine lifecycles, Flutter surface rendering, and production integration guidelines for integrating `BlocSignal` with Google's **A2UI (Agent-to-User Interface)** protocol.
+
+---
+
+## 📦 Installation
+
+For pure-Dart, CLI, server, or web applications:
+
+```bash
+dart pub add bloc_signals_genui bloc_signals
+```
+
+For Flutter applications:
+
+```bash
+flutter pub add bloc_signals_genui_flutter bloc_signals_genui bloc_signals_flutter
+```
 
 ---
 
@@ -184,22 +205,32 @@ Future<void> sendPrompt(String prompt) async {
       ),
     );
 
-    surfaceBloc.add(IngestStream(monitoredStream));
-    await surfaceBloc.stream.firstWhere(
-      (s) => s is SurfaceReady || s is SurfaceError,
-    );
+    final doneCompleter = Completer<A2uiSurfaceState>();
+    final disposeSub = surfaceBloc.state.subscribe((s) {
+      if ((s is SurfaceReady || s is SurfaceError) &&
+          !doneCompleter.isCompleted) {
+        doneCompleter.complete(s);
+      }
+    });
 
-    // 3. Rollback guard on zero-chunk stream abort
-    if (surfaceBloc.stateValue is SurfaceError && chunkCount == 0) {
-      emit(state.copyWith(
-        messages: List<ChatMessage>.from(state.messages)..remove(userMsg),
-        isStreaming: false,
-        error: 'Streaming failed before response started. Please retry.',
-      ));
-      return;
+    try {
+      surfaceBloc.add(IngestStream(monitoredStream));
+      final finalState = await doneCompleter.future;
+
+      // 3. Rollback guard on zero-chunk stream abort
+      if (finalState is SurfaceError && chunkCount == 0) {
+        emit(state.copyWith(
+          messages: List<ChatMessage>.from(state.messages)..remove(userMsg),
+          isStreaming: false,
+          error: 'Streaming failed before response started. Please retry.',
+        ));
+        return;
+      }
+
+      emit(state.copyWith(isStreaming: false));
+    } finally {
+      disposeSub();
     }
-
-    emit(state.copyWith(isStreaming: false));
   } catch (error) {
     if (chunkCount == 0) {
       // Transactionally prune dangling user turn

@@ -12,6 +12,8 @@ import '../components/docs/pages/docs_migration_riverpod.dart';
 import '../components/docs/pages/docs_overview.dart';
 import '../components/docs/pages/docs_pkg_bloc.dart';
 import '../components/docs/pages/docs_pkg_devtools.dart';
+import '../components/docs/pages/docs_pkg_genui.dart';
+import '../components/docs/pages/docs_pkg_genui_flutter.dart';
 import '../components/docs/pages/docs_pkg_hydrate.dart';
 import '../components/docs/pages/docs_pkg_jaspr.dart';
 import '../components/docs/pages/docs_pkg_lint.dart';
@@ -303,6 +305,27 @@ class const DocsRegistry() {
           headings: DocsPkgJasprPage.headings,
           sourcePath:
               'website/lib/src/components/docs/pages/docs_pkg_jaspr.dart',
+        ),
+        DocSectionItem(
+          id: 'pkg-genui',
+          title: 'bloc_signals_genui',
+          path: '/docs/pkg-genui',
+          category: 'Satellite Packages',
+          description: 'Pure-Dart A2UI streaming state machine and Generative UI runtime adapter.',
+          builder: DocsPkgGenuiPage.new,
+          headings: DocsPkgGenuiPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_pkg_genui.dart',
+        ),
+        DocSectionItem(
+          id: 'pkg-genui-flutter',
+          title: 'bloc_signals_genui_flutter',
+          path: '/docs/pkg-genui-flutter',
+          category: 'Satellite Packages',
+          description: 'Declarative Flutter surface views and Material 3 catalog widgets for A2UI.',
+          builder: DocsPkgGenuiFlutterPage.new,
+          headings: DocsPkgGenuiFlutterPage.headings,
+          sourcePath: 'website/lib/src/components/docs/pages/docs_pkg_genui_flutter.dart',
         ),
       ],
     ),

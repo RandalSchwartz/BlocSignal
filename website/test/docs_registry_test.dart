@@ -431,4 +431,52 @@ void main() {
       expect(fallback.id, equals('overview'));
     });
   });
+
+  group('(Issue #294) GenUI Package Documentation Sections', () {
+    test('pkg-genui is registered under Satellite Packages with TOC headings and sourcePath', () {
+      final pkgGenui = DocsRegistry.resolveSection('pkg-genui');
+      expect(pkgGenui.id, equals('pkg-genui'));
+      expect(pkgGenui.title, equals('bloc_signals_genui'));
+      expect(pkgGenui.path, equals('/docs/pkg-genui'));
+      expect(pkgGenui.category, equals('Satellite Packages'));
+      expect(
+        pkgGenui.sourcePath,
+        equals('website/lib/src/components/docs/pages/docs_pkg_genui.dart'),
+      );
+      expect(pkgGenui.headings, isNotEmpty);
+      expect(
+        DocsContent.getHeadingsForSection('pkg-genui'),
+        equals(pkgGenui.headings),
+      );
+      expect(
+        DocsContent.getSourcePathForSection('pkg-genui'),
+        equals('website/lib/src/components/docs/pages/docs_pkg_genui.dart'),
+      );
+    });
+
+    test('pkg-genui-flutter is registered under Satellite Packages with TOC headings and sourcePath', () {
+      final pkgGenuiFlutter = DocsRegistry.resolveSection('pkg-genui-flutter');
+      expect(pkgGenuiFlutter.id, equals('pkg-genui-flutter'));
+      expect(pkgGenuiFlutter.title, equals('bloc_signals_genui_flutter'));
+      expect(pkgGenuiFlutter.path, equals('/docs/pkg-genui-flutter'));
+      expect(pkgGenuiFlutter.category, equals('Satellite Packages'));
+      expect(
+        pkgGenuiFlutter.sourcePath,
+        equals(
+          'website/lib/src/components/docs/pages/docs_pkg_genui_flutter.dart',
+        ),
+      );
+      expect(pkgGenuiFlutter.headings, isNotEmpty);
+      expect(
+        DocsContent.getHeadingsForSection('pkg-genui-flutter'),
+        equals(pkgGenuiFlutter.headings),
+      );
+      expect(
+        DocsContent.getSourcePathForSection('pkg-genui-flutter'),
+        equals(
+          'website/lib/src/components/docs/pages/docs_pkg_genui_flutter.dart',
+        ),
+      );
+    });
+  });
 }

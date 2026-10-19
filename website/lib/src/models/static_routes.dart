@@ -33,6 +33,8 @@ const List<String> allWebsiteStaticRoutes = [
   'docs/pkg-devtools',
   'docs/pkg-lint',
   'docs/pkg-jaspr',
+  'docs/pkg-genui',
+  'docs/pkg-genui-flutter',
   'docs/recipe-one-shot',
   'docs/recipe-form-validation',
   'docs/recipe-controllers',

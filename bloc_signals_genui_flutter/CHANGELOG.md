@@ -2,7 +2,7 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
-## Unreleased
+## 0.1.1
 
 - **Feat (genui_flutter)**: Upgrade to `a2ui_core: ^0.3.0`, resolve per-component catalogs via `surface.resolveCatalog` and `catalog.resolvedComponentSchema` in `A2uiSurfaceView`, unwrap `ResolvedBinding` and `WritableBinding` values in `A2uiSurfaceView`, `safe_prop_parser.dart`, `A2uiText`, and `A2uiTextField`, and support v1.0 `@path` two-way bindings in `A2uiTextField` (#368).
 - **Dependencies**: Bump `a2ui_core` dependency constraint to `^0.3.0` (#368).
@@ -25,9 +25,6 @@ All notable changes to `bloc_signals_genui_flutter` will be documented in this f
   - `copyWithout(Iterable<String> typesToRemove)` for pruning unwanted or restricted component types.
   - `registerAll(Map<String, A2uiComponentWidgetBuilder> builders)` for bulk builder registration.
   - `registeredTypes` getter exposing all currently registered component type names.
-
-## 0.1.1
-
 - Remediated defensive parsing and error boundaries (#269):
   - Added `safe_prop_parser.dart` (`asDouble`, `asInt`, `asString`, `extractChildId`, `extractChildIds`) for robust handling of dynamic LLM JSON properties.
   - Wrapped `A2uiSurfaceView` component rendering in safe error boundary fallback widgets.

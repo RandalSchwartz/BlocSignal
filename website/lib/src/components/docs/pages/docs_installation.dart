@@ -265,6 +265,40 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                 ]),
                 td([Component.text('DevTools')]),
               ]),
+              tr([
+                td([
+                  a(
+                    href: 'https://pub.dev/packages/bloc_signals_genui',
+                    target: Target.blank,
+                    classes: 'docs-table-link',
+                    [Component.text('bloc_signals_genui')],
+                  ),
+                ]),
+                td([Component.text('^0.1.2')]),
+                td([
+                  Component.text(
+                    'Pure-Dart A2UI streaming state machine and Generative UI runtime adapter.',
+                  ),
+                ]),
+                td([Component.text('Dart / Server / UI')]),
+              ]),
+              tr([
+                td([
+                  a(
+                    href: 'https://pub.dev/packages/bloc_signals_genui_flutter',
+                    target: Target.blank,
+                    classes: 'docs-table-link',
+                    [Component.text('bloc_signals_genui_flutter')],
+                  ),
+                ]),
+                td([Component.text('^0.1.1')]),
+                td([
+                  Component.text(
+                    'Declarative Flutter surface views and Material 3 catalog widgets for A2UI.',
+                  ),
+                ]),
+                td([Component.text('Flutter 3.22+ / UI')]),
+              ]),
             ]),
           ]),
         ]),

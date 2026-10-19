@@ -51,6 +51,26 @@ String asString(dynamic value, [String defaultValue = '']) {
   return unwrapped.toString();
 }
 
+/// Safely converts a dynamic [value] to a [bool], falling back to
+/// [defaultValue] if the value is null or not a recognizable boolean.
+///
+/// Automatically unwraps [ResolvedBinding] and [WritableBinding] instances.
+///
+/// ```dart
+/// final enabled = asBool(const ResolvedBinding<Object?>(true));
+/// print(enabled); // true
+/// ```
+bool asBool(dynamic value, {bool defaultValue = false}) {
+  final unwrapped = unwrapBinding(value);
+  if (unwrapped is bool) return unwrapped;
+  if (unwrapped is String) {
+    final normalized = unwrapped.trim().toLowerCase();
+    if (normalized == 'true') return true;
+    if (normalized == 'false') return false;
+  }
+  return defaultValue;
+}
+
 /// Safely extracts a child component ID from diverse payload formats (for
 /// example [ChildNode], `Map` with an `'id'` key, [ResolvedBinding], or direct
 /// string).

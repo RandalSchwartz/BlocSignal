@@ -50,10 +50,11 @@ The `BlocSignal` monorepo consists of 13 modular packages:
 ## ⚡ Key Features
 
 - 🎨 **`A2uiSurfaceView`**: Declarative Flutter widget handling the complete `A2uiSurfaceState` lifecycle (`SurfaceInitial`, `SurfaceStreaming`, `SurfaceReady`, `SurfaceSubmitting`, and `SurfaceError`) with customizable builders and per-component error boundaries.
-- 🧱 **`A2uiFlutterCatalog`**: Extensible component registry pre-populated with Material 3 widgets (`A2uiText`, `A2uiRow`, `A2uiColumn`, `A2uiButton`, `A2uiTextField`, `A2uiCard`, `A2uiDivider`) and immutable composition helpers (`copyWith`, `copyWithout`, `registerAll`).
-- ⚡ **Granular Signal Bindings**: Each rendered component subscribes to its own `GenericBinder.resolvedProps` signal, updating leaf widgets in 0ms on `DataModel` or `@path` mutations without rebuilding parent containers.
+- 🧱 **`A2uiFlutterCatalog` (16 Standard `BasicCatalog` Widgets)**: Extensible component registry pre-populated with 16 Material 3 widgets covering A2UI `BasicCatalog` v0.9 and v1.0 (`Text`, `Row`, `Column`, `List`, `Tabs`, `Modal`, `Card`, `Divider`, `Icon`, `Image`, `Button`, `TextField`, `CheckBox`, `ChoicePicker`, `Slider`, and `DateTimeInput`) alongside immutable composition helpers (`copyWith`, `copyWithout`, `registerAll`).
+- ✅ **Reactive `CheckRule` Validation UI**: Automatically surfaces `GenericBinder` validation state (`isValid`, `validationErrors`, `validationResults`) across form inputs (`TextField`, `CheckBox`, `ChoicePicker`, `Slider`, `DateTimeInput`) and disables `Button` submissions (`onPressed: null`) when check rules fail.
+- ⚡ **Granular Signal Bindings & Two-Way Sync**: Each rendered component subscribes to its own `GenericBinder.resolvedProps` signal and writes two-way input mutations via `A2uiComponentContext.updateBoundValue`, updating leaf widgets and `A2uiSurfaceBloc` form data in 0ms on `DataModel` or `@path` mutations without rebuilding parent containers.
 - 🧭 **Multi-Surface & Split-Pane Support**: Pin `A2uiSurfaceView(bloc: bloc, surfaceId: '...')` to a specific surface or omit `surfaceId` to follow `bloc.activeSurfaceId` reactively across tabs and split views.
-- 🛡️ **Defensive LLM Property Coercion**: Built-in `safe_prop_parser.dart` utilities (`unwrapBinding`, `asString`, `asInt`, `asDouble`, `extractChildId`, `extractChildIds`) protect the widget tree from malformed or stringified LLM JSON properties.
+- 🛡️ **Defensive LLM Property Coercion**: Built-in `safe_prop_parser.dart` utilities (`unwrapBinding`, `asString`, `asInt`, `asDouble`, `asBool`, `extractChildId`, `extractChildIds`) protect the widget tree from malformed or stringified LLM JSON properties.
 
 ---
 

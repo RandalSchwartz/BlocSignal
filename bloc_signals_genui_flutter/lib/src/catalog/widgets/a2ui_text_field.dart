@@ -59,18 +59,7 @@ class _A2uiTextFieldState extends State<A2uiTextField> {
 
   void _onChanged(String newValue) {
     _lastSyncedValue = newValue;
-    final rawProps = widget.componentContext.component.properties;
-    final valueProp = rawProps['value'];
-    if (valueProp is Map &&
-        (valueProp.containsKey('path') || valueProp.containsKey('@path'))) {
-      final path = (valueProp['path'] ?? valueProp['@path'])?.toString() ??
-          '/${widget.componentContext.component.id}';
-      widget.componentContext.updateFormField(path, newValue);
-    } else {
-      // Fallback path based on component ID
-      final path = '/${widget.componentContext.component.id}';
-      widget.componentContext.updateFormField(path, newValue);
-    }
+    widget.componentContext.updateBoundValue('value', newValue);
   }
 
   @override
@@ -79,7 +68,23 @@ class _A2uiTextFieldState extends State<A2uiTextField> {
     final label = unwrapBinding(props['label'])?.toString();
     final placeholder = unwrapBinding(props['placeholder'])?.toString();
     final helperText = unwrapBinding(props['helperText'])?.toString();
-    final errorText = unwrapBinding(props['errorText'])?.toString();
+    final explicitError = unwrapBinding(props['errorText'])?.toString();
+    final checkErrors = widget.componentContext.validationErrors;
+    final errorText = (explicitError != null && explicitError.isNotEmpty)
+        ? explicitError
+        : (checkErrors.isNotEmpty ? checkErrors.first : null);
+
+    final variant = asString(
+      props['variant'] ?? props['textFieldType'],
+      'shortText',
+    );
+    final obscureText = variant == 'obscured';
+    final maxLines = variant == 'longText' ? null : 1;
+    final keyboardType = switch (variant) {
+      'longText' => TextInputType.multiline,
+      'number' => TextInputType.number,
+      _ => TextInputType.text,
+    };
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -87,6 +92,9 @@ class _A2uiTextFieldState extends State<A2uiTextField> {
         focusNode: _focusNode,
         controller: _controller,
         onChanged: _onChanged,
+        obscureText: obscureText,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
         decoration: InputDecoration(
           labelText: label,
           hintText: placeholder,

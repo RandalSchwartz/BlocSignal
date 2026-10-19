@@ -16,6 +16,7 @@ class A2uiComponentContext {
     required this.buildChildCallback,
     required this.buildChildrenCallback,
     required this.surfaceId,
+    this.rawProps = const {},
   });
 
   /// The underlying A2UI [ComponentModel].
@@ -23,6 +24,10 @@ class A2uiComponentContext {
 
   /// The resolved dynamic properties for this component.
   final Map<String, dynamic> props;
+
+  /// The raw binder properties before unwrapping [ResolvedBinding] and
+  /// [WritableBinding] instances.
+  final Map<String, dynamic> rawProps;
 
   /// The parent [A2uiSurfaceBloc] orchestrating this surface.
   final A2uiSurfaceBloc surfaceBloc;
@@ -35,6 +40,95 @@ class A2uiComponentContext {
 
   /// Internal callback to recursively render a list of child component IDs.
   final List<Widget> Function(List<String> childIds) buildChildrenCallback;
+
+  /// Whether this component currently passes all attached `CheckRule`
+  /// validations.
+  ///
+  /// Defaults to `true` when no validation rules fail.
+  ///
+  /// ```dart
+  /// final valid = componentContext.isValid;
+  /// ```
+  bool get isValid {
+    final rawValid = props['isValid'];
+    if (rawValid is bool) return rawValid;
+    return validationErrors.isEmpty;
+  }
+
+  /// The list of error messages produced by failing `CheckRule` validations on
+  /// this component.
+  ///
+  /// ```dart
+  /// final errors = componentContext.validationErrors;
+  /// ```
+  List<String> get validationErrors {
+    final rawErrors = props['validationErrors'];
+    if (rawErrors is Iterable) {
+      return List<String>.unmodifiable(
+        rawErrors
+            .where((item) => item != null)
+            .map((item) => item.toString())
+            .where((msg) => msg.isNotEmpty),
+      );
+    }
+    return const <String>[];
+  }
+
+  /// The structured [ValidationResult] records produced by failing `CheckRule`
+  /// validations on this component.
+  ///
+  /// ```dart
+  /// final results = componentContext.validationResults;
+  /// ```
+  List<ValidationResult> get validationResults {
+    final rawResults = props['validationResults'];
+    if (rawResults is Iterable) {
+      return List<ValidationResult>.unmodifiable(
+        rawResults.whereType<ValidationResult>(),
+      );
+    }
+    return const <ValidationResult>[];
+  }
+
+  /// Resolves the bound data model path for [propKey].
+  ///
+  /// Inspects [rawProps] for a [WritableBinding], then checks
+  /// [ComponentModel.properties] for a `path` or `@path` binding map, falling
+  /// back to [fallbackPath] or `'/${component.id}'`.
+  ///
+  /// ```dart
+  /// final path = componentContext.resolveBoundPath('value');
+  /// ```
+  String resolveBoundPath(String propKey, {String? fallbackPath}) {
+    final rawBinding = rawProps[propKey];
+    if (rawBinding is WritableBinding && rawBinding.path.isNotEmpty) {
+      return rawBinding.path;
+    }
+    final rawProp = component.properties[propKey];
+    if (rawProp is Map &&
+        (rawProp.containsKey('path') || rawProp.containsKey('@path'))) {
+      final path = (rawProp['path'] ?? rawProp['@path'])?.toString();
+      if (path != null && path.isNotEmpty) {
+        return path;
+      }
+    }
+    return fallbackPath ?? '/${component.id}';
+  }
+
+  /// Updates the two-way bound data model value for [propKey] with [newValue]
+  /// synchronously via [updateFormField].
+  ///
+  /// ```dart
+  /// componentContext.updateBoundValue('value', true);
+  /// ```
+  void updateBoundValue(
+    String propKey,
+    Object? newValue, {
+    String? fallbackPath,
+  }) {
+    final path = resolveBoundPath(propKey, fallbackPath: fallbackPath);
+    updateFormField(path, newValue);
+  }
 
   /// Recursively renders a child component with the specified [childId].
   Widget buildChild(String childId) => buildChildCallback(childId);

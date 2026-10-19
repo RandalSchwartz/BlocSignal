@@ -89,5 +89,69 @@ void main() {
         ),
       );
     });
+
+    test('(Issue #294) GenUI DocSymbol entries map to bloc_signals_genui and bloc_signals_genui_flutter', () {
+      final expectedGenUiSymbols = <DocSymbol, (String, String, String)>{
+        DocSymbol.a2uiSurfaceBloc: (
+          'A2uiSurfaceBloc',
+          'bloc_signals_genui',
+          'A2uiSurfaceBloc-class.html',
+        ),
+        DocSymbol.a2uiSurfaceState: (
+          'A2uiSurfaceState',
+          'bloc_signals_genui',
+          'A2uiSurfaceState-class.html',
+        ),
+        DocSymbol.a2uiSurfaceEvent: (
+          'A2uiSurfaceEvent',
+          'bloc_signals_genui',
+          'A2uiSurfaceEvent-class.html',
+        ),
+        DocSymbol.a2uiActionResponse: (
+          'A2uiActionResponse',
+          'bloc_signals_genui',
+          'A2uiActionResponse-class.html',
+        ),
+        DocSymbol.standardCatalog: (
+          'StandardCatalog',
+          'bloc_signals_genui',
+          'StandardCatalog-class.html',
+        ),
+        DocSymbol.a2uiSurfaceView: (
+          'A2uiSurfaceView',
+          'bloc_signals_genui_flutter',
+          'A2uiSurfaceView-class.html',
+        ),
+        DocSymbol.a2uiFlutterCatalog: (
+          'A2uiFlutterCatalog',
+          'bloc_signals_genui_flutter',
+          'A2uiFlutterCatalog-class.html',
+        ),
+        DocSymbol.a2uiComponentContext: (
+          'A2uiComponentContext',
+          'bloc_signals_genui_flutter',
+          'A2uiComponentContext-class.html',
+        ),
+        DocSymbol.genUiControllerAdapter: (
+          'GenUiControllerAdapter',
+          'bloc_signals_genui_flutter',
+          'GenUiControllerAdapter-class.html',
+        ),
+      };
+
+      for (final entry in expectedGenUiSymbols.entries) {
+        final symbol = entry.key;
+        final (expectedName, expectedPkg, expectedHtml) = entry.value;
+        expect(symbol.symbolName, equals(expectedName));
+        expect(symbol.package, equals(expectedPkg));
+        expect(symbol.htmlFile, equals(expectedHtml));
+        expect(
+          symbol.url,
+          equals(
+            'https://pub.dev/documentation/$expectedPkg/latest/$expectedPkg/$expectedHtml',
+          ),
+        );
+      }
+    });
   });
 }

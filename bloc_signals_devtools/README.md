@@ -18,7 +18,7 @@
 
 ## 🌐 Ecosystem Packages
 
-The `BlocSignal` monorepo consists of 11 modular packages:
+The `BlocSignal` monorepo consists of 13 modular packages:
 
 | Package | Version | Description |
 | :--- | :--- | :--- |
@@ -33,6 +33,8 @@ The `BlocSignal` monorepo consists of 11 modular packages:
 | **`bloc_signals_devtools`** | [![pub](https://img.shields.io/pub/v/bloc_signals_devtools.svg)](https://pub.dev/packages/bloc_signals_devtools) | Universal DevTools telemetry observer using `dart:developer` |
 | **`bloc_signals_test`** | [![pub](https://img.shields.io/pub/v/bloc_signals_test.svg)](https://pub.dev/packages/bloc_signals_test) | Declarative unit testing utilities (`blocSignalTest`) |
 | **`bloc_signals_lint`** | [![pub](https://img.shields.io/pub/v/bloc_signals_lint.svg)](https://pub.dev/packages/bloc_signals_lint) | Custom analyzer lint rules & automated IDE quick-fixes |
+| **`bloc_signals_genui`** | [![pub](https://img.shields.io/pub/v/bloc_signals_genui.svg)](https://pub.dev/packages/bloc_signals_genui) | Pure-Dart A2UI streaming state machine & Generative UI runtime adapter |
+| **`bloc_signals_genui_flutter`** | [![pub](https://img.shields.io/pub/v/bloc_signals_genui_flutter.svg)](https://pub.dev/packages/bloc_signals_genui_flutter) | Declarative Flutter surface containers & A2UI catalog widget adapters |
 
 ---
 

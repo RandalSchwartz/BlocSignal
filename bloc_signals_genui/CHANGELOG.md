@@ -2,7 +2,7 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
-## Unreleased
+## 0.1.2
 
 - **Feat (genui)**: Upgrade `a2ui_core` to `^0.3.0`, register `[StandardCatalog(), BasicCatalog.v0_9(), BasicCatalog.v1_0()]` by default in `A2uiSurfaceBloc`, support v1.0 inline `CreateSurfaceMessage` components and `@path` form validation bindings, call `_processor.dispose()` on `close()`, and re-export `a2ui_core` 0.3.0 types alongside backward-compatible `A2uiMessage`, `A2uiClientAction`, `A2uiClientError`, and `MinimalCatalog` typedefs (#368).
 - **Dependencies**: Bump `a2ui_core` dependency constraint to `^0.3.0` and remove workspace git dependency override (#368).
@@ -25,9 +25,6 @@ All notable changes to `bloc_signals_genui` will be documented in this file.
   - Added `CompleteAction({String? error, String? surfaceId})` event to conclude successful or erroneous action processing.
   - Form state, inputs, and components are preserved across submission cancellation and completion.
   - Automatically appends error messages to `validationErrors` and marks `isValid: false` when an error is provided.
-
-## 0.1.2
-
 - Remediated runtime error handling and validation findings (#269):
   - Fixed error observability by notifying `onError()` and rethrowing fatal `Error` instances.
   - Added form validation contract enforcement (`_validateForm()`) before dispatching `A2uiActionResponse`.

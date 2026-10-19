@@ -1,6 +1,6 @@
 # Monorepo Package Publishing & Pub Points Scoring Guide
 
-This document details the internal requirements, release checklists, and scoring standards needed to achieve maximum quality scores (160/160 pub points) across all 11 published packages in the `BlocSignal` monorepo.
+This document details the internal requirements, release checklists, and scoring standards needed to achieve maximum quality scores (160/160 pub points) across all 13 published packages in the `BlocSignal` monorepo.
 
 ---
 
@@ -22,12 +22,12 @@ When publishing packages to pub.dev:
 - Any package directly imported in `lib/` (even if imported only for a type annotation like `SignalEquality` or re-exported transitively) MUST be explicitly listed under `dependencies:` in `pubspec.yaml`. Otherwise, `flutter pub publish` validation fails with missing dependency errors.
 
 ### E. Mandatory `flutter pub publish` over `dart pub publish`
-- **Flutter SDK Workspace Context**: In monorepo workspaces containing Flutter member packages (for example `bloc_signals_flutter`, `bloc_signals_devtools`) or Flutter example packages (for example `riverpod_marvel_example`), running `dart pub publish` or `dart pub publish --dry-run` fails during dependency version solving with:
+- **Flutter SDK Workspace Context**: In monorepo workspaces containing Flutter member packages (for example `bloc_signals_flutter`, `bloc_signals_devtools`, `bloc_signals_genui_flutter`) or Flutter example packages (for example `riverpod_marvel_example`), running `dart pub publish` or `dart pub publish --dry-run` fails during dependency version solving with:
   ```
   Because riverpod_marvel_example requires the Flutter SDK, version solving failed.
   Flutter users should use `flutter pub` instead of `dart pub`.
   ```
-- **Universal Publishing Rule**: Always invoke `flutter pub publish [--dry-run]` across all workspace packages, including pure Dart packages (`bloc_signals`, `bloc_signals_hydrate`, etc.).
+- **Universal Publishing Rule**: Always invoke `flutter pub publish [--dry-run]` across all workspace packages, including pure Dart packages (`bloc_signals`, `bloc_signals_hydrate`, `bloc_signals_genui`, etc.).
 
 ### F. Multi-Major Dependency Lower Bounds (`dart pub downgrade` Scoring Check)
 - **Pub.dev Lower Bounds Requirement**: Pub.dev awards 20 points under "Compatible with dependency constraint lower bounds" by running `dart pub downgrade` followed by `dart analyze`.
@@ -39,7 +39,7 @@ When publishing packages to pub.dev:
 ## 📋 2. Monorepo Documentation Consistency
 
 ### Uniform Package Catalog Table
-Ensure all 11 published workspace package `README.md` files feature the exact same uniform 11-package ecosystem catalog table with pub version badges, pub points badges, and descriptions:
+Ensure all 13 published workspace package `README.md` files feature the exact same uniform 13-package ecosystem catalog table with pub version badges, pub points badges, and descriptions:
 1. `bloc_signals`
 2. `bloc_signals_flutter`
 3. `bloc_signals_bloc`
@@ -51,6 +51,8 @@ Ensure all 11 published workspace package `README.md` files feature the exact sa
 9. `bloc_signals_replay`
 10. `bloc_signals_jaspr`
 11. `bloc_signals_devtools`
+12. `bloc_signals_genui`
+13. `bloc_signals_genui_flutter`
 
 ### Mandatory Public API Docstrings
 - **Complete Docstring Coverage**: Always write clear, comprehensive Dart doc-comments (`///`) with descriptive summaries, parameter explanations, and runnable code examples.
@@ -62,37 +64,21 @@ Ensure all 11 published workspace package `README.md` files feature the exact sa
 
 ---
 
-## 🚫 3. Pre-Release & Unpublished Packages (GenUI & A2UI)
-
-### Why GenUI Packages Cannot Be Published to pub.dev
-The monorepo contains two Generative UI packages:
-- `bloc_signals_genui` (pure-Dart A2UI streaming state machine)
-- `bloc_signals_genui_flutter` (Flutter catalog widgets and surface containers)
-
-These packages currently depend on an unreleased, git-overridden fork of Google's `a2ui_core` package (`ref: fix/widen-preact-signals-a2ui-core`). Because pub.dev strictly disallows packages with git dependencies or dependency overrides, **`bloc_signals_genui` and `bloc_signals_genui_flutter` cannot and must not be published to pub.dev**.
-
-### Operational Rules for GenUI Packages:
-1. **Never Run `flutter pub publish` on GenUI Packages**: Do not attempt to publish `bloc_signals_genui` or `bloc_signals_genui_flutter` to pub.dev until Google officially publishes `a2ui_core` on pub.dev and the git dependency override is removed.
-2. **Never Add pub.dev Badges to GenUI Packages**: In documentation, websites, and readmes, display "Developer Preview" or "Git Only" badges linking to GitHub rather than generating broken `pub.dev/packages/` links.
-3. **Workspace Release Scripts**: Monorepo release scripts must explicitly skip `bloc_signals_genui` and `bloc_signals_genui_flutter` during batch publishing passes.
-
----
-
-## 🚀 4. Pre-Publishing Checklist
+## 🚀 3. Pre-Publishing Checklist
 
 Before running `flutter pub publish` on any member package:
 1. **Workspace Tests**: Run `dart run tool/run_workspace_tests.dart` (must pass 100%).
 2. **Coverage**: Ensure 100% line coverage across modified packages.
 3. **Format**: Run `dart format .`.
-4. **Dry Run**: Run `flutter pub publish --dry-run` in the package root to check for any scoring or packaging warnings (verify package is one of the 11 published packages, not a GenUI package).
+4. **Dry Run**: Run `flutter pub publish --dry-run` in the package root to check for any scoring or packaging warnings across all 13 published packages.
 
 ---
 
-## 🔄 5. Pub.dev Synchronization Publish Sweep Protocol
+## 🔄 4. Pub.dev Synchronization Publish Sweep Protocol
 
 When asked to perform a `pub.dev` synchronization publish sweep across the workspace:
 
-1. **Discover Candidates**: Scan the 11 published packages (excluding `bloc_signals_genui` and `bloc_signals_genui_flutter`) for `## Unreleased` sections in `CHANGELOG.md`.
+1. **Discover Candidates**: Scan all 13 published packages for `## Unreleased` sections in `CHANGELOG.md`.
 2. **Compute Next SemVer Version**: For each candidate package, inspect the categorized bullets under `## Unreleased`:
    - Any `- **BREAKING ...**:` bullet $\implies$ **Major** bump (or minor if `0.x`).
    - Any `- **Feat ...**:` bullet $\implies$ **Minor** bump.
@@ -109,7 +95,6 @@ When asked to perform a `pub.dev` synchronization publish sweep across the works
 6. **Topological Publish Execution**:
    - Always publish in topological dependency order so `pub.dev` resolves newly tightened upstream constraints:
      1. **Tier 0 (Core)**: `bloc_signals`
-     2. **Tier 1 (Direct Core Dependents)**: `bloc_signals_flutter`, `bloc_signals_bloc`, `bloc_signals_riverpod`, `bloc_signals_test`, `bloc_signals_lint`, `bloc_signals_hydrate`, `bloc_signals_otel`, `bloc_signals_replay`, `bloc_signals_jaspr`, `bloc_signals_devtools`
+     2. **Tier 1 (Direct Core Dependents)**: `bloc_signals_flutter`, `bloc_signals_bloc`, `bloc_signals_riverpod`, `bloc_signals_test`, `bloc_signals_lint`, `bloc_signals_hydrate`, `bloc_signals_otel`, `bloc_signals_replay`, `bloc_signals_jaspr`, `bloc_signals_devtools`, `bloc_signals_genui`
+     3. **Tier 2 (Transitive Workspace Dependents)**: `bloc_signals_genui_flutter` (depends on `bloc_signals_flutter` and `bloc_signals_genui`)
    - Execute `flutter pub publish --force` (after human approval) in each bumped package directory.
-
-

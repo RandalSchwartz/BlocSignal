@@ -322,6 +322,53 @@ enum DocSymbol(
     'createPlugin',
     'bloc_signals_lint',
     'createPlugin.html',
+  ),
+
+  // Generative UI (bloc_signals_genui & bloc_signals_genui_flutter)
+  a2uiSurfaceBloc(
+    'A2uiSurfaceBloc',
+    'bloc_signals_genui',
+    'A2uiSurfaceBloc-class.html',
+  ),
+  a2uiSurfaceState(
+    'A2uiSurfaceState',
+    'bloc_signals_genui',
+    'A2uiSurfaceState-class.html',
+  ),
+  a2uiSurfaceEvent(
+    'A2uiSurfaceEvent',
+    'bloc_signals_genui',
+    'A2uiSurfaceEvent-class.html',
+  ),
+  a2uiActionResponse(
+    'A2uiActionResponse',
+    'bloc_signals_genui',
+    'A2uiActionResponse-class.html',
+  ),
+  standardCatalog(
+    'StandardCatalog',
+    'bloc_signals_genui',
+    'StandardCatalog-class.html',
+  ),
+  a2uiSurfaceView(
+    'A2uiSurfaceView',
+    'bloc_signals_genui_flutter',
+    'A2uiSurfaceView-class.html',
+  ),
+  a2uiFlutterCatalog(
+    'A2uiFlutterCatalog',
+    'bloc_signals_genui_flutter',
+    'A2uiFlutterCatalog-class.html',
+  ),
+  a2uiComponentContext(
+    'A2uiComponentContext',
+    'bloc_signals_genui_flutter',
+    'A2uiComponentContext-class.html',
+  ),
+  genUiControllerAdapter(
+    'GenUiControllerAdapter',
+    'bloc_signals_genui_flutter',
+    'GenUiControllerAdapter-class.html',
   );
 
   /// Canonical URL on pub.dev documentation.

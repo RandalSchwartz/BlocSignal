@@ -1,4 +1,3 @@
-import 'package:a2ui_core/a2ui_core.dart';
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 
 /// ANSI terminal renderer that formats A2UI component trees into

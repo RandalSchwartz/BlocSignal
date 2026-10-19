@@ -543,10 +543,12 @@ void main() {
           ..add(
             ProcessMessages([
               CreateSurfaceMessage(
+                version: 'v0.9',
                 surfaceId: 'surf-direct-comp',
                 catalogId: minimalCatalogId,
               ),
               UpdateComponentsMessage(
+                version: 'v0.9',
                 surfaceId: 'surf-direct-comp',
                 components: const [
                   {'id': 'txt-root', 'component': 'Text', 'text': 'Root'},
@@ -617,8 +619,7 @@ void main() {
 
         await tester.enterText(find.byType(TextField), 'NullPathTyped');
         await tester.pump();
-        final surface =
-            bloc.processor.groupModel.getSurface('surf-direct-comp')!;
+        final surface = bloc.processor.model.getSurface('surf-direct-comp')!;
         expect(
           surface.dataModel.get('/tf-null-path'),
           equals('NullPathTyped'),

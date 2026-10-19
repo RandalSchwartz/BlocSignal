@@ -47,6 +47,7 @@ void main() {
       bloc.add(
         ProcessMessage(
           CreateSurfaceMessage(
+            version: 'v0.9',
             surfaceId: 'invalid_surf',
             catalogId: 'https://invalid.catalog/schema.json',
           ),
@@ -518,10 +519,12 @@ void main() {
       bloc.add(
         ProcessMessages([
           CreateSurfaceMessage(
+            version: 'v0.9',
             surfaceId: 'surf_recreate',
             catalogId: minimalCatalogId,
           ),
           UpdateComponentsMessage(
+            version: 'v0.9',
             surfaceId: 'surf_recreate',
             components: [
               {
@@ -541,10 +544,12 @@ void main() {
       bloc.add(
         ProcessMessages([
           CreateSurfaceMessage(
+            version: 'v0.9',
             surfaceId: 'surf_recreate',
             catalogId: minimalCatalogId,
           ),
           UpdateComponentsMessage(
+            version: 'v0.9',
             surfaceId: 'surf_recreate',
             components: [
               {
@@ -672,10 +677,12 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 's_eq',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 's_eq',
               components: const [
                 {'id': 't1', 'component': 'Text', 'text': 'Hello'},
@@ -684,7 +691,7 @@ void main() {
           ]),
         );
 
-        final surface = bloc.processor.groupModel.getSurface('s_eq')!;
+        final surface = bloc.processor.model.getSurface('s_eq')!;
 
         final ready1 = SurfaceReady(
           surfaceId: 's_eq',

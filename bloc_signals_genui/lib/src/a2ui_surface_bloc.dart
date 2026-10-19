@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:a2ui_core/a2ui_core.dart';
 import 'package:bloc_signals/bloc_signals.dart';
+import 'package:bloc_signals_genui/bloc_signals_genui.dart' show A2uiMessage;
 import 'package:bloc_signals_genui/src/a2ui_action_response.dart';
 import 'package:bloc_signals_genui/src/a2ui_surface_event.dart';
 import 'package:bloc_signals_genui/src/a2ui_surface_state.dart';
@@ -22,7 +23,8 @@ import 'package:meta/meta.dart';
 class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// Creates an [A2uiSurfaceBloc].
   ///
-  /// If [catalogs] is omitted, defaults to registering the standard [StandardCatalog].
+  /// If [catalogs] is omitted, defaults to registering [StandardCatalog],
+  /// [BasicCatalog.v0_9], and [BasicCatalog.v1_0].
   /// If [maxSurfaces] is provided (must be greater than `0`), enforces bounded
   /// Least-Recently-Used (LRU) eviction of inactive surfaces when the number of
   /// tracked surfaces exceeds [maxSurfaces].
@@ -51,9 +53,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         catalogs = catalogs ??
             [
               StandardCatalog(),
-              StandardCatalog(
-                id: 'https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json',
-              ),
+              BasicCatalog.v0_9(),
+              BasicCatalog.v1_0(),
             ],
         super(initialState: const SurfaceInitial()) {
     _processor = MessageProcessor<ComponentApi>(
@@ -154,11 +155,11 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   String? _selectSurvivingSurfaceId() {
     for (var i = _surfaceAccessOrder.length - 1; i >= 0; i--) {
       final candidate = _surfaceAccessOrder[i];
-      if (_processor.groupModel.getSurface(candidate) != null) {
+      if (_processor.model.getSurface(candidate) != null) {
         return candidate;
       }
     }
-    final allSurfaces = _processor.groupModel.allSurfaces;
+    final allSurfaces = _processor.model.allSurfaces;
     if (allSurfaces.isNotEmpty) {
       return allSurfaces.first.id;
     }
@@ -169,20 +170,19 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     final limit = maxSurfaces;
     if (limit == null) return;
 
-    while (_processor.groupModel.allSurfaces.length > limit) {
+    while (_processor.model.allSurfaces.length > limit) {
       String? victimId;
       for (final id in _surfaceAccessOrder) {
-        if (id != _activeSurfaceId &&
-            _processor.groupModel.getSurface(id) != null) {
+        if (id != _activeSurfaceId && _processor.model.getSurface(id) != null) {
           victimId = id;
           break;
         }
       }
-      victimId ??= _processor.groupModel.allSurfaces
+      victimId ??= _processor.model.allSurfaces
           .map((s) => s.id)
           .firstWhere((id) => id != _activeSurfaceId);
 
-      _processor.groupModel.deleteSurface(victimId);
+      _processor.model.deleteSurface(victimId);
       _pruneSurfaceMetadata(victimId);
     }
   }
@@ -190,8 +190,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   void _preProcessMessages(List<A2uiMessage> messages) {
     for (final msg in messages) {
       if (msg is CreateSurfaceMessage) {
-        if (_processor.groupModel.getSurface(msg.surfaceId) != null) {
-          _processor.groupModel.deleteSurface(msg.surfaceId);
+        if (_processor.model.getSurface(msg.surfaceId) != null) {
+          _processor.model.deleteSurface(msg.surfaceId);
         }
         _activeSurfaceId = msg.surfaceId;
         _touchSurface(msg.surfaceId);
@@ -225,13 +225,13 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// Returns an unmodifiable list of all surface identifiers currently discovered
   /// and registered in the underlying message processor.
   List<String> get availableSurfaceIds => List<String>.unmodifiable(
-        _processor.groupModel.allSurfaces.map((s) => s.id),
+        _processor.model.allSurfaces.map((s) => s.id),
       );
 
   /// Returns a [SurfaceReady] snapshot for [surfaceId] if it exists in the
   /// message processor, or `null` if the surface has not been created.
   SurfaceReady? getSurfaceReady(String surfaceId) {
-    final surface = _processor.groupModel.getSurface(surfaceId);
+    final surface = _processor.model.getSurface(surfaceId);
     if (surface == null) return null;
     final formValues = _extractFormData(surface);
     final validationErrors = _validateForm(surface, formValues);
@@ -514,7 +514,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     final surfaceId = event.surfaceId ?? _activeSurfaceId;
     if (surfaceId == null) return;
 
-    final surface = _processor.groupModel.getSurface(surfaceId);
+    final surface = _processor.model.getSurface(surfaceId);
     if (surface == null) return;
 
     // Synchronous data model mutation with batching
@@ -541,7 +541,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       return;
     }
 
-    final surface = _processor.groupModel.getSurface(surfaceId);
+    final surface = _processor.model.getSurface(surfaceId);
     if (surface == null) {
       emit(
         SurfaceError(
@@ -633,7 +633,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     final targetSurfaceId = surfaceId ?? activeSurfaceIdValue;
     if (targetSurfaceId == null) return;
 
-    final surface = _processor.groupModel.getSurface(targetSurfaceId);
+    final surface = _processor.model.getSurface(targetSurfaceId);
     if (surface == null) return;
 
     _touchSurface(targetSurfaceId);
@@ -665,7 +665,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     SelectSurface event,
     void Function(A2uiSurfaceState) emit,
   ) {
-    final surface = _processor.groupModel.getSurface(event.surfaceId);
+    final surface = _processor.model.getSurface(event.surfaceId);
     if (surface == null) {
       final error =
           ArgumentError('Surface "${event.surfaceId}" does not exist.');
@@ -698,8 +698,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     final surfaceId = event.surfaceId;
     if (surfaceId == null) {
       _cancelActiveStream();
-      for (final surface in _processor.groupModel.allSurfaces.toList()) {
-        _processor.groupModel.deleteSurface(surface.id);
+      for (final surface in _processor.model.allSurfaces.toList()) {
+        _processor.model.deleteSurface(surface.id);
       }
       _responseHistory.clear();
       _surfaceVersions.clear();
@@ -736,7 +736,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
     _pruneSurfaceMetadata(targetId);
 
-    final surface = _processor.groupModel.getSurface(targetId);
+    final surface = _processor.model.getSurface(targetId);
     if (surface == null) {
       if (_activeSurfaceId == targetId) {
         _activeSurfaceId = null;
@@ -745,7 +745,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       return;
     }
 
-    _processor.groupModel.deleteSurface(targetId);
+    _processor.model.deleteSurface(targetId);
     if (_activeSurfaceId == targetId) {
       _activeSurfaceId = null;
     }
@@ -780,11 +780,37 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       final normalizedComps =
           msg.components.map(_normalizeComponentMap).toList();
       return UpdateComponentsMessage(
+        version: msg.version,
         surfaceId: msg.surfaceId,
         components: normalizedComps,
       );
     }
+    if (msg is CreateSurfaceMessage && msg.components != null) {
+      final normalizedComps =
+          msg.components!.map(_normalizeComponentMap).toList();
+      return CreateSurfaceMessage(
+        version: msg.version,
+        surfaceId: msg.surfaceId,
+        catalogId: msg.catalogId,
+        theme: msg.theme,
+        sendDataModel: msg.sendDataModel,
+        components: normalizedComps,
+        dataModel: msg.dataModel,
+        metadata: msg.metadata,
+      );
+    }
     return msg;
+  }
+
+  List<dynamic> _normalizeComponentList(List<dynamic> comps) {
+    return comps.map((c) {
+      if (c is Map<String, dynamic>) {
+        return _normalizeComponentMap(c);
+      } else if (c is Map) {
+        return _normalizeComponentMap(c.cast<String, dynamic>());
+      }
+      return c;
+    }).toList();
   }
 
   Map<String, dynamic> _normalizeJson(Map<String, dynamic> json) {
@@ -793,19 +819,26 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       if (update is Map && update.containsKey('components')) {
         final comps = update['components'];
         if (comps is List) {
-          final normalizedComps = comps.map((c) {
-            if (c is Map<String, dynamic>) {
-              return _normalizeComponentMap(c);
-            } else if (c is Map) {
-              return _normalizeComponentMap(c.cast<String, dynamic>());
-            }
-            return c;
-          }).toList();
           return {
             ...json,
             'updateComponents': {
               ...update,
-              'components': normalizedComps,
+              'components': _normalizeComponentList(comps),
+            },
+          };
+        }
+      }
+    }
+    if (json.containsKey('createSurface')) {
+      final create = json['createSurface'];
+      if (create is Map && create.containsKey('components')) {
+        final comps = create['components'];
+        if (comps is List) {
+          return {
+            ...json,
+            'createSurface': {
+              ...create,
+              'components': _normalizeComponentList(comps),
             },
           };
         }
@@ -825,7 +858,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       final child = result['child'];
       if (child is Map &&
           child.containsKey('id') &&
-          !child.containsKey('path')) {
+          !child.containsKey('path') &&
+          !child.containsKey('@path')) {
         result = {
           ...result,
           'child': child['id'],
@@ -888,13 +922,13 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     SurfaceModel<ComponentApi>? surface;
 
     if (targetSurfaceId != null) {
-      surface = _processor.groupModel.getSurface(targetSurfaceId);
+      surface = _processor.model.getSurface(targetSurfaceId);
     }
 
     if (surface == null) {
       final fallbackId = _selectSurvivingSurfaceId();
       if (fallbackId != null) {
-        surface = _processor.groupModel.getSurface(fallbackId);
+        surface = _processor.model.getSurface(fallbackId);
         targetSurfaceId = fallbackId;
         _activeSurfaceId = targetSurfaceId;
       } else {
@@ -988,8 +1022,9 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
       String? fieldPath;
       final valueProp = props['value'];
-      if (valueProp is Map && valueProp.containsKey('path')) {
-        fieldPath = valueProp['path']?.toString();
+      if (valueProp is Map &&
+          (valueProp.containsKey('path') || valueProp.containsKey('@path'))) {
+        fieldPath = (valueProp['path'] ?? valueProp['@path'])?.toString();
       } else if (props.containsKey('name')) {
         fieldPath = props['name']?.toString();
       } else {
@@ -1052,9 +1087,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   Map<String, dynamic> _extractFormData(SurfaceModel<ComponentApi> surface) {
     final raw = surface.dataModel.get('/');
-    if (raw is Map<String, dynamic>) {
-      return Map<String, dynamic>.from(raw);
-    } else if (raw is Map) {
+    if (raw is Map) {
       return raw.map((key, value) => MapEntry(key.toString(), value));
     }
     return const {};
@@ -1073,6 +1106,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     _activeStreamSubscription = null;
     await _safeCancel(oldSub);
     await _actionResponsesController.close();
+    _processor.dispose();
     await super.close();
   }
 

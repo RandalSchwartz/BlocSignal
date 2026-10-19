@@ -14,7 +14,9 @@ void main() {
   final extendedCatalog = Catalog<ComponentApi, FunctionImplementation>(
     id: customCatalogId,
     components: [
-      ...MinimalCatalog().components.values,
+      ...MinimalCatalog().components.values.where(
+            (c) => c.name != 'Card' && c.name != 'Divider',
+          ),
       _CustomComponentApi(
         name: 'Card',
         schema: Schema.fromMap(const <String, Object?>{

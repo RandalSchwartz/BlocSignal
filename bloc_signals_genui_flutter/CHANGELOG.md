@@ -4,6 +4,8 @@ All notable changes to `bloc_signals_genui_flutter` will be documented in this f
 
 ## Unreleased
 
+- **Feat (genui_flutter)**: Upgrade to `a2ui_core: ^0.3.0`, resolve per-component catalogs via `surface.resolveCatalog` and `catalog.resolvedComponentSchema` in `A2uiSurfaceView`, unwrap `ResolvedBinding` and `WritableBinding` values in `A2uiSurfaceView`, `safe_prop_parser.dart`, `A2uiText`, and `A2uiTextField`, and support v1.0 `@path` two-way bindings in `A2uiTextField` (#368).
+- **Dependencies**: Bump `a2ui_core` dependency constraint to `^0.3.0` (#368).
 - **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).
 - **Docs (genui_flutter)**: Document intentional `on Object catch` component isolation boundary in `A2uiSurfaceView` (#340).
 - **Fix (genui_flutter)**: Wrapped per-component rendering in `_SurfaceTreeRenderer` inside reactive `_BoundComponentWidget` instances subscribed to `binder.resolvedProps` with ancestor-path circular reference protection, enabling granular leaf component rebuilds when `DataModel` bindings update directly (#321).

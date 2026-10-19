@@ -5,20 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:json_schema_builder/json_schema_builder.dart';
 
-class _CustomComponentApi implements ComponentApi {
-  _CustomComponentApi({required this.name, required this.schema});
-
-  @override
-  final String name;
-
-  @override
-  final Schema schema;
+class _CustomComponentApi extends ComponentApi {
+  _CustomComponentApi({required super.name, required super.schema});
 }
 
 final _cardCatalog = Catalog<ComponentApi, FunctionImplementation>(
   id: 'https://custom.catalog/card.json',
   components: [
-    ...MinimalCatalog().components.values,
+    ...MinimalCatalog().components.values.where((c) => c.name != 'Card'),
     _CustomComponentApi(
       name: 'Card',
       schema: Schema.fromMap(const <String, Object?>{
@@ -239,7 +233,7 @@ void main() {
           }),
         );
 
-      final surface = bloc.processor.groupModel.getSurface('surf-empty')!;
+      final surface = bloc.processor.model.getSurface('surf-empty')!;
       bloc.emitForTest(
         SurfaceReady(
           surfaceId: 'surf-empty',
@@ -391,8 +385,7 @@ void main() {
         );
 
       await tester.pump();
-      final surface =
-          bloc.processor.groupModel.getSurface('surf-missing-child')!;
+      final surface = bloc.processor.model.getSurface('surf-missing-child')!;
       surface.componentsModel.addComponent(
         ComponentModel('row-missing', 'Row', {
           'children': ['ghost-child'],
@@ -514,7 +507,7 @@ void main() {
         // Construct a new SurfaceModel with same version but different instance
         final newSurface = SurfaceModel(
           ready.surface.id,
-          catalog: ready.surface.catalog,
+          defaultCatalog: ready.surface.defaultCatalog,
         );
         newSurface.componentsModel.addComponent(
           ComponentModel(
@@ -536,7 +529,7 @@ void main() {
         // Construct a surface with txt-check removed to test binder pruning
         final emptySurface = SurfaceModel(
           ready.surface.id,
-          catalog: ready.surface.catalog,
+          defaultCatalog: ready.surface.defaultCatalog,
         );
         bloc.emitForTest(
           SurfaceReady(
@@ -945,7 +938,7 @@ void main() {
           );
 
         await tester.pump();
-        final surface = bloc.processor.groupModel.getSurface('surf-circular')!;
+        final surface = bloc.processor.model.getSurface('surf-circular')!;
         surface.componentsModel.addComponent(
           ComponentModel('col-a', 'Column', {
             'children': ['col-b'],
@@ -1539,10 +1532,12 @@ void main() {
             ..add(
               ProcessMessages([
                 CreateSurfaceMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-a',
                   catalogId: minimalCatalogId,
                 ),
                 UpdateComponentsMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-a',
                   components: const [
                     {
@@ -1553,10 +1548,12 @@ void main() {
                   ],
                 ),
                 CreateSurfaceMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-b',
                   catalogId: minimalCatalogId,
                 ),
                 UpdateComponentsMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-b',
                   components: const [
                     {
@@ -1605,10 +1602,12 @@ void main() {
             ..add(
               ProcessMessages([
                 CreateSurfaceMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-c',
                   catalogId: minimalCatalogId,
                 ),
                 UpdateComponentsMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-c',
                   components: const [
                     {
@@ -1619,10 +1618,12 @@ void main() {
                   ],
                 ),
                 CreateSurfaceMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-d',
                   catalogId: minimalCatalogId,
                 ),
                 UpdateComponentsMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-d',
                   components: const [
                     {
@@ -1676,10 +1677,12 @@ void main() {
             ..add(
               ProcessMessages([
                 CreateSurfaceMessage(
+                  version: 'v0.9',
                   surfaceId: 'A',
                   catalogId: minimalCatalogId,
                 ),
                 UpdateComponentsMessage(
+                  version: 'v0.9',
                   surfaceId: 'A',
                   components: const [
                     {
@@ -1690,10 +1693,12 @@ void main() {
                   ],
                 ),
                 CreateSurfaceMessage(
+                  version: 'v0.9',
                   surfaceId: 'B',
                   catalogId: minimalCatalogId,
                 ),
                 UpdateComponentsMessage(
+                  version: 'v0.9',
                   surfaceId: 'B',
                   components: const [
                     {
@@ -1742,6 +1747,7 @@ void main() {
           bloc.add(
             ProcessMessage(
               UpdateComponentsMessage(
+                version: 'v0.9',
                 surfaceId: 'B',
                 components: const [
                   {
@@ -1769,20 +1775,24 @@ void main() {
             ..add(
               ProcessMessages([
                 CreateSurfaceMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-1',
                   catalogId: minimalCatalogId,
                 ),
                 UpdateComponentsMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-1',
                   components: const [
                     {'id': 'txt-1', 'component': 'Text', 'text': 'One'},
                   ],
                 ),
                 CreateSurfaceMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-2',
                   catalogId: minimalCatalogId,
                 ),
                 UpdateComponentsMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-2',
                   components: const [
                     {'id': 'txt-2', 'component': 'Text', 'text': 'Two'},
@@ -1858,13 +1868,13 @@ void main() {
           bloc.add(
             ProcessMessages([
               CreateSurfaceMessage(
+                version: 'v0.9',
                 surfaceId: 'surf-map-child',
                 catalogId: minimalCatalogId,
               ),
             ]),
           );
-          final surface =
-              bloc.processor.groupModel.getSurface('surf-map-child')!;
+          final surface = bloc.processor.model.getSurface('surf-map-child')!;
           surface.componentsModel
             ..addComponent(
               ComponentModel('card-1', 'Card', const {
@@ -1885,7 +1895,7 @@ void main() {
           // 3. Fallback switch for SurfaceReady, SurfaceSubmitting, and
           // SurfaceError when targetId does not match state.surfaceId
           final readySnap = bloc.getSurfaceReady('surf-map-child')!;
-          bloc.processor.groupModel.deleteSurface('surf-map-child');
+          bloc.processor.model.deleteSurface('surf-map-child');
           bloc
             ..emitForTest(readySnap)
             ..emitForTest(
@@ -1911,6 +1921,7 @@ void main() {
             ..add(
               ProcessMessage(
                 CreateSurfaceMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-1',
                   catalogId: minimalCatalogId,
                 ),
@@ -1961,6 +1972,7 @@ void main() {
             ..add(
               ProcessMessage(
                 UpdateComponentsMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-1',
                   components: const [
                     {'id': 'txt-1', 'component': 'Text', 'text': 'One Ready'},
@@ -1971,6 +1983,7 @@ void main() {
             ..add(
               ProcessMessage(
                 CreateSurfaceMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-2',
                   catalogId: minimalCatalogId,
                 ),
@@ -2038,20 +2051,24 @@ void main() {
             ..add(
               ProcessMessages([
                 CreateSurfaceMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-granular',
                   catalogId: minimalCatalogId,
                 ),
                 UpdateDataModelMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-granular',
                   path: '/greeting',
                   value: 'Hello World',
                 ),
                 UpdateDataModelMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-granular',
                   path: '/other',
                   value: 'Static Sibling',
                 ),
                 UpdateComponentsMessage(
+                  version: 'v0.9',
                   surfaceId: 'surf-granular',
                   components: const [
                     {
@@ -2093,8 +2110,7 @@ void main() {
           expect(buildCounts['comp-b'], equals(1));
 
           final versionBefore = (bloc.value as SurfaceReady).version;
-          final surface =
-              bloc.processor.groupModel.getSurface('surf-granular')!;
+          final surface = bloc.processor.model.getSurface('surf-granular')!;
 
           // Mutate surface.dataModel directly without dispatching a bloc event
           // or bumping SurfaceReady.version
@@ -2112,6 +2128,7 @@ void main() {
           bloc.add(
             ProcessMessage(
               UpdateComponentsMessage(
+                version: 'v0.9',
                 surfaceId: 'surf-granular',
                 components: const [
                   {
@@ -2140,6 +2157,123 @@ void main() {
 
           expect(find.text('Rebound Value'), findsOneWidget);
           expect(buildCounts['comp-b'], equals(countB));
+        },
+      );
+    });
+
+    group('(Issue #368) a2ui_core 0.3.0 ResolvedBinding & Catalog Resolution',
+        () {
+      test(
+        '(Issue #368) safe_prop_parser unwrapBinding, asDouble, asInt, '
+        'asString, extractChildId, and extractChildIds unwrap '
+        'ResolvedBinding and WritableBinding',
+        () {
+          const doubleBinding = ResolvedBinding<Object?>(12.5);
+          const intBinding = ResolvedBinding<Object?>(42);
+          const strBinding = ResolvedBinding<Object?>('Hello Bound');
+          const idBinding = ResolvedBinding<Object?>('child-1');
+          const listBinding = ResolvedBinding<Object?>([
+            ResolvedBinding<Object?>('c1'),
+            {'id': ResolvedBinding<Object?>('c2')},
+          ]);
+
+          expect(unwrapBinding(doubleBinding), equals(12.5));
+          expect(asDouble(doubleBinding), equals(12.5));
+          expect(asInt(intBinding), equals(42));
+          expect(asString(strBinding), equals('Hello Bound'));
+          expect(extractChildId(idBinding), equals('child-1'));
+          expect(
+            extractChildId({'id': const ResolvedBinding<Object?>('child-map')}),
+            equals('child-map'),
+          );
+          expect(extractChildIds(listBinding), equals(['c1', 'c2']));
+        },
+      );
+
+      testWidgets(
+        '(Issue #368) A2uiSurfaceView resolves catalog via '
+        'surface.resolveCatalog and unwraps ResolvedBinding props and '
+        'v1.0 @path two-way TextField bindings',
+        (tester) async {
+          final bloc = A2uiSurfaceBloc()
+            ..add(
+              const ProcessJsonMessage({
+                'version': 'v1.0',
+                'createSurface': {
+                  'surfaceId': 'surf-v10-view',
+                  'catalogId':
+                      'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json',
+                  'components': [
+                    {
+                      'id': 'root',
+                      'component': 'Column',
+                      'children': ['txt_bound', 'tf_bound'],
+                    },
+                    {
+                      'id': 'txt_bound',
+                      'component': 'Text',
+                      'text': {'@path': '/userName'},
+                    },
+                    {
+                      'id': 'tf_bound',
+                      'component': 'TextField',
+                      'label': 'User Name',
+                      'value': {'@path': '/userName'},
+                    },
+                  ],
+                  'dataModel': {
+                    'userName': 'Initial V10',
+                  },
+                },
+              }),
+            );
+          addTearDown(bloc.close);
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc,
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(bloc.value, isA<SurfaceReady>());
+          expect(find.text('Initial V10'), findsWidgets);
+
+          // Typing into the TextField bound with @path updates the DataModel
+          // and re-renders the bound Text widget in the same frame
+          await tester.enterText(find.byType(TextField), 'Updated V10');
+          await tester.pump();
+
+          expect(find.text('Updated V10'), findsWidgets);
+          final ready = bloc.value as SurfaceReady;
+          expect(ready.formValues['userName'], equals('Updated V10'));
+
+          // Verify that an undeclared component type on the surface falls back
+          // to Schema.fromMap(const {}) in _reconcileBinders and renders the
+          // catalog fallback widget cleanly.
+          final fallbackSurface = SurfaceModel(
+            ready.surface.id,
+            defaultCatalog: ready.surface.defaultCatalog,
+          );
+          fallbackSurface.componentsModel.addComponent(
+            ComponentModel('unknown_comp', 'UndeclaredWidget', const {}),
+          );
+          bloc.emitForTest(
+            SurfaceReady(
+              surfaceId: ready.surfaceId,
+              surface: fallbackSurface,
+              version: ready.version + 1,
+            ),
+          );
+          await tester.pump();
+          expect(
+            find.text('Unknown A2UI Component: <UndeclaredWidget>'),
+            findsOneWidget,
+          );
         },
       );
     });

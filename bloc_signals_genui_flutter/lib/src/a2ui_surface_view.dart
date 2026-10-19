@@ -1,10 +1,11 @@
-import 'package:a2ui_core/a2ui_core.dart';
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_flutter/src/a2ui_component_context.dart';
 import 'package:bloc_signals_genui_flutter/src/a2ui_flutter_catalog.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
 import 'package:flutter/material.dart';
-import 'package:json_schema_builder/json_schema_builder.dart';
+import 'package:json_schema_builder/json_schema_builder.dart'
+    hide ValidationResult;
 
 /// Callback signature for rendering when surface is in [SurfaceInitial] state.
 typedef A2uiInitialBuilder = Widget Function(BuildContext context);
@@ -362,8 +363,9 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
       // Only recreate binder if the component instance or type has changed
       if (existingBinder == null || previousComponent != c) {
         existingBinder?.dispose();
-        final componentApi = surface.catalog.components[c.type];
-        final schema = componentApi?.schema ?? Schema.fromMap(const {});
+        final catalog = surface.resolveCatalog(c.catalog);
+        final schema =
+            catalog.resolvedComponentSchema(c.type) ?? Schema.fromMap(const {});
         final componentContext = ComponentContext(surface, c);
         _binders[c.id] = GenericBinder(componentContext, schema);
         _boundComponents[c.id] = c;
@@ -528,11 +530,12 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
 
     // Identify root components not referenced as a child by any other component
     final childIds = <String>{};
-    void collectId(dynamic item) {
+    void collectId(dynamic rawItem) {
+      final item = unwrapBinding(rawItem);
       if (item is ChildNode) {
         childIds.add(item.id);
       } else if (item is Map && item.containsKey('id')) {
-        childIds.add(item['id'].toString());
+        childIds.add(unwrapBinding(item['id']).toString());
       } else if (item != null) {
         childIds.add(item.toString());
       }
@@ -542,9 +545,12 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
       final binder = _binders[c.id];
       final props = binder?.resolvedProps.value ?? c.properties;
 
-      collectId(props['child'] ?? c.properties['child']);
+      collectId(
+        unwrapBinding(props['child']) ?? unwrapBinding(c.properties['child']),
+      );
 
-      final childrenProp = props['children'] ?? c.properties['children'];
+      final childrenProp = unwrapBinding(props['children']) ??
+          unwrapBinding(c.properties['children']);
       if (childrenProp is List) {
         childrenProp.forEach(collectId);
       }
@@ -666,8 +672,12 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
   Widget build(BuildContext context) {
     final componentId = widget.component.id;
     final nextPath = <String>{...widget.ancestorPath, componentId};
-    final resolvedProps =
+    final rawProps =
         widget.binder?.resolvedProps.value ?? widget.component.properties;
+    final resolvedProps = <String, dynamic>{
+      for (final entry in rawProps.entries)
+        entry.key: unwrapBinding(entry.value),
+    };
 
     final componentCtx = A2uiComponentContext(
       component: widget.component,

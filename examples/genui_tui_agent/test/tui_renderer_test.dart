@@ -1,4 +1,3 @@
-import 'package:a2ui_core/a2ui_core.dart';
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:genui_tui_agent/src/tui_renderer.dart';
 import 'package:test/test.dart';
@@ -37,7 +36,7 @@ void main() {
     test('renders surface model with components and forms', () {
       final surface = SurfaceModel<ComponentApi>(
         'test_surf',
-        catalog: MinimalCatalog(),
+        defaultCatalog: MinimalCatalog(),
       );
       surface.componentsModel.addComponent(
         ComponentModel('t1', 'Text', {'text': 'Header', 'variant': 'h1'}),

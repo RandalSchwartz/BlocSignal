@@ -4,14 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:json_schema_builder/json_schema_builder.dart';
 
-class _CustomComponentApi implements ComponentApi {
-  _CustomComponentApi({required this.name, required this.schema});
-
-  @override
-  final String name;
-
-  @override
-  final Schema schema;
+class _CustomComponentApi extends ComponentApi {
+  _CustomComponentApi({required super.name, required super.schema});
 }
 
 void main() {
@@ -140,7 +134,9 @@ void main() {
       final customCoreCatalog = Catalog<ComponentApi, FunctionImplementation>(
         id: 'https://custom.catalog/custom.json',
         components: [
-          ...MinimalCatalog().components.values,
+          ...MinimalCatalog().components.values.where(
+                (c) => c.name != 'Card' && c.name != 'Divider',
+              ),
           _CustomComponentApi(
             name: 'Card',
             schema: Schema.fromMap(const <String, Object?>{
@@ -696,7 +692,10 @@ void main() {
         final customCoreCatalog = Catalog<ComponentApi, FunctionImplementation>(
           id: 'https://custom.catalog/chained.json',
           components: [
-            ...MinimalCatalog().components.values,
+            ...MinimalCatalog()
+                .components
+                .values
+                .where((c) => c.name != 'Button'),
             _CustomComponentApi(
               name: 'Button',
               schema: Schema.fromMap(const <String, Object?>{

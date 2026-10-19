@@ -4,6 +4,8 @@ All notable changes to `bloc_signals_genui` will be documented in this file.
 
 ## Unreleased
 
+- **Feat (genui)**: Upgrade `a2ui_core` to `^0.3.0`, register `[StandardCatalog(), BasicCatalog.v0_9(), BasicCatalog.v1_0()]` by default in `A2uiSurfaceBloc`, support v1.0 inline `CreateSurfaceMessage` components and `@path` form validation bindings, call `_processor.dispose()` on `close()`, and re-export `a2ui_core` 0.3.0 types alongside backward-compatible `A2uiMessage`, `A2uiClientAction`, `A2uiClientError`, and `MinimalCatalog` typedefs (#368).
+- **Dependencies**: Bump `a2ui_core` dependency constraint to `^0.3.0` and remove workspace git dependency override (#368).
 - **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).
 - **Fix (genui)**: Narrow `A2uiSurfaceBloc._safeCancel` from bare `catch` to `on Exception catch` so programming defects in subscription cancellation surface immediately, and upgrade bare `catch` blocks at stream/JSON boundaries to explicit `on Object catch` (#340).
 - **Fix (genui)**: Add `maxResponseHistory` parameter (defaulting to 100) to `A2uiSurfaceBloc` to bound `_responseHistory` with FIFO eviction (#332).

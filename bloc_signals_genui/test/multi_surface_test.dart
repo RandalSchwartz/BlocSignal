@@ -19,6 +19,7 @@ _TwoSurfaces _createTwoSurfaces() {
     ..add(
       ProcessMessage(
         CreateSurfaceMessage(
+          version: 'v0.9',
           surfaceId: 'A',
           catalogId: _minimalCatalogId,
         ),
@@ -27,6 +28,7 @@ _TwoSurfaces _createTwoSurfaces() {
     ..add(
       ProcessMessage(
         UpdateComponentsMessage(
+          version: 'v0.9',
           surfaceId: 'A',
           components: const [
             {
@@ -41,6 +43,7 @@ _TwoSurfaces _createTwoSurfaces() {
     ..add(
       ProcessMessage(
         CreateSurfaceMessage(
+          version: 'v0.9',
           surfaceId: 'B',
           catalogId: _minimalCatalogId,
         ),
@@ -49,6 +52,7 @@ _TwoSurfaces _createTwoSurfaces() {
     ..add(
       ProcessMessage(
         UpdateComponentsMessage(
+          version: 'v0.9',
           surfaceId: 'B',
           components: const [
             {
@@ -70,7 +74,7 @@ _TwoSurfaces _createTwoSurfaces() {
 }
 
 List<String> _surfaceIds(A2uiSurfaceBloc bloc) =>
-    bloc.processor.groupModel.allSurfaces.map((s) => s.id).toList();
+    bloc.processor.model.allSurfaces.map((s) => s.id).toList();
 
 Future<List<A2uiActionResponse>> _replayedResponses(
   A2uiSurfaceBloc bloc,
@@ -247,7 +251,7 @@ void main() {
       final session = _createTwoSurfaces();
 
       // Stale active surface: delete B directly from groupModel
-      session.bloc.processor.groupModel.deleteSurface('B');
+      session.bloc.processor.model.deleteSurface('B');
       session.states.clear();
 
       // ID-less reset should not wedge; it should delete remaining surfaces (A)
@@ -283,7 +287,7 @@ void main() {
       expect(initialResponses, hasLength(2));
 
       // Make B a phantom active surface: active is B, but B is deleted externally from groupModel
-      session.bloc.processor.groupModel.deleteSurface('B');
+      session.bloc.processor.model.deleteSurface('B');
       session.states.clear();
 
       // Targeted reset of phantom active surface B

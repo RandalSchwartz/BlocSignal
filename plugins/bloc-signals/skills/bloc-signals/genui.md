@@ -4,15 +4,12 @@ This document defines the architectural patterns, streaming state machine lifecy
 
 ---
 
-## 🚫 Pre-Release & Unpublished Status
+## 🌐 Protocol & Catalog Support (`a2ui_core: ^0.3.0`)
 
-> [!IMPORTANT]
-> **Git-Only Pre-Release**: `bloc_signals_genui` and `bloc_signals_genui_flutter` currently depend on an unreleased, git-overridden fork of Google's `a2ui_core` package (`https://github.com/RandalSchwartz/a2ui.git` branch `fix/widen-preact-signals-a2ui-core`).
->
-> Because pub.dev strictly rejects packages with git dependencies or dependency overrides:
-> - Do NOT attempt to publish these packages to pub.dev (`flutter pub publish` is forbidden on them).
-> - Do NOT add `pub.dev` badges or links to these packages in public documentation or readmes.
-> - Depend on them in client applications via path or git workspace dependencies.
+`bloc_signals_genui` and `bloc_signals_genui_flutter` target the published `a2ui_core: ^0.3.0` package on pub.dev and support both **A2UI v0.9** and **A2UI v1.0** wire protocols out of the box:
+- **Default Catalogs**: `A2uiSurfaceBloc` registers `[StandardCatalog(), BasicCatalog.v0_9(), BasicCatalog.v1_0()]` by default, enabling seamless ingestion of legacy `minimal_catalog.json` surfaces, `v0.9` basic catalog surfaces, and `v1.0` basic catalog surfaces (including inline `components` and `dataModel` in `CreateSurfaceMessage` and `@path` data bindings).
+- **Processor & Surface Model**: `A2uiSurfaceBloc.processor.model` exposes the `SurfaceGroupModel<ComponentApi>`, and `A2uiSurfaceBloc.close()` calls `processor.dispose()` to tear down the `RpcHandler` and all registered surfaces.
+- **`ResolvedBinding` & `WritableBinding` Unwrapping**: In `a2ui_core 0.3.0`, `GenericBinder.resolvedProps` wraps dynamic properties in `ResolvedBinding<Object?>` (or `WritableBinding<Object?>` for bound paths). `A2uiSurfaceView` and `safe_prop_parser.dart` (`unwrapBinding`, `asDouble`, `asInt`, `asString`, `extractChildId`, `extractChildIds`) unwrap these bindings automatically before passing property values to catalog widget builders, and `surface.resolveCatalog(component.catalog)` + `catalog.resolvedComponentSchema(component.type)` resolve component schemas per surface.
 
 ---
 

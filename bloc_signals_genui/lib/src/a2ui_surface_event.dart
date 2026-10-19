@@ -1,4 +1,5 @@
 import 'package:a2ui_core/a2ui_core.dart';
+import 'package:bloc_signals_genui/bloc_signals_genui.dart' show A2uiMessage;
 import 'package:bloc_signals_genui/src/a2ui_action_response.dart'
     show A2uiActionResponse;
 import 'package:bloc_signals_genui/src/a2ui_surface_bloc.dart'

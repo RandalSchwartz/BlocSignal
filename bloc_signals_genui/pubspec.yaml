@@ -16,7 +16,7 @@ environment:
   sdk: ^3.5.0
 
 dependencies:
-  a2ui_core: ">=0.1.1 <0.3.0"
+  a2ui_core: ^0.3.0
   bloc_signals: ^1.5.0
   json_schema_builder: ">=0.1.0 <1.0.0"
   meta: ">=1.11.0 <2.0.0"

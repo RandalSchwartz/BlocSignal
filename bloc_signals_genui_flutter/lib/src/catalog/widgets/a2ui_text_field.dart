@@ -1,4 +1,5 @@
 import 'package:bloc_signals_genui_flutter/src/a2ui_component_context.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
 import 'package:flutter/material.dart';
 
 /// Renders an A2UI `TextField` component with fine-grained state updates.
@@ -24,8 +25,7 @@ class _A2uiTextFieldState extends State<A2uiTextField> {
   @override
   void initState() {
     super.initState();
-    final initialValue =
-        widget.componentContext.props['value']?.toString() ?? '';
+    final initialValue = asString(widget.componentContext.props['value']);
     _lastSyncedValue = initialValue;
     _controller = TextEditingController(text: initialValue);
     _focusNode = FocusNode();
@@ -34,8 +34,7 @@ class _A2uiTextFieldState extends State<A2uiTextField> {
   @override
   void didUpdateWidget(A2uiTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final externalValue =
-        widget.componentContext.props['value']?.toString() ?? '';
+    final externalValue = asString(widget.componentContext.props['value']);
     // If the field is currently focused by the user, do not clobber
     // active typing.
     if (_focusNode.hasFocus) {
@@ -62,8 +61,9 @@ class _A2uiTextFieldState extends State<A2uiTextField> {
     _lastSyncedValue = newValue;
     final rawProps = widget.componentContext.component.properties;
     final valueProp = rawProps['value'];
-    if (valueProp is Map && valueProp.containsKey('path')) {
-      final path = valueProp['path']?.toString() ??
+    if (valueProp is Map &&
+        (valueProp.containsKey('path') || valueProp.containsKey('@path'))) {
+      final path = (valueProp['path'] ?? valueProp['@path'])?.toString() ??
           '/${widget.componentContext.component.id}';
       widget.componentContext.updateFormField(path, newValue);
     } else {
@@ -76,10 +76,10 @@ class _A2uiTextFieldState extends State<A2uiTextField> {
   @override
   Widget build(BuildContext context) {
     final props = widget.componentContext.props;
-    final label = props['label']?.toString();
-    final placeholder = props['placeholder']?.toString();
-    final helperText = props['helperText']?.toString();
-    final errorText = props['errorText']?.toString();
+    final label = unwrapBinding(props['label'])?.toString();
+    final placeholder = unwrapBinding(props['placeholder'])?.toString();
+    final helperText = unwrapBinding(props['helperText'])?.toString();
+    final errorText = unwrapBinding(props['errorText'])?.toString();
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),

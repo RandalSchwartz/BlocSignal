@@ -42,6 +42,7 @@ void main() {
         ..add(
           ProcessMessage(
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_1',
               catalogId: minimalCatalogId,
             ),
@@ -50,6 +51,7 @@ void main() {
         ..add(
           ProcessMessage(
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'surf_1',
               components: const [
                 {
@@ -96,6 +98,7 @@ void main() {
       blocMsg.add(
         ProcessMessage(
           CreateSurfaceMessage(
+            version: 'v0.9',
             surfaceId: 'surf_parity',
             catalogId: minimalCatalogId,
           ),
@@ -179,10 +182,12 @@ void main() {
       act: (bloc) => bloc.add(
         ProcessMessages([
           CreateSurfaceMessage(
+            version: 'v0.9',
             surfaceId: 'surf_batch',
             catalogId: minimalCatalogId,
           ),
           UpdateComponentsMessage(
+            version: 'v0.9',
             surfaceId: 'surf_batch',
             components: [
               {
@@ -223,6 +228,7 @@ void main() {
       act: (bloc) => bloc.add(
         ProcessMessage(
           CreateSurfaceMessage(
+            version: 'v0.9',
             surfaceId: 'surf_bad_cat',
             catalogId: 'https://bad.catalog.url',
           ),
@@ -239,6 +245,7 @@ void main() {
       act: (bloc) => bloc.add(
         ProcessMessages([
           CreateSurfaceMessage(
+            version: 'v0.9',
             surfaceId: 'surf_batch_err',
             catalogId: 'https://bad.catalog.url',
           ),
@@ -256,6 +263,7 @@ void main() {
         bloc.add(
           ProcessMessage(
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_form',
               catalogId: minimalCatalogId,
             ),
@@ -264,6 +272,7 @@ void main() {
         bloc.add(
           ProcessMessage(
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'surf_form',
               components: const [
                 {
@@ -316,6 +325,7 @@ void main() {
       bloc.add(
         ProcessMessage(
           CreateSurfaceMessage(
+            version: 'v0.9',
             surfaceId: 'surf_sub',
             catalogId: minimalCatalogId,
           ),
@@ -389,10 +399,12 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_reset',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'surf_reset',
               components: const [
                 {
@@ -423,6 +435,7 @@ void main() {
       // Typed message chunk
       streamController.add(
         CreateSurfaceMessage(
+          version: 'v0.9',
           surfaceId: 'surf_stream',
           catalogId: minimalCatalogId,
         ),
@@ -513,10 +526,12 @@ void main() {
       bloc.add(
         ProcessMessages([
           CreateSurfaceMessage(
+            version: 'v0.9',
             surfaceId: 'surf_complete',
             catalogId: minimalCatalogId,
           ),
           UpdateComponentsMessage(
+            version: 'v0.9',
             surfaceId: 'surf_complete',
             components: const [
               {'id': 'txt_comp', 'component': 'Text', 'text': 'Complete'},
@@ -535,10 +550,12 @@ void main() {
       final bloc = A2uiSurfaceBloc();
       bloc.processor.processMessages([
         CreateSurfaceMessage(
+          version: 'v0.9',
           surfaceId: 'surf_auto',
           catalogId: minimalCatalogId,
         ),
         UpdateComponentsMessage(
+          version: 'v0.9',
           surfaceId: 'surf_auto',
           components: const [
             {'id': 'txt_auto', 'component': 'Text', 'text': 'Auto'},
@@ -673,6 +690,7 @@ void main() {
         bloc.add(
           ProcessMessage(
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_recover',
               catalogId: minimalCatalogId,
             ),
@@ -740,6 +758,7 @@ void main() {
         bloc.add(
           ProcessMessage(
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_cancel_no_err',
               catalogId: minimalCatalogId,
             ),
@@ -767,6 +786,7 @@ void main() {
         bloc.add(
           ProcessMessage(
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_complete',
               catalogId: minimalCatalogId,
             ),
@@ -850,20 +870,24 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_1',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'surf_1',
               components: const [
                 {'id': 'txt_1', 'component': 'Text', 'text': 'Surface 1'},
               ],
             ),
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_2',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'surf_2',
               components: const [
                 {'id': 'txt_2', 'component': 'Text', 'text': 'Surface 2'},
@@ -900,6 +924,7 @@ void main() {
         bloc.add(
           ProcessMessage(
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_known',
               catalogId: minimalCatalogId,
             ),
@@ -919,10 +944,12 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_immut',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'surf_immut',
               components: const [
                 {'id': 'txt_immut', 'component': 'Text', 'text': 'Immutable'},
@@ -947,10 +974,12 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_a',
               catalogId: minimalCatalogId,
             ),
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_b',
               catalogId: minimalCatalogId,
             ),
@@ -1000,6 +1029,7 @@ void main() {
         bloc.add(
           ProcessMessage(
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_a',
               catalogId: minimalCatalogId,
             ),
@@ -1013,6 +1043,7 @@ void main() {
         bloc.add(
           ProcessMessage(
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_b',
               catalogId: minimalCatalogId,
             ),
@@ -1048,20 +1079,24 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'A',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'A',
               components: const [
                 {'id': 'txt_a', 'component': 'Text', 'text': 'Surface A'},
               ],
             ),
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               components: const [
                 {'id': 'txt_b', 'component': 'Text', 'text': 'Surface B'},
@@ -1106,20 +1141,24 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'A',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'A',
               components: const [
                 {'id': 'txt_a', 'component': 'Text', 'text': 'Surface A'},
               ],
             ),
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               components: const [
                 {
@@ -1141,6 +1180,7 @@ void main() {
         bloc.add(
           ProcessMessage(
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               components: const [
                 {
@@ -1162,6 +1202,7 @@ void main() {
         bloc.add(
           ProcessMessage(
             UpdateDataModelMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               path: '/extra',
               value: 'data',
@@ -1247,30 +1288,36 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'A',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'A',
               components: const [
                 {'id': 'txt_a', 'component': 'Text', 'text': 'Surface A'},
               ],
             ),
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               components: const [
                 {'id': 'txt_b', 'component': 'Text', 'text': 'Surface B'},
               ],
             ),
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'C',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'C',
               components: const [
                 {'id': 'txt_c', 'component': 'Text', 'text': 'Surface C'},
@@ -1363,6 +1410,7 @@ void main() {
 
         controller.add(
           CreateSurfaceMessage(
+            version: 'v0.9',
             surfaceId: 'stream_surf',
             catalogId: minimalCatalogId,
           ),
@@ -1386,12 +1434,13 @@ void main() {
         bloc.add(
           ProcessMessage(
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'phantom',
               catalogId: minimalCatalogId,
             ),
           ),
         );
-        bloc.processor.groupModel.deleteSurface('phantom');
+        bloc.processor.model.deleteSurface('phantom');
         expect(bloc.activeSurfaceIdValue, equals('phantom'));
         bloc.add(const CloseSurface(surfaceId: 'phantom'));
         expect(bloc.activeSurfaceIdValue, isNull);
@@ -1409,20 +1458,24 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'A',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'A',
               components: const [
                 {'id': 'txt_a', 'component': 'Text', 'text': 'Surface A'},
               ],
             ),
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               components: const [
                 {'id': 'txt_b', 'component': 'Text', 'text': 'Surface B'},
@@ -1446,7 +1499,7 @@ void main() {
         // Dispatch DeleteSurfaceMessage for active surface B via ProcessMessage
         bloc.add(
           ProcessMessage(
-            DeleteSurfaceMessage(surfaceId: 'B'),
+            DeleteSurfaceMessage(version: 'v0.9', surfaceId: 'B'),
           ),
         );
 
@@ -1494,20 +1547,24 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'A',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'A',
               components: const [
                 {'id': 'txt_a', 'component': 'Text', 'text': 'Surface A'},
               ],
             ),
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'B',
               components: const [
                 {'id': 'txt_b', 'component': 'Text', 'text': 'Surface B'},
@@ -1524,10 +1581,12 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'C',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'C',
               components: const [
                 {'id': 'txt_c', 'component': 'Text', 'text': 'Surface C'},
@@ -1555,6 +1614,7 @@ void main() {
         bloc.add(
           ProcessMessage(
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'D',
               catalogId: minimalCatalogId,
             ),
@@ -1570,6 +1630,7 @@ void main() {
           ..add(
             ProcessMessage(
               CreateSurfaceMessage(
+                version: 'v0.9',
                 surfaceId: 'S1',
                 catalogId: minimalCatalogId,
               ),
@@ -1578,6 +1639,7 @@ void main() {
           ..add(
             ProcessMessage(
               CreateSurfaceMessage(
+                version: 'v0.9',
                 surfaceId: 'S2',
                 catalogId: minimalCatalogId,
               ),
@@ -1592,6 +1654,7 @@ void main() {
         addTearDown(blocFallback.close);
         blocFallback.processor.processMessages([
           CreateSurfaceMessage(
+            version: 'v0.9',
             surfaceId: 'S_untracked',
             catalogId: minimalCatalogId,
           ),
@@ -1599,6 +1662,7 @@ void main() {
         blocFallback.add(
           ProcessMessage(
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'S_tracked',
               catalogId: minimalCatalogId,
             ),
@@ -1759,7 +1823,7 @@ void main() {
           );
 
         // Add component with 'name' property and literal key in dataModel
-        final surface = bloc.processor.groupModel.getSurface('s_norm')!;
+        final surface = bloc.processor.model.getSurface('s_norm')!;
         surface.componentsModel.addComponent(
           ComponentModel('tf_named', 'TextField', const {
             'name': 'namedField',
@@ -1782,7 +1846,8 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         // Emit snapshot when no surfaces exist but stream subscription is active
-        streamCtrl.add(DeleteSurfaceMessage(surfaceId: 's_norm'));
+        streamCtrl
+            .add(DeleteSurfaceMessage(version: 'v0.9', surfaceId: 's_norm'));
         await Future<void>.delayed(Duration.zero);
         expect(bloc.value, isA<SurfaceStreaming>());
       });
@@ -1804,10 +1869,12 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_regex',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'surf_regex',
               components: const [
                 {
@@ -1878,7 +1945,7 @@ void main() {
               'pattern': '^val_$i\$',
             },
         ];
-        final surface = bloc.processor.groupModel.getSurface('surf_regex')!;
+        final surface = bloc.processor.model.getSurface('surf_regex')!;
         for (var i = 0; i < 105; i++) {
           surface.dataModel.set('/f_$i', 'val_$i');
         }
@@ -1916,10 +1983,12 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_hist',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'surf_hist',
               components: const [
                 {'id': 'btn_1', 'component': 'Text', 'text': 'Submit'},
@@ -1976,10 +2045,12 @@ void main() {
         bloc.add(
           ProcessMessages([
             CreateSurfaceMessage(
+              version: 'v0.9',
               surfaceId: 'surf_zero',
               catalogId: minimalCatalogId,
             ),
             UpdateComponentsMessage(
+              version: 'v0.9',
               surfaceId: 'surf_zero',
               components: const [
                 {'id': 'btn_1', 'component': 'Text', 'text': 'Submit'},
@@ -2060,6 +2131,296 @@ void main() {
         await Future<void>.microtask(() {});
 
         await expectLater(bloc2.close(), throwsStateError);
+      });
+    });
+
+    group('(Issue #368) a2ui_core 0.3.0 Upgrade & Dual-Version Support', () {
+      test(
+          '(Issue #368) re-exports BasicCatalog, ResolvedBinding, '
+          'WritableBinding, ValidationResult, RpcHandler, NodeResolver, '
+          'ComponentNode, CommonSchemas, CommonSchemasV1, '
+          'AgentToRendererMessage, RendererToAgentMessage, '
+          'A2uiRendererAction, A2uiRendererError, and backward-compatible '
+          'typedefs A2uiMessage, A2uiClientAction, A2uiClientError, and '
+          'MinimalCatalog', () {
+        expect(BasicCatalog.v0_9, isNotNull);
+        expect(BasicCatalog.v1_0, isNotNull);
+        expect(CommonSchemas.dynamicString, isNotNull);
+        expect(CommonSchemasV1.dynamicString, isNotNull);
+        expect(
+          const ResolvedBinding<String>('val').value,
+          equals('val'),
+        );
+        expect(
+          WritableBinding<String>('w', (_) {}, '/w').path,
+          equals('/w'),
+        );
+        expect(ValidationResult, isNotNull);
+        expect(RpcHandler, isNotNull);
+        expect(NodeResolver, isNotNull);
+        expect(ComponentNode, isNotNull);
+        expect(RendererToAgentMessage, isNotNull);
+        expect(AgentToRendererMessage, equals(A2uiMessage));
+        expect(A2uiRendererAction, equals(A2uiClientAction));
+        expect(A2uiRendererError, equals(A2uiClientError));
+        expect(MinimalCatalog, equals(StandardCatalog));
+
+        final action = A2uiClientAction(
+          name: 'submit',
+          surfaceId: 's1',
+          sourceComponentId: 'btn1',
+          timestamp: DateTime.utc(2026, 10, 19),
+          context: const <String, Object?>{},
+        );
+        expect(action, isA<A2uiRendererAction>());
+
+        final err = A2uiClientError(
+          code: 'ERR',
+          surfaceId: 's1',
+          message: 'failed',
+        );
+        expect(err, isA<A2uiRendererError>());
+      });
+
+      test(
+          '(Issue #368) StandardCatalog provides open ComponentApi classes '
+          '(StandardTextApi, StandardRowApi, StandardColumnApi, '
+          'StandardButtonApi, StandardTextFieldApi, CardComponentApi, '
+          'DividerComponentApi) and CapitalizeFunction alongside BasicCatalog '
+          'functions', () {
+        final catalog = StandardCatalog();
+        expect(catalog.id, contains('minimal_catalog.json'));
+        expect(catalog.components['Text'], isA<StandardTextApi>());
+        expect(catalog.components['Row'], isA<StandardRowApi>());
+        expect(catalog.components['Column'], isA<StandardColumnApi>());
+        expect(catalog.components['Button'], isA<StandardButtonApi>());
+        expect(catalog.components['TextField'], isA<StandardTextFieldApi>());
+        expect(catalog.components['Card'], isA<CardComponentApi>());
+        expect(catalog.components['Divider'], isA<DividerComponentApi>());
+
+        final cap = catalog.functions['capitalize'];
+        expect(cap, isA<CapitalizeFunction>());
+        expect(cap!.returnType, equals(A2uiReturnType.string));
+        expect(cap.argumentSchema, isNotNull);
+
+        final dummySurface = SurfaceModel<ComponentApi>(
+          'surf_cap',
+          defaultCatalog: catalog,
+        );
+        final ctx = DataContext(
+          dummySurface.dataModel,
+          (name, args, context, [signal]) => null,
+          '/',
+        );
+        expect(
+          cap.execute(<String, Object?>{'value': 'hello'}, ctx),
+          equals('Hello'),
+        );
+        expect(
+          cap.execute(<String, Object?>{'value': ''}, ctx),
+          equals(''),
+        );
+        expect(
+          cap.execute(<String, Object?>{}, ctx),
+          equals(''),
+        );
+      });
+
+      test(
+          '(Issue #368) processes v0.9 CreateSurfaceMessage with BasicCatalog '
+          'and v1.0 CreateSurfaceMessage with inline components and dataModel',
+          () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        // 1. v0.9 BasicCatalog surface
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_v09',
+              catalogId:
+                  'https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json',
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_v09',
+              components: const [
+                {
+                  'id': 'root',
+                  'component': 'Text',
+                  'text': 'Hello v0.9',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        expect(bloc.activeSurfaceIdValue, equals('surf_v09'));
+
+        // 2. v1.0 CreateSurfaceMessage with inline components (using shorthand
+        // children/action) and inline dataModel via ProcessJsonMessage
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v1.0',
+            'createSurface': {
+              'surfaceId': 'surf_v10_json',
+              'catalogId':
+                  'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json',
+              'components': [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': [
+                    {'id': 'txt_1'},
+                  ],
+                },
+                {
+                  'id': 'txt_1',
+                  'component': 'Text',
+                  'text': {'@path': '/greeting'},
+                },
+              ],
+              'dataModel': {
+                'greeting': 'Hello v1.0 inline JSON',
+              },
+            },
+          }),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        final readyV10Json = bloc.stateValue as SurfaceReady;
+        expect(readyV10Json.surfaceId, equals('surf_v10_json'));
+        expect(
+          readyV10Json.surface.componentsModel.get('root'),
+          isNotNull,
+        );
+        expect(
+          readyV10Json.formValues['greeting'],
+          equals('Hello v1.0 inline JSON'),
+        );
+
+        // 3. v1.0 CreateSurfaceMessage typed instance with inline components
+        // and shorthand child/action normalization via ProcessMessage
+        bloc.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              version: 'v1.0',
+              surfaceId: 'surf_v10_typed',
+              catalogId:
+                  'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json',
+              components: const [
+                {
+                  'id': 'root',
+                  'component': 'Button',
+                  'child': {'id': 'btn_txt'},
+                  'action': 'submitV10',
+                },
+                {
+                  'id': 'btn_txt',
+                  'component': 'Text',
+                  'text': 'Click v1.0',
+                },
+              ],
+              dataModel: const {
+                'user': 'Randal',
+              },
+            ),
+          ),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        final readyV10Typed = bloc.stateValue as SurfaceReady;
+        expect(readyV10Typed.surfaceId, equals('surf_v10_typed'));
+        expect(readyV10Typed.formValues['user'], equals('Randal'));
+      });
+
+      test(
+          '(Issue #368) _validateForm extracts v1.0 @path bindings for '
+          'required, minLength, maxLength, and pattern validation', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'surf_v10_form',
+              'catalogId': minimalCatalogId,
+            },
+          }),
+        );
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'updateComponents': {
+              'surfaceId': 'surf_v10_form',
+              'components': [
+                {
+                  'id': 'tf_code',
+                  'component': 'TextField',
+                  'label': 'Access Code',
+                  'required': true,
+                  'minLength': 3,
+                  'maxLength': 5,
+                  'pattern': r'^[A-Z]+$',
+                  'value': {'@path': '/accessCode'},
+                },
+              ],
+            },
+          }),
+        );
+
+        var ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(
+          ready.validationErrors.single,
+          contains('"Access Code" is required'),
+        );
+
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_v10_form',
+            path: '/accessCode',
+            value: 'AB',
+          ),
+        );
+        ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isFalse);
+
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_v10_form',
+            path: '/accessCode',
+            value: 'ABCDE',
+          ),
+        );
+        ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isTrue);
+        expect(ready.validationErrors, isEmpty);
+      });
+
+      test(
+          '(Issue #368) A2uiSurfaceBloc.close() disposes MessageProcessor '
+          'and SurfaceGroupModel', () async {
+        final bloc = A2uiSurfaceBloc();
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'surf_dispose',
+              'catalogId': minimalCatalogId,
+            },
+          }),
+        );
+        expect(
+          bloc.processor.model.getSurface('surf_dispose'),
+          isNotNull,
+        );
+
+        await bloc.close();
+        expect(bloc.isClosed, isTrue);
       });
     });
   });

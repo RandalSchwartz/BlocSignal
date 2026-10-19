@@ -10,14 +10,13 @@ packages:
     source: hosted
     version: "91.0.0"
   a2ui_core:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: "dart/a2ui_core"
-      ref: "fix/widen-preact-signals-a2ui-core"
-      resolved-ref: "35d4b8d296eac6a98fe8d8e4f6db576484938dbb"
-      url: "https://github.com/RandalSchwartz/a2ui.git"
-    source: git
-    version: "0.2.1"
+      name: a2ui_core
+      sha256: "001b3a850a77232c92d936349d9b07ed626cb274ab52f1ae3b8a8cfcf88a3000"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.0"
   analyzer:
     dependency: transitive
     description:

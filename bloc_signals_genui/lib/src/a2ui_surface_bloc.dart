@@ -32,6 +32,13 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// `0`) bounds the number of submitted [A2uiActionResponse] items buffered in
   /// memory for replay to late [actionResponses] subscribers.
   ///
+  /// If [outboundListener] is provided, it receives every outbound
+  /// [RendererToAgentMessage] produced by the RPC layer (such as
+  /// [CallAgentFunctionMessage] and [RendererFunctionResponseMessage]) in
+  /// addition to broadcasting on [outboundMessages].
+  /// [defaultRpcTimeout] (defaults to `const Duration(seconds: 30)`) sets the
+  /// default timeout for outbound [callAgentFunction] requests.
+  ///
   /// ```dart
   /// final bloc = A2uiSurfaceBloc(
   ///   maxSurfaces: 10,
@@ -42,6 +49,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     List<Catalog<ComponentApi, FunctionImplementation>>? catalogs,
     this.maxSurfaces,
     this.maxResponseHistory = 100,
+    OutboundMessageListener? outboundListener,
+    this.defaultRpcTimeout = const Duration(seconds: 30),
   })  : assert(
           maxSurfaces == null || maxSurfaces > 0,
           'maxSurfaces must be null or greater than 0.',
@@ -50,6 +59,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           maxResponseHistory >= 0,
           'maxResponseHistory must be greater than or equal to 0.',
         ),
+        _userOutboundListener = outboundListener,
         catalogs = catalogs ??
             [
               StandardCatalog(),
@@ -59,6 +69,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         super(initialState: const SurfaceInitial()) {
     _processor = MessageProcessor<ComponentApi>(
       catalogs: this.catalogs,
+      outboundListener: _handleOutboundRpcMessage,
+      defaultTimeout: defaultRpcTimeout,
     );
 
     on<IngestStream>(
@@ -98,6 +110,21 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// print(bloc.maxResponseHistory); // 25
   /// ```
   final int maxResponseHistory;
+
+  /// Default timeout for outbound [callAgentFunction] requests when
+  /// [CallOptions.timeout] is omitted.
+  ///
+  /// Defaults to `const Duration(seconds: 30)`.
+  ///
+  /// ```dart
+  /// final bloc = A2uiSurfaceBloc(
+  ///   defaultRpcTimeout: const Duration(seconds: 15),
+  /// );
+  /// print(bloc.defaultRpcTimeout.inSeconds); // 15
+  /// ```
+  final Duration defaultRpcTimeout;
+
+  final OutboundMessageListener? _userOutboundListener;
 
   late final MessageProcessor<ComponentApi> _processor;
 
@@ -279,6 +306,98 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   /// The underlying [MessageProcessor] maintaining the A2UI surface graph.
   MessageProcessor<ComponentApi> get processor => _processor;
+
+  /// The bidirectional [RpcHandler] coordinating function calls between the
+  /// renderer and the agent.
+  ///
+  /// ```dart
+  /// final bloc = A2uiSurfaceBloc();
+  /// print(bloc.rpc.pendingCallCount); // 0
+  /// ```
+  RpcHandler get rpc => _processor.rpc;
+
+  final List<RendererToAgentMessage> _outboundMessageHistory = [];
+
+  final StreamController<RendererToAgentMessage> _outboundMessagesController =
+      StreamController<RendererToAgentMessage>.broadcast();
+
+  FutureOr<void> _handleOutboundRpcMessage(RendererToAgentMessage message) {
+    _outboundMessageHistory.add(message);
+    if (_outboundMessageHistory.length > maxResponseHistory) {
+      _outboundMessageHistory.removeRange(
+        0,
+        _outboundMessageHistory.length - maxResponseHistory,
+      );
+    }
+    if (!_outboundMessagesController.isClosed) {
+      _outboundMessagesController.add(message);
+    }
+    return _userOutboundListener?.call(message);
+  }
+
+  /// Unmodifiable snapshot of buffered outbound [RendererToAgentMessage] items
+  /// (bounded by [maxResponseHistory]).
+  ///
+  /// ```dart
+  /// final bloc = A2uiSurfaceBloc();
+  /// print(bloc.outboundMessageHistory.isEmpty); // true
+  /// ```
+  List<RendererToAgentMessage> get outboundMessageHistory =>
+      List<RendererToAgentMessage>.unmodifiable(_outboundMessageHistory);
+
+  /// Stream of outbound [RendererToAgentMessage] envelopes (such as
+  /// [CallAgentFunctionMessage] and [RendererFunctionResponseMessage]) emitted
+  /// by the RPC layer.
+  ///
+  /// Replays buffered [outboundMessageHistory] to new subscribers before
+  /// forwarding live broadcast messages so synchronous RPC replies are never
+  /// missed.
+  ///
+  /// ```dart
+  /// final bloc = A2uiSurfaceBloc();
+  /// final sub = bloc.outboundMessages.listen((msg) {
+  ///   print(msg.toJson());
+  /// });
+  /// await sub.cancel();
+  /// ```
+  Stream<RendererToAgentMessage> get outboundMessages {
+    late final StreamController<RendererToAgentMessage> controller;
+    StreamSubscription<RendererToAgentMessage>? sub;
+    controller = StreamController<RendererToAgentMessage>(
+      onListen: () {
+        sub = _outboundMessagesController.stream.listen(
+          controller.add,
+          onError: controller.addError,
+          onDone: controller.close,
+        );
+
+        List<RendererToAgentMessage>.of(_outboundMessageHistory)
+            .forEach(controller.add);
+      },
+      onCancel: () async {
+        await sub?.cancel();
+      },
+    );
+    return controller.stream;
+  }
+
+  /// Sends [call] to the agent on behalf of [surfaceId] and completes when the
+  /// matching [AgentFunctionResponseMessage] arrives via [ProcessMessage],
+  /// [ProcessJsonMessage], [ProcessMessages], or [IngestStream].
+  ///
+  /// ```dart
+  /// final bloc = A2uiSurfaceBloc();
+  /// final future = bloc.callAgentFunction(
+  ///   'surf-1',
+  ///   FunctionCall(call: 'fetchWeather', args: const {'city': 'Portland'}),
+  /// );
+  /// ```
+  Future<Object?> callAgentFunction(
+    String surfaceId,
+    FunctionCall call, {
+    CallOptions? options,
+  }) =>
+      _processor.callAgentFunction(surfaceId, call, options: options);
 
   bool _isClosing = false;
   StreamSubscription<dynamic>? _activeStreamSubscription;
@@ -702,6 +821,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         _processor.model.deleteSurface(surface.id);
       }
       _responseHistory.clear();
+      _outboundMessageHistory.clear();
       _surfaceVersions.clear();
       _surfaceAccessOrder.clear();
       _activeSurfaceId = null;
@@ -1097,6 +1217,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   Future<void> close() async {
     _isClosing = true;
     _responseHistory.clear();
+    _outboundMessageHistory.clear();
     final oldCompleter = _activeStreamCompleter;
     _activeStreamCompleter = null;
     if (oldCompleter != null && !oldCompleter.isCompleted) {
@@ -1105,7 +1226,9 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     final oldSub = _activeStreamSubscription;
     _activeStreamSubscription = null;
     await _safeCancel(oldSub);
+    _processor.rpc.dispose();
     await _actionResponsesController.close();
+    await _outboundMessagesController.close();
     _processor.dispose();
     await super.close();
   }

@@ -72,11 +72,12 @@ bool asBool(dynamic value, {bool defaultValue = false}) {
 }
 
 /// Safely extracts a child component ID from diverse payload formats (for
-/// example [ChildNode], `Map` with an `'id'` key, [ResolvedBinding], or direct
-/// string).
+/// example [ComponentNode], [ChildNode], `Map` with an `'id'` key,
+/// [ResolvedBinding], or direct string).
 String? extractChildId(dynamic rawChild) {
   final unwrapped = unwrapBinding(rawChild);
   if (unwrapped == null) return null;
+  if (unwrapped is ComponentNode) return unwrapped.instanceId;
   if (unwrapped is ChildNode) return unwrapped.id;
   if (unwrapped is Map) {
     final id = unwrapBinding(unwrapped['id']);

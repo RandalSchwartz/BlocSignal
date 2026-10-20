@@ -332,23 +332,54 @@ class _SurfaceTreeRenderer extends StatefulWidget {
 class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
   final Map<String, GenericBinder> _binders = {};
   final Map<String, ComponentModel> _boundComponents = {};
+  NodeResolver<ComponentApi>? _resolver;
+  void Function()? _rootNodeUnsubscribe;
+  ComponentNode<ComponentApi>? _lastRootNode;
 
   @override
   void initState() {
     super.initState();
+    _initResolver();
     _reconcileBinders();
   }
 
   @override
   void didUpdateWidget(_SurfaceTreeRenderer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final surfaceChanged = !identical(
+      widget.surfaceReady.surface,
+      oldWidget.surfaceReady.surface,
+    );
+    if (surfaceChanged) {
+      _disposeResolver();
+      _initResolver();
+    }
     if (widget.surfaceReady.version != oldWidget.surfaceReady.version ||
-        !identical(
-          widget.surfaceReady.surface,
-          oldWidget.surfaceReady.surface,
-        )) {
+        surfaceChanged) {
       _reconcileBinders();
     }
+  }
+
+  void _initResolver() {
+    final resolver = NodeResolver<ComponentApi>(widget.surfaceReady.surface);
+    _resolver = resolver;
+    _lastRootNode = resolver.rootNode.value;
+    _rootNodeUnsubscribe = resolver.rootNode.subscribe((nextRoot) {
+      if (!identical(_lastRootNode, nextRoot)) {
+        _lastRootNode = nextRoot;
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    });
+  }
+
+  void _disposeResolver() {
+    _rootNodeUnsubscribe?.call();
+    _rootNodeUnsubscribe = null;
+    _resolver?.dispose();
+    _resolver = null;
+    _lastRootNode = null;
   }
 
   void _reconcileBinders() {
@@ -385,6 +416,7 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
 
   @override
   void dispose() {
+    _disposeResolver();
     for (final binder in _binders.values) {
       binder.dispose();
     }
@@ -393,8 +425,53 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
     super.dispose();
   }
 
-  Widget _buildComponent(String componentId, Set<String> ancestorPath) {
-    if (ancestorPath.contains(componentId)) {
+  Widget _buildNode(
+    ComponentNode<ComponentApi> node,
+    Set<String> ancestorPath,
+  ) {
+    switch (node.state) {
+      case NodeState.pending:
+        return SizedBox.shrink(
+          key: ValueKey('missing_${node.componentId}'),
+        );
+      case NodeState.cyclic:
+        return SizedBox.shrink(
+          key: ValueKey('circular_ref_${node.componentId}'),
+        );
+      case NodeState.unknownType:
+        return KeyedSubtree(
+          key: ValueKey('a2ui_error_${node.componentId}'),
+          child: _buildComponentErrorFallback(
+            context,
+            node.componentId,
+            StateError('Unknown component type "${node.type}"'),
+          ),
+        );
+      case NodeState.resolved:
+        return _ResolvedNodeWidget(
+          key: ValueKey('a2ui_node_${node.instanceId}'),
+          node: node,
+          ancestorPath: ancestorPath,
+          catalog: widget.catalog,
+          bloc: widget.bloc,
+          surfaceId: widget.surfaceReady.surfaceId,
+          buildNodeCallback: _buildNode,
+          buildComponentCallback: _buildComponent,
+          errorFallbackBuilder: _buildComponentErrorFallback,
+        );
+    }
+  }
+
+  Widget _buildComponent(
+    String componentId,
+    Set<String> ancestorPath, {
+    String dataPath = '/',
+    int? index,
+  }) {
+    final pathKey = dataPath == '/' || dataPath.isEmpty
+        ? componentId
+        : '$componentId-[$dataPath]';
+    if (ancestorPath.contains(pathKey) || ancestorPath.contains(componentId)) {
       return SizedBox.shrink(
         key: ValueKey('circular_ref_$componentId'),
       );
@@ -406,11 +483,15 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
       return SizedBox.shrink(key: ValueKey('missing_$componentId'));
     }
 
-    final binder = _binders[componentId];
+    final binder = dataPath == '/' || dataPath.isEmpty
+        ? _binders[componentId]
+        : _createScopedBinder(surface, component, dataPath, index);
     return _BoundComponentWidget(
-      key: ValueKey('a2ui_bound_$componentId'),
+      key: ValueKey('a2ui_bound_$pathKey'),
       component: component,
       binder: binder,
+      ownsBinder: dataPath != '/' && dataPath.isNotEmpty,
+      dataPath: dataPath,
       ancestorPath: ancestorPath,
       catalog: widget.catalog,
       bloc: widget.bloc,
@@ -419,6 +500,24 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
       buildComponentCallback: _buildComponent,
       errorFallbackBuilder: _buildComponentErrorFallback,
     );
+  }
+
+  GenericBinder _createScopedBinder(
+    SurfaceModel<ComponentApi> surface,
+    ComponentModel component,
+    String dataPath,
+    int? index,
+  ) {
+    final catalog = surface.resolveCatalog(component.catalog);
+    final schema = catalog.resolvedComponentSchema(component.type) ??
+        Schema.fromMap(const {});
+    final componentContext = ComponentContext(
+      surface,
+      component,
+      basePath: dataPath,
+      index: index,
+    );
+    return GenericBinder(componentContext, schema);
   }
 
   Widget _buildComponentErrorFallback(
@@ -528,81 +627,87 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
       return errorBanner ?? const SizedBox.shrink();
     }
 
-    // Identify root components not referenced as a child by any other component
-    final childIds = <String>{};
-    void collectId(dynamic rawItem) {
-      final item = unwrapBinding(rawItem);
-      if (item is ChildNode) {
-        childIds.add(item.id);
-      } else if (item is Map && item.containsKey('id')) {
-        childIds.add(unwrapBinding(item['id']).toString());
-      } else if (item != null) {
-        childIds.add(item.toString());
-      }
-    }
-
-    for (final c in components) {
-      final binder = _binders[c.id];
-      final props = binder?.resolvedProps.value ?? c.properties;
-
-      collectId(
-        unwrapBinding(props['child']) ?? unwrapBinding(c.properties['child']),
-      );
-      collectId(
-        unwrapBinding(props['trigger']) ??
-            unwrapBinding(c.properties['trigger']),
-      );
-      collectId(
-        unwrapBinding(props['entryPointChild']) ??
-            unwrapBinding(c.properties['entryPointChild']),
-      );
-      collectId(
-        unwrapBinding(props['content']) ??
-            unwrapBinding(c.properties['content']),
-      );
-      collectId(
-        unwrapBinding(props['contentChild']) ??
-            unwrapBinding(c.properties['contentChild']),
-      );
-
-      final childrenProp = unwrapBinding(props['children']) ??
-          unwrapBinding(c.properties['children']);
-      if (childrenProp is List) {
-        childrenProp.forEach(collectId);
+    final resolvedRoot = _resolver?.rootNode.value;
+    Widget content;
+    if (resolvedRoot != null) {
+      content = _buildNode(resolvedRoot, const <String>{});
+    } else {
+      // Identify root components not referenced as a child by any other
+      // component
+      final childIds = <String>{};
+      void collectId(dynamic rawItem) {
+        final item = unwrapBinding(rawItem);
+        if (item is ChildNode) {
+          childIds.add(item.id);
+        } else if (item is Map && item.containsKey('id')) {
+          childIds.add(unwrapBinding(item['id']).toString());
+        } else if (item != null) {
+          childIds.add(item.toString());
+        }
       }
 
-      final tabsProp =
-          unwrapBinding(props['tabs']) ?? unwrapBinding(c.properties['tabs']);
-      if (tabsProp is List) {
-        for (final tab in tabsProp) {
-          final unwrappedTab = unwrapBinding(tab);
-          if (unwrappedTab is Map) {
-            collectId(unwrappedTab['child']);
+      for (final c in components) {
+        final binder = _binders[c.id];
+        final props = binder?.resolvedProps.value ?? c.properties;
+
+        collectId(
+          unwrapBinding(props['child']) ?? unwrapBinding(c.properties['child']),
+        );
+        collectId(
+          unwrapBinding(props['trigger']) ??
+              unwrapBinding(c.properties['trigger']),
+        );
+        collectId(
+          unwrapBinding(props['entryPointChild']) ??
+              unwrapBinding(c.properties['entryPointChild']),
+        );
+        collectId(
+          unwrapBinding(props['content']) ??
+              unwrapBinding(c.properties['content']),
+        );
+        collectId(
+          unwrapBinding(props['contentChild']) ??
+              unwrapBinding(c.properties['contentChild']),
+        );
+
+        final childrenProp = unwrapBinding(props['children']) ??
+            unwrapBinding(c.properties['children']);
+        if (childrenProp is List) {
+          childrenProp.forEach(collectId);
+        }
+
+        final tabsProp =
+            unwrapBinding(props['tabs']) ?? unwrapBinding(c.properties['tabs']);
+        if (tabsProp is List) {
+          for (final tab in tabsProp) {
+            final unwrappedTab = unwrapBinding(tab);
+            if (unwrappedTab is Map) {
+              collectId(unwrappedTab['child']);
+            }
           }
         }
       }
-    }
 
-    final rootComponents =
-        components.where((c) => !childIds.contains(c.id)).toList();
+      final rootComponents =
+          components.where((c) => !childIds.contains(c.id)).toList();
 
-    Widget content;
-    if (rootComponents.isEmpty) {
-      content = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: components
-            .map((c) => _buildComponent(c.id, const <String>{}))
-            .toList(),
-      );
-    } else if (rootComponents.length == 1) {
-      content = _buildComponent(rootComponents.first.id, const <String>{});
-    } else {
-      content = Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: rootComponents
-            .map((c) => _buildComponent(c.id, const <String>{}))
-            .toList(),
-      );
+      if (rootComponents.isEmpty) {
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: components
+              .map((c) => _buildComponent(c.id, const <String>{}))
+              .toList(),
+        );
+      } else if (rootComponents.length == 1) {
+        content = _buildComponent(rootComponents.first.id, const <String>{});
+      } else {
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: rootComponents
+              .map((c) => _buildComponent(c.id, const <String>{}))
+              .toList(),
+        );
+      }
     }
 
     if (errorBanner != null) {
@@ -620,6 +725,164 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
   }
 }
 
+class _ResolvedNodeWidget extends StatefulWidget {
+  const _ResolvedNodeWidget({
+    required this.node,
+    required this.ancestorPath,
+    required this.catalog,
+    required this.bloc,
+    required this.surfaceId,
+    required this.buildNodeCallback,
+    required this.buildComponentCallback,
+    required this.errorFallbackBuilder,
+    super.key,
+  });
+
+  final ComponentNode<ComponentApi> node;
+  final Set<String> ancestorPath;
+  final A2uiFlutterCatalog catalog;
+  final A2uiSurfaceBloc bloc;
+  final String surfaceId;
+  final Widget Function(
+    ComponentNode<ComponentApi> node,
+    Set<String> ancestorPath,
+  ) buildNodeCallback;
+  final Widget Function(
+    String componentId,
+    Set<String> ancestorPath, {
+    String dataPath,
+    int? index,
+  }) buildComponentCallback;
+  final Widget Function(
+    BuildContext context,
+    String componentId,
+    Object error,
+  ) errorFallbackBuilder;
+
+  @override
+  State<_ResolvedNodeWidget> createState() => _ResolvedNodeWidgetState();
+}
+
+class _ResolvedNodeWidgetState extends State<_ResolvedNodeWidget> {
+  void Function()? _unsubscribe;
+  NodeProps? _lastProps;
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeNode();
+  }
+
+  @override
+  void didUpdateWidget(_ResolvedNodeWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(widget.node, oldWidget.node)) {
+      _subscribeNode();
+    }
+  }
+
+  void _subscribeNode() {
+    _unsubscribe?.call();
+    _unsubscribe = null;
+    _lastProps = widget.node.props.value;
+    _unsubscribe = widget.node.props.subscribe((nextProps) {
+      if (!identical(_lastProps, nextProps)) {
+        _lastProps = nextProps;
+        if (mounted) {
+          setState(() {});
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _unsubscribe?.call();
+    _unsubscribe = null;
+    super.dispose();
+  }
+
+  Map<String, ComponentNode<ComponentApi>> _collectChildNodes(
+    Map<String, Object?> rawProps,
+  ) {
+    final childMap = <String, ComponentNode<ComponentApi>>{};
+    void visit(Object? val) {
+      final unwrapped = unwrapBinding(val);
+      if (unwrapped is ComponentNode<ComponentApi>) {
+        childMap[unwrapped.instanceId] = unwrapped;
+        childMap.putIfAbsent(unwrapped.componentId, () => unwrapped);
+      } else if (unwrapped is Iterable) {
+        unwrapped.forEach(visit);
+      } else if (unwrapped is Map) {
+        unwrapped.values.forEach(visit);
+      }
+    }
+
+    rawProps.values.forEach(visit);
+    return childMap;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final node = widget.node;
+    final componentId = node.componentId;
+    final instanceId = node.instanceId;
+    final component = node.context!.componentModel;
+    final nextPath = <String>{
+      ...widget.ancestorPath,
+      instanceId,
+      if (node.dataPath == '/') componentId,
+    };
+    final rawProps = node.props.value;
+    final resolvedProps = <String, dynamic>{
+      for (final entry in rawProps.entries)
+        entry.key: unwrapBinding(entry.value),
+    };
+    final childNodes = _collectChildNodes(rawProps);
+
+    Widget buildSingleChild(String childId) {
+      final childNode = childNodes[childId];
+      if (childNode != null) {
+        return widget.buildNodeCallback(childNode, nextPath);
+      }
+      return widget.buildComponentCallback(
+        childId,
+        nextPath,
+        dataPath: node.dataPath,
+      );
+    }
+
+    final componentCtx = A2uiComponentContext(
+      component: component,
+      props: resolvedProps,
+      rawProps: rawProps,
+      node: node,
+      dataPath: node.dataPath,
+      surfaceBloc: widget.bloc,
+      surfaceId: widget.surfaceId,
+      buildChildCallback: buildSingleChild,
+      buildChildrenCallback: (ids) => ids.map(buildSingleChild).toList(),
+    );
+
+    try {
+      final childWidget = widget.catalog.build(context, componentCtx);
+      return KeyedSubtree(
+        key: ValueKey('a2ui_$instanceId'),
+        child: childWidget,
+      );
+      // Intentional `on Object catch` (SCAR-A2UI-03 / SCAR-ERR-02): localized
+      // per-component error boundary isolates any throwable (`TypeError`,
+      // `FormatException`, `StateError`) produced by stochastic LLM payloads
+      // into `errorFallbackBuilder` without tearing down the entire surface.
+    } on Object catch (error) {
+      return KeyedSubtree(
+        key: ValueKey('a2ui_error_$componentId'),
+        child: widget.errorFallbackBuilder(context, componentId, error),
+      );
+    }
+  }
+}
+
 class _BoundComponentWidget extends StatefulWidget {
   const _BoundComponentWidget({
     required this.component,
@@ -631,18 +894,26 @@ class _BoundComponentWidget extends StatefulWidget {
     required this.surfaceVersion,
     required this.buildComponentCallback,
     required this.errorFallbackBuilder,
+    this.ownsBinder = false,
+    this.dataPath = '/',
     super.key,
   });
 
   final ComponentModel component;
   final GenericBinder? binder;
+  final bool ownsBinder;
+  final String dataPath;
   final Set<String> ancestorPath;
   final A2uiFlutterCatalog catalog;
   final A2uiSurfaceBloc bloc;
   final String surfaceId;
   final int surfaceVersion;
-  final Widget Function(String componentId, Set<String> ancestorPath)
-      buildComponentCallback;
+  final Widget Function(
+    String componentId,
+    Set<String> ancestorPath, {
+    String dataPath,
+    int? index,
+  }) buildComponentCallback;
   final Widget Function(
     BuildContext context,
     String componentId,
@@ -667,6 +938,9 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
   void didUpdateWidget(_BoundComponentWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!identical(widget.binder, oldWidget.binder)) {
+      if (oldWidget.ownsBinder) {
+        oldWidget.binder?.dispose();
+      }
       _subscribeBinder();
     }
   }
@@ -692,37 +966,82 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
   void dispose() {
     _unsubscribe?.call();
     _unsubscribe = null;
+    if (widget.ownsBinder) {
+      widget.binder?.dispose();
+    }
     super.dispose();
+  }
+
+  List<ChildNode> _collectTemplateChildNodes(Map<String, dynamic> rawProps) {
+    final childNodes = <ChildNode>[];
+    final children = unwrapBinding(rawProps['children']);
+    if (children is Iterable) {
+      for (final item in children) {
+        final unwrapped = unwrapBinding(item);
+        if (unwrapped is ChildNode && unwrapped.basePath != '/') {
+          childNodes.add(unwrapped);
+        }
+      }
+    }
+    return childNodes;
   }
 
   @override
   Widget build(BuildContext context) {
     final componentId = widget.component.id;
-    final nextPath = <String>{...widget.ancestorPath, componentId};
+    final keySuffix = widget.dataPath == '/' || widget.dataPath.isEmpty
+        ? componentId
+        : '$componentId-[${widget.dataPath}]';
+    final nextPath = <String>{...widget.ancestorPath, keySuffix};
     final rawProps =
         widget.binder?.resolvedProps.value ?? widget.component.properties;
     final resolvedProps = <String, dynamic>{
       for (final entry in rawProps.entries)
         entry.key: unwrapBinding(entry.value),
     };
+    final templateChildNodes = _collectTemplateChildNodes(rawProps);
 
     final componentCtx = A2uiComponentContext(
       component: widget.component,
       props: resolvedProps,
       rawProps: rawProps,
+      dataPath: widget.dataPath,
       surfaceBloc: widget.bloc,
       surfaceId: widget.surfaceId,
-      buildChildCallback: (childId) =>
-          widget.buildComponentCallback(childId, nextPath),
-      buildChildrenCallback: (ids) => ids
-          .map((childId) => widget.buildComponentCallback(childId, nextPath))
-          .toList(),
+      buildChildCallback: (childId) => widget.buildComponentCallback(
+        childId,
+        nextPath,
+        dataPath: widget.dataPath,
+      ),
+      buildChildrenCallback: (ids) {
+        if (templateChildNodes.length == ids.length &&
+            templateChildNodes.isNotEmpty) {
+          return [
+            for (var i = 0; i < ids.length; i++)
+              widget.buildComponentCallback(
+                templateChildNodes[i].id,
+                nextPath,
+                dataPath: templateChildNodes[i].basePath,
+                index: templateChildNodes[i].index,
+              ),
+          ];
+        }
+        return ids
+            .map(
+              (childId) => widget.buildComponentCallback(
+                childId,
+                nextPath,
+                dataPath: widget.dataPath,
+              ),
+            )
+            .toList();
+      },
     );
 
     try {
       final childWidget = widget.catalog.build(context, componentCtx);
       return KeyedSubtree(
-        key: ValueKey('a2ui_$componentId'),
+        key: ValueKey('a2ui_$keySuffix'),
         child: childWidget,
       );
       // Intentional `on Object catch` (SCAR-A2UI-03 / SCAR-ERR-02): localized

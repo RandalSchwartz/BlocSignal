@@ -10,7 +10,7 @@ environment:
 dependencies:
   a2ui_core: ^0.3.0
   bloc_signals: ^1.4.0
-  bloc_signals_genui: ^0.1.0
+  bloc_signals_genui: ^1.0.0
 
 dev_dependencies:
   test: ^1.25.6

@@ -66,7 +66,7 @@ class const DocsPkgGenuiPage({super.key}) extends StatelessComponent {
           code: '''
 dependencies:
   bloc_signals: ^1.7.0
-  bloc_signals_genui: ^0.1.2
+  bloc_signals_genui: ^1.0.0
   a2ui_core: ^0.3.0
 ''',
         ),

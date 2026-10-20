@@ -2,10 +2,13 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
-## Unreleased
+## 1.0.0
 
+- **Milestone**: Stable 1.0.0 release of `bloc_signals_genui_flutter`.
+- **Dependencies**: Bump `bloc_signals_genui` dependency constraint to `^1.0.0`.
 - **Feat (genui_flutter)**: Integrate `a2ui_core` `0.3.0` `NodeResolver<ComponentApi>` into `A2uiSurfaceView` for reactive component tree rendering, data-driven template `ChildList` expansion (`{componentId, path}`), `NodeState` handling (`resolved`, `pending`, `cyclic`, `unknownType`), scoped `ComponentNode` and `dataPath` bindings on `A2uiComponentContext`, and `ComponentNode.instanceId` extraction in `safe_prop_parser.dart` (#370).
 - **Feat (genui_flutter)**: Expand `A2uiFlutterCatalog.standard()` (`registerStandardComponents`) to 16 `BasicCatalog` v0.9/v1.0 widgets (`List`, `Tabs`, `Modal`, `Icon`, `Image`, `CheckBox`, `ChoicePicker`, `Slider`, and `DateTimeInput` alongside enhanced `Row`, `Column`, `Text`, `Divider`, `Card`, `TextField`, and `Button`), add dual spec/ergonomic layout and typography properties (`justify`, `align`, `axis`, `variant`), add `asBool` in `safe_prop_parser.dart`, and surface `CheckRule` validation state (`isValid`, `validationErrors`, `validationResults`, `resolveBoundPath`, `updateBoundValue`) on `A2uiComponentContext` (#369).
+- **Feat (genui_flutter)**: Upgrade to `a2ui_core: ^0.3.0`, resolve per-component catalogs via `surface.resolveCatalog` and `catalog.resolvedComponentSchema` in `A2uiSurfaceView`, unwrap `ResolvedBinding` and `WritableBinding` values in `A2uiSurfaceView`, `safe_prop_parser.dart`, `A2uiText`, and `A2uiTextField`, and support v1.0 `@path` two-way bindings in `A2uiTextField` (#368).
 
 ## 0.1.1
 

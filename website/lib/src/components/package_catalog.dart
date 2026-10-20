@@ -98,7 +98,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui',
-    version: '0.1.2',
+    version: '1.0.0',
     desc: 'Pure-Dart A2UI streaming state machine and Generative UI adapter for the BlocSignal ecosystem.',
     icon: '🤖',
     category: 'Generative UI',
@@ -107,7 +107,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui_flutter',
-    version: '0.1.1',
+    version: '1.0.0',
     desc: 'Declarative Flutter surface containers and A2UI catalog widget adapters for generative user interfaces.',
     icon: '🎨',
     category: 'Generative UI',

@@ -173,7 +173,7 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
     // Synchronize 0ms DataModel updates from ChoicePicker, CheckBox,
     // DateTimeInput, and TextField on the customization surface.
     _surfaceStateUnsubscribe =
-        surfaceBloc.state.subscribe(_syncFromSurfaceState);
+        surfaceBloc.state.subscribe(_syncAndEmitFromSurfaceState);
 
     // Subscribe to outbound RPC envelopes to respond to callAgentFunction
     // requests in mock simulation mode.
@@ -217,7 +217,7 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
     emit(value.copyWith(passengerName: name));
   }
 
-  void _syncFromSurfaceState(A2uiSurfaceState surfaceState) {
+  void _syncAndEmitFromSurfaceState(A2uiSurfaceState surfaceState) {
     if (isClosed) return;
     if (surfaceState is! SurfaceReady) return;
     if (surfaceState.surfaceId != 'surf-seat-customization') return;

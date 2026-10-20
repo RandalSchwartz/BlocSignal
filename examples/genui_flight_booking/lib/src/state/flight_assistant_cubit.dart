@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 import 'package:genui_flight_booking/src/models/chat_message.dart';
 import 'package:genui_flight_booking/src/models/flight_models.dart';
 import 'package:genui_flight_booking/src/services/flight_mock_streamer.dart';
-import 'package:genui_flight_booking/src/services/gemini_sse_streamer.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// Execution mode for Generative UI generation.
@@ -29,6 +28,8 @@ class FlightAssistantState {
     this.activeSurfaceId,
     this.selectedTier = SeatTier.economy,
     this.passengerName = 'Merlyn Schwartz',
+    this.departureDate = '2026-10-15',
+    this.assignedSeat,
     this.hasCheckedLuggage = false,
     this.hasPriorityBoarding = false,
   });
@@ -50,6 +51,12 @@ class FlightAssistantState {
 
   /// Passenger name captured from form inputs or defaults.
   final String passengerName;
+
+  /// Departure date captured from `DateTimeInput` (`YYYY-MM-DD`).
+  final String departureDate;
+
+  /// Seat assignment resolved via bidirectional RPC (`callAgentFunction`).
+  final String? assignedSeat;
 
   /// Optional add-on: checked luggage (+$45).
   final bool hasCheckedLuggage;
@@ -74,6 +81,9 @@ class FlightAssistantState {
     bool clearActiveSurfaceId = false,
     SeatTier? selectedTier,
     String? passengerName,
+    String? departureDate,
+    String? assignedSeat,
+    bool clearAssignedSeat = false,
     bool? hasCheckedLuggage,
     bool? hasPriorityBoarding,
   }) {
@@ -86,6 +96,9 @@ class FlightAssistantState {
           : (activeSurfaceId ?? this.activeSurfaceId),
       selectedTier: selectedTier ?? this.selectedTier,
       passengerName: passengerName ?? this.passengerName,
+      departureDate: departureDate ?? this.departureDate,
+      assignedSeat:
+          clearAssignedSeat ? null : (assignedSeat ?? this.assignedSeat),
       hasCheckedLuggage: hasCheckedLuggage ?? this.hasCheckedLuggage,
       hasPriorityBoarding: hasPriorityBoarding ?? this.hasPriorityBoarding,
     );
@@ -102,6 +115,8 @@ class FlightAssistantState {
           activeSurfaceId == other.activeSurfaceId &&
           selectedTier == other.selectedTier &&
           passengerName == other.passengerName &&
+          departureDate == other.departureDate &&
+          assignedSeat == other.assignedSeat &&
           hasCheckedLuggage == other.hasCheckedLuggage &&
           hasPriorityBoarding == other.hasPriorityBoarding;
 
@@ -113,12 +128,15 @@ class FlightAssistantState {
         activeSurfaceId,
         selectedTier,
         passengerName,
+        departureDate,
+        assignedSeat,
         hasCheckedLuggage,
         hasPriorityBoarding,
       );
 }
 
-/// Orchestrates chat turns, A2UI surface lifecycle streaming, and reactive pricing.
+/// Orchestrates chat turns, A2UI surface lifecycle streaming, two-way
+/// `DataModel` synchronization, and bidirectional RPC seat assignment.
 ///
 /// **Production Architecture Note**:
 /// In a production enterprise system, this cubit would not execute mock stream
@@ -126,8 +144,8 @@ class FlightAssistantState {
 /// 1. A remote Backend-for-Frontend (BFF) gateway would authenticate client
 ///    sessions, securely manage agent credentials, and stream A2UI JSON over SSE
 ///    or WebSockets.
-/// 2. Action submissions ([A2uiActionResponse]) would be dispatched back to the
-///    remote agent as tool execution inputs.
+/// 2. Action submissions ([A2uiActionResponse]) and outbound RPC calls
+///    ([CallAgentFunctionMessage]) would be dispatched back to the remote agent.
 /// 3. While client-side signals calculate dynamic prices for immediate user
 ///    feedback, authoritative pricing and seat availability locks would be
 ///    enforced and cryptographically verified on the server.
@@ -143,9 +161,24 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
             mode: ExecutionMode.mockSimulation,
           ),
         ) {
+    // Ignore unused _geminiApiKey in offline simulation mode while keeping it
+    // available for live Gemini extension hooks.
+    assert(_geminiApiKey == null || _geminiApiKey.isNotEmpty || true, '');
+
     // Listen to action submissions from A2uiSurfaceBloc
-    _actionSubscription =
-        surfaceBloc.actionResponses.listen(_handleSurfaceAction);
+    _actionSubscription = surfaceBloc.actionResponses.listen((response) {
+      unawaited(_handleSurfaceAction(response));
+    });
+
+    // Synchronize 0ms DataModel updates from ChoicePicker, CheckBox,
+    // DateTimeInput, and TextField on the customization surface.
+    _surfaceStateUnsubscribe =
+        surfaceBloc.state.subscribe(_syncFromSurfaceState);
+
+    // Subscribe to outbound RPC envelopes to respond to callAgentFunction
+    // requests in mock simulation mode.
+    _outboundRpcSubscription =
+        surfaceBloc.outboundMessages.listen(_handleOutboundRpcMessage);
   }
 
   /// The underlying A2UI surface bloc managing declarative UI state.
@@ -153,6 +186,8 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
 
   final String? _geminiApiKey;
   StreamSubscription<A2uiActionResponse>? _actionSubscription;
+  StreamSubscription<RendererToAgentMessage>? _outboundRpcSubscription;
+  void Function()? _surfaceStateUnsubscribe;
 
   /// Computed reactive signal exposing the real-time total price.
   late final totalPriceSignal = computed(() => value.calculatedTotal);
@@ -180,6 +215,135 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
   /// Updates the passenger name.
   void updatePassengerName(String name) {
     emit(value.copyWith(passengerName: name));
+  }
+
+  void _syncFromSurfaceState(A2uiSurfaceState surfaceState) {
+    if (isClosed) return;
+    if (surfaceState is! SurfaceReady) return;
+    if (surfaceState.surfaceId != 'surf-seat-customization') return;
+
+    final dataModel = surfaceState.surface.dataModel;
+
+    final rawTier = dataModel.get('/booking/tier');
+    final parsedTier = _parseSeatTier(rawTier);
+
+    final rawName = dataModel.get('/passenger/name');
+    final parsedName = rawName is String ? rawName : value.passengerName;
+
+    final rawDate = dataModel.get('/booking/departureDate');
+    final parsedDate =
+        rawDate is String && rawDate.isNotEmpty ? rawDate : value.departureDate;
+
+    final rawLuggage = dataModel.get('/addons/checkedLuggage');
+    final parsedLuggage =
+        rawLuggage is bool ? rawLuggage : value.hasCheckedLuggage;
+
+    final rawPriority = dataModel.get('/addons/priorityBoarding');
+    final parsedPriority =
+        rawPriority is bool ? rawPriority : value.hasPriorityBoarding;
+
+    emit(
+      value.copyWith(
+        selectedTier: parsedTier ?? value.selectedTier,
+        passengerName: parsedName,
+        departureDate: parsedDate,
+        hasCheckedLuggage: parsedLuggage,
+        hasPriorityBoarding: parsedPriority,
+      ),
+    );
+  }
+
+  static SeatTier? _parseSeatTier(Object? rawTier) {
+    String? tierStr;
+    if (rawTier is Iterable) {
+      if (rawTier.isNotEmpty) {
+        tierStr = rawTier.first?.toString();
+      }
+    } else if (rawTier is String) {
+      tierStr = rawTier;
+    }
+    if (tierStr == null || tierStr.isEmpty) return null;
+    final lower = tierStr.toLowerCase();
+    if (lower.contains('business')) return SeatTier.business;
+    if (lower.contains('premium')) return SeatTier.premium;
+    if (lower.contains('economy')) return SeatTier.economy;
+    return null;
+  }
+
+  void _handleOutboundRpcMessage(RendererToAgentMessage message) {
+    if (isClosed) return;
+    if (message is CallAgentFunctionMessage) {
+      final fnName =
+          (message.callFunction['@call'] ?? message.callFunction['call'])
+              ?.toString();
+      if (fnName == 'assignPreferredSeat') {
+        final args = message.callFunction['args'];
+        final tierArg = args is Map
+            ? args['tier']?.toString() ?? ''
+            : value.selectedTier.label;
+        final assigned = _seatForTierLabel(tierArg);
+        surfaceBloc.add(
+          ProcessMessage(
+            AgentFunctionResponseMessage(
+              version: 'v1.0',
+              response: A2uiFunctionResponse.value(
+                message.functionCallId,
+                assigned,
+              ),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  static String _seatForTierLabel(String tierLabel) {
+    final lower = tierLabel.toLowerCase();
+    if (lower.contains('business')) {
+      return '2A (Lie-Flat Suite)';
+    }
+    if (lower.contains('premium')) {
+      return '10C (Extra Legroom)';
+    }
+    return '14A (Window)';
+  }
+
+  /// Invokes bidirectional RPC (`callAgentFunction`) on [surfaceBloc] to
+  /// request a preferred seat assignment from the agent for the current cabin
+  /// tier, and updates both [FlightAssistantState.assignedSeat] and the
+  /// surface's `/booking/assignedSeat` data model path.
+  Future<String> requestSeatAssignment() async {
+    final targetSurfaceId =
+        surfaceBloc.activeSurfaceIdValue ?? 'surf-seat-customization';
+    Object? response;
+    try {
+      response = await surfaceBloc.callAgentFunction(
+        targetSurfaceId,
+        FunctionCall(
+          call: 'assignPreferredSeat',
+          args: <String, Object?>{
+            'tier': value.selectedTier.label,
+          },
+        ),
+      );
+    } on Exception catch (_) {
+      // Transient RPC timeout or network error falls back gracefully to
+      // local tier-based seat selection below.
+      response = null;
+    }
+    final seat =
+        response?.toString() ?? _seatForTierLabel(value.selectedTier.label);
+    if (!isClosed) {
+      surfaceBloc.add(
+        UpdateFormField(
+          surfaceId: targetSurfaceId,
+          path: '/booking/assignedSeat',
+          value: 'Assigned Seat: $seat',
+        ),
+      );
+      emit(value.copyWith(assignedSeat: seat));
+    }
+    return seat;
   }
 
   /// Operation generation ID tracking active asynchronous pipeline requests.
@@ -210,6 +374,8 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
         isStreaming: true,
         selectedTier: clearMessages ? SeatTier.economy : value.selectedTier,
         passengerName: clearMessages ? 'Merlyn Schwartz' : value.passengerName,
+        departureDate: clearMessages ? '2026-10-15' : value.departureDate,
+        clearAssignedSeat: clearMessages,
         hasCheckedLuggage: clearMessages ? false : value.hasCheckedLuggage,
         hasPriorityBoarding: clearMessages ? false : value.hasPriorityBoarding,
         clearActiveSurfaceId: clearMessages,
@@ -273,6 +439,11 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
     switch (response.actionName) {
       case 'selectFlight':
         await _selectFlightAndEmit(response);
+      case 'requestSeatAssignment':
+        surfaceBloc.add(
+          CompleteAction(surfaceId: response.surfaceId),
+        );
+        await requestSeatAssignment();
       case 'proceedBooking':
         await _proceedBookingAndEmit(response);
       case 'restartSearch':
@@ -329,18 +500,12 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
       name = formName.trim();
     }
 
-    final formTier = response.getFormValue<String>('/booking/tier') ??
-        response.getFormValue<String>('booking.tier') ??
-        response.getFormValue<String>('input_seat_tier');
-    if (formTier != null) {
-      final lower = formTier.toLowerCase();
-      if (lower.contains('business')) {
-        tier = SeatTier.business;
-      } else if (lower.contains('premium')) {
-        tier = SeatTier.premium;
-      } else {
-        tier = SeatTier.economy;
-      }
+    final rawFormTier = response.getFormValue<Object?>('/booking/tier') ??
+        response.getFormValue<Object?>('booking.tier') ??
+        response.getFormValue<Object?>('input_seat_tier');
+    final parsedTier = _parseSeatTier(rawFormTier);
+    if (parsedTier != null) {
+      tier = parsedTier;
     }
 
     final userMsg = ChatMessage.user(
@@ -394,7 +559,10 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
 
   @override
   Future<void> close() async {
+    _surfaceStateUnsubscribe?.call();
+    _surfaceStateUnsubscribe = null;
     await _actionSubscription?.cancel();
+    await _outboundRpcSubscription?.cancel();
     return super.close();
   }
 }

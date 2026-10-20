@@ -12,6 +12,10 @@ class const DocsPkgGenuiFlutterPage({super.key}) extends StatelessComponent {
     TocHeading(title: 'Overview & Installation', anchor: 'overview-install'),
     TocHeading(title: 'Rendering with A2uiSurfaceView', anchor: 'surface-view'),
     TocHeading(
+      title: 'BasicCatalog v0.9/v1.0 Widget Suite & CheckRule UI',
+      anchor: 'basic-catalog-widgets',
+    ),
+    TocHeading(
       title: 'Extending A2uiFlutterCatalog',
       anchor: 'flutter-catalog',
     ),
@@ -136,14 +140,54 @@ class AgentSurfaceScreen extends StatelessWidget {
         ),
       ]),
 
-      // 3. Extending A2uiFlutterCatalog
-      section(id: 'flutter-catalog', classes: 'docs-section', [
-        h2([Component.text('Extending A2uiFlutterCatalog')]),
+      // 3. BasicCatalog v0.9/v1.0 Widget Suite & CheckRule UI
+      section(id: 'basic-catalog-widgets', classes: 'docs-section', [
+        h2([
+          Component.text('BasicCatalog v0.9/v1.0 Widget Suite & CheckRule UI'),
+        ]),
         p([
           apiLink(DocSymbol.a2uiFlutterCatalog),
           Component.text(
-            '.standard() ships with Material 3 builders for Text, Row, Column, Button, TextField, Card, and Divider. '
-            'Use copyWith, copyWithout, or registerAll to compose custom widget catalogs with ',
+            '.standard() provides Material 3 builders for all 16 BasicCatalog v0.9/v1.0 components plus layout containers:',
+          ),
+        ]),
+        ul([
+          li([
+            strong([Component.text('Interactive Form Controls')]),
+            Component.text(
+              ': TextField (with CheckRule errorText), CheckBox (CheckboxListTile), ChoicePicker (FilterChip, RadioListTile, and CheckboxListTile variants), Slider, DateTimeInput, and Button (ElevatedButton, OutlinedButton, and TextButton variants).',
+            ),
+          ]),
+          li([
+            strong([Component.text('Layout & Navigation Containers')]),
+            Component.text(
+              ': Row, Column, Card, Divider, List (supporting dynamic NodeResolver ChildList templates), Tabs (DefaultTabController), and Modal (InlineDialog Trigger).',
+            ),
+          ]),
+          li([
+            strong([Component.text('Content & Media Display')]),
+            Component.text(
+              ': Text (h1 through h5, subtitle, body, and caption variants), Icon, Image, Video, and AudioPlayer.',
+            ),
+          ]),
+        ]),
+        p([
+          Component.text(
+            'When a component declares a checks list (CheckRule), ',
+          ),
+          apiLink(DocSymbol.a2uiComponentContext),
+          Component.text(
+            '.firstValidationErrorSignal reactively evaluates the rules against the DataModel in 0ms—displaying inline error text on TextField widgets and automatically disabling Button submissions until all required checks pass.',
+          ),
+        ]),
+      ]),
+
+      // 4. Extending A2uiFlutterCatalog
+      section(id: 'flutter-catalog', classes: 'docs-section', [
+        h2([Component.text('Extending A2uiFlutterCatalog')]),
+        p([
+          Component.text(
+            'Use copyWith, copyWithout, or registerAll to compose custom domain widget catalogs with ',
           ),
           apiLink(DocSymbol.a2uiComponentContext),
           Component.text(':'),
@@ -168,7 +212,7 @@ final customCatalog = A2uiFlutterCatalog.standard().copyWith({
         ),
       ]),
 
-      // 4. Granular Signal Bindings & Split-Panes
+      // 5. Granular Signal Bindings & Split-Panes
       section(id: 'signal-bindings', classes: 'docs-section', [
         h2([Component.text('Granular Signal Bindings & Split-Panes')]),
         p([
@@ -213,7 +257,7 @@ Row(
         ),
       ]),
 
-      // 5. GenUiControllerAdapter Interop
+      // 6. GenUiControllerAdapter Interop
       section(id: 'controller-adapter', classes: 'docs-section', [
         h2([Component.text('GenUiControllerAdapter Interop')]),
         p([

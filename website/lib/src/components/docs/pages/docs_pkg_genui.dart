@@ -20,6 +20,10 @@ class const DocsPkgGenuiPage({super.key}) extends StatelessComponent {
       anchor: 'form-actions',
     ),
     TocHeading(
+      title: 'NodeResolver Templates, CheckRule Validation & RPC',
+      anchor: 'templates-validation-rpc',
+    ),
+    TocHeading(
       title: 'Multi-Surface Navigation & LRU Retention',
       anchor: 'multi-surface',
     ),
@@ -76,7 +80,7 @@ dependencies:
           Component.text(' registers '),
           apiLink(DocSymbol.standardCatalog),
           Component.text(
-            ', BasicCatalog.v0_9(), and BasicCatalog.v1_0() out of the box and models the surface lifecycle through the sealed ',
+            ', BasicCatalog.v0_9(), and BasicCatalog.v1_0() out of the box (supporting all 16 BasicCatalog v0.9/v1.0 component schemas) and models the surface lifecycle through the sealed ',
           ),
           apiLink(DocSymbol.a2uiSurfaceState),
           Component.text(' hierarchy and '),
@@ -222,7 +226,62 @@ surfaceBloc.add(const CompleteAction());''',
         ),
       ]),
 
-      // 5. Multi-Surface Navigation & LRU Retention
+      // 5. NodeResolver Templates, CheckRule Validation & RPC
+      section(id: 'templates-validation-rpc', classes: 'docs-section', [
+        h2([
+          Component.text('NodeResolver Templates, CheckRule Validation & RPC'),
+        ]),
+        p([
+          Component.text(
+            'Surfaces registered with BasicCatalog.v0_9() or BasicCatalog.v1_0() support dynamic ChildList template expansion via NodeResolver, '
+            'declarative CheckRule validation (checks) on inputs and action buttons, and bidirectional agent RPC calls via callAgentFunction() and outboundMessages:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          title: 'lib/templates_and_rpc.dart',
+          language: 'dart',
+          code: r'''
+// 1. Inspect resolved NodeResolver tree (including dynamic ChildList templates):
+final ready = surfaceBloc.getSurfaceReady('booking_surface')!;
+final resolver = NodeResolver<ComponentApi>(ready.surface);
+final rootNode = resolver.rootNode.value;
+print('Resolved root node state: ${rootNode?.state}');
+resolver.dispose();
+
+// 2. Forward outbound callFunction envelopes to your agent and return functionResponse:
+surfaceBloc.outboundMessages.listen((RendererToAgentMessage message) {
+  if (message is CallAgentFunctionMessage) {
+    final fnName =
+        (message.callFunction['@call'] ?? message.callFunction['call'])
+            ?.toString();
+    if (fnName == 'assignPreferredSeat') {
+      surfaceBloc.add(
+        ProcessMessage(
+          AgentFunctionResponseMessage(
+            version: 'v1.0',
+            response: A2uiFunctionResponse.value(
+              message.functionCallId,
+              '14A (Window)',
+            ),
+          ),
+        ),
+      );
+    }
+  }
+});
+
+// 3. Invoke a remote agent function and await the result:
+final seat = await surfaceBloc.callAgentFunction(
+  'booking_surface',
+  const FunctionCall(
+    call: 'assignPreferredSeat',
+    args: {'tier': 'Business'},
+  ),
+);''',
+        ),
+      ]),
+
+      // 6. Multi-Surface Navigation & LRU Retention
       section(id: 'multi-surface', classes: 'docs-section', [
         h2([Component.text('Multi-Surface Navigation & LRU Retention')]),
         p([

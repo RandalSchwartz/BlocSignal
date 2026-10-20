@@ -167,5 +167,94 @@ void main() {
 
       await bloc.close();
     });
+
+    testWidgets(
+      '(Issue #369) Defensive parsing on malformed properties in new and '
+      'enhanced widgets',
+      (tester) async {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+        final catalog = A2uiFlutterCatalog.standard();
+
+        final malformedComponents = <ComponentModel>[
+          ComponentModel('list-bad', 'List', const {
+            'direction': 999,
+            'align': 'unknown_align',
+            'children': 'not_a_list',
+          }),
+          ComponentModel('tabs-bad', 'Tabs', const {
+            'tabs': null,
+          }),
+          ComponentModel('modal-bad', 'Modal', const {
+            'trigger': null,
+            'content': null,
+          }),
+          ComponentModel('icon-bad', 'Icon', const {
+            'name': 'nonExistentIconName',
+          }),
+          ComponentModel('img-bad', 'Image', const {
+            'url': '',
+            'fit': 'invalid_fit',
+            'variant': 'invalid_variant',
+          }),
+          ComponentModel('cb-bad', 'CheckBox', const {
+            'label': 123,
+            'value': 'not_a_bool',
+          }),
+          ComponentModel('cp-bad', 'ChoicePicker', const {
+            'label': 'Bad Picker',
+            'variant': 'invalid_variant',
+            'displayStyle': 'invalid_style',
+            'options': 'not_a_list',
+            'value': 42,
+          }),
+          ComponentModel('slider-bad', 'Slider', const {
+            'label': 'Bad Slider',
+            'min': 100,
+            'max': 10,
+            'value': 'not_a_num',
+          }),
+          ComponentModel('dt-bad', 'DateTimeInput', const {
+            'label': 'Bad Date',
+            'value': 'not-an-iso-date',
+            'enableDate': 'invalid_bool',
+            'enableTime': 'invalid_bool',
+          }),
+        ];
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: Builder(
+                  builder: (context) => Column(
+                    children: [
+                      for (final comp in malformedComponents)
+                        catalog.build(
+                          context,
+                          A2uiComponentContext(
+                            component: comp,
+                            props: comp.properties,
+                            surfaceBloc: bloc,
+                            buildChildCallback: (_) => const SizedBox.shrink(),
+                            buildChildrenCallback: (_) => const <Widget>[],
+                            surfaceId: 'surf-malformed',
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        expect(find.byIcon(Icons.help_outline), findsOneWidget);
+        expect(find.byType(CheckboxListTile), findsOneWidget);
+        expect(find.byType(Slider), findsOneWidget);
+      },
+    );
   });
 }

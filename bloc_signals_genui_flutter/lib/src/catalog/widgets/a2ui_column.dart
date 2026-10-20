@@ -3,6 +3,13 @@ import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
 import 'package:flutter/material.dart';
 
 /// Renders an A2UI `Column` container with layout alignment.
+///
+/// Supports both A2UI specification properties (`justify` and `align`) and
+/// Flutter-style properties (`mainAxisAlignment` and `crossAxisAlignment`).
+///
+/// ```dart
+/// final widget = buildA2uiColumn(context, componentContext);
+/// ```
 Widget buildA2uiColumn(
   BuildContext context,
   A2uiComponentContext componentContext,
@@ -10,36 +17,25 @@ Widget buildA2uiColumn(
   final props = componentContext.props;
   final childIds = extractChildIds(props['children']);
 
-  final mainAxisAlignmentStr = props['mainAxisAlignment']?.toString();
-  final crossAxisAlignmentStr = props['crossAxisAlignment']?.toString();
+  final justifyStr =
+      (props['justify'] ?? props['mainAxisAlignment'])?.toString();
+  final alignStr = (props['align'] ?? props['crossAxisAlignment'])?.toString();
 
-  var mainAxisAlignment = MainAxisAlignment.start;
-  switch (mainAxisAlignmentStr) {
-    case 'center':
-      mainAxisAlignment = MainAxisAlignment.center;
-    case 'end':
-      mainAxisAlignment = MainAxisAlignment.end;
-    case 'spaceBetween':
-      mainAxisAlignment = MainAxisAlignment.spaceBetween;
-    case 'spaceAround':
-      mainAxisAlignment = MainAxisAlignment.spaceAround;
-    case 'spaceEvenly':
-      mainAxisAlignment = MainAxisAlignment.spaceEvenly;
-    default:
-      mainAxisAlignment = MainAxisAlignment.start;
-  }
+  final mainAxisAlignment = switch (justifyStr) {
+    'center' => MainAxisAlignment.center,
+    'end' => MainAxisAlignment.end,
+    'spaceBetween' => MainAxisAlignment.spaceBetween,
+    'spaceAround' => MainAxisAlignment.spaceAround,
+    'spaceEvenly' => MainAxisAlignment.spaceEvenly,
+    _ => MainAxisAlignment.start,
+  };
 
-  var crossAxisAlignment = CrossAxisAlignment.center;
-  switch (crossAxisAlignmentStr) {
-    case 'start':
-      crossAxisAlignment = CrossAxisAlignment.start;
-    case 'end':
-      crossAxisAlignment = CrossAxisAlignment.end;
-    case 'stretch':
-      crossAxisAlignment = CrossAxisAlignment.stretch;
-    default:
-      crossAxisAlignment = CrossAxisAlignment.center;
-  }
+  final crossAxisAlignment = switch (alignStr) {
+    'start' => CrossAxisAlignment.start,
+    'end' => CrossAxisAlignment.end,
+    'stretch' => CrossAxisAlignment.stretch,
+    _ => CrossAxisAlignment.center,
+  };
 
   return Column(
     mainAxisSize: MainAxisSize.min,

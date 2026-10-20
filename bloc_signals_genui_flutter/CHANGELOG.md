@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
+## Unreleased
+
+- **Feat (genui_flutter)**: Expand `A2uiFlutterCatalog.standard()` (`registerStandardComponents`) to 16 `BasicCatalog` v0.9/v1.0 widgets (`List`, `Tabs`, `Modal`, `Icon`, `Image`, `CheckBox`, `ChoicePicker`, `Slider`, and `DateTimeInput` alongside enhanced `Row`, `Column`, `Text`, `Divider`, `Card`, `TextField`, and `Button`), add dual spec/ergonomic layout and typography properties (`justify`, `align`, `axis`, `variant`), add `asBool` in `safe_prop_parser.dart`, and surface `CheckRule` validation state (`isValid`, `validationErrors`, `validationResults`, `resolveBoundPath`, `updateBoundValue`) on `A2uiComponentContext` (#369).
+
 ## 0.1.1
 
 - **Feat (genui_flutter)**: Upgrade to `a2ui_core: ^0.3.0`, resolve per-component catalogs via `surface.resolveCatalog` and `catalog.resolvedComponentSchema` in `A2uiSurfaceView`, unwrap `ResolvedBinding` and `WritableBinding` values in `A2uiSurfaceView`, `safe_prop_parser.dart`, `A2uiText`, and `A2uiTextField`, and support v1.0 `@path` two-way bindings in `A2uiTextField` (#368).

@@ -548,11 +548,38 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
       collectId(
         unwrapBinding(props['child']) ?? unwrapBinding(c.properties['child']),
       );
+      collectId(
+        unwrapBinding(props['trigger']) ??
+            unwrapBinding(c.properties['trigger']),
+      );
+      collectId(
+        unwrapBinding(props['entryPointChild']) ??
+            unwrapBinding(c.properties['entryPointChild']),
+      );
+      collectId(
+        unwrapBinding(props['content']) ??
+            unwrapBinding(c.properties['content']),
+      );
+      collectId(
+        unwrapBinding(props['contentChild']) ??
+            unwrapBinding(c.properties['contentChild']),
+      );
 
       final childrenProp = unwrapBinding(props['children']) ??
           unwrapBinding(c.properties['children']);
       if (childrenProp is List) {
         childrenProp.forEach(collectId);
+      }
+
+      final tabsProp =
+          unwrapBinding(props['tabs']) ?? unwrapBinding(c.properties['tabs']);
+      if (tabsProp is List) {
+        for (final tab in tabsProp) {
+          final unwrappedTab = unwrapBinding(tab);
+          if (unwrappedTab is Map) {
+            collectId(unwrappedTab['child']);
+          }
+        }
       }
     }
 
@@ -682,6 +709,7 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
     final componentCtx = A2uiComponentContext(
       component: widget.component,
       props: resolvedProps,
+      rawProps: rawProps,
       surfaceBloc: widget.bloc,
       surfaceId: widget.surfaceId,
       buildChildCallback: (childId) =>

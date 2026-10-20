@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
+## 1.0.0+1
+
+- **Docs (genui)**: Re-publish `1.0.0+1` to refresh pub.dev Pana package analysis after a transient `pub get` sandbox worker timeout on initial `1.0.0` upload.
+
 ## 1.0.0
 
 - **Milestone**: Stable 1.0.0 release of `bloc_signals_genui`.

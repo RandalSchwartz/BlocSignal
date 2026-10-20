@@ -243,17 +243,20 @@ We did not make the AI smarter by feeding it more textbook code. We made it reli
 
 ---
 
-### 📖 What’s Next in the *Synthetic Scars* Series
+### 📖 The [*Synthetic Scars* Series](https://dev.to/randalschwartz/series/44156) Roadmap
 
 This article is **Part 2** of an ongoing series exploring how we give autonomous AI coding systems institutional memory, somatic recoil, and human-grade reliability:
 
 * **Part 1**: [Why AI Keeps Making the Same Coding Mistakes—And How Teaching It Pain Gives It Wisdom](https://dev.to/gde/why-ai-keeps-making-the-same-coding-mistakes-and-how-teaching-it-pain-gives-it-wisdom-4a9m)
-* **Part 2**: *Why AI Coding Agents Crash at 3 AM: The Happy-Path Mirage & The Forced Continuity Defect* (You are here)
-* **Part 3**: *The Physics of Socratic Prompting: Somatic Recoil, Chess Alpha-Beta, & The NLP Meta-Model*
+* **Part 2**: *Why AI Coding Agents Crash at 3 AM: The Happy-Path Mirage & The Forced Continuity Defect (You are here)*
+* **Part 3**: [The Physics of Socratic Prompting: Somatic Recoil, Chess Alpha-Beta, & The NLP Meta-Model](https://dev.to/gde/the-physics-of-socratic-prompting-somatic-recoil-chess-alpha-beta-the-nlp-meta-model-2b6e)
+* **Part 3.5**: [Nudging with Questions: Why Telling Your AI What to Fix Triggers an Apology Death Spiral (And How to Advance Juniors)](https://dev.to/gde/nudging-with-questions-why-telling-your-ai-what-to-fix-triggers-an-apology-death-spiral-and-how-5gm4)
+* **Part 3.6**: [Stuart Feldman Was Right in 1976: Why Your AI Agent Needs a Makefile, Not a 20-Step Prompt](https://dev.to/gde/stuart-feldman-was-right-in-1976-why-your-ai-agent-needs-a-makefile-not-a-20-step-prompt-5bn2)
+* **Part 3.7**: [Surviving the 200k-Token Lobotomy: How Unix `init.d` and "Memento" Made My AI Coding Agent Immune to Context Compaction](https://dev.to/gde/surviving-the-200k-token-lobotomy-how-unix-initd-and-memento-made-my-ai-coding-agent-immune-to-2f74)
+* **Part 3.8**: [What LLMs "Know" That You Don't Know They Know: Stop Inventing Prompt DSLs and Ride 50 Years of Unix Pre-Training Gravity](https://dev.to/gde/what-llms-know-that-you-dont-know-they-know-stop-inventing-prompt-dsls-and-ride-50-years-of-2bl6)
 * **Part 4**: *Giving AI Pain: The Architecture of Synthetic Scars & The Rapid-Regret Miner*
 * **Part 5**: *Zero Repeat Regressions: The Golden Metric & The Future of Agentic Trust*
 * **Part 6**: *The Proscriptive Inversion: What You Get to Forget, and Why More Negative Rules Mean You've Lost*
-* **Part 7**: *Why `/goal` and `/boost` Aren't Enough: The Missing Invariant Layer in Autonomous AI Coding*
 
 ---
 

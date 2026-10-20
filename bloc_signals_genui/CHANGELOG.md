@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
+## Unreleased
+
+- **Feat (genui)**: Integrate `a2ui_core` `0.3.0` bidirectional `RpcHandler` into `A2uiSurfaceBloc` (`outboundListener`, `defaultRpcTimeout`, `rpc`, `outboundMessages`, `outboundMessageHistory`, and `callAgentFunction`), and re-export `CallOptions`, `FunctionCall`, `A2uiFunctionResponse`, `AllowedCallers`, `A2uiRpcError`, `RpcErrorCode`, `NodeState`, `NodeProps`, and `OutboundMessageListener` (#370).
+
 ## 0.1.2
 
 - **Feat (genui)**: Upgrade `a2ui_core` to `^0.3.0`, register `[StandardCatalog(), BasicCatalog.v0_9(), BasicCatalog.v1_0()]` by default in `A2uiSurfaceBloc`, support v1.0 inline `CreateSurfaceMessage` components and `@path` form validation bindings, call `_processor.dispose()` on `close()`, and re-export `a2ui_core` 0.3.0 types alongside backward-compatible `A2uiMessage`, `A2uiClientAction`, `A2uiClientError`, and `MinimalCatalog` typedefs (#368).

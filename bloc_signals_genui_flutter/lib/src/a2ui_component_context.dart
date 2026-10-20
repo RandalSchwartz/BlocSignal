@@ -17,6 +17,8 @@ class A2uiComponentContext {
     required this.buildChildrenCallback,
     required this.surfaceId,
     this.rawProps = const {},
+    this.node,
+    this.dataPath = '/',
   });
 
   /// The underlying A2UI [ComponentModel].
@@ -28,6 +30,21 @@ class A2uiComponentContext {
   /// The raw binder properties before unwrapping [ResolvedBinding] and
   /// [WritableBinding] instances.
   final Map<String, dynamic> rawProps;
+
+  /// The optional resolved [ComponentNode] when rendered via [NodeResolver].
+  ///
+  /// ```dart
+  /// final instanceId = componentContext.node?.instanceId;
+  /// ```
+  final ComponentNode<ComponentApi>? node;
+
+  /// The data model scope path this component resolves against (for example
+  /// `'/'` at the surface root or `'/items/0'` inside a template list item).
+  ///
+  /// ```dart
+  /// final scope = componentContext.dataPath;
+  /// ```
+  final String dataPath;
 
   /// The parent [A2uiSurfaceBloc] orchestrating this surface.
   final A2uiSurfaceBloc surfaceBloc;
@@ -94,7 +111,7 @@ class A2uiComponentContext {
   ///
   /// Inspects [rawProps] for a [WritableBinding], then checks
   /// [ComponentModel.properties] for a `path` or `@path` binding map, falling
-  /// back to [fallbackPath] or `'/${component.id}'`.
+  /// back to [fallbackPath] or `'/${component.id}'` (scoped to [dataPath]).
   ///
   /// ```dart
   /// final path = componentContext.resolveBoundPath('value');
@@ -102,17 +119,38 @@ class A2uiComponentContext {
   String resolveBoundPath(String propKey, {String? fallbackPath}) {
     final rawBinding = rawProps[propKey];
     if (rawBinding is WritableBinding && rawBinding.path.isNotEmpty) {
-      return rawBinding.path;
+      return _resolveOrScopePath(rawBinding.path);
     }
     final rawProp = component.properties[propKey];
     if (rawProp is Map &&
         (rawProp.containsKey('path') || rawProp.containsKey('@path'))) {
-      final path = (rawProp['path'] ?? rawProp['@path'])?.toString();
-      if (path != null && path.isNotEmpty) {
-        return path;
+      final rawPath = (rawProp['path'] ?? rawProp['@path'])?.toString();
+      if (rawPath != null && rawPath.isNotEmpty) {
+        return _resolveOrScopePath(rawPath);
       }
     }
-    return fallbackPath ?? '/${component.id}';
+    if (fallbackPath != null) {
+      if (!fallbackPath.startsWith('/') && dataPath != '/') {
+        return _scopeRelativePath(fallbackPath);
+      }
+      return fallbackPath;
+    }
+    return _scopeRelativePath(component.id);
+  }
+
+  String _resolveOrScopePath(String rawPath) {
+    if (!rawPath.startsWith('/')) {
+      return node?.context?.dataContext.resolvePath(rawPath) ??
+          _scopeRelativePath(rawPath);
+    }
+    return rawPath;
+  }
+
+  String _scopeRelativePath(String relativePath) {
+    if (dataPath == '/' || dataPath.isEmpty) {
+      return '/$relativePath';
+    }
+    return '$dataPath/$relativePath';
   }
 
   /// Updates the two-way bound data model value for [propKey] with [newValue]

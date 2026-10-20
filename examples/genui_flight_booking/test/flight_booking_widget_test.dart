@@ -1,9 +1,7 @@
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
-import 'package:bloc_signals_genui_flutter/bloc_signals_genui_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:genui_flight_booking/src/models/flight_models.dart';
 import 'package:genui_flight_booking/src/state/flight_assistant_cubit.dart';
 import 'package:genui_flight_booking/src/ui/flight_booking_screen.dart';
 
@@ -82,7 +80,7 @@ void main() {
       expect(find.text('SFO 11:20 AM'), findsOneWidget);
       expect(find.text('HND 3:05 PM +1'), findsOneWidget);
       expect(find.text('From \$420 USD'), findsOneWidget);
-      expect(find.text('Select This Flight'), findsOneWidget);
+      expect(find.text('Select This Flight'), findsWidgets);
     });
 
     testWidgets(
@@ -102,7 +100,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Tap "Select This Flight" button inside A2uiSurfaceView
-      final selectFlightBtn = find.text('Select This Flight');
+      final selectFlightBtn = find.text('Select This Flight').first;
       expect(selectFlightBtn, findsOneWidget);
       await tester.tap(selectFlightBtn);
       await tester.pump();
@@ -168,5 +166,164 @@ void main() {
 
       expect(cubit.value.mode, equals(ExecutionMode.liveGemini));
     });
+
+    testWidgets(
+      '(Issue #373) NodeResolver template expansion renders dynamic flight '
+      'cards from /flights',
+      (tester) async {
+        tester.view.physicalSize = const Size(1000, 2000);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        await tester.pumpWidget(createTestWidget());
+
+        final searchBtn = find.text('Search Flights (SFO ➔ HND)');
+        await tester.tap(searchBtn);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpAndSettle();
+
+        // Both flight cards from /flights template should be rendered
+        expect(find.text('PR-774 • Boeing 787-9'), findsOneWidget);
+        expect(find.text('PR-882 • Airbus A350-1000'), findsOneWidget);
+        expect(find.text('From \$420 USD'), findsOneWidget);
+        expect(find.text('From \$460 USD'), findsOneWidget);
+        expect(find.text('Select This Flight'), findsNWidgets(2));
+      },
+    );
+
+    testWidgets(
+      '(Issue #373) CheckRule validation on passenger name and proceed button',
+      (tester) async {
+        tester.view.physicalSize = const Size(1000, 2500);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        await tester.pumpWidget(createTestWidget());
+
+        await tester.tap(find.text('Search Flights (SFO ➔ HND)'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Select This Flight').first);
+        await tester.pump();
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pumpAndSettle();
+
+        // Clear the passenger name field to trigger CheckRule 'required'
+        final passengerField = find.byType(TextField).first;
+        await tester.enterText(passengerField, '');
+        await tester.pump();
+
+        expect(find.text('Passenger name is required'), findsOneWidget);
+
+        // The "Continue to Confirmation" button should be disabled
+        final proceedBtnFinder = find.ancestor(
+          of: find.text('Continue to Confirmation'),
+          matching: find.byType(ElevatedButton),
+        );
+        expect(
+          tester.widget<ElevatedButton>(proceedBtnFinder).onPressed,
+          isNull,
+        );
+
+        // Entering a valid name clears the error and enables the button
+        await tester.enterText(passengerField, 'Randal Schwartz');
+        await tester.pump();
+
+        expect(find.text('Passenger name is required'), findsNothing);
+        expect(
+          tester.widget<ElevatedButton>(proceedBtnFinder).onPressed,
+          isNotNull,
+        );
+      },
+    );
+
+    testWidgets(
+      '(Issue #373) BasicCatalog v0.9 interactive booking widgets '
+      '(ChoicePicker, CheckBox, DateTimeInput) and bidirectional RPC',
+      (tester) async {
+        tester.view.physicalSize = const Size(1000, 2500);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() => tester.view.resetPhysicalSize());
+
+        await tester.pumpWidget(createTestWidget());
+
+        await tester.tap(find.text('Search Flights (SFO ➔ HND)'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Select This Flight').first);
+        await tester.pump();
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pumpAndSettle();
+
+        final surface =
+            surfaceBloc.processor.model.getSurface('surf-seat-customization')!;
+
+        // 1. ChoicePicker: select "Premium Economy" chip
+        final premiumChip = find.widgetWithText(FilterChip, 'Premium Economy');
+        expect(premiumChip, findsOneWidget);
+        await tester.tap(premiumChip);
+        await tester.pump();
+        expect(
+          surface.dataModel.get('/booking/tier'),
+          equals(<String>['Premium Economy']),
+        );
+        expect(cubit.totalPriceSignal.value, equals(650));
+        expect(find.text('Live Reactive Total: \$650 USD'), findsOneWidget);
+
+        // 2. ChoicePicker: select "Business Class" chip
+        final businessChip = find.widgetWithText(FilterChip, 'Business Class');
+        expect(businessChip, findsOneWidget);
+        await tester.tap(businessChip);
+        await tester.pump();
+        expect(
+          surface.dataModel.get('/booking/tier'),
+          equals(<String>['Business Class']),
+        );
+        expect(cubit.totalPriceSignal.value, equals(1250));
+
+        // 3. CheckBox: toggle Checked Bag (+$45) inside A2uiSurfaceView
+        final checkedBagTile = find.widgetWithText(
+          CheckboxListTile,
+          'Checked Bag (+\$45)',
+        );
+        expect(checkedBagTile, findsOneWidget);
+        await tester.tap(checkedBagTile);
+        await tester.pump();
+        expect(surface.dataModel.get('/addons/checkedLuggage'), isTrue);
+        expect(cubit.totalPriceSignal.value, equals(1295));
+
+        // 4. DateTimeInput: rendered with Departure Date label
+        expect(find.text('Departure Date'), findsOneWidget);
+
+        // 5. Bidirectional RPC: request seat assignment via UI button
+        final assignSeatBtn = find.ancestor(
+          of: find.text('Assign Preferred Seat (RPC)'),
+          matching: find.byType(TextButton),
+        );
+        expect(assignSeatBtn, findsOneWidget);
+        await tester.ensureVisible(assignSeatBtn);
+        await tester.tap(assignSeatBtn);
+        await tester.pump();
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pumpAndSettle();
+        expect(cubit.value.assignedSeat, isNotNull);
+        expect(cubit.value.assignedSeat, contains('2A'));
+        expect(
+          find.text('Assigned Seat: 2A (Lie-Flat Suite)'),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

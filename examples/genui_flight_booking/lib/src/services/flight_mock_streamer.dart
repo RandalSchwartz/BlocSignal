@@ -13,7 +13,13 @@ class FlightMockStreamer {
   static const minimalCatalogId =
       'https://a2ui.org/specification/v0_9/catalogs/minimal/minimal_catalog.json';
 
-  /// Generates the initial flight search result discovery surface.
+  /// Basic catalog ID for A2UI v0.9 supporting all 16 standard components,
+  /// `CheckRule` validation (`checks`), and `ChildList` template expansion.
+  static const basicCatalogId =
+      'https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json';
+
+  /// Generates the initial flight search result discovery surface using
+  /// `NodeResolver` `ChildList` template expansion over `/flights`.
   static Stream<Map<String, dynamic>> streamDiscoverySurface({
     Duration delay = const Duration(milliseconds: 20),
   }) async* {
@@ -23,7 +29,38 @@ class FlightMockStreamer {
       'version': 'v0.9',
       'createSurface': {
         'surfaceId': surfaceId,
-        'catalogId': minimalCatalogId,
+        'catalogId': basicCatalogId,
+      },
+    };
+    // [PRODUCTION CONSIDERATION]: In production, this client-side mock delay
+    // is replaced by real network chunk arrival over SSE or WebSockets.
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
+
+    yield {
+      'version': 'v0.9',
+      'updateDataModel': {
+        'surfaceId': surfaceId,
+        'path': '/flights',
+        'value': [
+          {
+            'airline': 'Pacific Rim Airways (Nonstop)',
+            'flightNumber': 'PR-774 • Boeing 787-9',
+            'origin': 'SFO 11:20 AM',
+            'duration': '✈️ 10h 45m ➔',
+            'destination': 'HND 3:05 PM +1',
+            'priceDisplay': 'From \$420 USD',
+            'baseFare': 420,
+          },
+          {
+            'airline': 'Pacific Rim Airways (Evening)',
+            'flightNumber': 'PR-882 • Airbus A350-1000',
+            'origin': 'SFO 4:45 PM',
+            'duration': '✈️ 11h 00m ➔',
+            'destination': 'HND 8:45 PM +1',
+            'priceDisplay': 'From \$460 USD',
+            'baseFare': 460,
+          },
+        ],
       },
     };
     if (delay > Duration.zero) await Future<void>.delayed(delay);
@@ -34,78 +71,78 @@ class FlightMockStreamer {
         'surfaceId': surfaceId,
         'components': [
           {
-            'id': 'root_col',
+            'id': 'root',
             'component': 'Column',
-            'crossAxisAlignment': 'stretch',
-            'children': [
-              {'id': 'card_flight'},
-            ],
+            'align': 'stretch',
+            'children': {
+              'componentId': 'card_flight',
+              'path': '/flights',
+            },
           },
           {
             'id': 'card_flight',
             'component': 'Card',
-            'elevation': 2.0,
-            'child': {'id': 'card_content'},
+            'child': 'card_content',
           },
           {
             'id': 'card_content',
             'component': 'Column',
-            'crossAxisAlignment': 'start',
+            'align': 'start',
             'children': [
-              {'id': 'flight_header_row'},
-              {'id': 'route_row'},
-              {'id': 'flight_divider'},
-              {'id': 'action_row'},
+              'flight_header_row',
+              'route_row',
+              'flight_divider',
+              'action_row',
             ],
           },
           {
             'id': 'flight_header_row',
             'component': 'Row',
-            'mainAxisAlignment': 'spaceBetween',
+            'justify': 'spaceBetween',
             'children': [
-              {'id': 'txt_airline'},
-              {'id': 'txt_flight_num'},
+              'txt_airline',
+              'txt_flight_num',
             ],
           },
           {
             'id': 'txt_airline',
             'component': 'Text',
-            'variant': 'title',
-            'text': 'Pacific Rim Airways (Nonstop)',
+            'variant': 'h4',
+            'text': {'path': 'airline'},
           },
           {
             'id': 'txt_flight_num',
             'component': 'Text',
             'variant': 'caption',
-            'text': 'PR-774 • Boeing 787-9',
+            'text': {'path': 'flightNumber'},
           },
           {
             'id': 'route_row',
             'component': 'Row',
-            'mainAxisAlignment': 'spaceBetween',
+            'justify': 'spaceBetween',
             'children': [
-              {'id': 'txt_origin'},
-              {'id': 'txt_arrow'},
-              {'id': 'txt_dest'},
+              'txt_origin',
+              'txt_arrow',
+              'txt_dest',
             ],
           },
           {
             'id': 'txt_origin',
             'component': 'Text',
-            'variant': 'h2',
-            'text': 'SFO 11:20 AM',
+            'variant': 'h4',
+            'text': {'path': 'origin'},
           },
           {
             'id': 'txt_arrow',
             'component': 'Text',
-            'variant': 'title',
-            'text': '✈️ 10h 45m ➔',
+            'variant': 'body',
+            'text': {'path': 'duration'},
           },
           {
             'id': 'txt_dest',
             'component': 'Text',
-            'variant': 'h2',
-            'text': 'HND 3:05 PM +1',
+            'variant': 'h4',
+            'text': {'path': 'destination'},
           },
           {
             'id': 'flight_divider',
@@ -114,30 +151,30 @@ class FlightMockStreamer {
           {
             'id': 'action_row',
             'component': 'Row',
-            'mainAxisAlignment': 'spaceBetween',
+            'justify': 'spaceBetween',
             'children': [
-              {'id': 'txt_starting_price'},
-              {'id': 'btn_select_flight'},
+              'txt_starting_price',
+              'btn_select_flight',
             ],
           },
           {
             'id': 'txt_starting_price',
             'component': 'Text',
-            'variant': 'title',
-            'text': 'From \$420 USD',
+            'variant': 'h4',
+            'text': {'path': 'priceDisplay'},
           },
           {
             'id': 'btn_select_flight',
             'component': 'Button',
             'variant': 'primary',
-            'child': {'id': 'txt_btn_select'},
+            'child': 'txt_btn_select',
             'action': {
-              'name': 'selectFlight',
-              'context': {
-                'flightNumber': 'PR-774',
-                'origin': 'SFO',
-                'destination': 'HND',
-                'baseFare': 420,
+              'event': {
+                'name': 'selectFlight',
+                'context': {
+                  'flightNumber': {'path': 'flightNumber'},
+                  'baseFare': {'path': 'baseFare'},
+                },
               },
             },
           },
@@ -152,7 +189,10 @@ class FlightMockStreamer {
     };
   }
 
-  /// Generates the interactive seat customization and passenger form surface.
+  /// Generates the interactive seat customization and passenger form surface
+  /// showcasing `BasicCatalog` v0.9 widgets (`ChoicePicker`, `CheckBox`,
+  /// `DateTimeInput`, `TextField`, `Button`), `CheckRule` (`checks`), and
+  /// bidirectional RPC seat assignment.
   static Stream<Map<String, dynamic>> streamCustomizationSurface({
     Duration delay = const Duration(milliseconds: 20),
   }) async* {
@@ -162,7 +202,31 @@ class FlightMockStreamer {
       'version': 'v0.9',
       'createSurface': {
         'surfaceId': surfaceId,
-        'catalogId': minimalCatalogId,
+        'catalogId': basicCatalogId,
+      },
+    };
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
+
+    yield {
+      'version': 'v0.9',
+      'updateDataModel': {
+        'surfaceId': surfaceId,
+        'path': '/',
+        'value': {
+          'passenger': {
+            'name': 'Merlyn Schwartz',
+          },
+          'booking': {
+            'tier': ['Economy'],
+            'departureDate': '2026-10-15',
+            'assignedSeat': 'Unassigned',
+            'notes': '',
+          },
+          'addons': {
+            'checkedLuggage': false,
+            'priorityBoarding': false,
+          },
+        },
       },
     };
     if (delay > Duration.zero) await Future<void>.delayed(delay);
@@ -173,16 +237,20 @@ class FlightMockStreamer {
         'surfaceId': surfaceId,
         'components': [
           {
-            'id': 'cust_root',
+            'id': 'root',
             'component': 'Column',
-            'crossAxisAlignment': 'stretch',
+            'align': 'stretch',
             'children': [
-              {'id': 'txt_cust_title'},
-              {'id': 'txt_cust_sub'},
-              {'id': 'input_passenger_name'},
-              {'id': 'input_seat_tier'},
-              {'id': 'input_notes'},
-              {'id': 'btn_proceed_booking'},
+              'txt_cust_title',
+              'txt_cust_sub',
+              'input_passenger_name',
+              'input_departure_date',
+              'input_seat_tier',
+              'input_checked_luggage',
+              'input_priority_boarding',
+              'seat_rpc_row',
+              'input_notes',
+              'btn_proceed_booking',
             ],
           },
           {
@@ -201,27 +269,98 @@ class FlightMockStreamer {
             'id': 'input_passenger_name',
             'component': 'TextField',
             'label': 'Primary Passenger Full Name',
-            'placeholder': 'Merlyn Schwartz',
             'value': {
               'path': '/passenger/name',
+            },
+            'checks': [
+              {
+                'condition': {
+                  'call': 'required',
+                  'args': {
+                    'value': {'path': '/passenger/name'},
+                  },
+                },
+                'message': 'Passenger name is required',
+              },
+            ],
+          },
+          {
+            'id': 'input_departure_date',
+            'component': 'DateTimeInput',
+            'label': 'Departure Date',
+            'enableDate': true,
+            'enableTime': false,
+            'value': {
+              'path': '/booking/departureDate',
             },
           },
           {
             'id': 'input_seat_tier',
-            'component': 'TextField',
+            'component': 'ChoicePicker',
             'label': 'Cabin Tier (Economy / Premium / Business)',
-            'placeholder': 'Economy',
-            'helperText':
-                'Economy (\$420) • Premium (\$650) • Business (\$1250)',
+            'variant': 'mutuallyExclusive',
+            'displayStyle': 'chips',
+            'options': [
+              {'label': 'Economy', 'value': 'Economy'},
+              {'label': 'Premium Economy', 'value': 'Premium Economy'},
+              {'label': 'Business Class', 'value': 'Business Class'},
+            ],
             'value': {
               'path': '/booking/tier',
             },
           },
           {
+            'id': 'input_checked_luggage',
+            'component': 'CheckBox',
+            'label': 'Checked Bag (+\$45)',
+            'value': {
+              'path': '/addons/checkedLuggage',
+            },
+          },
+          {
+            'id': 'input_priority_boarding',
+            'component': 'CheckBox',
+            'label': 'Priority Boarding (+\$30)',
+            'value': {
+              'path': '/addons/priorityBoarding',
+            },
+          },
+          {
+            'id': 'seat_rpc_row',
+            'component': 'Row',
+            'justify': 'spaceBetween',
+            'children': [
+              'txt_assigned_seat',
+              'btn_assign_seat',
+            ],
+          },
+          {
+            'id': 'txt_assigned_seat',
+            'component': 'Text',
+            'variant': 'body',
+            'text': {'path': '/booking/assignedSeat'},
+          },
+          {
+            'id': 'btn_assign_seat',
+            'component': 'Button',
+            'variant': 'borderless',
+            'child': 'txt_btn_assign_seat',
+            'action': {
+              'event': {
+                'name': 'requestSeatAssignment',
+              },
+            },
+          },
+          {
+            'id': 'txt_btn_assign_seat',
+            'component': 'Text',
+            'variant': 'body',
+            'text': 'Assign Preferred Seat (RPC)',
+          },
+          {
             'id': 'input_notes',
             'component': 'TextField',
             'label': 'Special Dietary / Assistance Notes',
-            'placeholder': 'Vegetarian meal, extra pillows, etc.',
             'value': {
               'path': '/booking/notes',
             },
@@ -230,11 +369,24 @@ class FlightMockStreamer {
             'id': 'btn_proceed_booking',
             'component': 'Button',
             'variant': 'primary',
-            'child': {'id': 'txt_btn_proceed'},
+            'child': 'txt_btn_proceed',
+            'checks': [
+              {
+                'condition': {
+                  'call': 'required',
+                  'args': {
+                    'value': {'path': '/passenger/name'},
+                  },
+                },
+                'message': 'Passenger name is required',
+              },
+            ],
             'action': {
-              'name': 'proceedBooking',
-              'context': {
-                'step': 'confirmation_ready',
+              'event': {
+                'name': 'proceedBooking',
+                'context': {
+                  'step': 'confirmation_ready',
+                },
               },
             },
           },
@@ -262,7 +414,7 @@ class FlightMockStreamer {
       'version': 'v0.9',
       'createSurface': {
         'surfaceId': surfaceId,
-        'catalogId': minimalCatalogId,
+        'catalogId': basicCatalogId,
       },
     };
     if (delay > Duration.zero) await Future<void>.delayed(delay);
@@ -273,25 +425,24 @@ class FlightMockStreamer {
         'surfaceId': surfaceId,
         'components': [
           {
-            'id': 'conf_root',
+            'id': 'root',
             'component': 'Card',
-            'elevation': 3.0,
-            'child': {'id': 'conf_col'},
+            'child': 'conf_col',
           },
           {
             'id': 'conf_col',
             'component': 'Column',
-            'crossAxisAlignment': 'start',
+            'align': 'start',
             'children': [
-              {'id': 'txt_conf_badge'},
-              {'id': 'txt_pnr'},
-              {'id': 'conf_divider_1'},
-              {'id': 'txt_conf_passenger'},
-              {'id': 'txt_conf_flight'},
-              {'id': 'txt_conf_tier'},
-              {'id': 'conf_divider_2'},
-              {'id': 'txt_conf_total'},
-              {'id': 'btn_new_search'},
+              'txt_conf_badge',
+              'txt_pnr',
+              'conf_divider_1',
+              'txt_conf_passenger',
+              'txt_conf_flight',
+              'txt_conf_tier',
+              'conf_divider_2',
+              'txt_conf_total',
+              'btn_new_search',
             ],
           },
           {
@@ -303,7 +454,7 @@ class FlightMockStreamer {
           {
             'id': 'txt_pnr',
             'component': 'Text',
-            'variant': 'title',
+            'variant': 'h4',
             'text': 'PNR Reference: PR-9942XJ',
           },
           {
@@ -342,9 +493,11 @@ class FlightMockStreamer {
             'id': 'btn_new_search',
             'component': 'Button',
             'variant': 'borderless',
-            'child': {'id': 'txt_btn_new'},
+            'child': 'txt_btn_new',
             'action': {
-              'name': 'restartSearch',
+              'event': {
+                'name': 'restartSearch',
+              },
             },
           },
           {

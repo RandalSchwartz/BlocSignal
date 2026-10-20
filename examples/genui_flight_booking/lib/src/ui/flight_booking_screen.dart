@@ -3,7 +3,6 @@ import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_flutter/bloc_signals_genui_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:genui_flight_booking/src/models/chat_message.dart';
-import 'package:genui_flight_booking/src/models/flight_models.dart';
 import 'package:genui_flight_booking/src/state/flight_assistant_cubit.dart';
 
 /// The primary flight booking interactive reference screen.
@@ -117,9 +116,6 @@ class FlightBookingScreen extends StatelessWidget {
               },
             ),
           ),
-
-          // Customization add-ons bar (reactive controls)
-          const _AddonsControlBar(),
         ],
       ),
     );
@@ -188,7 +184,7 @@ class _ChatMessageBubble extends StatelessWidget {
         decoration: BoxDecoration(
           color: isUser
               ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surfaceVariant,
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -220,7 +216,7 @@ class _ActiveSurfaceCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.blueAccent.withOpacity(0.3)),
+        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: ClipRRect(
@@ -259,66 +255,6 @@ class _ActiveSurfaceCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _AddonsControlBar extends StatelessWidget {
-  const _AddonsControlBar();
-
-  @override
-  Widget build(BuildContext context) {
-    final cubit = context.read<FlightAssistantCubit>();
-
-    return BlocSignalBuilder<FlightAssistantCubit, FlightAssistantState>(
-      builder: (context, state) {
-        if (state.activeSurfaceId != 'surf-seat-customization') {
-          return const SizedBox.shrink();
-        }
-
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 4,
-                offset: const Offset(0, -2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: CheckboxListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Checked Bag (+\$45)'),
-                    value: state.hasCheckedLuggage,
-                    onChanged: (val) => cubit.toggleLuggage(val ?? false),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: CheckboxListTile(
-                    dense: true,
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Priority Boarding (+\$30)'),
-                    value: state.hasPriorityBoarding,
-                    onChanged: (val) =>
-                        cubit.togglePriorityBoarding(val ?? false),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

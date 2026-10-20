@@ -1,4 +1,6 @@
 import 'package:blocsignal_website/src/components/docs/docs_code_block.dart';
+import 'package:blocsignal_website/src/components/docs/pages/docs_pkg_genui.dart';
+import 'package:blocsignal_website/src/components/docs/pages/docs_pkg_genui_flutter.dart';
 import 'package:blocsignal_website/src/models/docs_registry.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:test/test.dart';
@@ -167,6 +169,42 @@ void main() {
             'Found incorrect context.watch usage in documentation recipe/feature snippets:\n'
             '${violations.join('\n')}',
       );
+    });
+
+    test('(Issue #373) GenUI documentation code snippets use real exported bloc_signals_genui APIs', () {
+      final genuiBlocks = <DocsCodeBlock>[];
+      _collectCodeBlocks(const DocsPkgGenuiPage(), genuiBlocks);
+
+      final genuiFlutterBlocks = <DocsCodeBlock>[];
+      _collectCodeBlocks(const DocsPkgGenuiFlutterPage(), genuiFlutterBlocks);
+
+      expect(genuiBlocks, isNotEmpty);
+      expect(genuiFlutterBlocks, isNotEmpty);
+
+      final allGenuiSnippets = <String>[
+        for (final block in [...genuiBlocks, ...genuiFlutterBlocks]) ...[
+          if (block.code != null) block.code!,
+          if (block.dart313Code != null) block.dart313Code!,
+          if (block.dart35Code != null) block.dart35Code!,
+        ],
+      ].join('\n');
+
+      expect(allGenuiSnippets, isNot(contains('resolveNode(')));
+      expect(allGenuiSnippets, isNot(contains('IngestMessage(')));
+      expect(allGenuiSnippets, isNot(contains('returnType:')));
+
+      final genuiDartSnippets = <String>[
+        for (final block in genuiBlocks) ...[
+          if (block.code != null) block.code!,
+          if (block.dart313Code != null) block.dart313Code!,
+          if (block.dart35Code != null) block.dart35Code!,
+        ],
+      ].join('\n');
+
+      expect(genuiDartSnippets, contains('NodeResolver<ComponentApi>'));
+      expect(genuiDartSnippets, contains('CallAgentFunctionMessage'));
+      expect(genuiDartSnippets, contains('ProcessMessage('));
+      expect(genuiDartSnippets, contains('AgentFunctionResponseMessage('));
     });
   });
 }

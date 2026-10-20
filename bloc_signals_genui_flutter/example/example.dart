@@ -4,14 +4,37 @@ import 'package:bloc_signals_genui_flutter/bloc_signals_genui_flutter.dart';
 import 'package:flutter/material.dart';
 
 void main() {
+  const basicCatalogId =
+      'https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json';
+
   final surfaceBloc = A2uiSurfaceBloc(maxSurfaces: 5)
     ..add(
       const ProcessJsonMessage({
         'version': 'v0.9',
         'createSurface': {
           'surfaceId': 'welcome_card',
-          'catalogId':
-              'https://a2ui.org/specification/v0_9/catalogs/minimal/minimal_catalog.json',
+          'catalogId': basicCatalogId,
+        },
+      }),
+    )
+    ..add(
+      const ProcessJsonMessage({
+        'version': 'v0.9',
+        'updateDataModel': {
+          'surfaceId': 'welcome_card',
+          'path': '/',
+          'value': {
+            'user': {
+              'name': 'Randal L. Schwartz',
+              'tier': ['Pro'],
+              'subscribeUpdates': true,
+            },
+            'features': [
+              {'label': '0ms Synchronous Signal Reactivity'},
+              {'label': 'NodeResolver ChildList Templates'},
+              {'label': 'CheckRule Form Validation'},
+            ],
+          },
         },
       }),
     )
@@ -29,23 +52,87 @@ void main() {
             {
               'id': 'content_col',
               'component': 'Column',
-              'children': ['title_txt', 'name_field', 'submit_btn'],
+              'align': 'stretch',
+              'children': [
+                'title_txt',
+                'features_list',
+                'name_field',
+                'tier_picker',
+                'updates_checkbox',
+                'submit_btn',
+              ],
             },
             {
               'id': 'title_txt',
               'component': 'Text',
+              'variant': 'h2',
               'text': 'Welcome to BlocSignal GenUI',
+            },
+            {
+              'id': 'features_list',
+              'component': 'List',
+              'children': {
+                'componentId': 'feature_row',
+                'path': '/features',
+              },
+            },
+            {
+              'id': 'feature_row',
+              'component': 'Text',
+              'variant': 'caption',
+              'text': {'path': 'label'},
             },
             {
               'id': 'name_field',
               'component': 'TextField',
               'label': 'Your Name',
               'value': {'path': '/user/name'},
+              'checks': [
+                {
+                  'condition': {
+                    'call': 'required',
+                    'args': {
+                      'value': {'path': '/user/name'},
+                    },
+                  },
+                  'message': 'Name is required',
+                },
+              ],
+            },
+            {
+              'id': 'tier_picker',
+              'component': 'ChoicePicker',
+              'label': 'Plan Tier',
+              'variant': 'mutuallyExclusive',
+              'displayStyle': 'chips',
+              'options': [
+                {'label': 'Starter', 'value': 'Starter'},
+                {'label': 'Pro', 'value': 'Pro'},
+                {'label': 'Enterprise', 'value': 'Enterprise'},
+              ],
+              'value': {'path': '/user/tier'},
+            },
+            {
+              'id': 'updates_checkbox',
+              'component': 'CheckBox',
+              'label': 'Subscribe to release notes',
+              'value': {'path': '/user/subscribeUpdates'},
             },
             {
               'id': 'submit_btn',
               'component': 'Button',
               'child': 'btn_label',
+              'checks': [
+                {
+                  'condition': {
+                    'call': 'required',
+                    'args': {
+                      'value': {'path': '/user/name'},
+                    },
+                  },
+                  'message': 'Name is required',
+                },
+              ],
               'action': {
                 'event': {'name': 'submit_greeting'},
               },
@@ -87,9 +174,11 @@ class GenUiExampleApp extends StatelessWidget {
           appBar: AppBar(title: const Text('A2UI Surface View')),
           body: Padding(
             padding: const EdgeInsets.all(16),
-            child: A2uiSurfaceView(
-              bloc: surfaceBloc,
-              catalog: catalog,
+            child: SingleChildScrollView(
+              child: A2uiSurfaceView(
+                bloc: surfaceBloc,
+                catalog: catalog,
+              ),
             ),
           ),
         ),

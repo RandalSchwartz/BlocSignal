@@ -4,6 +4,16 @@ import 'package:genui_flight_booking/src/models/chat_message.dart';
 import 'package:genui_flight_booking/src/models/flight_models.dart';
 import 'package:genui_flight_booking/src/state/flight_assistant_cubit.dart';
 
+class _FailingRpcSurfaceBloc extends A2uiSurfaceBloc {
+  @override
+  Future<Object?> callAgentFunction(
+    String surfaceId,
+    FunctionCall call, {
+    CallOptions? options,
+  }) =>
+      Future<Object?>.error(Exception('Transient RPC timeout'));
+}
+
 void main() {
   group('FlightAssistantCubit', () {
     late A2uiSurfaceBloc surfaceBloc;
@@ -231,6 +241,177 @@ void main() {
       expect(cubit.value.messages.first.text, equals('Retry attempt'));
       expect(cubit.value.messages.last.role, equals(ChatRole.assistant));
       expect(surfaceBloc.value, isA<SurfaceReady>());
+    });
+
+    group('(Issue #373) Modernized GenUI Flight Booking Behavioral Contract',
+        () {
+      test(
+          '(Issue #373) Scenario: Flight discovery surface expands repeated '
+          'flight cards via NodeResolver ChildList template', () async {
+        await cubit.startDiscoverySearch(delay: Duration.zero);
+
+        expect(surfaceBloc.value, isA<SurfaceReady>());
+        final ready = surfaceBloc.value as SurfaceReady;
+        expect(ready.surfaceId, equals('surf-flight-discovery'));
+
+        // Verify root component exists and uses ChildList template on /flights
+        final rootComp = ready.surface.componentsModel.get('root');
+        expect(rootComp, isNotNull);
+
+        final flightsData = ready.surface.dataModel.get('/flights');
+        expect(flightsData, isA<List<dynamic>>());
+        expect((flightsData as List<dynamic>).length, greaterThanOrEqualTo(2));
+
+        // Verify NodeResolver resolves repeated card_flight nodes
+        final resolver = NodeResolver<ComponentApi>(ready.surface);
+        addTearDown(resolver.dispose);
+        final rootNode = resolver.rootNode.value;
+        expect(rootNode, isNotNull);
+        expect(rootNode!.state, equals(NodeState.resolved));
+      });
+
+      test(
+          '(Issue #373) Scenario Outline: Interactive BasicCatalog v0.9/v1.0 '
+          'widgets on customization surface synchronize with DataModel and '
+          'reactive total price', () async {
+        await cubit.startDiscoverySearch(delay: Duration.zero);
+
+        surfaceBloc.add(
+          const SubmitAction(
+            actionName: 'selectFlight',
+            sourceComponentId: 'btn_select_flight',
+            surfaceId: 'surf-flight-discovery',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        expect(cubit.value.activeSurfaceId, equals('surf-seat-customization'));
+
+        // Example 1: ChoicePicker /booking/tier -> ["Premium Economy"] -> 650
+        surfaceBloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf-seat-customization',
+            path: '/booking/tier',
+            value: <String>['Premium Economy'],
+          ),
+        );
+        expect(cubit.value.selectedTier, equals(SeatTier.premium));
+        expect(cubit.totalPriceSignal.value, equals(650));
+
+        // Example 2: ChoicePicker /booking/tier -> ["Business Class"] -> 1250
+        surfaceBloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf-seat-customization',
+            path: '/booking/tier',
+            value: <String>['Business Class'],
+          ),
+        );
+        expect(cubit.value.selectedTier, equals(SeatTier.business));
+        expect(cubit.totalPriceSignal.value, equals(1250));
+
+        // Reset back to Economy (420) for add-on examples
+        surfaceBloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf-seat-customization',
+            path: '/booking/tier',
+            value: <String>['Economy'],
+          ),
+        );
+        expect(cubit.totalPriceSignal.value, equals(420));
+
+        // Example 3: CheckBox /addons/checkedLuggage -> true -> 465
+        surfaceBloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf-seat-customization',
+            path: '/addons/checkedLuggage',
+            value: true,
+          ),
+        );
+        expect(cubit.value.hasCheckedLuggage, isTrue);
+        expect(cubit.totalPriceSignal.value, equals(465));
+
+        // Reset checkedLuggage to false
+        surfaceBloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf-seat-customization',
+            path: '/addons/checkedLuggage',
+            value: false,
+          ),
+        );
+
+        // Example 4: CheckBox /addons/priorityBoarding -> true -> 450
+        surfaceBloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf-seat-customization',
+            path: '/addons/priorityBoarding',
+            value: true,
+          ),
+        );
+        expect(cubit.value.hasPriorityBoarding, isTrue);
+        expect(cubit.totalPriceSignal.value, equals(450));
+
+        // Reset priorityBoarding to false
+        surfaceBloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf-seat-customization',
+            path: '/addons/priorityBoarding',
+            value: false,
+          ),
+        );
+
+        // Example 5: DateTimeInput /booking/departureDate -> "2026-10-20" -> 420
+        surfaceBloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf-seat-customization',
+            path: '/booking/departureDate',
+            value: '2026-10-20',
+          ),
+        );
+        expect(cubit.value.departureDate, equals('2026-10-20'));
+        expect(cubit.totalPriceSignal.value, equals(420));
+      });
+
+      test(
+          '(Issue #373) Scenario: Bidirectional RPC seat assignment in '
+          'FlightAssistantCubit', () async {
+        await cubit.startDiscoverySearch(delay: Duration.zero);
+
+        surfaceBloc.add(
+          const SubmitAction(
+            actionName: 'selectFlight',
+            sourceComponentId: 'btn_select_flight',
+            surfaceId: 'surf-flight-discovery',
+          ),
+        );
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+
+        final assignedSeat = await cubit.requestSeatAssignment();
+        expect(assignedSeat, isNotEmpty);
+        expect(cubit.value.assignedSeat, equals(assignedSeat));
+        expect(surfaceBloc.outboundMessageHistory, isNotEmpty);
+        expect(
+          surfaceBloc.outboundMessageHistory.last,
+          isA<CallAgentFunctionMessage>(),
+        );
+      });
+
+      test(
+          '(Issue #373) Scenario: Transient RPC timeout during seat assignment '
+          'falls back gracefully without throwing uncaught exceptions',
+          () async {
+        final timeoutBloc = _FailingRpcSurfaceBloc();
+        final timeoutCubit = FlightAssistantCubit(surfaceBloc: timeoutBloc);
+        addTearDown(() async {
+          await timeoutCubit.close();
+          await timeoutBloc.close();
+        });
+
+        await timeoutCubit.startDiscoverySearch(delay: Duration.zero);
+        timeoutCubit.setSeatTier(SeatTier.business);
+
+        final fallbackSeat = await timeoutCubit.requestSeatAssignment();
+        expect(fallbackSeat, equals('2A (Lie-Flat Suite)'));
+        expect(timeoutCubit.value.assignedSeat, equals('2A (Lie-Flat Suite)'));
+      });
     });
   });
 }

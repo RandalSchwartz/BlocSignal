@@ -327,7 +327,7 @@ Look at why that happened—and why it never happened again:
 
 ## 6. Next Up in Part 3.11: 926+ Live Production Steps, Two Lobotomies, and Zero Nudges
 
-In this installment, we saw how **Fernando Flores's 1986 Committed Speech**, **Nuel Belnap's 1977 four-valued logic**, **Tony Hoare's 1978 `CSP`**, and a 2026 descendant of my **1976 `TOTO II` resequencer** transformed our `Makefile` and `/etc/init.d` workflow into a unified **`00..90` Commitment Machine** ([Randal's Public Workflow Gist](https://gist.github.com/RandalSchwartz/598a1f2b5760a23c1d70b57e9e85393f)).
+In this installment, we saw how **Fernando Flores's 1986 Committed Speech**, **Nuel Belnap's 1977 four-valued logic**, **Tony Hoare's 1978 `CSP`**, and my **1976 `TOTO` floating-point line-number normalizer** transformed our `Makefile` and `/etc/init.d` workflow into a unified **`00..90` Commitment Machine** ([Randal's Public Workflow Gist](https://gist.github.com/RandalSchwartz/598a1f2b5760a23c1d70b57e9e85393f)).
 
 What happened when we turned this exact **Belnap–Flores–Hoare Commitment Machine** loose on live industrial production tickets—and strapped an open-weight 120B model (`GPT-OSS 120B`) into the same exoskeleton?
 
@@ -352,7 +352,8 @@ Until then: check your own `SKILL.md` or `.cursorrules`. Everywhere you see a wa
 * **Part 3.8**: [What LLMs "Know" That You Don't Know They Know: Stop Inventing Prompt DSLs and Ride 50 Years of Unix Pre-Training Gravity](https://dev.to/gde/what-llms-know-that-you-dont-know-they-know-stop-inventing-prompt-dsls-and-ride-50-years-of-2bl6)
 * **Part 3.9**: [If You Never Do Anything Else to Fix Your Prompts, Do This One Thing](https://dev.to/gde/if-you-never-do-anything-else-to-fix-your-prompts-do-this-one-thing-3069)
 * **Part 3.10**: *Requests, Promises, Assertions, and Declarations: Rewriting Our AI Agent Workflow as a 1986 "Committed Speech" Machine (You are here)*
-* **Part 3.11**: *737 Steps, Two Lobotomies, and Zero Nudges: Flight-Testing the Commitment Machine Across Gemini, Claude, and GPT-OSS (Next)*
+* **Part 3.11**: [926 Steps, Two Lobotomies, and Zero Nudges: Flight-Testing the Commitment Machine Across Gemini, Claude, and GPT-OSS](https://dev.to/gde/926-steps-two-lobotomies-and-zero-nudges-flight-testing-the-commitment-machine-across-gemini-55ca)
+* **Part 3.12**: *Is This a Step, or Is This a Sensor? How Peer Review, Linux `insmod`, and AST Auto-Fixes Hardened Our AI Commitment Machine (Next)*
 * **Part 4**: *Giving AI Pain: The Architecture of Synthetic Scars & The Rapid-Regret Miner*
 * **Part 5**: *Zero Repeat Regressions: The Golden Metric & The Future of Agentic Trust*
 * **Part 6**: *The Proscriptive Inversion: What You Get to Forget, and Why More Negative Rules Mean You've Lost*

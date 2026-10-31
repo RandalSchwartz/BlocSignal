@@ -48,6 +48,7 @@ workspace:
   - examples/riverpod_marvel
   - bloc_signals_genui
   - bloc_signals_genui_flutter
+  - bloc_signals_genui_jaspr
   - examples/genui_tui_agent
   - examples/genui_flight_booking
   - website

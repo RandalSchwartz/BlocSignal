@@ -1,5 +1,9 @@
 import 'package:bloc_signals_genui_flutter/src/a2ui_component_context.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/adaptive_catalog.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/cupertino_catalog.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/cupertino_tokens.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/standard_catalog.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 /// Builder signature for mapping an A2UI component model to a Flutter widget.
@@ -24,6 +28,47 @@ class A2uiFlutterCatalog {
   factory A2uiFlutterCatalog.standard() {
     final catalog = A2uiFlutterCatalog();
     registerStandardComponents(catalog);
+    return catalog;
+  }
+
+  /// Creates a catalog pre-populated with dedicated Apple Cupertino component
+  /// builders (for example CupertinoButton, CupertinoTextField, CupertinoCard).
+  ///
+  /// ```dart
+  /// final catalog = A2uiFlutterCatalog.cupertino(
+  ///   tokens: const CupertinoCatalogTokens(
+  ///     primaryColor: CupertinoColors.activeBlue,
+  ///   ),
+  /// );
+  /// ```
+  factory A2uiFlutterCatalog.cupertino({
+    CupertinoCatalogTokens? tokens,
+    CupertinoThemeData? theme,
+  }) {
+    final catalog = A2uiFlutterCatalog();
+    registerCupertinoComponents(catalog, tokens: tokens, theme: theme);
+    return catalog;
+  }
+
+  /// Creates an adaptive catalog that dynamically switches between Cupertino
+  /// and Material components based on the runtime platform or
+  /// [platformOverride].
+  ///
+  /// ```dart
+  /// final catalog = A2uiFlutterCatalog.adaptive();
+  /// ```
+  factory A2uiFlutterCatalog.adaptive({
+    CupertinoCatalogTokens? tokens,
+    CupertinoThemeData? cupertinoTheme,
+    TargetPlatform? platformOverride,
+  }) {
+    final catalog = A2uiFlutterCatalog();
+    registerAdaptiveComponents(
+      catalog,
+      tokens: tokens,
+      cupertinoTheme: cupertinoTheme,
+      platformOverride: platformOverride,
+    );
     return catalog;
   }
 

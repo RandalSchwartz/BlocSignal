@@ -124,6 +124,47 @@ BlocSignalProvider<A2uiSurfaceBloc>(
 );
 ```
 
+### Dedicated Cupertino & Adaptive Catalog Presets
+
+In addition to the Material-styled `A2uiFlutterCatalog.standard()`, `bloc_signals_genui_flutter` provides dedicated **Cupertino** and **Adaptive** catalog presets for Apple ecosystems and cross-platform designs:
+
+1. **Cupertino Preset (`A2uiFlutterCatalog.cupertino`)**:
+   Pre-populates dedicated iOS/macOS component builders (for example `CupertinoButton`, `CupertinoTextField`, `CupertinoCard`, `CupertinoCheckbox`, `CupertinoSlidingSegmentedControl`, `CupertinoSlider`, `CupertinoDatePicker`, and hairline dividers) with zero Material dependency. Supports custom styling via `CupertinoCatalogTokens` and `CupertinoThemeData`. Safe inside pure `CupertinoApp` hierarchies.
+
+   ```dart
+   final cupertinoCatalog = A2uiFlutterCatalog.cupertino(
+     tokens: const CupertinoCatalogTokens(
+       primaryColor: CupertinoColors.activeBlue,
+       borderRadius: BorderRadius.all(Radius.circular(12)),
+     ),
+   );
+
+   CupertinoApp(
+     home: CupertinoPageScaffold(
+       child: A2uiSurfaceView(
+         bloc: surfaceBloc,
+         catalog: cupertinoCatalog,
+       ),
+     ),
+   );
+   ```
+
+2. **Adaptive Preset (`A2uiFlutterCatalog.adaptive`)**:
+   Dynamically evaluates the runtime target platform (defensively inspecting `platformOverride`, `Theme.maybeOf(context)?.platform`, and `defaultTargetPlatform`). Automatically renders native Cupertino widgets on iOS and macOS, while rendering standard Material 3 widgets on Android, Windows, and Linux.
+
+   ```dart
+   final adaptiveCatalog = A2uiFlutterCatalog.adaptive(
+     tokens: const CupertinoCatalogTokens(
+       primaryColor: CupertinoColors.activeBlue,
+     ),
+   );
+
+   A2uiSurfaceView(
+     bloc: surfaceBloc,
+     catalog: adaptiveCatalog,
+   );
+   ```
+
 ### Granular Form Field Reactivity
 Never rebuild the entire surface when a user types into a form input or when a single bound path in `DataModel` updates. `A2uiSurfaceView` wraps each component in a reactive `_BoundComponentWidget` subscribed to its `GenericBinder.resolvedProps` signal, updating only the affected leaf widget in 0ms while preserving ancestor-path circular reference protection.
 

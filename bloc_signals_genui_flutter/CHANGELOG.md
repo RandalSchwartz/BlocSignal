@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
+## Unreleased
+
+- **Feat (genui_flutter)**: Dedicated Cupertino and Adaptive catalog presets for iOS/macOS generative UI surfaces (#260).
+
 ## 1.0.0
 
 - **Milestone**: Stable 1.0.0 release of `bloc_signals_genui_flutter`.

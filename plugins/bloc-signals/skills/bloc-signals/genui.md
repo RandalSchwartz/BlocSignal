@@ -23,6 +23,12 @@ For Flutter applications:
 flutter pub add bloc_signals_genui_flutter bloc_signals_genui bloc_signals_flutter
 ```
 
+For Jaspr web applications:
+
+```bash
+dart pub add bloc_signals_genui_jaspr bloc_signals_genui bloc_signals_jaspr
+```
+
 ---
 
 ## 🌐 Protocol & Catalog Support (`a2ui_core: ^0.3.0`)
@@ -38,6 +44,7 @@ flutter pub add bloc_signals_genui_flutter bloc_signals_genui bloc_signals_flutt
   - *Display*: `Text` (`variant`: `h1`..`h5`, `title`, `caption`, `body`, plus `style` fallback), `Icon` (maps standard A2UI icon names to `Icons.*` with `Icons.help_outline` fallback), and `Image` (`url`, `description`, `fit`, `variant` sizing, and offline `errorBuilder` fallback).
   - *Interactive Inputs & Validation*: `Button` (disabled when `componentContext.isValid == false` or `enabled == false`), `TextField` (`variant`: `shortText`, `longText`, `number`, `obscured`, plus `CheckRule` `errorText`), `CheckBox` (two-way boolean binding + `CheckRule` error subtitle), `ChoicePicker` (`mutuallyExclusive` and `multipleSelection` variants, `checkbox` and `chips` styles, two-way binding + `CheckRule` error text), `Slider` (clamped `[min, max]` range, two-way binding + `CheckRule` error text), and `DateTimeInput` (ISO 8601 `enableDate` / `enableTime` pickers, two-way binding + `CheckRule` error text).
   - *Two-Way Binding Helpers*: `A2uiComponentContext` exposes `isValid`, `validationErrors`, `validationResults`, `resolveBoundPath(propKey)`, and `updateBoundValue(propKey, newValue)` so interactive widgets synchronize `v0.9` `path` and `v1.0` `@path` bindings with `A2uiSurfaceBloc` in 0ms.
+- **Jaspr Web Component Architecture (`bloc_signals_genui_jaspr`)**: For Jaspr web applications, `A2uiJasprCatalog.standard()` registers 7 standard web component builders (`Text`, `Row`, `Column`, `Button`, `TextField`, `Card`, and `Divider`) utilizing semantic HTML tags, CSS-in-Dart flexbox styles, and two-way reactive data binding, renderable via Jaspr's `A2uiSurfaceView` web component.
 
 ---
 

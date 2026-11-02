@@ -3,7 +3,10 @@ import 'dart:convert';
 
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:blocsignal_website/src/components/playground/playground_cubit.dart';
+import 'package:blocsignal_website/src/components/playground/playground_editor.dart';
+import 'package:blocsignal_website/src/components/playground/playground_inspector.dart';
 import 'package:blocsignal_website/src/components/playground/playground_scenarios.dart';
+import 'package:blocsignal_website/src/pages/playground_page.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -225,6 +228,30 @@ void main() {
       expect(cubit.stateValue.actionLog, isEmpty);
       expect(cubit.stateValue.parseError, isNull);
       expect(cubit.stateValue.isStreaming, isFalse);
+    });
+
+    test('startStreaming sets parseError on invalid JSON', () async {
+      cubit.updateJson('{invalid json');
+      await cubit.startStreaming();
+
+      expect(cubit.stateValue.parseError, isNotNull);
+      expect(cubit.stateValue.isStreaming, isFalse);
+    });
+  });
+
+  group('(Issue #398) Playground Components Instantiation', () {
+    test('PlaygroundPage, PlaygroundInspector, and PlaygroundEditor instantiate cleanly', () {
+      const page = PlaygroundPage();
+      expect(page, isNotNull);
+
+      final cubit = PlaygroundCubit();
+      final inspector = PlaygroundInspector(cubit: cubit);
+      expect(inspector, isNotNull);
+
+      final editor = PlaygroundEditor(cubit: cubit, state: cubit.stateValue);
+      expect(editor, isNotNull);
+
+      cubit.close();
     });
   });
 }

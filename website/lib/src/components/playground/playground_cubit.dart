@@ -70,7 +70,7 @@ class PlaygroundCubit({final PlaygroundScenario? initialScenario})
       ) {
     _initActionSubscription();
     // Render initial scenario synchronously
-    _renderInstantInternal();
+    _renderInstantAndEmit();
   }
 
   /// The underlying A2UI surface bloc orchestrating DOM components.
@@ -107,7 +107,7 @@ class PlaygroundCubit({final PlaygroundScenario? initialScenario})
         activeSurfaceId: scenario.id,
       ),
     );
-    _renderInstantInternal();
+    _renderInstantAndEmit();
   }
 
   /// Updates the raw JSON buffer, evaluating syntax validity.
@@ -136,10 +136,10 @@ class PlaygroundCubit({final PlaygroundScenario? initialScenario})
   /// Parses the raw JSON buffer and instantly hydrates the [surfaceBloc].
   Future<void> renderInstant() async {
     cancelStreaming();
-    _renderInstantInternal();
+    _renderInstantAndEmit();
   }
 
-  void _renderInstantInternal() {
+  void _renderInstantAndEmit() {
     List<dynamic> messages;
     try {
       final decoded = jsonDecode(stateValue.rawJson);
@@ -223,6 +223,13 @@ class PlaygroundCubit({final PlaygroundScenario? initialScenario})
             surfaceBloc.add(ProcessJsonMessage(msgMap));
           }
         }
+      } on Exception catch (e, st) {
+        if (!_isCanceled && !isClosed) {
+          emit(stateValue.copyWith(parseError: e.toString()));
+        }
+        if (!completer.isCompleted) {
+          completer.completeError(e, st);
+        }
       } finally {
         if (!_isCanceled && !isClosed) {
           emit(stateValue.copyWith(isStreaming: false));
@@ -266,7 +273,7 @@ class PlaygroundCubit({final PlaygroundScenario? initialScenario})
         isStreaming: false,
       ),
     );
-    _renderInstantInternal();
+    _renderInstantAndEmit();
   }
 
   /// Switches active surface in the underlying bloc.

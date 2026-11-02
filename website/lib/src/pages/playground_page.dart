@@ -1,4 +1,6 @@
+import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_jaspr/bloc_signals_genui_jaspr.dart';
+import 'package:bloc_signals_jaspr/bloc_signals_jaspr.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -17,35 +19,22 @@ class const PlaygroundPage({super.key}) extends StatefulComponent {
 
 class _PlaygroundPageState() extends State<PlaygroundPage> {
   late final PlaygroundCubit _cubit;
-  void Function()? _stateUnsubscribe;
-  void Function()? _surfaceUnsubscribe;
 
   @override
   void initState() {
     super.initState();
     _cubit = PlaygroundCubit();
-    _stateUnsubscribe = _cubit.state.subscribe((_) {
-      if (mounted) setState(() {});
-    });
-    _surfaceUnsubscribe = _cubit.surfaceBloc.state.subscribe((_) {
-      if (mounted) setState(() {});
-    });
   }
 
   @override
   void dispose() {
-    _stateUnsubscribe?.call();
-    _surfaceUnsubscribe?.call();
     _cubit.close();
     super.dispose();
   }
 
   @override
   Component build(BuildContext context) {
-    final state = _cubit.stateValue;
     final surfaceBloc = _cubit.surfaceBloc;
-    final surfaceState = surfaceBloc.stateValue;
-    final availableSurfaces = surfaceBloc.availableSurfaceIds;
 
     return div(classes: 'app-root playground-root', [
       const Navbar(currentRoute: AppRoute.playground),
@@ -72,7 +61,11 @@ class _PlaygroundPageState() extends State<PlaygroundPage> {
         // 3-Pane Workbench
         div(classes: 'container playground-workbench', [
           // Left Pane: JSON Editor & Streaming Controls
-          PlaygroundEditor(cubit: _cubit, state: state),
+          BlocSignalBuilder<PlaygroundCubit, PlaygroundState>(
+            bloc: _cubit,
+            builder: (context, state) =>
+                PlaygroundEditor(cubit: _cubit, state: state),
+          ),
 
           // Center Pane: Live DOM Surface Preview
           div(classes: 'playground-pane playground-preview-pane', [
@@ -83,35 +76,41 @@ class _PlaygroundPageState() extends State<PlaygroundPage> {
                   Component.text('DOM Surface Preview'),
                 ]),
               ]),
-              div(classes: 'preview-header-meta', [
-                if (availableSurfaces.length > 1) ...[
-                  select(
-                    classes: 'surface-select-dropdown',
-                    onChange: (dynamic selectedVal) {
-                      final id = selectedVal is List
-                          ? (selectedVal.isNotEmpty
-                                ? selectedVal.first.toString()
-                                : '')
-                          : selectedVal.toString();
-                      if (id.isNotEmpty) {
-                        _cubit.selectSurface(id);
-                      }
-                    },
-                    [
-                      for (final surfId in availableSurfaces)
-                        option(
-                          value: surfId,
-                          selected: surfId == surfaceState.surfaceId,
-                          [Component.text('Surface: $surfId')],
-                        ),
+              BlocSignalBuilder<A2uiSurfaceBloc, A2uiSurfaceState>(
+                bloc: surfaceBloc,
+                builder: (context, surfaceState) {
+                  final availableSurfaces = surfaceBloc.availableSurfaceIds;
+                  return div(classes: 'preview-header-meta', [
+                    if (availableSurfaces.length > 1) ...[
+                      select(
+                        classes: 'surface-select-dropdown',
+                        onChange: (dynamic selectedVal) {
+                          final id = selectedVal is List
+                              ? (selectedVal.isNotEmpty
+                                    ? selectedVal.first.toString()
+                                    : '')
+                              : selectedVal.toString();
+                          if (id.isNotEmpty) {
+                            _cubit.selectSurface(id);
+                          }
+                        },
+                        [
+                          for (final surfId in availableSurfaces)
+                            option(
+                              value: surfId,
+                              selected: surfId == surfaceState.surfaceId,
+                              [Component.text('Surface: $surfId')],
+                            ),
+                        ],
+                      ),
+                    ] else if (surfaceState.surfaceId != null) ...[
+                      span(classes: 'surface-id-pill', [
+                        Component.text('ID: ${surfaceState.surfaceId}'),
+                      ]),
                     ],
-                  ),
-                ] else if (surfaceState.surfaceId != null) ...[
-                  span(classes: 'surface-id-pill', [
-                    Component.text('ID: ${surfaceState.surfaceId}'),
-                  ]),
-                ],
-              ]),
+                  ]);
+                },
+              ),
             ]),
 
             // Interactive Surface Viewport
@@ -122,11 +121,17 @@ class _PlaygroundPageState() extends State<PlaygroundPage> {
                   span(classes: 'dot dot-yellow', []),
                   span(classes: 'dot dot-green', []),
                 ]),
-                span(classes: 'mock-address', [
-                  Component.text(
-                    'a2ui://surface/${surfaceState.surfaceId ?? "active"}',
+                BlocSignalBuilder<A2uiSurfaceBloc, A2uiSurfaceState>(
+                  bloc: surfaceBloc,
+                  builder: (context, surfaceState) => span(
+                    classes: 'mock-address',
+                    [
+                      Component.text(
+                        'a2ui://surface/${surfaceState.surfaceId ?? "active"}',
+                      ),
+                    ],
                   ),
-                ]),
+                ),
               ]),
               div(classes: 'surface-content-area', [
                 A2uiSurfaceView(
@@ -160,7 +165,7 @@ class _PlaygroundPageState() extends State<PlaygroundPage> {
           ]),
 
           // Right Pane: State & Action Inspector
-          PlaygroundInspector(cubit: _cubit, state: state),
+          PlaygroundInspector(cubit: _cubit),
         ]),
       ]),
 

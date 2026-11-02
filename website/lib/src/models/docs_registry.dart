@@ -14,6 +14,7 @@ import '../components/docs/pages/docs_pkg_bloc.dart';
 import '../components/docs/pages/docs_pkg_devtools.dart';
 import '../components/docs/pages/docs_pkg_genui.dart';
 import '../components/docs/pages/docs_pkg_genui_flutter.dart';
+import '../components/docs/pages/docs_pkg_genui_jaspr.dart';
 import '../components/docs/pages/docs_pkg_hydrate.dart';
 import '../components/docs/pages/docs_pkg_jaspr.dart';
 import '../components/docs/pages/docs_pkg_lint.dart';
@@ -326,6 +327,17 @@ class const DocsRegistry() {
           builder: DocsPkgGenuiFlutterPage.new,
           headings: DocsPkgGenuiFlutterPage.headings,
           sourcePath: 'website/lib/src/components/docs/pages/docs_pkg_genui_flutter.dart',
+        ),
+        DocSectionItem(
+          id: 'pkg-genui-jaspr',
+          title: 'bloc_signals_genui_jaspr',
+          path: '/docs/pkg-genui-jaspr',
+          category: 'Satellite Packages',
+          description: 'Declarative Jaspr web components and HTML DOM surface views for A2UI.',
+          builder: DocsPkgGenuiJasprPage.new,
+          headings: DocsPkgGenuiJasprPage.headings,
+          sourcePath:
+              'website/lib/src/components/docs/pages/docs_pkg_genui_jaspr.dart',
         ),
       ],
     ),

@@ -137,6 +137,21 @@ void main() {
           'bloc_signals_genui_flutter',
           'GenUiControllerAdapter-class.html',
         ),
+        DocSymbol.a2uiJasprCatalog: (
+          'A2uiJasprCatalog',
+          'bloc_signals_genui_jaspr',
+          'A2uiJasprCatalog-class.html',
+        ),
+        DocSymbol.a2uiJasprSurfaceView: (
+          'A2uiSurfaceView (Jaspr)',
+          'bloc_signals_genui_jaspr',
+          'A2uiSurfaceView-class.html',
+        ),
+        DocSymbol.a2uiJasprComponentContext: (
+          'A2uiComponentContext (Jaspr)',
+          'bloc_signals_genui_jaspr',
+          'A2uiComponentContext-class.html',
+        ),
       };
 
       for (final entry in expectedGenUiSymbols.entries) {

@@ -369,6 +369,21 @@ enum DocSymbol(
     'GenUiControllerAdapter',
     'bloc_signals_genui_flutter',
     'GenUiControllerAdapter-class.html',
+  ),
+  a2uiJasprCatalog(
+    'A2uiJasprCatalog',
+    'bloc_signals_genui_jaspr',
+    'A2uiJasprCatalog-class.html',
+  ),
+  a2uiJasprSurfaceView(
+    'A2uiSurfaceView (Jaspr)',
+    'bloc_signals_genui_jaspr',
+    'A2uiSurfaceView-class.html',
+  ),
+  a2uiJasprComponentContext(
+    'A2uiComponentContext (Jaspr)',
+    'bloc_signals_genui_jaspr',
+    'A2uiComponentContext-class.html',
   );
 
   /// Canonical URL on pub.dev documentation.

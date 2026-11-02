@@ -89,6 +89,11 @@ class _NavbarState() extends State<Navbar> {
             [Component.text(AppRoute.publications.label)],
           ),
           a(
+            href: AppRoute.playground.path,
+            classes: activeRoute == AppRoute.playground ? 'nav-active' : '',
+            [Component.text(AppRoute.playground.label)],
+          ),
+          a(
             href: 'https://pub.dev/packages/bloc_signals',
             target: Target.blank,
             [Component.text('pub.dev')],
@@ -214,6 +219,18 @@ class _NavbarState() extends State<Navbar> {
                   span(classes: 'drawer-link-icon', [Component.text('📚')]),
                   span(classes: 'drawer-link-label', [
                     Component.text('Publications'),
+                  ]),
+                ],
+              ),
+              a(
+                href: AppRoute.playground.path,
+                classes:
+                    'drawer-link ${activeRoute == AppRoute.playground ? "active" : ""}',
+                onClick: _closeDrawer,
+                [
+                  span(classes: 'drawer-link-icon', [Component.text('⚡')]),
+                  span(classes: 'drawer-link-label', [
+                    Component.text('Playground'),
                   ]),
                 ],
               ),

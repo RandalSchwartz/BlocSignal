@@ -3,6 +3,7 @@ import 'package:jaspr/jaspr.dart';
 import '../pages/docs_page.dart';
 import '../pages/home_page.dart';
 import '../pages/minesweeper_page.dart';
+import '../pages/playground_page.dart';
 import '../pages/ported_examples_page.dart';
 import '../pages/publications_page.dart';
 import '../pages/showcase_page.dart';
@@ -18,7 +19,8 @@ enum AppRoute(
   showcase('/showcase', 'Showcase', ShowcasePage.new),
   portedExamples('/ported-examples', 'Ported Examples', PortedExamplesPage.new),
   minesweeper('/minesweeper', '🎮 Minesweeper', MinesweeperPage.new),
-  publications('/publications', '📚 Publications', PublicationsPage.new);
+  publications('/publications', '📚 Publications', PublicationsPage.new),
+  playground('/playground', '⚡ Playground', PlaygroundPage.new);
 
   /// Parses the browser's current [path] and [hash] into a type-safe [AppRoute].
   static AppRoute fromLocation({String? path, String? hash}) {
@@ -44,6 +46,10 @@ enum AppRoute(
         p.startsWith('/publications') ||
         h.contains('publications')) {
       return publications;
+    } else if (p == '/playground' ||
+        p.startsWith('/playground') ||
+        h.contains('playground')) {
+      return playground;
     }
     return home;
   }

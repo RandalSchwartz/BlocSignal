@@ -252,6 +252,10 @@ void main() {
         AppRoute.fromLocation(path: '/publications'),
         equals(AppRoute.publications),
       );
+      expect(
+        AppRoute.fromLocation(path: '/playground'),
+        equals(AppRoute.playground),
+      );
     });
   });
 
@@ -341,6 +345,7 @@ void main() {
           'ported-examples',
           'minesweeper',
           'publications',
+          'playground',
           'docs',
         ]),
       );
@@ -352,6 +357,7 @@ void main() {
         'ported-examples',
         'minesweeper',
         'publications',
+        'playground',
         'docs',
         for (final category in DocsRegistry.categories)
           for (final section in category.sections) 'docs/${section.id}',
@@ -475,6 +481,31 @@ void main() {
         DocsContent.getSourcePathForSection('pkg-genui-flutter'),
         equals(
           'website/lib/src/components/docs/pages/docs_pkg_genui_flutter.dart',
+        ),
+      );
+    });
+
+    test('pkg-genui-jaspr is registered under Satellite Packages with TOC headings and sourcePath', () {
+      final pkgGenuiJaspr = DocsRegistry.resolveSection('pkg-genui-jaspr');
+      expect(pkgGenuiJaspr.id, equals('pkg-genui-jaspr'));
+      expect(pkgGenuiJaspr.title, equals('bloc_signals_genui_jaspr'));
+      expect(pkgGenuiJaspr.path, equals('/docs/pkg-genui-jaspr'));
+      expect(pkgGenuiJaspr.category, equals('Satellite Packages'));
+      expect(
+        pkgGenuiJaspr.sourcePath,
+        equals(
+          'website/lib/src/components/docs/pages/docs_pkg_genui_jaspr.dart',
+        ),
+      );
+      expect(pkgGenuiJaspr.headings, isNotEmpty);
+      expect(
+        DocsContent.getHeadingsForSection('pkg-genui-jaspr'),
+        equals(pkgGenuiJaspr.headings),
+      );
+      expect(
+        DocsContent.getSourcePathForSection('pkg-genui-jaspr'),
+        equals(
+          'website/lib/src/components/docs/pages/docs_pkg_genui_jaspr.dart',
         ),
       );
     });

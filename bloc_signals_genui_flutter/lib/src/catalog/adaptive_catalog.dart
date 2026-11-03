@@ -40,9 +40,8 @@ import 'package:flutter/material.dart';
 /// ecosystem (iOS or macOS).
 ///
 /// Defensively inspects [platformOverride] first, then falls back to
-/// `Theme.maybeOf(context)?.platform`, and finally defaults to
-/// [defaultTargetPlatform]. This avoids throwing exceptions in pure
-/// `CupertinoApp` widget trees where no `Theme` ancestor exists (per BEL-07).
+/// `Theme.of(context).platform` (which defaults to [defaultTargetPlatform]
+/// if no `Theme` or `CupertinoTheme` ancestor exists).
 ///
 /// ```dart
 /// if (isCupertinoPlatform(context)) {
@@ -53,14 +52,7 @@ bool isCupertinoPlatform(
   BuildContext context, [
   TargetPlatform? platformOverride,
 ]) {
-  final platform = platformOverride ??
-      (() {
-        try {
-          return Theme.of(context).platform;
-        } on Object catch (_) {
-          return defaultTargetPlatform;
-        }
-      })();
+  final platform = platformOverride ?? Theme.of(context).platform;
   return platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
 }
 

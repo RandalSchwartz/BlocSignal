@@ -85,6 +85,25 @@ void main() {
     });
 
     testWidgets(
+        '(Issue #396: isCupertinoPlatform handles bare widget tree without '
+        'MaterialApp or CupertinoApp)', (tester) async {
+      late BuildContext capturedContext;
+      await tester.pumpWidget(
+        Builder(
+          builder: (context) {
+            capturedContext = context;
+            return const SizedBox.shrink();
+          },
+        ),
+      );
+
+      final isCupertino = isCupertinoPlatform(capturedContext);
+      final expected = defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.macOS;
+      expect(isCupertino, equals(expected));
+    });
+
+    testWidgets(
         '(Issue #260: Adaptive catalog switches between Material and '
         'Cupertino)', (tester) async {
       final bloc = A2uiSurfaceBloc();

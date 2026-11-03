@@ -157,7 +157,7 @@ In addition to the Material-styled `A2uiFlutterCatalog.standard()`, `bloc_signal
    ```
 
 2. **Adaptive Preset (`A2uiFlutterCatalog.adaptive`)**:
-   Dynamically evaluates the runtime target platform (defensively inspecting `platformOverride`, `Theme.maybeOf(context)?.platform`, and `defaultTargetPlatform`). Automatically renders native Cupertino widgets on iOS and macOS, while rendering standard Material 3 widgets on Android, Windows, and Linux.
+   Dynamically evaluates the runtime target platform (defensively inspecting `platformOverride`, `Theme.of(context).platform`, and `defaultTargetPlatform`). Automatically renders native Cupertino widgets on iOS and macOS, while rendering standard Material 3 widgets on Android, Windows, and Linux.
 
    ```dart
    final adaptiveCatalog = A2uiFlutterCatalog.adaptive(

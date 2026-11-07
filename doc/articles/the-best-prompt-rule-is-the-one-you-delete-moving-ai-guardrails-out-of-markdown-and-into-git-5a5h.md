@@ -1,8 +1,10 @@
 ---
 title: "The Best Prompt Rule Is the One You Delete: Moving AI Guardrails Out of Markdown and Into Git Locks, Linux insmod, and 15ms Compiler Auto-Fixes"
+published: true
 description: "Every rule that stays in a prompt eventually bloats, blurs, or gets gamed by the model. When systems engineers and an autonomous AI red-teamed my workflow, the cure wasn't more Markdown—it was pushing enforcement down into Git Merkle locks, Linux insmod, and 15ms compiler auto-fixes that cost zero tokens and zero turns."
 tags: ai, programming, architecture, compilers
 series: Synthetic Scars
+canonical_url: https://dev.to/gde/the-best-prompt-rule-is-the-one-you-delete-moving-ai-guardrails-out-of-markdown-and-into-git-5a5h
 ---
 
 ## _Every rule that stays inside an English prompt eventually bloats, blurs, or gets gamed when the AI edits the test to fake a green exit code. When systems engineers and an autonomous AI red-teamed my workflow, the cure wasn't more Markdown—it was pushing enforcement down into the OS and compiler so rules cost zero tokens and zero turns._
@@ -425,8 +427,8 @@ Now that the systems engine underneath the hood is locked down, **Part 4** retur
 * **Part 3.10**: [Requests, Promises, Assertions, and Declarations: Rewriting Our AI Agent Workflow as a 1986 "Committed Speech" Machine](https://dev.to/gde/requests-promises-assertions-and-declarations-rewriting-our-ai-agent-workflow-as-a-1986-4k4c)
 * **Part 3.11**: [926 Steps, Two Lobotomies, and Zero Nudges: Flight-Testing the Commitment Machine Across Gemini, Claude, and GPT-OSS](https://dev.to/gde/926-steps-two-lobotomies-and-zero-nudges-flight-testing-the-commitment-machine-across-gemini-55ca)
 * **Part 3.12**: _The Best Prompt Rule Is the One You Delete: Moving AI Guardrails Out of Markdown and Into Git Locks, Linux `insmod`, and 15ms Compiler Auto-Fixes (You are here)_
-* **Part 4**: _Giving AI Pain: The Architecture of Synthetic Scars & The Rapid-Regret Miner (Next)_
-* **Part 5**: _Zero Repeat Regressions: The Golden Metric & The Future of Agentic Trust_
+* **Part 4**: [Giving AI Pain: The Architecture of Synthetic Scars & The Rapid-Regret Miner](https://dev.to/gde/giving-ai-pain-the-architecture-of-synthetic-scars-the-rapid-regret-miner-1740)
+* **Part 5**: _Zero Repeat Regressions: The Golden Metric & The Future of Agentic Trust (Next)_
 * **Part 6**: _The Proscriptive Inversion: What You Get to Forget, and Why More Negative Rules Mean You've Lost_
 
 Have you ever caught an AI coding agent modifying a test to fake a green exit code—or watched a custom `.cursorrules` file suffer "Semantic Blur" after an LLM refactored it? Let me know in the comments!

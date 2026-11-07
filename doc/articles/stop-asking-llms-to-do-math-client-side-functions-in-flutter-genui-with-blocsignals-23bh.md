@@ -1,5 +1,4 @@
 ---
-published: true
 series: "BlocSignal Architecture & Practice"
 title: "Stop Asking LLMs to Do Math: Client-Side Functions in Flutter GenUI with bloc_signals"
 description: "Why Andrew 'Red' Brogdon's insight on client-side functions is critical for Generative UI—and how bloc_signals_genui turns catalog functions into 0ms synchronous reactive signals."
@@ -10,9 +9,9 @@ tags: flutter, dart, ai, architecture
 
 > "An LLM is a phenomenal semantic reasoning engine, but it is an awful, slow, and expensive pocket calculator."
 
-If you haven't watched Andrew "Red" Brogdon's walkthrough on the Flutter channel (*[Client side functions for Flutter GenUI](https://www.youtube.com/watch?v=86R2NXSCDrg)*), stop and watch it. In five minutes, Red exposes the fundamental flaw lurking beneath most early Generative UI demos: **the round-trip calculation trap**.
+If you haven't watched Andrew "Red" Brogdon's walkthrough on the Flutter channel (_[Client side functions for Flutter GenUI](https://www.youtube.com/watch?v=86R2NXSCDrg)_), stop and watch it. In five minutes, Red exposes the fundamental flaw lurking beneath most early Generative UI demos: **the round-trip calculation trap**.
 
-Suppose an AI agent generates a recipe or shopping cart card for a user. The user drags a slider to scale the recipe from 2 servings to 6 servings, or edits the quantity of an ingredient. 
+Suppose an AI agent generates a recipe or shopping cart card for a user. The user drags a slider to scale the recipe from 2 servings to 6 servings, or edits the quantity of an ingredient.
 
 What happens next in naive GenUI systems?
 
@@ -23,7 +22,7 @@ What happens next in naive GenUI systems?
 
 Making a remote AI call to multiply two numbers on a mobile device equipped with an Apple Silicon or Snapdragon processor capable of billions of operations per second is an architectural anti-pattern.
 
-As Red demonstrated with the *Commis* kitchen assistant app, the solution is **Client-Side Functions**: the agent designs the interface and binds expressions, but delegates deterministic execution to local Dart code registered in the client's catalog.
+As Red demonstrated with the _Commis_ kitchen assistant app, the solution is **Client-Side Functions**: the agent designs the interface and binds expressions, but delegates deterministic execution to local Dart code registered in the client's catalog.
 
 In [`bloc_signals_genui`](https://pub.dev/packages/bloc_signals_genui) and [`bloc_signals_genui_flutter`](https://pub.dev/packages/bloc_signals_genui_flutter), we have taken this concept to its logical architectural conclusion by pairing Google's official A2UI protocol with **synchronous reactive signals**.
 
@@ -42,11 +41,6 @@ flowchart TD
     User["User Drags Slider / Edits Field"] -->|"1. Updates Local DataModel (0ms)"| Data["DataModel Signal ('/recipe/servings')"]
     Data -->|"2. Synchronous Dependency Trigger"| Computed["computed(() => calculateCost(...))"]
     Computed -->|"3. Same-Frame Leaf Rebuild (120 FPS)"| Widget["Text Widget ('$14.50')"]
-    
-    style User fill:#2196F3,color:#fff
-    style Data fill:#4CAF50,color:#fff
-    style Computed fill:#FF9800,color:#fff
-    style Widget fill:#9C27B0,color:#fff
 ```
 
 When a user adjusts a quantity, the calculation runs in the exact same frame. There are zero network round-trips, zero microtask hops, and zero UI flickers.
@@ -227,4 +221,4 @@ By adopting Andrew Brogdon's client-side functions pattern and grounding it in a
 
 ---
 
-*Explore [`bloc_signals_genui`](https://pub.dev/packages/bloc_signals_genui) and [`bloc_signals_genui_flutter`](https://pub.dev/packages/bloc_signals_genui_flutter) on pub.dev, and check out the interactive samples at [blocsignal.dev](https://blocsignal.dev).*
+_Explore [`bloc_signals_genui`](https://pub.dev/packages/bloc_signals_genui) and [`bloc_signals_genui_flutter`](https://pub.dev/packages/bloc_signals_genui_flutter) on pub.dev, and check out the interactive samples at [blocsignal.dev](https://blocsignal.dev)._

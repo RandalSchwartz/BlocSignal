@@ -1,9 +1,11 @@
-# Generative UI & A2UI Protocol Integration (`bloc_signals_genui` & `bloc_signals_genui_flutter`)
+# Generative UI & A2UI Protocol Integration (`bloc_signals_genui`, `bloc_signals_genui_flutter` & `bloc_signals_genui_jaspr`)
 
 [![pub package](https://img.shields.io/pub/v/bloc_signals_genui.svg)](https://pub.dev/packages/bloc_signals_genui)
 [![pub points](https://img.shields.io/pub/points/bloc_signals_genui?color=2E8B57&label=pub%20points)](https://pub.dev/packages/bloc_signals_genui/score)
 [![pub package](https://img.shields.io/pub/v/bloc_signals_genui_flutter.svg)](https://pub.dev/packages/bloc_signals_genui_flutter)
 [![pub points](https://img.shields.io/pub/points/bloc_signals_genui_flutter?color=2E8B57&label=pub%20points)](https://pub.dev/packages/bloc_signals_genui_flutter/score)
+[![pub package](https://img.shields.io/pub/v/bloc_signals_genui_jaspr.svg)](https://pub.dev/packages/bloc_signals_genui_jaspr)
+[![pub points](https://img.shields.io/pub/points/bloc_signals_genui_jaspr?color=2E8B57&label=pub%20points)](https://pub.dev/packages/bloc_signals_genui_jaspr/score)
 
 This document defines the architectural patterns, streaming state machine lifecycles, Flutter surface rendering, and production integration guidelines for integrating `BlocSignal` with Google's **A2UI (Agent-to-User Interface)** protocol.
 

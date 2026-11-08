@@ -107,12 +107,21 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui_flutter',
-    version: '1.0.0',
+    version: '1.1.0',
     desc: 'Declarative Flutter surface containers and A2UI catalog widget adapters for generative user interfaces.',
     icon: '🎨',
     category: 'Generative UI',
     pubUrl: 'https://pub.dev/packages/bloc_signals_genui_flutter',
     installCmd: 'flutter pub add bloc_signals_genui_flutter',
+  ),
+  PackageItem(
+    name: 'bloc_signals_genui_jaspr',
+    version: '1.0.0',
+    desc: 'Declarative Jaspr web components and DOM catalog adapters for generative user interfaces.',
+    icon: '🌐',
+    category: 'Generative UI',
+    pubUrl: 'https://pub.dev/packages/bloc_signals_genui_jaspr',
+    installCmd: 'dart pub add bloc_signals_genui_jaspr',
   ),
   PackageItem(
     name: 'bloc_signals_test',

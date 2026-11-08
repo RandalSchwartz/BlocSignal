@@ -21,7 +21,7 @@
   <a href="https://github.com/RandalSchwartz/BlocSignal"><img src="https://img.shields.io/badge/coverage-100%25-brightgreen.svg" alt="100% Test Coverage" /></a>
 </p>
 
-The `BlocSignal` monorepo consists of 13 published packages on pub.dev:
+The `BlocSignal` monorepo consists of 14 published packages on pub.dev:
 
 ### 📦 Published Packages
 
@@ -40,6 +40,7 @@ The `BlocSignal` monorepo consists of 13 published packages on pub.dev:
 | **`bloc_signals_lint`**          | [![pub](https://img.shields.io/pub/v/bloc_signals_lint.svg)](https://pub.dev/packages/bloc_signals_lint)                       | [![pub points](https://img.shields.io/pub/points/bloc_signals_lint?color=2E8B57&label=pub%20points)](https://pub.dev/packages/bloc_signals_lint/score)       | Custom analyzer lint rules & automated IDE quick-fixes                   |
 | **`bloc_signals_genui`**         | [![pub](https://img.shields.io/pub/v/bloc_signals_genui.svg)](https://pub.dev/packages/bloc_signals_genui)                     | [![pub points](https://img.shields.io/pub/points/bloc_signals_genui?color=2E8B57&label=pub%20points)](https://pub.dev/packages/bloc_signals_genui/score)     | Pure-Dart A2UI streaming state machine & Generative UI runtime adapter   |
 | **`bloc_signals_genui_flutter`** | [![pub](https://img.shields.io/pub/v/bloc_signals_genui_flutter.svg)](https://pub.dev/packages/bloc_signals_genui_flutter)     | [![pub points](https://img.shields.io/pub/points/bloc_signals_genui_flutter?color=2E8B57&label=pub%20points)](https://pub.dev/packages/bloc_signals_genui_flutter/score) | Declarative Flutter surface containers & A2UI catalog widget adapters    |
+| **`bloc_signals_genui_jaspr`**   | [![pub](https://img.shields.io/pub/v/bloc_signals_genui_jaspr.svg)](https://pub.dev/packages/bloc_signals_genui_jaspr)         | [![pub points](https://img.shields.io/pub/points/bloc_signals_genui_jaspr?color=2E8B57&label=pub%20points)](https://pub.dev/packages/bloc_signals_genui_jaspr/score)     | Declarative Jaspr web components & DOM catalog adapters for A2UI         |
 
 ---
 

@@ -2,7 +2,7 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
-## Unreleased
+## 1.1.0
 
 - **Refactor (genui_flutter)**: Simplify platform resolution in isCupertinoPlatform to Theme.of (#396).
 - **Feat (genui_flutter)**: Dedicated Cupertino and Adaptive catalog presets for iOS/macOS generative UI surfaces (#260).

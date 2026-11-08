@@ -291,13 +291,30 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_genui_flutter')],
                   ),
                 ]),
-                td([Component.text('^1.0.0')]),
+                td([Component.text('^1.1.0')]),
                 td([
                   Component.text(
                     'Declarative Flutter surface views and Material 3 catalog widgets for A2UI.',
                   ),
                 ]),
                 td([Component.text('Flutter 3.22+ / UI')]),
+              ]),
+              tr([
+                td([
+                  a(
+                    href: 'https://pub.dev/packages/bloc_signals_genui_jaspr',
+                    target: Target.blank,
+                    classes: 'docs-table-link',
+                    [Component.text('bloc_signals_genui_jaspr')],
+                  ),
+                ]),
+                td([Component.text('^1.0.0')]),
+                td([
+                  Component.text(
+                    'Declarative Jaspr web components and HTML DOM catalog adapters for A2UI.',
+                  ),
+                ]),
+                td([Component.text('Jaspr Web / SSR')]),
               ]),
             ]),
           ]),

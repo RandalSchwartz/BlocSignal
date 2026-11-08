@@ -1,6 +1,6 @@
 # Monorepo Package Publishing & Pub Points Scoring Guide
 
-This document details the internal requirements, release checklists, and scoring standards needed to achieve maximum quality scores (160/160 pub points) across all 13 published packages in the `BlocSignal` monorepo.
+This document details the internal requirements, release checklists, and scoring standards needed to achieve maximum quality scores (160/160 pub points) across all 14 published packages in the `BlocSignal` monorepo.
 
 ---
 
@@ -39,7 +39,7 @@ When publishing packages to pub.dev:
 ## 📋 2. Monorepo Documentation Consistency
 
 ### Uniform Package Catalog Table
-Ensure all 13 published workspace package `README.md` files feature the exact same uniform 13-package ecosystem catalog table with pub version badges, pub points badges, and descriptions:
+Ensure all 14 published workspace package `README.md` files feature the exact same uniform 14-package ecosystem catalog table with pub version badges, pub points badges, and descriptions:
 1. `bloc_signals`
 2. `bloc_signals_flutter`
 3. `bloc_signals_bloc`
@@ -53,6 +53,7 @@ Ensure all 13 published workspace package `README.md` files feature the exact sa
 11. `bloc_signals_devtools`
 12. `bloc_signals_genui`
 13. `bloc_signals_genui_flutter`
+14. `bloc_signals_genui_jaspr`
 
 ### Mandatory Public API Docstrings
 - **Complete Docstring Coverage**: Always write clear, comprehensive Dart doc-comments (`///`) with descriptive summaries, parameter explanations, and runnable code examples.
@@ -70,7 +71,7 @@ Before running `flutter pub publish` on any member package:
 1. **Workspace Tests**: Run `dart run tool/run_workspace_tests.dart` (must pass 100%).
 2. **Coverage**: Ensure 100% line coverage across modified packages.
 3. **Format**: Run `dart format .`.
-4. **Dry Run**: Run `flutter pub publish --dry-run` in the package root to check for any scoring or packaging warnings across all 13 published packages.
+4. **Dry Run**: Run `flutter pub publish --dry-run` in the package root to check for any scoring or packaging warnings across all 14 published packages.
 
 ---
 
@@ -78,7 +79,7 @@ Before running `flutter pub publish` on any member package:
 
 When asked to perform a `pub.dev` synchronization publish sweep across the workspace:
 
-1. **Discover Candidates**: Scan all 13 published packages for `## Unreleased` sections in `CHANGELOG.md`.
+1. **Discover Candidates**: Scan all 14 published packages for `## Unreleased` sections in `CHANGELOG.md`.
 2. **Compute Next SemVer Version**: For each candidate package, inspect the categorized bullets under `## Unreleased`:
    - Any `- **BREAKING ...**:` bullet $\implies$ **Major** bump (or minor if `0.x`).
    - Any `- **Feat ...**:` bullet $\implies$ **Minor** bump.
@@ -96,5 +97,5 @@ When asked to perform a `pub.dev` synchronization publish sweep across the works
    - Always publish in topological dependency order so `pub.dev` resolves newly tightened upstream constraints:
      1. **Tier 0 (Core)**: `bloc_signals`
      2. **Tier 1 (Direct Core Dependents)**: `bloc_signals_flutter`, `bloc_signals_bloc`, `bloc_signals_riverpod`, `bloc_signals_test`, `bloc_signals_lint`, `bloc_signals_hydrate`, `bloc_signals_otel`, `bloc_signals_replay`, `bloc_signals_jaspr`, `bloc_signals_devtools`, `bloc_signals_genui`
-     3. **Tier 2 (Transitive Workspace Dependents)**: `bloc_signals_genui_flutter` (depends on `bloc_signals_flutter` and `bloc_signals_genui`)
+     3. **Tier 2 (Transitive Workspace Dependents)**: `bloc_signals_genui_flutter` (depends on `bloc_signals_flutter` and `bloc_signals_genui`), `bloc_signals_genui_jaspr` (depends on `bloc_signals_jaspr` and `bloc_signals_genui`)
    - Execute `flutter pub publish --force` (after human approval) in each bumped package directory.

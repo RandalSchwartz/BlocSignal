@@ -203,4 +203,125 @@ void main() {
       expect(scarsText, contains('## Unreleased'));
     });
   });
+
+  group('(Issue #206: Phase 6) bloc_signals_genui_jaspr 1.0.0 and 14-package '
+      'ecosystem catalog invariants', () {
+    test('#PubspecAndChangelogReady: validates bloc_signals_genui_jaspr '
+        '1.0.0 and bloc_signals_genui_flutter 1.1.0 metadata and example', () {
+      final jasprPubspec = File('bloc_signals_genui_jaspr/pubspec.yaml')
+          .readAsStringSync();
+      expect(jasprPubspec, contains('version: 1.0.0'));
+      expect(jasprPubspec, contains('sdk: ^3.5.0'));
+
+      final topicsMatch = RegExp(r'topics:\n((?:\s+-\s+\S+\n)+)')
+          .firstMatch(jasprPubspec);
+      expect(topicsMatch, isNotNull);
+      final topics = RegExp(r'-\s+(\S+)')
+          .allMatches(topicsMatch!.group(1)!)
+          .map((m) => m.group(1)!)
+          .toList();
+      expect(topics.length, lessThanOrEqualTo(5));
+      expect(topics, ['bloc', 'signals', 'genui', 'a2ui', 'jaspr']);
+
+      final jasprChangelog = File('bloc_signals_genui_jaspr/CHANGELOG.md')
+          .readAsStringSync();
+      final topJasprHeading = RegExp(
+        r'^##\s+(.+)$',
+        multiLine: true,
+      ).firstMatch(jasprChangelog)?.group(1)?.trim();
+      expect(topJasprHeading, '1.0.0');
+
+      final jasprExample = File(
+        'bloc_signals_genui_jaspr/example/example.dart',
+      );
+      expect(jasprExample.existsSync(), isTrue);
+      expect(jasprExample.readAsStringSync().trim(), isNotEmpty);
+
+      final flutterPubspec = File('bloc_signals_genui_flutter/pubspec.yaml')
+          .readAsStringSync();
+      expect(flutterPubspec, contains('version: 1.1.0'));
+
+      final flutterChangelog = File('bloc_signals_genui_flutter/CHANGELOG.md')
+          .readAsStringSync();
+      final topFlutterHeading = RegExp(
+        r'^##\s+(.+)$',
+        multiLine: true,
+      ).firstMatch(flutterChangelog)?.group(1)?.trim();
+      expect(topFlutterHeading, '1.1.0');
+    });
+
+    test('#EcosystemCatalogsSynchronized: verifies 14-package catalog '
+        'synchronization across READMEs, docs, website, and skills', () {
+      final rootReadme = File('README.md').readAsStringSync();
+      expect(rootReadme, contains('14 published packages'));
+      expect(rootReadme, contains('bloc_signals_genui_jaspr'));
+
+      const packageDirs = [
+        'bloc_signals',
+        'bloc_signals_flutter',
+        'bloc_signals_bloc',
+        'bloc_signals_riverpod',
+        'bloc_signals_jaspr',
+        'bloc_signals_hydrate',
+        'bloc_signals_replay',
+        'bloc_signals_otel',
+        'bloc_signals_devtools',
+        'bloc_signals_test',
+        'bloc_signals_lint',
+        'bloc_signals_genui',
+        'bloc_signals_genui_flutter',
+        'bloc_signals_genui_jaspr',
+      ];
+      for (final pkg in packageDirs) {
+        final readme = File('$pkg/README.md').readAsStringSync();
+        expect(
+          readme,
+          contains('14 modular packages'),
+          reason: '$pkg/README.md must mention 14 modular packages',
+        );
+        expect(
+          readme,
+          contains('bloc_signals_genui_jaspr'),
+          reason: '$pkg/README.md must list bloc_signals_genui_jaspr',
+        );
+      }
+
+      final publishingDoc = File('doc/internals/publishing_and_scoring.md')
+          .readAsStringSync();
+      expect(publishingDoc, contains('14 published packages'));
+      expect(publishingDoc, contains('14. `bloc_signals_genui_jaspr`'));
+
+      final catalogText = File(
+        'website/lib/src/components/package_catalog.dart',
+      ).readAsStringSync();
+      expect(catalogText, contains("name: 'bloc_signals_genui_jaspr'"));
+      expect(
+        catalogText,
+        contains("name: 'bloc_signals_genui_jaspr',\n    version: '1.0.0',"),
+      );
+      expect(
+        catalogText,
+        contains("name: 'bloc_signals_genui_flutter',\n    version: '1.1.0',"),
+      );
+
+      final installDoc = File(
+        'website/lib/src/components/docs/pages/docs_installation.dart',
+      ).readAsStringSync();
+      expect(installDoc, contains('bloc_signals_genui_jaspr'));
+
+      final genuiSkill = File(
+        'plugins/bloc-signals/skills/bloc-signals/genui.md',
+      ).readAsStringSync();
+      final h1Line = genuiSkill.split('\n').first;
+      expect(h1Line, contains('bloc_signals_genui_jaspr'));
+      expect(
+        genuiSkill,
+        contains('https://img.shields.io/pub/v/bloc_signals_genui_jaspr.svg'),
+      );
+      expect(
+        genuiSkill,
+        contains('https://img.shields.io/pub/points/bloc_signals_genui_jaspr'),
+      );
+    });
+  });
 }

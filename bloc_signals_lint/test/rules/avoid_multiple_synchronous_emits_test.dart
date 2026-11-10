@@ -789,4 +789,143 @@ class CounterCubit extends CubitSignal<int> {
       },
     );
   });
+
+  group('try/catch suspension boundary', () {
+    test('accepts the canonical async load pattern', () {
+      const goodCode = '''
+class WeatherCubit extends CubitSignal<int> {
+  WeatherCubit() : super(initialState: 0);
+
+  Future<void> load() async {
+    emit(1);
+    try {
+      final value = await fetch();
+      emit(value);
+    } on Exception {
+      emit(-1);
+    }
+  }
+}
+''';
+      final parseResult = parseString(content: goodCode);
+      final flagged = <AstNode>[];
+      for (final declaration
+          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+        flagged.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
+      }
+      expect(flagged, isEmpty);
+    });
+
+    test('still flags a synchronous catch without an await in the try', () {
+      const badCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void run() {
+    emit(1);
+    try {
+      mightThrow();
+    } catch (_) {
+      emit(2);
+    }
+  }
+}
+''';
+      final parseResult = parseString(content: badCode);
+      final flagged = <AstNode>[];
+      for (final declaration
+          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+        flagged.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
+      }
+      expect(flagged, hasLength(1));
+    });
+
+    test('does not treat an await in a nested closure as a suspension', () {
+      const badCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void run() {
+    emit(1);
+    try {
+      schedule(() async {
+        await delayed();
+      });
+    } catch (_) {
+      emit(2);
+    }
+  }
+}
+''';
+      final parseResult = parseString(content: badCode);
+      final flagged = <AstNode>[];
+      for (final declaration
+          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+        flagged.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
+      }
+      expect(flagged, hasLength(1));
+    });
+
+    test('treats an await-for loop in the try body as a suspension', () {
+      const goodCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  Future<void> consume(Stream<int> values) async {
+    emit(1);
+    try {
+      await for (final value in values) {
+        print(value);
+      }
+    } catch (_) {
+      emit(2);
+    }
+  }
+}
+''';
+      final parseResult = parseString(content: goodCode);
+      final flagged = <AstNode>[];
+      for (final declaration
+          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+        flagged.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
+      }
+      expect(flagged, isEmpty);
+    });
+
+    test('does not treat a plain for loop as a suspension', () {
+      const badCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+
+  void run(List<int> values) {
+    emit(1);
+    try {
+      for (final value in values) {
+        print(value);
+      }
+    } catch (_) {
+      emit(2);
+    }
+  }
+}
+''';
+      final parseResult = parseString(content: badCode);
+      final flagged = <AstNode>[];
+      for (final declaration
+          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+        flagged.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
+      }
+      expect(flagged, hasLength(1));
+    });
+  });
 }

@@ -1054,4 +1054,93 @@ mixin OnHydratedMixin on HydratedMixin<int> {}
       },
     );
   });
+
+  group('(Issue #407) AvoidDirectSignalMutationOutsideBloc MixinElement', () {
+    test(
+      '(Issue #407) accepts mixin on CubitSignal invoking .emit() with '
+      'populated declaredFragment',
+      () async {
+        const goodCode = '''
+mixin CartPricing on CubitSignal<int> {
+  void calculate() {
+    emit(42);
+    this.emit(43);
+  }
+}
+''';
+        final lints = await runLintRule(
+          const AvoidDirectSignalMutationOutsideBloc(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
+      },
+    );
+
+    test(
+      '(Issue #407) accepts mixin on BlocSignal invoking .emit() with '
+      'populated declaredFragment',
+      () async {
+        const goodCode = '''
+sealed class CounterEvent {}
+
+mixin CounterMixin on BlocSignal<CounterEvent, int> {
+  void forceSet(CubitSignal<int> other) {
+    emit(1);
+    other.emit(2);
+  }
+}
+''';
+        final lints = await runLintRule(
+          const AvoidDirectSignalMutationOutsideBloc(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
+      },
+    );
+
+    test(
+      '(Issue #407) flags mixin without container on constraint invoking '
+      '.emit() with populated declaredFragment',
+      () async {
+        const badCode = '''
+mixin UnconstrainedHelper {
+  void mutate(CubitSignal<int> cubit) {
+    cubit.emit(10);
+  }
+}
+
+mixin ObjectHelper on Object {
+  void mutateBloc(BlocSignal<Object, int> bloc) {
+    bloc.emit(20);
+  }
+}
+''';
+        final lints = await runLintRule(
+          const AvoidDirectSignalMutationOutsideBloc(),
+          badCode,
+        );
+        expect(lints, hasLength(2));
+        expect(lints.every((l) => l.lexeme == 'emit'), isTrue);
+      },
+    );
+
+    test(
+      '(Issue #407) still flags non-container class invoking .emit()',
+      () async {
+        const badCode = '''
+class ExternalService {
+  void mutate(CubitSignal<int> cubit) {
+    cubit.emit(99);
+  }
+}
+''';
+        final lints = await runLintRule(
+          const AvoidDirectSignalMutationOutsideBloc(),
+          badCode,
+        );
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('emit'));
+      },
+    );
+  });
 }

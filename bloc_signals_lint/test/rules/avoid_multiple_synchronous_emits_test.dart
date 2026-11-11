@@ -791,7 +791,7 @@ class CounterCubit extends CubitSignal<int> {
   });
 
   group('try/catch suspension boundary', () {
-    test('accepts the canonical async load pattern', () {
+    test('accepts the canonical async load pattern', () async {
       const goodCode = '''
 class WeatherCubit extends CubitSignal<int> {
   WeatherCubit() : super(initialState: 0);
@@ -816,6 +816,12 @@ class WeatherCubit extends CubitSignal<int> {
         );
       }
       expect(flagged, isEmpty);
+
+      final lints = await runLintRule(
+        const AvoidMultipleSynchronousEmits(),
+        goodCode,
+      );
+      expect(lints, isEmpty);
     });
 
     test('still flags a synchronous catch without an await in the try', () {

@@ -506,16 +506,6 @@ class _DispatchVisitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitMixinDeclaration(MixinDeclaration node) {
-    // Work around custom_lint_core 0.8.x bug where `TypeChecker.isSuperOf`
-    // unconditionally evaluates `element.supertype!` on `InterfaceElement`,
-    // which throws a null-check exception on `MixinElement` (since mixins use
-    // `superclassConstraints` and their `supertype` is always `null`).
-    // Clearing `declaredFragment` on the AST node allows rules inspecting
-    // mixins to safely evaluate resolved `onClause.superclassConstraints`.
-    try {
-      (node as dynamic).declaredFragment = null;
-    } on Object catch (_) {}
-
     for (final cb in List.of(registry.mixinDeclarations)) {
       cb(node);
     }

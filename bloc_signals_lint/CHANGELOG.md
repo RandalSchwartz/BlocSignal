@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (lint)**: Fix MixinElement NullCheckError in AvoidDirectSignalMutationOutsideBloc when mixins invoke .emit() and remove test AST workaround (#407)
+
 ## 1.3.3
 
 - **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).

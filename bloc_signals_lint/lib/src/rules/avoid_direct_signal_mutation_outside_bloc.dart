@@ -61,10 +61,6 @@ class AvoidDirectSignalMutationOutsideBloc extends DartLintRule {
     }
 
     if (enclosingMixin != null) {
-      final element = enclosingMixin.declaredFragment?.element;
-      if (element != null && _blocSignalBaseChecker.isSuperOf(element)) {
-        return true;
-      }
       final onClause = enclosingMixin.onClause;
       if (onClause != null) {
         for (final constraint in onClause.superclassConstraints) {

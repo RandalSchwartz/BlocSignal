@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
+## Unreleased
+
+- **Dependencies**: Bump `a2ui_core` dependency constraint to `^0.7.0` (#434).
+
 ## 1.1.0
 
 - **Refactor (genui_flutter)**: Simplify platform resolution in isCupertinoPlatform to Theme.of (#396).

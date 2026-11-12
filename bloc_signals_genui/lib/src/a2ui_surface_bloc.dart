@@ -38,6 +38,14 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// addition to broadcasting on [outboundMessages].
   /// [defaultRpcTimeout] (defaults to `const Duration(seconds: 30)`) sets the
   /// default timeout for outbound [callAgentFunction] requests.
+  /// [validationConfig] configures optional graph-level checks enforced by the
+  /// underlying [MessageProcessor].
+  /// When [reportErrorsOnly] is `true`, [MessageProcessor.processMessages] emits
+  /// mapped [ErrorMessage]s instead of throwing [A2uiError]s.
+  /// When [unifiedOutbound] is `true`, outbound actions are also forwarded to
+  /// [outboundMessages] as [ActionMessage] envelopes.
+  /// [maxAgentCallCacheEntries] (defaults to `256`) bounds settled agent
+  /// function call responses retained per surface.
   ///
   /// ```dart
   /// final bloc = A2uiSurfaceBloc(
@@ -51,6 +59,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     this.maxResponseHistory = 100,
     OutboundMessageListener? outboundListener,
     this.defaultRpcTimeout = const Duration(seconds: 30),
+    this.validationConfig,
+    this.reportErrorsOnly = false,
+    this.unifiedOutbound = false,
+    this.maxAgentCallCacheEntries = 256,
   })  : assert(
           maxSurfaces == null || maxSurfaces > 0,
           'maxSurfaces must be null or greater than 0.',
@@ -71,6 +83,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       catalogs: this.catalogs,
       outboundListener: _handleOutboundRpcMessage,
       defaultTimeout: defaultRpcTimeout,
+      validationConfig: validationConfig,
+      reportErrorsOnly: reportErrorsOnly,
+      unifiedOutbound: unifiedOutbound,
+      maxAgentCallCacheEntries: maxAgentCallCacheEntries,
     );
 
     on<IngestStream>(
@@ -123,6 +139,21 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// print(bloc.defaultRpcTimeout.inSeconds); // 15
   /// ```
   final Duration defaultRpcTimeout;
+
+  /// Optional graph-level validation rules applied by the underlying
+  /// [MessageProcessor].
+  final ValidationConfig? validationConfig;
+
+  /// Whether [MessageProcessor.processMessages] emits mapped [ErrorMessage]s
+  /// instead of rethrowing [A2uiError]s.
+  final bool reportErrorsOnly;
+
+  /// Whether surface actions are also forwarded to [outboundMessages] as
+  /// [ActionMessage] envelopes.
+  final bool unifiedOutbound;
+
+  /// Maximum number of settled agent function call responses cached per surface.
+  final int maxAgentCallCacheEntries;
 
   final OutboundMessageListener? _userOutboundListener;
 
@@ -646,7 +677,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     _emitSurfaceSnapshot(emit);
   }
 
-  void _onSubmitAction(
+  FutureOr<void> _onSubmitAction(
     SubmitAction event,
     void Function(A2uiSurfaceState) emit,
   ) {
@@ -657,7 +688,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           error: StateError('Cannot submit action: no surface is active.'),
         ),
       );
-      return;
+      return null;
     }
 
     final surface = _processor.model.getSurface(surfaceId);
@@ -670,12 +701,35 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           surfaceId: surfaceId,
         ),
       );
-      return;
+      return null;
     }
 
     _touchSurface(surfaceId);
 
-    // Capture form values and enforce validation contract
+    final sourceComponent =
+        surface.componentsModel.get(event.sourceComponentId);
+    final dataContext = ComponentContext(
+      surface,
+      sourceComponent ??
+          ComponentModel(event.sourceComponentId, 'Button', const {}),
+    ).dataContext;
+
+    if (sourceComponent != null) {
+      final rawAction = sourceComponent.properties['action'];
+      if (rawAction is Map) {
+        final Object? fc = rawAction['functionCall'] is Map
+            ? rawAction['functionCall']
+            : rawAction;
+        if (fc is Map && dataContext.isFunctionCall(fc)) {
+          return dataContext
+              .withUserActivation()
+              .evaluateFunctionCall(Map<String, dynamic>.from(fc))
+              .then((_) {});
+        }
+      }
+    }
+
+    // Capture form values and enforce validation contract synchronously.
     final formValues = _extractFormData(surface);
     final validationErrors = _validateForm(surface, formValues);
     if (validationErrors.isNotEmpty) {
@@ -691,35 +745,74 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           version: version,
         ),
       );
-      return;
+      return null;
     }
 
-    final response = A2uiActionResponse(
-      actionName: event.actionName,
-      surfaceId: surfaceId,
-      sourceComponentId: event.sourceComponentId,
-      timestamp: DateTime.now(),
-      formData: formValues,
-      context: event.context,
-    );
-
-    emit(
-      SurfaceSubmitting(
-        surfaceId: surfaceId,
+    void dispatchResolvedContext(Map<String, dynamic> resolvedContext) {
+      if (isClosed || _isClosing) return;
+      final response = A2uiActionResponse(
         actionName: event.actionName,
+        surfaceId: surfaceId,
         sourceComponentId: event.sourceComponentId,
-        payload: response.toToolResult(),
-      ),
-    );
-
-    _responseHistory.add(response);
-    if (_responseHistory.length > maxResponseHistory) {
-      _responseHistory.removeRange(
-        0,
-        _responseHistory.length - maxResponseHistory,
+        timestamp: DateTime.now(),
+        formData: formValues,
+        context: resolvedContext,
       );
+
+      emit(
+        SurfaceSubmitting(
+          surfaceId: surfaceId,
+          actionName: event.actionName,
+          sourceComponentId: event.sourceComponentId,
+          payload: response.toToolResult(),
+        ),
+      );
+
+      _responseHistory.add(response);
+      if (_responseHistory.length > maxResponseHistory) {
+        _responseHistory.removeRange(
+          0,
+          _responseHistory.length - maxResponseHistory,
+        );
+      }
+      _actionResponsesController.add(response);
     }
-    _actionResponsesController.add(response);
+
+    if (event.context.isEmpty) {
+      dispatchResolvedContext(event.context);
+      return null;
+    }
+
+    final resolvedOrFuture =
+        dataContext.withUserActivation().resolveActionAsync({
+      'event': {
+        'name': event.actionName,
+        'context': event.context,
+      },
+    });
+
+    if (resolvedOrFuture is Future<Map<String, dynamic>?>) {
+      return resolvedOrFuture.then((resolved) {
+        final ctx = _extractResolvedEventContext(resolved) ?? event.context;
+        dispatchResolvedContext(ctx);
+      });
+    }
+
+    final ctx = _extractResolvedEventContext(resolvedOrFuture) ?? event.context;
+    dispatchResolvedContext(ctx);
+    return null;
+  }
+
+  Map<String, dynamic>? _extractResolvedEventContext(
+    Map<String, dynamic>? resolved,
+  ) {
+    if (resolved == null) return null;
+    final eventMap = resolved['event'];
+    if (eventMap is Map) {
+      final ctx = eventMap['context'];
+      if (ctx is Map) return Map<String, dynamic>.from(ctx);
+    }
+    return null;
   }
 
   void _onCancelSubmission(
@@ -896,28 +989,65 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   }
 
   A2uiMessage _normalizeMessage(A2uiMessage msg) {
+    final version = msg.version == 'v1.0'
+        ? A2uiProtocolVersion.v1_0.jsonValue
+        : msg.version;
     if (msg is UpdateComponentsMessage) {
       final normalizedComps =
           msg.components.map(_normalizeComponentMap).toList();
       return UpdateComponentsMessage(
-        version: msg.version,
+        version: version,
         surfaceId: msg.surfaceId,
         components: normalizedComps,
       );
     }
-    if (msg is CreateSurfaceMessage && msg.components != null) {
-      final normalizedComps =
-          msg.components!.map(_normalizeComponentMap).toList();
-      return CreateSurfaceMessage(
-        version: msg.version,
-        surfaceId: msg.surfaceId,
-        catalogId: msg.catalogId,
-        theme: msg.theme,
-        sendDataModel: msg.sendDataModel,
-        components: normalizedComps,
-        dataModel: msg.dataModel,
-        metadata: msg.metadata,
-      );
+    if (msg is CreateSurfaceMessage) {
+      if (msg.components != null || version != msg.version) {
+        final normalizedComps =
+            msg.components?.map(_normalizeComponentMap).toList();
+        return CreateSurfaceMessage(
+          version: version,
+          surfaceId: msg.surfaceId,
+          catalogId: msg.catalogId,
+          theme: msg.theme,
+          sendDataModel: msg.sendDataModel,
+          components: normalizedComps,
+          dataModel: msg.dataModel,
+          metadata: msg.metadata,
+        );
+      }
+      return msg;
+    }
+    if (version != msg.version) {
+      if (msg is UpdateDataModelMessage) {
+        return UpdateDataModelMessage(
+          version: version,
+          surfaceId: msg.surfaceId,
+          path: msg.path,
+          value: msg.value,
+          hasValue: msg.hasValue,
+        );
+      }
+      if (msg is DeleteSurfaceMessage) {
+        return DeleteSurfaceMessage(
+          version: version,
+          surfaceId: msg.surfaceId,
+        );
+      }
+      if (msg is CallRendererFunctionMessage) {
+        return CallRendererFunctionMessage(
+          version: version,
+          surfaceId: msg.surfaceId,
+          functionCallId: msg.functionCallId,
+          callFunction: msg.callFunction,
+        );
+      }
+      if (msg is AgentFunctionResponseMessage) {
+        return AgentFunctionResponseMessage(
+          version: version,
+          response: msg.response,
+        );
+      }
     }
     return msg;
   }
@@ -934,13 +1064,20 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   }
 
   Map<String, dynamic> _normalizeJson(Map<String, dynamic> json) {
-    if (json.containsKey('updateComponents')) {
-      final update = json['updateComponents'];
+    var normalized = json;
+    if (normalized['version'] == 'v1.0') {
+      normalized = {
+        ...normalized,
+        'version': A2uiProtocolVersion.v1_0.jsonValue,
+      };
+    }
+    if (normalized.containsKey('updateComponents')) {
+      final update = normalized['updateComponents'];
       if (update is Map && update.containsKey('components')) {
         final comps = update['components'];
         if (comps is List) {
           return {
-            ...json,
+            ...normalized,
             'updateComponents': {
               ...update,
               'components': _normalizeComponentList(comps),
@@ -949,13 +1086,13 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         }
       }
     }
-    if (json.containsKey('createSurface')) {
-      final create = json['createSurface'];
+    if (normalized.containsKey('createSurface')) {
+      final create = normalized['createSurface'];
       if (create is Map && create.containsKey('components')) {
         final comps = create['components'];
         if (comps is List) {
           return {
-            ...json,
+            ...normalized,
             'createSurface': {
               ...create,
               'components': _normalizeComponentList(comps),
@@ -964,7 +1101,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         }
       }
     }
-    return json;
+    return normalized;
   }
 
   Map<String, dynamic> _normalizeComponentMap(Map<String, dynamic> comp) {

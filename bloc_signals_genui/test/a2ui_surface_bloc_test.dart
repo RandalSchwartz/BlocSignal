@@ -2423,6 +2423,376 @@ void main() {
         expect(bloc.isClosed, isTrue);
       });
     });
+
+    group('(Issue #434) a2ui_core 0.7.0 Upgrade & A2UI 1.0 Conformance', () {
+      test(
+          '(Issue #434) parses both strict 1.0 and legacy v1.0 createSurface '
+          'wire versions', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        expect(A2uiProtocolVersion.v1_0.jsonValue, equals('1.0'));
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': '1.0',
+            'createSurface': {
+              'surfaceId': 'surf_strict_1_0',
+              'catalogId':
+                  'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json',
+              'components': [
+                {
+                  'id': 'root',
+                  'component': 'Text',
+                  'text': 'Strict 1.0',
+                },
+              ],
+            },
+          }),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        expect(
+          bloc.processor.model.getSurface('surf_strict_1_0')!.protocolVersion,
+          equals('1.0'),
+        );
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v1.0',
+            'createSurface': {
+              'surfaceId': 'surf_legacy_v1_0',
+              'catalogId':
+                  'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json',
+              'components': [
+                {
+                  'id': 'root',
+                  'component': 'Text',
+                  'text': 'Legacy v1.0',
+                },
+              ],
+            },
+          }),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        expect(
+          bloc.processor.model.getSurface('surf_legacy_v1_0')!.protocolVersion,
+          equals('1.0'),
+        );
+
+        bloc.add(
+          ProcessMessage(
+            UpdateDataModelMessage(
+              version: 'v1.0',
+              surfaceId: 'surf_legacy_v1_0',
+              path: '/greeting',
+              value: 'updated',
+            ),
+          ),
+        );
+        expect(
+          (bloc.stateValue as SurfaceReady).formValues['greeting'],
+          equals('updated'),
+        );
+
+        bloc.add(
+          ProcessMessage(
+            DeleteSurfaceMessage(
+              version: 'v1.0',
+              surfaceId: 'surf_legacy_v1_0',
+            ),
+          ),
+        );
+        expect(
+          bloc.processor.model.getSurface('surf_legacy_v1_0'),
+          isNull,
+        );
+      });
+
+      test(
+          '(Issue #434) ComponentModel.metadata is populated on 1.0 surfaces '
+          'and null on v0.9 surfaces', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': '1.0',
+            'createSurface': {
+              'surfaceId': 'surf_meta_1_0',
+              'catalogId':
+                  'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json',
+              'components': [
+                {
+                  'id': 'root',
+                  'component': 'Text',
+                  'text': 'With Metadata',
+                  'metadata': {
+                    'extensions': {'customTag': 'alpha'},
+                  },
+                },
+              ],
+            },
+          }),
+        );
+
+        final compV10 = bloc.processor.model
+            .getSurface('surf_meta_1_0')!
+            .componentsModel
+            .get('root')!;
+        expect(
+          compV10.metadata,
+          equals({
+            'extensions': {'customTag': 'alpha'},
+          }),
+        );
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'surf_meta_0_9',
+              'catalogId': minimalCatalogId,
+            },
+          }),
+        );
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'updateComponents': {
+              'surfaceId': 'surf_meta_0_9',
+              'components': [
+                {
+                  'id': 'root',
+                  'component': 'Text',
+                  'text': 'No Envelope Metadata',
+                  'metadata': {'note': 'ordinary prop in v0.9'},
+                },
+              ],
+            },
+          }),
+        );
+
+        final compV09 = bloc.processor.model
+            .getSurface('surf_meta_0_9')!
+            .componentsModel
+            .get('root')!;
+        expect(compV09.metadata, isNull);
+      });
+
+      test(
+          '(Issue #434) SubmitAction resolves dynamic path/@path/@call '
+          'context, enforces sync frame-0 validation, and runs local '
+          'functionCall without SurfaceSubmitting', () async {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': '1.0',
+            'createSurface': {
+              'surfaceId': 'surf_action_1_0',
+              'catalogId':
+                  'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json',
+              'components': [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': ['tf_user', 'btn_submit', 'btn_fn'],
+                },
+                {
+                  'id': 'tf_user',
+                  'component': 'TextField',
+                  'label': 'User',
+                  'required': true,
+                  'value': {'@path': '/user'},
+                },
+                {
+                  'id': 'btn_submit',
+                  'component': 'Button',
+                  'child': 'txt_submit',
+                  'action': {
+                    'event': {'name': 'saveUser'},
+                  },
+                },
+                {
+                  'id': 'txt_submit',
+                  'component': 'Text',
+                  'text': 'Save',
+                },
+                {
+                  'id': 'btn_fn',
+                  'component': 'Button',
+                  'child': 'txt_fn',
+                  'action': {
+                    'functionCall': {
+                      '@call': 'formatString',
+                      'args': {'value': r'Hello ${/user}'},
+                    },
+                  },
+                },
+                {
+                  'id': 'txt_fn',
+                  'component': 'Text',
+                  'text': 'Run Fn',
+                },
+              ],
+            },
+          }),
+        );
+
+        // Synchronous frame-0 validation rejection when required field missing
+        bloc.add(
+          const SubmitAction(
+            actionName: 'saveUser',
+            sourceComponentId: 'btn_submit',
+            surfaceId: 'surf_action_1_0',
+            context: {
+              'user': {'@path': '/user'},
+            },
+          ),
+        );
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        expect((bloc.stateValue as SurfaceReady).isValid, isFalse);
+
+        // Populate required field
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_action_1_0',
+            path: '/user',
+            value: 'ada',
+          ),
+        );
+
+        // Local functionCall executes without transitioning to SurfaceSubmitting
+        bloc.add(
+          const SubmitAction(
+            actionName: 'runLocal',
+            sourceComponentId: 'btn_fn',
+            surfaceId: 'surf_action_1_0',
+          ),
+        );
+        expect(bloc.stateValue, isA<SurfaceReady>());
+
+        // Dynamic @path in SubmitAction.context resolves synchronously in frame 0
+        final responses = <A2uiActionResponse>[];
+        final sub = bloc.actionResponses.listen(responses.add);
+        addTearDown(sub.cancel);
+
+        bloc.add(
+          const SubmitAction(
+            actionName: 'saveUser',
+            sourceComponentId: 'btn_submit',
+            surfaceId: 'surf_action_1_0',
+            context: {
+              'user': {'@path': '/user'},
+            },
+          ),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceSubmitting>());
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        expect(responses, hasLength(1));
+        expect(responses.single.context['user'], equals('ada'));
+
+        // Dynamic @call in SubmitAction.context resolves asynchronously
+        bloc.add(
+          const CompleteAction(surfaceId: 'surf_action_1_0'),
+        );
+        bloc.add(
+          const SubmitAction(
+            actionName: 'saveUserWithCall',
+            sourceComponentId: 'btn_submit',
+            surfaceId: 'surf_action_1_0',
+            context: {
+              'user': {'@path': '/user'},
+              'greeting': {
+                '@call': 'formatString',
+                'args': {'value': r'Hi ${/user}'},
+              },
+            },
+          ),
+        );
+
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        expect(bloc.stateValue, isA<SurfaceSubmitting>());
+        expect(responses, hasLength(2));
+        expect(responses.last.context['user'], equals('ada'));
+        expect(responses.last.context['greeting'], equals('Hi ada'));
+      });
+
+      test(
+          '(Issue #434) forwards validationConfig, reportErrorsOnly, '
+          'unifiedOutbound, and maxAgentCallCacheEntries to MessageProcessor',
+          () async {
+        const config = ValidationConfig.relaxed;
+        final bloc = A2uiSurfaceBloc(
+          validationConfig: config,
+          reportErrorsOnly: true,
+          unifiedOutbound: true,
+          maxAgentCallCacheEntries: 64,
+        );
+        addTearDown(bloc.close);
+
+        expect(bloc.processor.validationConfig, same(config));
+        expect(bloc.processor.reportErrorsOnly, isTrue);
+        expect(bloc.processor.unifiedOutbound, isTrue);
+        expect(bloc.processor.maxAgentCallCacheEntries, equals(64));
+
+        // unifiedOutbound forwards surface model actions to outboundMessages
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': '1.0',
+            'createSurface': {
+              'surfaceId': 'surf_unified',
+              'catalogId':
+                  'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json',
+              'components': [
+                {
+                  'id': 'root',
+                  'component': 'Text',
+                  'text': 'Unified',
+                },
+              ],
+            },
+          }),
+        );
+        await bloc.processor.model.getSurface('surf_unified')!.dispatchAction(
+          const {
+            'event': {'name': 'ping'},
+          },
+          'root',
+        );
+        expect(
+          bloc.outboundMessageHistory.whereType<ActionMessage>(),
+          hasLength(1),
+        );
+      });
+
+      test('(Issue #434) re-exports a2ui_core 0.7.0 public symbols', () {
+        expect(coerceDynamicBoolean('true'), isTrue);
+        expect(coerceDynamicBoolean('false'), isFalse);
+        expect(coerceDynamicBoolean(1), isTrue);
+        expect(coerceDynamicBoolean(0), isFalse);
+
+        const options = ActionDispatchOptions();
+        expect(options.metadata, isNull);
+
+        const detail = A2uiErrorDetail(
+          path: '/test',
+          code: 'invalid',
+          message: 'bad',
+        );
+        expect(detail.code, equals('invalid'));
+
+        expect(ValidationConfig.strict.allowMissingRoot, isFalse);
+        expect(MessageErrorMapper.map, isNotNull);
+      });
+    });
   });
 }
 

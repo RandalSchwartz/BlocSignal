@@ -2,6 +2,11 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
+## Unreleased
+
+- **Feat (genui)**: Upgrade `a2ui_core` to `^0.7.0`, normalize legacy `'v1.0'` wire versions to `'1.0'`, resolve dynamic `@path`/`@call` expressions in `SubmitAction.context` and execute local `functionCall` actions without transitioning to `SurfaceSubmitting`, forward `validationConfig`, `reportErrorsOnly`, `unifiedOutbound`, and `maxAgentCallCacheEntries` to `MessageProcessor`, and re-export `a2ui_core` 0.7.0 symbols including `ValidationConfig`, `ActionDispatchOptions`, `ActionMessage`, `ErrorMessage`, `MessageErrorMapper`, `NodeAction`, `A2uiErrorDetail`, `A2uiMetadata`, `AgentFunction`, `AgentFunctionContext`, `AgentFunctionHandler`, and `coerceDynamicBoolean` (#434).
+- **Dependencies**: Bump `a2ui_core` dependency constraint to `^0.7.0` (#434).
+
 ## 1.0.0+1
 
 - **Docs (genui)**: Re-publish `1.0.0+1` to refresh pub.dev Pana package analysis after a transient `pub get` sandbox worker timeout on initial `1.0.0` upload.

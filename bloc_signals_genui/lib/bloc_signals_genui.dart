@@ -6,13 +6,20 @@ import 'package:a2ui_core/a2ui_core.dart';
 export 'package:a2ui_core/a2ui_core.dart'
     show
         A2uiError,
+        A2uiErrorDetail,
         A2uiFunctionResponse,
         A2uiFunctionResponseError,
+        A2uiMetadata,
         A2uiProtocolVersion,
         A2uiRendererAction,
         A2uiRendererError,
         A2uiReturnType,
         A2uiRpcError,
+        ActionDispatchOptions,
+        ActionMessage,
+        AgentFunction,
+        AgentFunctionContext,
+        AgentFunctionHandler,
         AgentFunctionResponseMessage,
         AgentToRendererMessage,
         AllowedCallers,
@@ -34,11 +41,14 @@ export 'package:a2ui_core/a2ui_core.dart'
         DataContext,
         DataModel,
         DeleteSurfaceMessage,
+        ErrorMessage,
         ExecutionContext,
         FunctionCall,
         FunctionImplementation,
         GenericBinder,
+        MessageErrorMapper,
         MessageProcessor,
+        NodeAction,
         NodeProps,
         NodeResolver,
         NodeState,
@@ -52,8 +62,10 @@ export 'package:a2ui_core/a2ui_core.dart'
         SurfaceModel,
         UpdateComponentsMessage,
         UpdateDataModelMessage,
+        ValidationConfig,
         ValidationResult,
-        WritableBinding;
+        WritableBinding,
+        coerceDynamicBoolean;
 
 export 'src/a2ui_action_response.dart';
 export 'src/a2ui_surface_bloc.dart';

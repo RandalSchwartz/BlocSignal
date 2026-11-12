@@ -13,10 +13,10 @@ packages:
     dependency: transitive
     description:
       name: a2ui_core
-      sha256: "001b3a850a77232c92d936349d9b07ed626cb274ab52f1ae3b8a8cfcf88a3000"
+      sha256: b55874f4e4eef078fb8548e7f271e21e72c6e8ee49a67a0816a6c150dd016b0c
       url: "https://pub.dev"
     source: hosted
-    version: "0.3.0"
+    version: "0.7.0"
   analyzer:
     dependency: transitive
     description:

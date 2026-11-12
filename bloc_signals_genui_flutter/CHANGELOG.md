@@ -4,6 +4,7 @@ All notable changes to `bloc_signals_genui_flutter` will be documented in this f
 
 ## Unreleased
 
+- **Feat (genui_flutter)**: Add A2UI 1.0 conformance across Material and Cupertino catalogs: `Button` `NodeAction` closure execution with `CheckRule` gating, `Row`/`Column` weighted `Flexible` children (`buildWeightedChildren`) and `stretch` alignment, `Slider.steps` (`divisions`), `ChoicePicker.filterable` search filtering, zero-dependency `SvgPathParser` (`{"svgPath": "..."}`) vector `Icon` rendering, `A2uiSurfaceView` universal `accessibility` (`hidden`, `label`, `description`) envelope, `A2uiComponentContext.metadata`, and `asBool` `coerceDynamicBoolean` parity (#435).
 - **Dependencies**: Bump `a2ui_core` dependency constraint to `^0.7.0` (#434).
 
 ## 1.1.0

@@ -1,5 +1,6 @@
 import 'package:bloc_signals_genui_flutter/src/a2ui_component_context.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/svg_path_parser.dart';
 import 'package:flutter/cupertino.dart';
 
 const Map<String, IconData> _a2uiCupertinoIconMap = <String, IconData>{
@@ -77,17 +78,40 @@ Widget buildCupertinoIcon(
 ) {
   final props = componentContext.props;
   final rawName = unwrapBinding(props['name'] ?? props['icon']);
+  final size = props['size'] != null ? asDouble(props['size'], 24) : 24.0;
+  final semanticLabel = unwrapBinding(props['description'])?.toString();
+
+  if (rawName is Map && rawName['svgPath'] != null) {
+    final parsedPath = SvgPathParser.parse(asString(rawName['svgPath']));
+    if (parsedPath != null) {
+      final color = IconTheme.of(context).color ??
+          CupertinoTheme.of(context).textTheme.textStyle.color ??
+          CupertinoColors.label;
+      final painted = CustomPaint(
+        size: Size.square(size),
+        painter: SvgPathPainter(path: parsedPath, color: color),
+      );
+      if (semanticLabel != null && semanticLabel.isNotEmpty) {
+        return Semantics(label: semanticLabel, child: painted);
+      }
+      return painted;
+    }
+    return Icon(
+      CupertinoIcons.question_circle,
+      size: size,
+      semanticLabel: semanticLabel,
+    );
+  }
+
   final String iconName;
   if (rawName is Map) {
-    iconName = asString(rawName['name'] ?? rawName['svgPath']);
+    iconName = asString(rawName['name']);
   } else {
     iconName = asString(rawName);
   }
 
   final iconData =
       _a2uiCupertinoIconMap[iconName] ?? CupertinoIcons.question_circle;
-  final size = props['size'] != null ? asDouble(props['size'], 24) : 24.0;
-  final semanticLabel = unwrapBinding(props['description'])?.toString();
 
   return Icon(
     iconData,

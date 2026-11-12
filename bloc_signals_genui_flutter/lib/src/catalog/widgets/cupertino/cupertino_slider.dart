@@ -23,6 +23,10 @@ Widget buildCupertinoSlider(
   final max = rawMax >= min ? (rawMax > min ? rawMax : min + 100.0) : 100.0;
   final currentValue = asDouble(props['value'], min).clamp(min, max);
 
+  final rawSteps = props['steps'] ?? props['divisions'];
+  final parsedSteps = rawSteps != null ? asInt(rawSteps) : 0;
+  final divisions = parsedSteps >= 1 ? parsedSteps : null;
+
   final checkErrors = componentContext.validationErrors;
   final errorText = !componentContext.isValid && checkErrors.isNotEmpty
       ? checkErrors.first
@@ -51,6 +55,7 @@ Widget buildCupertinoSlider(
           value: currentValue,
           min: min,
           max: max,
+          divisions: divisions,
           activeColor: activeColor,
           onChanged: (nextValue) {
             componentContext.updateBoundValue('value', nextValue);

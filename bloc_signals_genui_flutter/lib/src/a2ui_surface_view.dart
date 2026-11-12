@@ -865,7 +865,10 @@ class _ResolvedNodeWidgetState extends State<_ResolvedNodeWidget> {
     );
 
     try {
-      final childWidget = widget.catalog.build(context, componentCtx);
+      final childWidget = _applyAccessibilityEnvelope(
+        widget.catalog.build(context, componentCtx),
+        resolvedProps,
+      );
       return KeyedSubtree(
         key: ValueKey('a2ui_$instanceId'),
         child: childWidget,
@@ -1039,7 +1042,10 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
     );
 
     try {
-      final childWidget = widget.catalog.build(context, componentCtx);
+      final childWidget = _applyAccessibilityEnvelope(
+        widget.catalog.build(context, componentCtx),
+        resolvedProps,
+      );
       return KeyedSubtree(
         key: ValueKey('a2ui_$keySuffix'),
         child: childWidget,
@@ -1055,4 +1061,27 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
       );
     }
   }
+}
+
+Widget _applyAccessibilityEnvelope(
+  Widget child,
+  Map<String, dynamic> resolvedProps,
+) {
+  final rawA11y = unwrapBinding(resolvedProps['accessibility']);
+  if (rawA11y is! Map) return child;
+  if (asBool(rawA11y['hidden'])) {
+    return const SizedBox.shrink();
+  }
+  final rawLabel = unwrapBinding(rawA11y['label'])?.toString();
+  final rawDescription = unwrapBinding(rawA11y['description'])?.toString();
+  final label = rawLabel != null && rawLabel.isNotEmpty ? rawLabel : null;
+  final hint = rawDescription != null && rawDescription.isNotEmpty
+      ? rawDescription
+      : null;
+  if (label == null && hint == null) return child;
+  return Semantics(
+    label: label,
+    hint: hint,
+    child: child,
+  );
 }

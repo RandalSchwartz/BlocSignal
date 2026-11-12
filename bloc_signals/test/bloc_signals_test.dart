@@ -697,6 +697,173 @@ void main() {
         );
       },
     );
+
+    group(
+      '(Issue #410) createEffect post-close guard and manual disposal parity',
+      () {
+        test(
+          '(Issue #410) CubitSignal createEffect after close throws '
+          'AssertionError and does not subscribe to external signals',
+          () async {
+            final externalSignal = signal<int>(0);
+            var effectRuns = 0;
+
+            final cubit = _EffectCounterCubit();
+            await cubit.close();
+
+            expect(
+              () => cubit.registerEffect(() {
+                effectRuns++;
+                externalSignal.value;
+              }),
+              throwsA(isA<AssertionError>()),
+            );
+            expect(effectRuns, equals(0));
+
+            externalSignal.value = 1;
+            expect(effectRuns, equals(0));
+          },
+        );
+
+        test(
+          '(Issue #410) CubitSignal manual disposal is idempotent and '
+          'prevents duplicate onDispose on close',
+          () async {
+            final externalSignal = signal<int>(0);
+            var runs = 0;
+            var onDisposeCount = 0;
+
+            final cubit = _EffectCounterCubit();
+            final dispose = cubit.registerEffect(
+              () {
+                runs++;
+                externalSignal.value;
+              },
+              onDispose: () => onDisposeCount++,
+            );
+
+            expect(runs, equals(1));
+            dispose();
+            dispose();
+            expect(onDisposeCount, equals(1));
+
+            externalSignal.value = 1;
+            expect(runs, equals(1));
+
+            await cubit.close();
+            expect(onDisposeCount, equals(1));
+          },
+        );
+
+        test(
+          '(Issue #410) CubitSignal close drains remaining effects safely when '
+          'onDispose disposes a sibling effect',
+          () async {
+            final cubit = _EffectCounterCubit();
+            var onDisposeACount = 0;
+            var onDisposeBCount = 0;
+            late void Function() disposeB;
+
+            cubit.registerEffect(
+              () {},
+              onDispose: () {
+                onDisposeACount++;
+                disposeB();
+              },
+            );
+            disposeB = cubit.registerEffect(
+              () {},
+              onDispose: () => onDisposeBCount++,
+            );
+
+            await expectLater(cubit.close(), completes);
+            expect(onDisposeACount, equals(1));
+            expect(onDisposeBCount, equals(1));
+          },
+        );
+
+        test(
+          '(Issue #410) BlocSignal createEffect after close throws '
+          'AssertionError and does not subscribe to external signals',
+          () async {
+            final externalSignal = signal<int>(0);
+            var effectRuns = 0;
+
+            final bloc = _EffectCounterBloc();
+            await bloc.close();
+
+            expect(
+              () => bloc.registerEffect(() {
+                effectRuns++;
+                externalSignal.value;
+              }),
+              throwsA(isA<AssertionError>()),
+            );
+            expect(effectRuns, equals(0));
+
+            externalSignal.value = 1;
+            expect(effectRuns, equals(0));
+          },
+        );
+
+        test(
+          '(Issue #410) BlocSignal manual disposal is idempotent and '
+          'prevents duplicate onDispose on close',
+          () async {
+            final externalSignal = signal<int>(0);
+            var runs = 0;
+            var onDisposeCount = 0;
+
+            final bloc = _EffectCounterBloc();
+            final dispose = bloc.registerEffect(
+              () {
+                runs++;
+                externalSignal.value;
+              },
+              onDispose: () => onDisposeCount++,
+            );
+
+            expect(runs, equals(1));
+            dispose();
+            dispose();
+            expect(onDisposeCount, equals(1));
+
+            externalSignal.value = 1;
+            expect(runs, equals(1));
+
+            await bloc.close();
+            expect(onDisposeCount, equals(1));
+          },
+        );
+
+        test(
+          '(Issue #410) BlocSignal close drains remaining effects safely when '
+          'onDispose disposes a sibling effect',
+          () async {
+            final bloc = _EffectCounterBloc();
+            var onDisposeACount = 0;
+            var onDisposeBCount = 0;
+            late void Function() disposeB;
+
+            bloc.registerEffect(
+              () {},
+              onDispose: () {
+                onDisposeACount++;
+                disposeB();
+              },
+            );
+            disposeB = bloc.registerEffect(
+              () {},
+              onDispose: () => onDisposeBCount++,
+            );
+
+            await expectLater(bloc.close(), completes);
+            expect(onDisposeACount, equals(1));
+            expect(onDisposeBCount, equals(1));
+          },
+        );
+      },
+    );
   });
 }
 
@@ -763,4 +930,22 @@ class LocalOverrideBloc extends BlocSignal<CounterEvent, int> {
     super.onChange(change);
     onLocalChange(change);
   }
+}
+
+class _EffectCounterCubit extends CounterCubit {
+  void Function() registerEffect(
+    void Function() callback, {
+    EffectOptions? options,
+    void Function()? onDispose,
+  }) =>
+      createEffect(callback, options: options, onDispose: onDispose);
+}
+
+class _EffectCounterBloc extends CounterBloc {
+  void Function() registerEffect(
+    void Function() callback, {
+    EffectOptions? options,
+    void Function()? onDispose,
+  }) =>
+      createEffect(callback, options: options, onDispose: onDispose);
 }

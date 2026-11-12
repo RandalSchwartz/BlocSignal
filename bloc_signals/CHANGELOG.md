@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (core)**: Guard `CubitSignalMixin.createEffect` after `close()`, assert in debug mode (returning a no-op closure in release mode), and clean up manually disposed closures from internal effect tracking (#410).
+
 ## 1.7.0
 
 - **Fix (core)**: Narrow observer hook error isolation across `CubitSignalMixin`, `BlocSignalMixin`, and `CompositeBlocSignalObserver` from `on Object catch` to `on Exception catch` so programming defects (`Error` subtypes such as `AssertionError`, `TypeError`, and `StateError`) propagate instead of being swallowed, and upgrade bare `catch` blocks in event dispatch and concurrency transformers to explicit `on Object catch` (#340).

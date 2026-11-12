@@ -399,6 +399,13 @@ abstract class BlocSignalBase<StateType> {
   ///
   /// Optionally accepts an [options] configuration object to customize effect
   /// options such as debug name or disposal callback.
+  ///
+  /// Calling [createEffect] after [close] throws an [AssertionError] in debug
+  /// mode and returns a no-op cleanup closure in release mode without
+  /// registering any subscriptions. Invoking the returned cleanup closure
+  /// manually disposes the effect immediately, is idempotent on repeat calls,
+  /// and removes it from internal tracking so [close] does not retain or
+  /// re-dispose it.
   @protected
   void Function() createEffect(
     void Function() callback, {

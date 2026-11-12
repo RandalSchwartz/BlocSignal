@@ -1466,6 +1466,74 @@ void main() {
       expect(find.text('Fallback Raw Props'), findsOneComponent);
       await bloc.close();
     });
+
+    testComponents(
+        '(Issue #436) A2uiSurfaceView applies accessibility hidden, '
+        'aria-label, and aria-description', (tester) async {
+      final bloc = A2uiSurfaceBloc(catalogs: [MinimalCatalog()]);
+      addTearDown(bloc.close);
+
+      bloc
+        ..add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 's_a11y',
+              'catalogId': minimalCatalogId,
+            },
+          }),
+        )
+        ..add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'updateComponents': {
+              'surfaceId': 's_a11y',
+              'components': [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': ['visible_txt', 'hidden_txt'],
+                },
+                {
+                  'id': 'visible_txt',
+                  'component': 'Text',
+                  'text': 'Visible Text',
+                  'accessibility': {
+                    'label': 'Greeting Label',
+                    'description': 'Greeting Description',
+                  },
+                },
+                {
+                  'id': 'hidden_txt',
+                  'component': 'Text',
+                  'text': 'Secret Text',
+                  'accessibility': {
+                    'hidden': true,
+                  },
+                },
+              ],
+            },
+          }),
+        );
+
+      tester.pumpComponent(
+        A2uiSurfaceView(
+          bloc: bloc,
+          surfaceId: 's_a11y',
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('Visible Text'), findsOneComponent);
+      expect(find.text('Secret Text'), findsNothing);
+      final labelledDiv = find.byComponentPredicate(
+        (component) =>
+            component is div &&
+            component.attributes?['aria-label'] == 'Greeting Label' &&
+            component.attributes?['aria-description'] == 'Greeting Description',
+      );
+      expect(labelledDiv, findsOneComponent);
+    });
   });
 }
 

@@ -19,8 +19,6 @@ Component buildA2uiButton(
   final props = componentContext.props;
   final childId = extractChildId(props['child']);
   final variant = asString(props['variant'], 'primary');
-  final rawAction = props['action'];
-  final modelAction = componentContext.component.properties['action'];
 
   final isEnabled =
       componentContext.isValid && asBool(props['enabled'], defaultValue: true);
@@ -28,36 +26,6 @@ Component buildA2uiButton(
   final childComponent = childId != null
       ? componentContext.buildChild(childId)
       : const Component.text('Action');
-
-  void handlePressed() {
-    var actionName = 'submit';
-    var actionContext = const <String, dynamic>{};
-
-    final sourceAction =
-        rawAction is Map || rawAction is String ? rawAction : modelAction;
-
-    if (sourceAction is Map) {
-      final eventMap =
-          sourceAction['event'] is Map ? sourceAction['event'] as Map : null;
-      if (eventMap != null) {
-        actionName = eventMap['name']?.toString() ?? 'submit';
-        if (eventMap['context'] is Map) {
-          actionContext = Map<String, dynamic>.from(eventMap['context'] as Map);
-        }
-      } else if (sourceAction['name'] != null) {
-        actionName = sourceAction['name'].toString();
-      }
-
-      if (actionContext.isEmpty && sourceAction['context'] is Map) {
-        actionContext =
-            Map<String, dynamic>.from(sourceAction['context'] as Map);
-      }
-    } else if (sourceAction is String) {
-      actionName = sourceAction;
-    }
-
-    componentContext.dispatchAction(actionName, context: actionContext);
-  }
 
   final styles = variant == 'borderless'
       ? Styles(
@@ -87,7 +55,7 @@ Component buildA2uiButton(
   return button(
     classes: 'a2ui-button a2ui-button-$variant',
     disabled: !isEnabled,
-    onClick: isEnabled ? handlePressed : null,
+    onClick: isEnabled ? componentContext.triggerAction : null,
     styles: styles,
     [childComponent],
   );

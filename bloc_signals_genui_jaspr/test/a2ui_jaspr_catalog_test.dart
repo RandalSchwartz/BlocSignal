@@ -6,7 +6,7 @@ import 'package:jaspr_test/jaspr_test.dart';
 
 void main() {
   group('A2uiJasprCatalog registry tests', () {
-    test('standard catalog contains 7 core primitives', () {
+    test('standard catalog contains 16 core primitives', () {
       final catalog = A2uiJasprCatalog.standard();
       final types = catalog.registeredTypes.toSet();
 
@@ -20,8 +20,18 @@ void main() {
           'TextField',
           'Card',
           'Divider',
+          'List',
+          'Tabs',
+          'Modal',
+          'Icon',
+          'Image',
+          'CheckBox',
+          'ChoicePicker',
+          'Slider',
+          'DateTimeInput',
         ]),
       );
+      expect(types, hasLength(16));
       expect(catalog.hasBuilder('Text'), isTrue);
       expect(catalog.hasBuilder('NonExistent'), isFalse);
     });

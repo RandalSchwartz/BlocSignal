@@ -226,7 +226,7 @@ void main() {
       final jasprChangelog = File('bloc_signals_genui_jaspr/CHANGELOG.md')
           .readAsStringSync();
       final topJasprHeading = RegExp(
-        r'^##\s+(.+)$',
+        r'^##\s+(\d+\.\d+\.\d+)',
         multiLine: true,
       ).firstMatch(jasprChangelog)?.group(1)?.trim();
       expect(topJasprHeading, '1.0.0');
@@ -244,7 +244,7 @@ void main() {
       final flutterChangelog = File('bloc_signals_genui_flutter/CHANGELOG.md')
           .readAsStringSync();
       final topFlutterHeading = RegExp(
-        r'^##\s+(.+)$',
+        r'^##\s+(\d+\.\d+\.\d+)',
         multiLine: true,
       ).firstMatch(flutterChangelog)?.group(1)?.trim();
       expect(topFlutterHeading, '1.1.0');

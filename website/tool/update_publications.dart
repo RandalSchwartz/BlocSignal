@@ -149,8 +149,8 @@ Future<void> main() async {
   buffer.writeln('const List<PublicationItem> _publications = [');
 
   for (final article in articles) {
-    final title = escapeDartString(article['title'] as String);
-    final description = escapeDartString(article['description'] as String);
+    final rawTitle = article['title'] as String;
+    final description = article['description'] as String;
     final url = article['canonical_url'] ?? article['url'];
     final readTime = '${article['reading_time_minutes']} min read';
     String publishDate = article['readable_publish_date']?.toString() ?? '';
@@ -187,7 +187,7 @@ Future<void> main() async {
 
     // Categorization logic
     String category = 'Architecture';
-    final lowerTitle = title.toLowerCase();
+    final lowerTitle = rawTitle.toLowerCase();
     if (tagList.contains('jaspr') ||
         lowerTitle.contains('flutter') ||
         lowerTitle.contains('form')) {
@@ -203,18 +203,18 @@ Future<void> main() async {
       category = 'Interop & Telemetry';
     }
 
-    final tagsJson = jsonEncode(tagList);
-
-    buffer.writeln('  PublicationItem(');
-    buffer.writeln("    title: '$title',");
-    buffer.writeln("    description: '$description',");
-    buffer.writeln("    url: '$url',");
-    buffer.writeln("    date: '$publishDate',");
-    buffer.writeln("    readTime: '$readTime',");
-    buffer.writeln("    category: '$category',");
-    buffer.writeln("    type: 'Article',");
-    buffer.writeln('    tags: $tagsJson,');
-    buffer.writeln('  ),');
+    buffer.writeln(
+      generatePublicationItemCode(
+        title: rawTitle,
+        description: description,
+        url: url,
+        date: publishDate,
+        readTime: readTime,
+        category: category,
+        type: 'Article',
+        tags: tagList,
+      ),
+    );
   }
 
   buffer.writeln('];');
@@ -368,4 +368,84 @@ class _PublicationsPageState() extends State<PublicationsPage> {
   print(
     '🎉 Done! Run `dart compile js lib/main.dart -o build/www/main.dart.js` to build static site.',
   );
+}
+
+/// Validates that [rawUrl] is a non-empty String representing a valid HTTPS URL
+/// with a non-empty host.
+///
+/// Throws [FormatException] if [rawUrl] is null, not a String, empty,
+/// whitespace-only, malformed, or has a scheme other than 'https'.
+String validateHttpsUrl(dynamic rawUrl) {
+  if (rawUrl == null || rawUrl is! String) {
+    throw const FormatException('URL must be a non-null String.');
+  }
+  final trimmed = rawUrl.trim();
+  if (trimmed.isEmpty) {
+    throw const FormatException('URL cannot be empty.');
+  }
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null ||
+      !uri.hasScheme ||
+      uri.scheme.toLowerCase() != 'https' ||
+      uri.host.trim().isEmpty) {
+    throw FormatException('Invalid or non-HTTPS URL: $rawUrl');
+  }
+  return trimmed;
+}
+
+/// Formats a list of tags as a const Dart List code literal, escaping each tag.
+///
+/// Returns `'const []'` if [tags] is null or empty.
+/// Otherwise returns `'const [\'tag1\', \'tag2\']'`.
+String formatTagsCode(List<dynamic>? tags) {
+  if (tags == null || tags.isEmpty) {
+    return 'const []';
+  }
+  final formattedElements = tags
+      .map((t) {
+        final str = t?.toString() ?? '';
+        return "'${escapeDartString(str)}'";
+      })
+      .join(', ');
+  return 'const [$formattedElements]';
+}
+
+/// Generates the Dart source code representation of a `PublicationItem(...)`
+/// instance with all fields properly escaped against code injection and
+/// string interpolation.
+///
+/// Throws [FormatException] if [url] is not a valid HTTPS URL.
+String generatePublicationItemCode({
+  required String title,
+  required String description,
+  required dynamic url,
+  required String date,
+  required String readTime,
+  required String category,
+  String type = 'Article',
+  List<dynamic>? tags,
+  String indent = '  ',
+}) {
+  final validatedUrl = validateHttpsUrl(url);
+  final escapedTitle = escapeDartString(title);
+  final escapedDescription = escapeDartString(description);
+  final escapedUrl = escapeDartString(validatedUrl);
+  final escapedDate = escapeDartString(date);
+  final escapedReadTime = escapeDartString(readTime);
+  final escapedCategory = escapeDartString(category);
+  final escapedType = escapeDartString(type);
+  final formattedTags = formatTagsCode(tags);
+
+  final buffer = StringBuffer();
+  buffer.writeln('${indent}PublicationItem(');
+  buffer.writeln("$indent  title: '$escapedTitle',");
+  buffer.writeln("$indent  description: '$escapedDescription',");
+  buffer.writeln("$indent  url: '$escapedUrl',");
+  buffer.writeln("$indent  date: '$escapedDate',");
+  buffer.writeln("$indent  readTime: '$escapedReadTime',");
+  buffer.writeln("$indent  category: '$escapedCategory',");
+  buffer.writeln("$indent  type: '$escapedType',");
+  buffer.writeln('$indent  tags: $formattedTags,');
+  buffer.write('$indent),');
+  return buffer.toString();
 }

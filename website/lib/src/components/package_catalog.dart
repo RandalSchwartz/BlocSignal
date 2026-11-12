@@ -324,6 +324,7 @@ class _PackageCatalogState() extends State<PackageCatalog> {
                   a(
                     href: pkg.pubUrl,
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'package-link',
                     [
                       Component.text(

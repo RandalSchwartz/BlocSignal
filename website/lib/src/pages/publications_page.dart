@@ -14,7 +14,9 @@ class const PublicationItem({
   required final String category,
   required final String type,
   required final List<String> tags,
-});
+}) {
+  bool get isHttps => url.startsWith('https://');
+}
 
 const List<PublicationItem> _publications = [
   PublicationItem(
@@ -522,6 +524,8 @@ const List<PublicationItem> _publications = [
 ];
 
 class const PublicationsPage({super.key}) extends StatefulComponent {
+  static const allPublications = _publications;
+
   @override
   State<PublicationsPage> createState() => _PublicationsPageState();
 }
@@ -540,6 +544,10 @@ class _PublicationsPageState() extends State<PublicationsPage> {
                     pub.type == _activeCategory,
               )
               .toList();
+
+    final validPublications = filteredPublications
+        .where((pub) => pub.isHttps)
+        .toList();
 
     return div(classes: 'app-root', [
       const Navbar(currentRoute: AppRoute.publications),
@@ -591,6 +599,7 @@ class _PublicationsPageState() extends State<PublicationsPage> {
               a(
                 href: 'https://www.youtube.com/watch?v=fwmlVOjsdgQ',
                 target: Target.blank,
+                attributes: const {'rel': 'noopener noreferrer'},
                 classes: 'btn-primary btn-watch-video',
                 [Component.text('Watch on YouTube ↗')],
               ),
@@ -626,24 +635,38 @@ class _PublicationsPageState() extends State<PublicationsPage> {
         // Article Cards Grid
         div(classes: 'container pub-grid-section', [
           div(classes: 'pub-grid', [
-            for (final pub in filteredPublications)
-              a(href: pub.url, target: Target.blank, classes: 'pub-card', [
-                div(classes: 'pub-card-top', [
-                  span(classes: 'pub-category', [Component.text(pub.category)]),
-                  span(classes: 'pub-readtime', [Component.text(pub.readTime)]),
-                ]),
-                h3(classes: 'pub-card-title', [Component.text(pub.title)]),
-                p(classes: 'pub-card-desc', [Component.text(pub.description)]),
-                div(classes: 'pub-card-footer', [
-                  div(classes: 'pub-tags-list', [
-                    for (final tag in pub.tags)
-                      span(classes: 'pub-tag-pill', [Component.text('#$tag')]),
+            for (final pub in validPublications)
+              a(
+                href: pub.url,
+                target: Target.blank,
+                attributes: const {'rel': 'noopener noreferrer'},
+                classes: 'pub-card',
+                [
+                  div(classes: 'pub-card-top', [
+                    span(classes: 'pub-category', [
+                      Component.text(pub.category),
+                    ]),
+                    span(classes: 'pub-readtime', [
+                      Component.text(pub.readTime),
+                    ]),
                   ]),
-                  span(classes: 'pub-link-btn', [
-                    Component.text('Read on DEV.to ↗'),
+                  h3(classes: 'pub-card-title', [Component.text(pub.title)]),
+                  p(classes: 'pub-card-desc', [
+                    Component.text(pub.description),
                   ]),
-                ]),
-              ]),
+                  div(classes: 'pub-card-footer', [
+                    div(classes: 'pub-tags-list', [
+                      for (final tag in pub.tags)
+                        span(classes: 'pub-tag-pill', [
+                          Component.text('#$tag'),
+                        ]),
+                    ]),
+                    span(classes: 'pub-link-btn', [
+                      Component.text('Read on DEV.to ↗'),
+                    ]),
+                  ]),
+                ],
+              ),
           ]),
         ]),
       ]),

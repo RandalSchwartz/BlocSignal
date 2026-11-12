@@ -109,6 +109,7 @@ class _HeroBannerContentState() extends State<_HeroBannerContent> {
               a(
                 href: 'https://pub.dev/packages/bloc_signals',
                 target: Target.blank,
+                attributes: const {'rel': 'noopener noreferrer'},
                 classes: 'btn-secondary',
                 [Component.text('View on pub.dev ↗')],
               ),

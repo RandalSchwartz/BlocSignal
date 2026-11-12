@@ -96,11 +96,13 @@ class _NavbarState() extends State<Navbar> {
           a(
             href: 'https://pub.dev/packages/bloc_signals',
             target: Target.blank,
+            attributes: const {'rel': 'noopener noreferrer'},
             [Component.text('pub.dev')],
           ),
           a(
             href: 'https://github.com/RandalSchwartz/BlocSignal',
             target: Target.blank,
+            attributes: const {'rel': 'noopener noreferrer'},
             classes: 'btn-github',
             [Component.text('GitHub ⭐️')],
           ),
@@ -239,12 +241,14 @@ class _NavbarState() extends State<Navbar> {
               a(
                 href: 'https://pub.dev/packages/bloc_signals',
                 target: Target.blank,
+                attributes: const {'rel': 'noopener noreferrer'},
                 classes: 'drawer-btn drawer-btn-pub',
                 [Component.text('View on pub.dev ↗')],
               ),
               a(
                 href: 'https://github.com/RandalSchwartz/BlocSignal',
                 target: Target.blank,
+                attributes: const {'rel': 'noopener noreferrer'},
                 classes: 'drawer-btn drawer-btn-github',
                 [Component.text('GitHub Star ⭐️')],
               ),

@@ -144,7 +144,9 @@ Future<void> main() async {
   buffer.writeln('  required final String category,');
   buffer.writeln('  required final String type,');
   buffer.writeln('  required final List<String> tags,');
-  buffer.writeln('});');
+  buffer.writeln('}) {');
+  buffer.writeln("  bool get isHttps => url.startsWith('https://');");
+  buffer.writeln('}');
   buffer.writeln();
   buffer.writeln('const List<PublicationItem> _publications = [');
 
@@ -221,6 +223,8 @@ Future<void> main() async {
   buffer.writeln();
   buffer.writeln(
     '''class const PublicationsPage({super.key}) extends StatefulComponent {
+  static const allPublications = _publications;
+
   @override
   State<PublicationsPage> createState() => _PublicationsPageState();
 }
@@ -235,6 +239,9 @@ class _PublicationsPageState() extends State<PublicationsPage> {
         : _publications
             .where((pub) => pub.category == _activeCategory || pub.type == _activeCategory)
             .toList();
+
+    final validPublications =
+        filteredPublications.where((pub) => pub.isHttps).toList();
 
     return div(classes: 'app-root', [
       const Navbar(currentRoute: AppRoute.publications),
@@ -283,6 +290,7 @@ class _PublicationsPageState() extends State<PublicationsPage> {
               a(
                 href: 'https://www.youtube.com/watch?v=fwmlVOjsdgQ',
                 target: Target.blank,
+                attributes: const {'rel': 'noopener noreferrer'},
                 classes: 'btn-primary btn-watch-video',
                 [Component.text('Watch on YouTube ↗')],
               ),
@@ -318,10 +326,11 @@ class _PublicationsPageState() extends State<PublicationsPage> {
         // Article Cards Grid
         div(classes: 'container pub-grid-section', [
           div(classes: 'pub-grid', [
-            for (final pub in filteredPublications)
+            for (final pub in validPublications)
               a(
                 href: pub.url,
                 target: Target.blank,
+                attributes: const {'rel': 'noopener noreferrer'},
                 classes: 'pub-card',
                 [
                   div(classes: 'pub-card-top', [

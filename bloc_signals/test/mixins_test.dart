@@ -182,6 +182,27 @@ class _TestObserver extends BlocSignalObserver {
   }
 }
 
+class _RecordingSignalsObserver extends SignalsObserver {
+  final List<String?> createdEffectNames = [];
+
+  @override
+  void onComputedCreated<T>(Computed<T> instance) {}
+
+  @override
+  void onComputedUpdated<T>(Computed<T> instance, T value) {}
+
+  @override
+  void onSignalCreated<T>(Signal<T> instance, T value) {}
+
+  @override
+  void onSignalUpdated<T>(Signal<T> instance, T value) {}
+
+  @override
+  void onEffectCreated(Effect instance) {
+    createdEffectNames.add(instance.name);
+  }
+}
+
 void main() {
   late _TestObserver observer;
 
@@ -288,6 +309,152 @@ void main() {
       externalSignal.value = 30;
       expect(effectRuns, 2);
       expect(controller.stateValue, 20);
+    });
+
+    group('(Issue #410) CubitSignalMixin createEffect lifecycle', () {
+      test(
+        '(Issue #410) createEffect after close throws AssertionError in debug '
+        'mode and does not invoke callback or subscribe to external signals',
+        () async {
+          final externalSignal = signal<int>(0);
+          var effectRuns = 0;
+
+          final controller = CounterServiceController();
+          await controller.close();
+
+          expect(
+            () => controller.createEffect(() {
+              effectRuns++;
+              externalSignal.value;
+            }),
+            throwsA(isA<AssertionError>()),
+          );
+          expect(effectRuns, 0);
+
+          externalSignal.value = 1;
+          expect(effectRuns, 0);
+        },
+      );
+
+      test(
+        '(Issue #410) manual disposal stops future runs, invokes onDispose '
+        'once, is idempotent, and is not re-disposed on close',
+        () async {
+          final externalSignal = signal<int>(0);
+          var runs1 = 0;
+          var runs2 = 0;
+          var onDispose1Count = 0;
+          var onDispose2Count = 0;
+
+          final controller = CounterServiceController();
+          final dispose1 = controller.createEffect(
+            () {
+              runs1++;
+              externalSignal.value;
+            },
+            onDispose: () => onDispose1Count++,
+          );
+          final dispose2 = controller.createEffect(
+            () {
+              runs2++;
+              externalSignal.value;
+            },
+            options: EffectOptions(
+              onDispose: () => onDispose2Count++,
+            ),
+          );
+
+          expect(runs1, 1);
+          expect(runs2, 1);
+          expect(onDispose1Count, 0);
+          expect(onDispose2Count, 0);
+
+          dispose1();
+          expect(onDispose1Count, 1);
+
+          // Second manual disposal is an idempotent no-op.
+          dispose1();
+          expect(onDispose1Count, 1);
+
+          externalSignal.value = 1;
+          expect(runs1, 1);
+          expect(runs2, 2);
+
+          await controller.close();
+          expect(onDispose1Count, 1);
+          expect(onDispose2Count, 1);
+
+          // Manual disposal after close() is also an idempotent no-op.
+          dispose2();
+          expect(onDispose2Count, 1);
+
+          externalSignal.value = 2;
+          expect(runs1, 1);
+          expect(runs2, 2);
+        },
+      );
+
+      test(
+        '(Issue #410) creating and manually disposing effects assigns '
+        'distinct monotonic debug names',
+        () async {
+          final previousObserver = SignalsObserver.instance;
+          final signalsObserver = _RecordingSignalsObserver();
+          SignalsObserver.instance = signalsObserver;
+          addTearDown(() => SignalsObserver.instance = previousObserver);
+
+          final controller = CounterServiceController();
+          addTearDown(controller.close);
+
+          final dispose1 = controller.createEffect(() {});
+          dispose1();
+          final dispose2 = controller.createEffect(() {});
+          dispose2();
+          controller.createEffect(() {});
+
+          expect(
+            signalsObserver.createdEffectNames,
+            equals([
+              'CounterServiceController.effect#1',
+              'CounterServiceController.effect#2',
+              'CounterServiceController.effect#3',
+            ]),
+          );
+        },
+      );
+
+      test(
+        '(Issue #410) close safely drains remaining effects when an '
+        'onDispose callback disposes a sibling effect',
+        () async {
+          final controller = CounterServiceController();
+          var onDisposeACount = 0;
+          var onDisposeBCount = 0;
+          var onDisposeCCount = 0;
+          late void Function() disposeB;
+
+          controller.createEffect(
+            () {},
+            onDispose: () {
+              onDisposeACount++;
+              disposeB();
+            },
+          );
+          disposeB = controller.createEffect(
+            () {},
+            onDispose: () => onDisposeBCount++,
+          );
+          controller.createEffect(
+            () {},
+            onDispose: () => onDisposeCCount++,
+          );
+
+          await expectLater(controller.close(), completes);
+          expect(onDisposeACount, 1);
+          expect(onDisposeBCount, 1);
+          expect(onDisposeCCount, 1);
+        },
+      );
     });
 
     test('prevents multiple initCubitSignal calls', () async {

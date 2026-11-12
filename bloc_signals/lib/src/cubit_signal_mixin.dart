@@ -37,7 +37,8 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   bool get isClosed => _isClosed;
 
   late final Signal<StateType> _state;
-  final List<void Function()> _effectsToDispose = [];
+  final Set<void Function()> _effectsToDispose = <void Function()>{};
+  int _effectCounter = 0;
 
   bool Function(StateType previous, StateType current)? _customEquals;
   SignalEquality<StateType>? _optionsEquality;
@@ -265,6 +266,15 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
     }
   }
 
+  /// Creates a reactive [effect] tracked by this container and automatically
+  /// cleaned up when [close] is called.
+  ///
+  /// Throws an [AssertionError] in debug mode if called after [close], and
+  /// returns a no-op cleanup closure in release mode without invoking
+  /// [callback] or subscribing to any signals. Invoking the returned cleanup
+  /// closure manually disposes the effect immediately, is idempotent on repeat
+  /// calls, and removes it from internal tracking so [close] does not retain
+  /// or re-dispose it.
   @override
   @protected
   void Function() createEffect(
@@ -272,8 +282,13 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
     EffectOptions? options,
     void Function()? onDispose,
   }) {
+    assert(
+      !_isClosed,
+      'Cannot create effects after calling close() on $runtimeType.',
+    );
+    if (_isClosed) return () {};
     final debugName =
-        options?.name ?? '$runtimeType.effect#${_effectsToDispose.length + 1}';
+        options?.name ?? '$runtimeType.effect#${++_effectCounter}';
     final dispose = effect(
       callback,
       options: EffectOptions(
@@ -281,8 +296,16 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
         onDispose: onDispose ?? options?.onDispose,
       ),
     );
-    _effectsToDispose.add(dispose);
-    return dispose;
+    var isDisposed = false;
+    late final void Function() wrappedDispose;
+    wrappedDispose = () {
+      if (isDisposed) return;
+      isDisposed = true;
+      _effectsToDispose.remove(wrappedDispose);
+      dispose();
+    };
+    _effectsToDispose.add(wrappedDispose);
+    return wrappedDispose;
   }
 
   @override
@@ -290,10 +313,11 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   Future<void> close() async {
     if (_isClosed) return;
     _isClosed = true;
-    for (final dispose in _effectsToDispose) {
+    final effects = _effectsToDispose.toList();
+    _effectsToDispose.clear();
+    for (final dispose in effects) {
       dispose();
     }
-    _effectsToDispose.clear();
     try {
       BlocSignalObserver.observer?.onClose(this);
     } on Exception catch (e, stackTrace) {

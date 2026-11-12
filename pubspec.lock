@@ -745,7 +745,7 @@ packages:
     source: hosted
     version: "1.5.3"
   preact_signals:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
       name: preact_signals
       sha256: "18f45e7f91a4dfad8bd0138efa6b85770bb25e13278b863fdaafd28a56579b16"

@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.3.4
 
-- **Fix (lint)**: Fix MixinElement NullCheckError in AvoidDirectSignalMutationOutsideBloc when mixins invoke .emit() and remove test AST workaround (#407)
+- **Fix (lint)**: Fix MixinElement NullCheckError in AvoidDirectSignalMutationOutsideBloc when mixins invoke .emit() and remove test AST workaround (#407).
 
 ## 1.3.3
 

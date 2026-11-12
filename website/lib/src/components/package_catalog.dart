@@ -17,7 +17,7 @@ class const PackageItem({
 const List<PackageItem> _allPackages = [
   PackageItem(
     name: 'bloc_signals',
-    version: '1.7.0',
+    version: '1.7.1',
     desc: 'Core pure Dart reactive state container bridging BLoC semantics with Preact Signals v7 primitives.',
     icon: '⚡',
     category: 'Core & UI',
@@ -98,7 +98,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui',
-    version: '1.0.0',
+    version: '2.0.0',
     desc: 'Pure-Dart A2UI streaming state machine and Generative UI adapter for the BlocSignal ecosystem.',
     icon: '🤖',
     category: 'Generative UI',
@@ -107,7 +107,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui_flutter',
-    version: '1.1.0',
+    version: '2.0.0',
     desc: 'Declarative Flutter surface containers and A2UI catalog widget adapters for generative user interfaces.',
     icon: '🎨',
     category: 'Generative UI',
@@ -116,7 +116,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui_jaspr',
-    version: '1.0.0',
+    version: '2.0.0',
     desc: 'Declarative Jaspr web components and DOM catalog adapters for generative user interfaces.',
     icon: '🌐',
     category: 'Generative UI',
@@ -134,7 +134,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_lint',
-    version: '1.3.3',
+    version: '1.3.4',
     desc: 'Analyzer plugin with 20 static analysis lint rules and 8 automated IDE quick-fixes.',
     icon: '🛡️',
     category: 'DevTools & Tooling',

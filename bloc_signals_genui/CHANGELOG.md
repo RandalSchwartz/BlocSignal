@@ -2,9 +2,10 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
-## Unreleased
+## 2.0.0
 
-- **Feat (genui)**: Upgrade `a2ui_core` to `^0.7.0`, normalize legacy `'v1.0'` wire versions to `'1.0'`, resolve dynamic `@path`/`@call` expressions in `SubmitAction.context` and execute local `functionCall` actions without transitioning to `SurfaceSubmitting`, forward `validationConfig`, `reportErrorsOnly`, `unifiedOutbound`, and `maxAgentCallCacheEntries` to `MessageProcessor`, and re-export `a2ui_core` 0.7.0 symbols including `ValidationConfig`, `ActionDispatchOptions`, `ActionMessage`, `ErrorMessage`, `MessageErrorMapper`, `NodeAction`, `A2uiErrorDetail`, `A2uiMetadata`, `AgentFunction`, `AgentFunctionContext`, `AgentFunctionHandler`, and `coerceDynamicBoolean` (#434).
+- **BREAKING (genui)**: Upgrade publicly re-exported `a2ui_core` from `^0.3.0` to `^0.7.0` (including upstream removal of `Catalog.withPeerCatalogs` and `Catalog.peerCatalogs` in favor of `Catalog.derive`, unmodifiable `MessageProcessor.catalogs`, `A2uiProtocolVersion.v1_0.jsonValue` unified on `'1.0'`, required `value` binding on `BasicCatalog.v1_0` `TextField`, and local evaluation of `functionCall` actions on `SubmitAction` without transitioning to `SurfaceSubmitting`) (#434).
+- **Feat (genui)**: Normalize legacy `'v1.0'` wire versions to `'1.0'`, resolve dynamic `@path`/`@call` expressions in `SubmitAction.context`, forward `validationConfig`, `reportErrorsOnly`, `unifiedOutbound`, and `maxAgentCallCacheEntries` to `MessageProcessor`, and re-export `a2ui_core` 0.7.0 symbols including `ValidationConfig`, `ActionDispatchOptions`, `ActionMessage`, `ErrorMessage`, `MessageErrorMapper`, `NodeAction`, `A2uiErrorDetail`, `A2uiMetadata`, `AgentFunction`, `AgentFunctionContext`, `AgentFunctionHandler`, and `coerceDynamicBoolean` (#434).
 - **Dependencies**: Bump `a2ui_core` dependency constraint to `^0.7.0` (#434).
 
 ## 1.0.0+1

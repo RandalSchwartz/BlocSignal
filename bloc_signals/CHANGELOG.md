@@ -1,4 +1,4 @@
-## Unreleased
+## 1.7.1
 
 - **Fix (core)**: Guard `CubitSignalMixin.createEffect` after `close()`, assert in debug mode (returning a no-op closure in release mode), and clean up manually disposed closures from internal effect tracking (#410).
 

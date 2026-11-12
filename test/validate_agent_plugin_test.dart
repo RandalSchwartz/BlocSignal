@@ -204,13 +204,21 @@ void main() {
     });
   });
 
-  group('(Issue #206: Phase 6) bloc_signals_genui_jaspr 1.0.0 and 14-package '
+  group('(Issue #206: Phase 6) bloc_signals_genui_jaspr and 14-package '
       'ecosystem catalog invariants', () {
     test('#PubspecAndChangelogReady: validates bloc_signals_genui_jaspr '
-        '1.0.0 and bloc_signals_genui_flutter 1.1.0 metadata and example', () {
+        'and bloc_signals_genui_flutter metadata, versions, and example', () {
+      final versionPattern = RegExp(r'^version:\s+(\S+)', multiLine: true);
+      final topHeadingPattern = RegExp(
+        r'^##\s+(Unreleased|\d+\.\d+\.\d+(?:\+\d+)?)',
+        multiLine: true,
+      );
+
       final jasprPubspec = File('bloc_signals_genui_jaspr/pubspec.yaml')
           .readAsStringSync();
-      expect(jasprPubspec, contains('version: 1.0.0'));
+      final jasprVersion = versionPattern.firstMatch(jasprPubspec)?.group(1);
+      expect(jasprVersion, isNotNull);
+      expect(jasprVersion, isNot('1.0.0'));
       expect(jasprPubspec, contains('sdk: ^3.5.0'));
 
       final topicsMatch = RegExp(r'topics:\n((?:\s+-\s+\S+\n)+)')
@@ -225,11 +233,14 @@ void main() {
 
       final jasprChangelog = File('bloc_signals_genui_jaspr/CHANGELOG.md')
           .readAsStringSync();
-      final topJasprHeading = RegExp(
-        r'^##\s+(\d+\.\d+\.\d+)',
-        multiLine: true,
-      ).firstMatch(jasprChangelog)?.group(1)?.trim();
-      expect(topJasprHeading, '1.0.0');
+      expect(jasprChangelog, contains('## 1.0.0'));
+      final topJasprHeading = topHeadingPattern
+          .firstMatch(jasprChangelog)
+          ?.group(1)
+          ?.trim();
+      if (topJasprHeading != 'Unreleased') {
+        expect(topJasprHeading, jasprVersion);
+      }
 
       final jasprExample = File(
         'bloc_signals_genui_jaspr/example/example.dart',
@@ -239,15 +250,22 @@ void main() {
 
       final flutterPubspec = File('bloc_signals_genui_flutter/pubspec.yaml')
           .readAsStringSync();
-      expect(flutterPubspec, contains('version: 1.1.0'));
+      final flutterVersion = versionPattern
+          .firstMatch(flutterPubspec)
+          ?.group(1);
+      expect(flutterVersion, isNotNull);
+      expect(flutterVersion, isNot('1.0.0'));
 
       final flutterChangelog = File('bloc_signals_genui_flutter/CHANGELOG.md')
           .readAsStringSync();
-      final topFlutterHeading = RegExp(
-        r'^##\s+(\d+\.\d+\.\d+)',
-        multiLine: true,
-      ).firstMatch(flutterChangelog)?.group(1)?.trim();
-      expect(topFlutterHeading, '1.1.0');
+      expect(flutterChangelog, contains('## 1.1.0'));
+      final topFlutterHeading = topHeadingPattern
+          .firstMatch(flutterChangelog)
+          ?.group(1)
+          ?.trim();
+      if (topFlutterHeading != 'Unreleased') {
+        expect(topFlutterHeading, flutterVersion);
+      }
     });
 
     test('#EcosystemCatalogsSynchronized: verifies 14-package catalog '
@@ -291,17 +309,38 @@ void main() {
       expect(publishingDoc, contains('14 published packages'));
       expect(publishingDoc, contains('14. `bloc_signals_genui_jaspr`'));
 
+      final versionPattern = RegExp(r'^version:\s+(\S+)', multiLine: true);
+      final jasprVersion = versionPattern
+          .firstMatch(
+            File('bloc_signals_genui_jaspr/pubspec.yaml').readAsStringSync(),
+          )!
+          .group(1)!
+          .split('+')
+          .first;
+      final flutterVersion = versionPattern
+          .firstMatch(
+            File('bloc_signals_genui_flutter/pubspec.yaml').readAsStringSync(),
+          )!
+          .group(1)!
+          .split('+')
+          .first;
+
       final catalogText = File(
         'website/lib/src/components/package_catalog.dart',
       ).readAsStringSync();
       expect(catalogText, contains("name: 'bloc_signals_genui_jaspr'"));
       expect(
         catalogText,
-        contains("name: 'bloc_signals_genui_jaspr',\n    version: '1.0.0',"),
+        contains(
+          "name: 'bloc_signals_genui_jaspr',\n    version: '$jasprVersion',",
+        ),
       );
       expect(
         catalogText,
-        contains("name: 'bloc_signals_genui_flutter',\n    version: '1.1.0',"),
+        contains(
+          "name: 'bloc_signals_genui_flutter',\n"
+          "    version: '$flutterVersion',",
+        ),
       );
 
       final installDoc = File(

@@ -65,9 +65,9 @@ class const DocsPkgGenuiPage({super.key}) extends StatelessComponent {
           language: 'yaml',
           code: '''
 dependencies:
-  bloc_signals: ^1.7.0
-  bloc_signals_genui: ^1.0.0
-  a2ui_core: ^0.3.0
+  bloc_signals: ^1.7.1
+  bloc_signals_genui: ^2.0.0
+  a2ui_core: ^0.7.0
 ''',
         ),
       ]),

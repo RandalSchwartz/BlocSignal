@@ -46,7 +46,7 @@ class const DocsPkgGenuiJasprPage({super.key}) extends StatelessComponent {
           Component.text('The bloc_signals_genui_jaspr package connects '),
           apiLink(DocSymbol.a2uiSurfaceBloc),
           Component.text(
-            ' to the HTML DOM using Jaspr web components. It provides production-ready Web DOM renderers for standard A2UI components like Text, Button, Card, Column, Row, TextField, and Divider.',
+            ' to the HTML DOM using Jaspr web components. It provides production-ready Web DOM renderers for all 16 BasicCatalog v0.9 and v1.0 A2UI components, including layout containers, display widgets, and reactive form controls.',
           ),
         ]),
         const DocsCodeBlock(
@@ -97,7 +97,7 @@ Component buildSurface(A2uiSurfaceBloc bloc) {
         h2([Component.text('Standard Component Suite')]),
         p([
           Component.text(
-            'The standard catalog includes DOM-native renderers for 7 core A2UI components:',
+            'The standard catalog includes DOM-native renderers for all 16 BasicCatalog A2UI components:',
           ),
         ]),
         ul([
@@ -110,7 +110,7 @@ Component buildSurface(A2uiSurfaceBloc bloc) {
           li([
             strong([Component.text('Button: ')]),
             Component.text(
-              'Interactive actions with primary and borderless variants.',
+              'Interactive actions with primary and borderless variants, CheckRule validation gating, and NodeAction execution.',
             ),
           ]),
           li([
@@ -122,18 +122,40 @@ Component buildSurface(A2uiSurfaceBloc bloc) {
           li([
             strong([Component.text('Column & Row: ')]),
             Component.text(
-              'Flexbox layout containers with alignment and distribution.',
+              'Flexbox layout containers with alignment, distribution, and weighted flex-grow children.',
+            ),
+          ]),
+          li([
+            strong([Component.text('List, Tabs & Modal: ')]),
+            Component.text(
+              'Scrollable collections, interactive tabbed panels, and accessible dialog overlays.',
+            ),
+          ]),
+          li([
+            strong([Component.text('Icon & Image: ')]),
+            Component.text(
+              'Semantic icon glyphs and responsive images with alt descriptions and fit styling.',
             ),
           ]),
           li([
             strong([Component.text('TextField: ')]),
             Component.text(
-              'Single-line and multi-line inputs with two-way data model synchronization.',
+              'Single-line, multi-line, numeric, and obscured inputs with two-way data model synchronization.',
+            ),
+          ]),
+          li([
+            strong([
+              Component.text(
+                'CheckBox, ChoicePicker, Slider & DateTimeInput: ',
+              ),
+            ]),
+            Component.text(
+              'Two-way bound selection controls, filterable choice pickers, stepped range sliders, and ISO 8601 date/time inputs.',
             ),
           ]),
           li([
             strong([Component.text('Divider: ')]),
-            Component.text('Horizontal rule separating sections.'),
+            Component.text('Horizontal or vertical rule separating sections.'),
           ]),
         ]),
       ]),

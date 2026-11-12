@@ -52,7 +52,7 @@ class _NavbarState() extends State<Navbar> {
             height: 36,
           ),
           span(classes: 'brand-title', [Component.text('BlocSignal')]),
-          span(classes: 'brand-badge', [Component.text('v1.7.0')]),
+          span(classes: 'brand-badge', [Component.text('v1.7.1')]),
         ]),
 
         // Desktop Navigation Links

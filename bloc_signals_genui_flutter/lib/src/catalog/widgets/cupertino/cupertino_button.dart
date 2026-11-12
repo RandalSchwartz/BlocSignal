@@ -20,8 +20,6 @@ Widget buildCupertinoButton(
   final props = componentContext.props;
   final childId = extractChildId(props['child']);
   final variant = asString(props['variant'], 'primary');
-  final rawAction = props['action'];
-  final modelAction = componentContext.component.properties['action'];
 
   final isEnabled =
       componentContext.isValid && asBool(props['enabled'], defaultValue: true);
@@ -30,37 +28,7 @@ Widget buildCupertinoButton(
       ? componentContext.buildChild(childId)
       : const Text('Action');
 
-  void handlePressed() {
-    var actionName = 'submit';
-    var actionContext = const <String, dynamic>{};
-
-    final sourceAction =
-        rawAction is Map || rawAction is String ? rawAction : modelAction;
-
-    if (sourceAction is Map) {
-      final eventMap =
-          sourceAction['event'] is Map ? sourceAction['event'] as Map : null;
-      if (eventMap != null) {
-        actionName = eventMap['name']?.toString() ?? 'submit';
-        if (eventMap['context'] is Map) {
-          actionContext = Map<String, dynamic>.from(eventMap['context'] as Map);
-        }
-      } else if (sourceAction['name'] != null) {
-        actionName = sourceAction['name'].toString();
-      }
-
-      if (actionContext.isEmpty && sourceAction['context'] is Map) {
-        actionContext =
-            Map<String, dynamic>.from(sourceAction['context'] as Map);
-      }
-    } else if (sourceAction is String) {
-      actionName = sourceAction;
-    }
-
-    componentContext.dispatchAction(actionName, context: actionContext);
-  }
-
-  final onPressed = isEnabled ? handlePressed : null;
+  final onPressed = isEnabled ? componentContext.triggerAction : null;
   final borderRadius =
       tokens?.borderRadius ?? const BorderRadius.all(Radius.circular(8));
 

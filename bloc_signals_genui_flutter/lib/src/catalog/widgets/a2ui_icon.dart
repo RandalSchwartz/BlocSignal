@@ -1,5 +1,6 @@
 import 'package:bloc_signals_genui_flutter/src/a2ui_component_context.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/svg_path_parser.dart';
 import 'package:flutter/material.dart';
 
 const Map<String, IconData> _a2uiIconMap = <String, IconData>{
@@ -76,16 +77,37 @@ Widget buildA2uiIcon(
 ) {
   final props = componentContext.props;
   final rawName = unwrapBinding(props['name'] ?? props['icon']);
+  final size = props['size'] != null ? asDouble(props['size'], 24) : 24.0;
+  final semanticLabel = unwrapBinding(props['description'])?.toString();
+
+  if (rawName is Map && rawName['svgPath'] != null) {
+    final parsedPath = SvgPathParser.parse(asString(rawName['svgPath']));
+    if (parsedPath != null) {
+      final color = IconTheme.of(context).color ?? Colors.black;
+      final painted = CustomPaint(
+        size: Size.square(size),
+        painter: SvgPathPainter(path: parsedPath, color: color),
+      );
+      if (semanticLabel != null && semanticLabel.isNotEmpty) {
+        return Semantics(label: semanticLabel, child: painted);
+      }
+      return painted;
+    }
+    return Icon(
+      Icons.help_outline,
+      size: size,
+      semanticLabel: semanticLabel,
+    );
+  }
+
   final String iconName;
   if (rawName is Map) {
-    iconName = asString(rawName['name'] ?? rawName['svgPath']);
+    iconName = asString(rawName['name']);
   } else {
     iconName = asString(rawName);
   }
 
   final iconData = _a2uiIconMap[iconName] ?? Icons.help_outline;
-  final size = props['size'] != null ? asDouble(props['size'], 24) : 24.0;
-  final semanticLabel = unwrapBinding(props['description'])?.toString();
 
   return Icon(
     iconData,

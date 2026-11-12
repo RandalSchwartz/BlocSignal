@@ -41,6 +41,6 @@ Widget buildCupertinoColumn(
     mainAxisSize: MainAxisSize.min,
     mainAxisAlignment: mainAxisAlignment,
     crossAxisAlignment: crossAxisAlignment,
-    children: componentContext.buildChildren(childIds),
+    children: componentContext.buildWeightedChildren(childIds),
   );
 }

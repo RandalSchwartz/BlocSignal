@@ -18,6 +18,7 @@ Widget buildCupertinoChoicePicker(
   final props = componentContext.props;
   final label = unwrapBinding(props['label'])?.toString();
   final variant = asString(props['variant'], 'mutuallyExclusive');
+  final filterable = asBool(props['filterable']);
   final isMultiple = variant == 'multipleSelection';
 
   final rawOptions = unwrapBinding(props['options']);
@@ -67,40 +68,41 @@ Widget buildCupertinoChoicePicker(
       ? checkErrors.first
       : null;
 
-  final Widget optionsWidget;
-  if (!isMultiple && options.isNotEmpty) {
-    final segmentedChildren = <String, Widget>{
-      for (final option in options)
-        option.value: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          child: Text(
-            option.label,
-            style: CupertinoTheme.of(context).textTheme.textStyle.copyWith(
-                  fontSize: 13,
-                ),
+  Widget buildOptions(List<({String label, String value})> displayed) {
+    if (!isMultiple && displayed.length >= 2) {
+      final segmentedChildren = <String, Widget>{
+        for (final option in displayed)
+          option.value: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Text(
+              option.label,
+              style: CupertinoTheme.of(context).textTheme.textStyle.copyWith(
+                    fontSize: 13,
+                  ),
+            ),
           ),
-        ),
-    };
-    final currentSelected = selectedValues.isNotEmpty &&
-            options.any((o) => o.value == selectedValues.first)
-        ? selectedValues.first
-        : null;
+      };
+      final currentSelected = selectedValues.isNotEmpty &&
+              displayed.any((o) => o.value == selectedValues.first)
+          ? selectedValues.first
+          : null;
 
-    optionsWidget = CupertinoSlidingSegmentedControl<String>(
-      groupValue: currentSelected,
-      children: segmentedChildren,
-      onValueChanged: (val) {
-        if (val != null) {
-          toggleOption(val, selected: true);
-        }
-      },
-    );
-  } else {
-    optionsWidget = Column(
+      return CupertinoSlidingSegmentedControl<String>(
+        groupValue: currentSelected,
+        children: segmentedChildren,
+        onValueChanged: (val) {
+          if (val != null) {
+            toggleOption(val, selected: true);
+          }
+        },
+      );
+    }
+
+    return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final option in options)
+        for (final option in displayed)
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: () {
@@ -148,7 +150,13 @@ Widget buildCupertinoChoicePicker(
                 ),
           ),
         ),
-      optionsWidget,
+      if (filterable)
+        _CupertinoFilterableOptions(
+          options: options,
+          builder: buildOptions,
+        )
+      else
+        buildOptions(options),
       if (errorText != null)
         Padding(
           padding: const EdgeInsets.only(top: 4),
@@ -162,4 +170,60 @@ Widget buildCupertinoChoicePicker(
         ),
     ],
   );
+}
+
+class _CupertinoFilterableOptions extends StatefulWidget {
+  const _CupertinoFilterableOptions({
+    required this.options,
+    required this.builder,
+  });
+
+  final List<({String label, String value})> options;
+  final Widget Function(List<({String label, String value})> options) builder;
+
+  @override
+  State<_CupertinoFilterableOptions> createState() =>
+      _CupertinoFilterableOptionsState();
+}
+
+class _CupertinoFilterableOptionsState
+    extends State<_CupertinoFilterableOptions> {
+  final TextEditingController _controller = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final normalized = _query.trim().toLowerCase();
+    final filtered = normalized.isEmpty
+        ? widget.options
+        : widget.options
+            .where(
+              (o) =>
+                  o.label.toLowerCase().contains(normalized) ||
+                  o.value.toLowerCase().contains(normalized),
+            )
+            .toList();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: CupertinoSearchTextField(
+            controller: _controller,
+            placeholder: 'Filter options...',
+            onChanged: (value) => setState(() => _query = value),
+          ),
+        ),
+        widget.builder(filtered),
+      ],
+    );
+  }
 }

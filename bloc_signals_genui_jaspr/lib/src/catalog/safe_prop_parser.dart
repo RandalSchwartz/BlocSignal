@@ -77,11 +77,20 @@ String asString(dynamic value, [String defaultValue = '']) {
 /// ```
 bool asBool(dynamic value, {bool defaultValue = false}) {
   final unwrapped = unwrapBinding(value);
+  if (unwrapped == null) return defaultValue;
   if (unwrapped is bool) return unwrapped;
+  if (unwrapped is ValidationResult) return unwrapped.valid;
+  if (unwrapped is Map && unwrapped['valid'] is bool) {
+    return unwrapped['valid']! as bool;
+  }
   if (unwrapped is String) {
     final normalized = unwrapped.trim().toLowerCase();
     if (normalized == 'true') return true;
     if (normalized == 'false') return false;
+    return defaultValue;
+  }
+  if (unwrapped is num) {
+    return unwrapped != 0 && !unwrapped.isNaN;
   }
   return defaultValue;
 }

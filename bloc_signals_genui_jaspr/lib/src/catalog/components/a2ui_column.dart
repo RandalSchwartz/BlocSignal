@@ -46,6 +46,6 @@ Component buildA2uiColumn(
       justifyContent: justifyContent,
       alignItems: alignItems,
     ),
-    componentContext.buildChildren(childIds),
+    componentContext.buildWeightedChildren(childIds),
   );
 }

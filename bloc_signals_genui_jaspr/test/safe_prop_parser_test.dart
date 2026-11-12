@@ -63,6 +63,19 @@ void main() {
         asBool(const ResolvedBinding<Object?>('true')),
         isTrue,
       );
+      expect(
+        asBool(const ValidationResult(valid: true, message: '')),
+        isTrue,
+      );
+      expect(
+        asBool(const ValidationResult(valid: false, message: 'Bad')),
+        isFalse,
+      );
+      expect(asBool(const {'valid': true}), isTrue);
+      expect(asBool(const {'valid': false}), isFalse);
+      expect(asBool(1), isTrue);
+      expect(asBool(0), isFalse);
+      expect(asBool(double.nan), isFalse);
     });
 
     test('extractChildId extracts ID from various formats', () {

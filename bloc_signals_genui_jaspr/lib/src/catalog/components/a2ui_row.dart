@@ -46,6 +46,6 @@ Component buildA2uiRow(
       justifyContent: justifyContent,
       alignItems: alignItems,
     ),
-    componentContext.buildChildren(childIds),
+    componentContext.buildWeightedChildren(childIds),
   );
 }

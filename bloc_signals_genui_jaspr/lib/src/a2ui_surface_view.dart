@@ -828,9 +828,10 @@ class _ResolvedNodeComponentState extends State<_ResolvedNodeComponent> {
 
     try {
       final builtChild = component.catalog.build(context, componentCtx);
-      return div(
-        key: ValueKey('a2ui_$instanceId'),
-        [builtChild],
+      return _wrapWithAccessibilityAndKey(
+        builtChild,
+        resolvedProps,
+        'a2ui_$instanceId',
       );
     } on Object catch (error) {
       return div(
@@ -998,9 +999,10 @@ class _BoundComponentState extends State<_BoundComponent> {
 
     try {
       final builtChild = component.catalog.build(context, componentCtx);
-      return div(
-        key: ValueKey('a2ui_$keySuffix'),
-        [builtChild],
+      return _wrapWithAccessibilityAndKey(
+        builtChild,
+        resolvedProps,
+        'a2ui_$keySuffix',
       );
     } on Object catch (error) {
       return div(
@@ -1009,4 +1011,37 @@ class _BoundComponentState extends State<_BoundComponent> {
       );
     }
   }
+}
+
+Component _wrapWithAccessibilityAndKey(
+  Component builtChild,
+  Map<String, dynamic> resolvedProps,
+  String keyValue,
+) {
+  final rawA11y = unwrapBinding(resolvedProps['accessibility']);
+  if (rawA11y is Map) {
+    if (asBool(rawA11y['hidden'])) {
+      return const Component.empty();
+    }
+    final rawLabel = unwrapBinding(rawA11y['label'])?.toString();
+    final rawDescription = unwrapBinding(rawA11y['description'])?.toString();
+    final label = rawLabel != null && rawLabel.isNotEmpty ? rawLabel : null;
+    final description = rawDescription != null && rawDescription.isNotEmpty
+        ? rawDescription
+        : null;
+    if (label != null || description != null) {
+      return div(
+        key: ValueKey(keyValue),
+        attributes: {
+          if (label != null) 'aria-label': label,
+          if (description != null) 'aria-description': description,
+        },
+        [builtChild],
+      );
+    }
+  }
+  return div(
+    key: ValueKey(keyValue),
+    [builtChild],
+  );
 }

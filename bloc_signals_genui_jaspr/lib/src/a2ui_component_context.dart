@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
+import 'package:bloc_signals_genui_jaspr/src/catalog/safe_prop_parser.dart';
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
 /// Context provided to component builders in Jaspr web catalogs.
@@ -36,6 +40,15 @@ class A2uiComponentContext {
   /// final instanceId = componentContext.node?.instanceId;
   /// ```
   final ComponentNode<ComponentApi>? node;
+
+  /// The optional component-level `metadata` envelope (A2UI 1.0+), resolved
+  /// from [node] when available or [ComponentModel.metadata] otherwise.
+  ///
+  /// ```dart
+  /// final meta = componentContext.metadata;
+  /// ```
+  Map<String, Object?>? get metadata =>
+      node?.metadata.value ?? component.metadata;
 
   /// The data model scope path this component resolves against (for example
   /// `'/'` at the surface root or `'/items/0'` inside a template list item).
@@ -181,6 +194,123 @@ class A2uiComponentContext {
   /// ```
   List<Component> buildChildren(List<String> childIds) =>
       buildChildrenCallback(childIds);
+
+  /// Recursively renders [childIds] and wraps any child declaring a positive
+  /// finite `weight` in a `div` with `flex-grow` matching `weight`.
+  ///
+  /// Intended for `Row` and `Column` flex containers.
+  ///
+  /// ```dart
+  /// final children = componentContext.buildWeightedChildren(childIds);
+  /// ```
+  List<Component> buildWeightedChildren(List<String> childIds) {
+    final built = buildChildren(childIds);
+    if (childIds.isEmpty) return built;
+
+    final childNodeWeights = <String, Object?>{};
+    final currentNode = node;
+    if (currentNode != null) {
+      void collect(Object? valueNode) {
+        final unwrapped = unwrapBinding(valueNode);
+        if (unwrapped is ComponentNode<ComponentApi>) {
+          final weight = unwrapBinding(unwrapped.props.value['weight']);
+          childNodeWeights[unwrapped.instanceId] = weight;
+          childNodeWeights.putIfAbsent(unwrapped.componentId, () => weight);
+        } else if (unwrapped is Iterable) {
+          unwrapped.forEach(collect);
+        } else if (unwrapped is Map) {
+          unwrapped.values.forEach(collect);
+        }
+      }
+
+      currentNode.props.value.values.forEach(collect);
+    }
+
+    final componentsModel =
+        surfaceBloc.getSurfaceReady(surfaceId)?.surface.componentsModel;
+
+    return [
+      for (var index = 0; index < built.length; index++)
+        _wrapWithWeight(
+          built[index],
+          index < childIds.length
+              ? (childNodeWeights.containsKey(childIds[index])
+                  ? childNodeWeights[childIds[index]]
+                  : unwrapBinding(
+                      componentsModel
+                          ?.get(childIds[index])
+                          ?.properties['weight'],
+                    ))
+              : null,
+        ),
+    ];
+  }
+
+  Component _wrapWithWeight(Component child, Object? rawWeight) {
+    if (rawWeight is num && rawWeight.isFinite && rawWeight > 0) {
+      return div(
+        classes: 'a2ui-weighted-child',
+        styles: Styles(
+          flex: Flex(grow: rawWeight.toDouble()),
+        ),
+        [child],
+      );
+    }
+    return child;
+  }
+
+  /// Executes the resolved `action` on this component, invoking [NodeAction]
+  /// closures when present and preserving [SubmitAction] dispatch for event
+  /// actions and raw `Map` / `String` payloads.
+  ///
+  /// ```dart
+  /// componentContext.triggerAction();
+  /// ```
+  void triggerAction() {
+    final rawAction = props['action'];
+    final modelAction = component.properties['action'];
+
+    if (rawAction is NodeAction) {
+      unawaited(rawAction());
+      final isFunctionCall = modelAction is Map &&
+          (modelAction['functionCall'] is Map || modelAction['call'] != null);
+      if (!isFunctionCall && (modelAction is Map || modelAction is String)) {
+        _dispatchParsedAction(modelAction);
+      }
+      return;
+    }
+
+    final sourceAction =
+        rawAction is Map || rawAction is String ? rawAction : modelAction;
+    _dispatchParsedAction(sourceAction);
+  }
+
+  void _dispatchParsedAction(Object? sourceAction) {
+    var actionName = 'submit';
+    var actionContext = const <String, dynamic>{};
+
+    if (sourceAction is Map) {
+      final eventMap =
+          sourceAction['event'] is Map ? sourceAction['event'] as Map : null;
+      if (eventMap != null) {
+        actionName = eventMap['name']?.toString() ?? 'submit';
+        if (eventMap['context'] is Map) {
+          actionContext = Map<String, dynamic>.from(eventMap['context'] as Map);
+        }
+      } else if (sourceAction['name'] != null) {
+        actionName = sourceAction['name'].toString();
+      }
+
+      if (actionContext.isEmpty && sourceAction['context'] is Map) {
+        actionContext =
+            Map<String, dynamic>.from(sourceAction['context'] as Map);
+      }
+    } else if (sourceAction is String) {
+      actionName = sourceAction;
+    }
+
+    dispatchAction(actionName, context: actionContext);
+  }
 
   /// Dispatches a form field update event synchronously to the [surfaceBloc].
   ///

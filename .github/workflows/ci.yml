@@ -23,6 +23,8 @@ jobs:
       - name: Set up Flutter & Dart SDK
         uses: subosito/flutter-action@v2
         with:
+          # Temporary pin for custom_lint ^0.8.0 compatibility with analyzer ^8.0.0; see #438 / #439
+          flutter-version: "3.47.9"
           channel: "stable"
           cache: true
 

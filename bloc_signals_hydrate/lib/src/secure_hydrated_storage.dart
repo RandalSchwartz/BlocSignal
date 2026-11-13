@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_hydrate/src/hydrated_storage.dart';
 
 /// A [HydratedStorage] backend implementation that persists state using
@@ -8,7 +9,9 @@ import 'package:bloc_signals_hydrate/src/hydrated_storage.dart';
 ///
 /// Pre-loads all stored key-value pairs into an in-memory cache during [build]
 /// so that subsequent read requests are returned **synchronously on frame 1**
-/// without UI flickers.
+/// without UI flickers. Asynchronous [write], [delete], and [clear] operations
+/// are serialized through an internal [Mutex] so in-memory cache updates never
+/// interleave out of order with underlying secure storage I/O.
 ///
 /// Example:
 /// ```dart
@@ -34,6 +37,7 @@ class SecureHydratedStorage implements HydratedStorage {
 
   final dynamic _secureStorage;
   final Map<String, dynamic> _cache;
+  final Mutex _mutex = Mutex();
 
   /// The prefix applied to all keys stored in secure storage.
   ///
@@ -82,30 +86,30 @@ class SecureHydratedStorage implements HydratedStorage {
   dynamic read(String key) => _cache[key];
 
   @override
-  FutureOr<void> write(String key, dynamic value) async {
-    final encoded = jsonEncode(value);
-    // Duck-typing support for flutter_secure_storage write.
-    // ignore: avoid_dynamic_calls
-    await _secureStorage.write(key: _prefixedKey(key), value: encoded);
-    _cache[key] = value;
-  }
+  FutureOr<void> write(String key, dynamic value) => _mutex.protect(() async {
+        final encoded = jsonEncode(value);
+        // Duck-typing support for flutter_secure_storage write.
+        // ignore: avoid_dynamic_calls
+        await _secureStorage.write(key: _prefixedKey(key), value: encoded);
+        _cache[key] = value;
+      });
 
   @override
-  FutureOr<void> delete(String key) async {
-    // Duck-typing support for flutter_secure_storage delete.
-    // ignore: avoid_dynamic_calls
-    await _secureStorage.delete(key: _prefixedKey(key));
-    _cache.remove(key);
-  }
+  FutureOr<void> delete(String key) => _mutex.protect(() async {
+        // Duck-typing support for flutter_secure_storage delete.
+        // ignore: avoid_dynamic_calls
+        await _secureStorage.delete(key: _prefixedKey(key));
+        _cache.remove(key);
+      });
 
   @override
-  FutureOr<void> clear() async {
-    final keys = _cache.keys.toList();
-    for (final key in keys) {
-      // Duck-typing support for flutter_secure_storage delete.
-      // ignore: avoid_dynamic_calls
-      await _secureStorage.delete(key: _prefixedKey(key));
-      _cache.remove(key);
-    }
-  }
+  FutureOr<void> clear() => _mutex.protect(() async {
+        final keys = _cache.keys.toList();
+        for (final key in keys) {
+          // Duck-typing support for flutter_secure_storage delete.
+          // ignore: avoid_dynamic_calls
+          await _secureStorage.delete(key: _prefixedKey(key));
+          _cache.remove(key);
+        }
+      });
 }

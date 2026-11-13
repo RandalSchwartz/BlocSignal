@@ -1,10 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_hydrate/src/hydrated_storage.dart';
 
 /// A [HydratedStorage] backend implementation that persists state using
 /// `SharedPreferences` (from `package:shared_preferences`).
+///
+/// Asynchronous [write], [delete], and [clear] operations are serialized per
+/// storage instance via an internal [Mutex] while preserving the `const`
+/// constructor.
 ///
 /// Example:
 /// ```dart
@@ -32,6 +37,11 @@ class SharedPreferencesHydratedStorage implements HydratedStorage {
     this.prefix = kDefaultHydratedStoragePrefix,
   });
 
+  static final Expando<Mutex> _mutexes =
+      Expando<Mutex>('SharedPreferencesHydratedStorage.mutex');
+
+  Mutex get _mutex => _mutexes[this] ??= Mutex();
+
   final dynamic _prefs;
 
   /// The prefix applied to all keys stored in SharedPreferences.
@@ -49,34 +59,34 @@ class SharedPreferencesHydratedStorage implements HydratedStorage {
   }
 
   @override
-  FutureOr<void> write(String key, dynamic value) async {
-    final encoded = jsonEncode(value);
-    // Duck-typing support for shared_preferences setString.
-    // ignore: avoid_dynamic_calls
-    await _prefs.setString(_prefixedKey(key), encoded);
-  }
+  FutureOr<void> write(String key, dynamic value) => _mutex.protect(() async {
+        final encoded = jsonEncode(value);
+        // Duck-typing support for shared_preferences setString.
+        // ignore: avoid_dynamic_calls
+        await _prefs.setString(_prefixedKey(key), encoded);
+      });
 
   @override
-  FutureOr<void> delete(String key) async {
-    // Duck-typing support for shared_preferences remove.
-    // ignore: avoid_dynamic_calls
-    await _prefs.remove(_prefixedKey(key));
-  }
+  FutureOr<void> delete(String key) => _mutex.protect(() async {
+        // Duck-typing support for shared_preferences remove.
+        // ignore: avoid_dynamic_calls
+        await _prefs.remove(_prefixedKey(key));
+      });
 
   @override
-  FutureOr<void> clear() async {
-    // Duck-typing support for shared_preferences getKeys and remove.
-    // ignore: avoid_dynamic_calls
-    final dynamic rawKeys = _prefs.getKeys();
-    if (rawKeys is Iterable) {
-      final keys = rawKeys.map((dynamic e) => e.toString()).toList();
-      for (final key in keys) {
-        if (prefix.isEmpty || key.startsWith(prefix)) {
-          // Duck-typing support for shared_preferences remove.
-          // ignore: avoid_dynamic_calls
-          await _prefs.remove(key);
+  FutureOr<void> clear() => _mutex.protect(() async {
+        // Duck-typing support for shared_preferences getKeys and remove.
+        // ignore: avoid_dynamic_calls
+        final dynamic rawKeys = _prefs.getKeys();
+        if (rawKeys is Iterable) {
+          final keys = rawKeys.map((dynamic e) => e.toString()).toList();
+          for (final key in keys) {
+            if (prefix.isEmpty || key.startsWith(prefix)) {
+              // Duck-typing support for shared_preferences remove.
+              // ignore: avoid_dynamic_calls
+              await _prefs.remove(key);
+            }
+          }
         }
-      }
-    }
-  }
+      });
 }

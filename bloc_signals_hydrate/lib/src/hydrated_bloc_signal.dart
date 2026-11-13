@@ -144,6 +144,12 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
 
   /// Persists [state] to [activeStorage].
   ///
+  /// Serialization (`toJson`) and generation tagging run synchronously, while
+  /// storage I/O is serialized through an internal [Mutex] so concurrent
+  /// writes and [clear] calls execute in FIFO order. Any queued write whose
+  /// generation has been superseded by a newer [persist] or [clear] call, or
+  /// whose container has been closed, is skipped before touching storage.
+  ///
   /// Recoverable serialization and storage I/O [Exception] instances are
   /// forwarded to [onError], whereas fatal Dart [Error] subtypes fail fast.
   @protected
@@ -159,40 +165,79 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
       );
       return;
     }
+    final dynamic json;
     try {
-      final dynamic json = toJson(state);
-      final result = json != null
-          ? storage.write(storageToken, json)
-          : storage.delete(storageToken);
-      if (result is Future<void>) {
-        unawaited(result.catchError(onError, test: (e) => e is Exception));
-      }
+      json = toJson(state);
     } on Exception catch (error, stackTrace) {
       onError(error, stackTrace);
+      return;
     }
+    final targetGen = ++_storageGeneration;
+    if (!_storageMutex.isLocked) {
+      try {
+        final result = json != null
+            ? storage.write(storageToken, json)
+            : storage.delete(storageToken);
+        if (result is Future<void>) {
+          unawaited(
+            _storageMutex.protect(
+              () => result.catchError(onError, test: (e) => e is Exception),
+            ),
+          );
+        }
+      } on Exception catch (error, stackTrace) {
+        onError(error, stackTrace);
+      }
+      return;
+    }
+
+    unawaited(
+      _storageMutex.protect(() async {
+        if (targetGen != _storageGeneration || isClosed) return;
+        try {
+          final result = json != null
+              ? storage.write(storageToken, json)
+              : storage.delete(storageToken);
+          if (result is Future<void>) {
+            await result;
+          }
+        } on Exception catch (error, stackTrace) {
+          onError(error, stackTrace);
+        }
+      }),
+    );
   }
 
   /// Deletes stored state from storage and resets container state to
   /// [initialState].
   ///
+  /// Advances the internal storage generation synchronously to invalidate any
+  /// queued [persist] operations, then waits on the storage [Mutex] so any
+  /// in-flight write completes before deleting [storageToken].
+  ///
   /// Recoverable storage I/O [Exception] instances are caught and forwarded to
   /// [onError], whereas fatal Dart [Error] subtypes fail fast.
   Future<void> clear() async {
+    ++_storageGeneration;
     final storage = activeStorage;
     if (storage != null) {
-      try {
-        final result = storage.delete(storageToken);
-        if (result is Future<void>) {
-          await result;
+      await _storageMutex.protect(() async {
+        try {
+          final result = storage.delete(storageToken);
+          if (result is Future<void>) {
+            await result;
+          }
+        } on Exception catch (error, stackTrace) {
+          onError(error, stackTrace);
         }
-      } on Exception catch (error, stackTrace) {
-        onError(error, stackTrace);
-      }
+      });
     }
     if (isClosed) return;
     super.emit(initialState);
   }
 
+  final Mutex _storageMutex = Mutex();
+  int _storageGeneration = 0;
   bool _isHydrated = false;
 
   /// Whether [hydrate] has completed on this container.

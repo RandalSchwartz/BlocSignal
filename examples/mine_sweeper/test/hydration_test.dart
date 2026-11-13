@@ -26,6 +26,9 @@ void main() {
       expect(bloc1.stateValue.timer, 2);
       expect(bloc1.stateValue.grid[0][0].isFlagged, isTrue);
 
+      // Allow serialized async storage writes to drain before simulating restart.
+      await pumpEventQueue();
+
       // Re-instantiate bloc (simulating app restart)
       final bloc2 = GameBlocSignal();
 

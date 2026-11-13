@@ -85,6 +85,7 @@ String get storageToken => '$storagePrefix${id != null ? '_$id' : ''}';
 - **Combining `HydratedMixin` with `ReplayMixin` (`bloc_signals_replay`)**: `HydratedMixin` and `ReplayMixin` (or `ReplayCubitMixin` / `ReplayBlocMixin`) can be composed in either order (`extends HydratedCubitSignal<S> with ReplayMixin<S>` or `extends CubitSignal<S> with ReplayMixin<S>, HydratedMixin<S>`). Restoring states via `undo()` and `redo()` invokes the full `this.emit` chain while `_isReplaying` is active, automatically persisting the restored state to `HydratedStorage` without duplicating replay history entries.
 - **Listing Stored Keys**: The `HydratedStorage` interface (`read`, `write`, `delete`, `clear`) does not include a `listKeys()` method to keep storage contracts backend-agnostic. Query the underlying storage engine directly (for example `prefs.getKeys()`).
 - **Test Tear-Down**: Always invoke `HydratedStorage.reset()` inside `tearDown(() => ...)` in tests to prevent cross-test storage leakage.
+- **Serialized Async Persistence & Logout Safety**: `HydratedMixin` serializes asynchronous `persist()` and `clear()` calls through an internal `Mutex` paired with a monotonic `_storageGeneration` tombstone, while `SecureHydratedStorage` and `SharedPreferencesHydratedStorage` serialize backend `write`, `delete`, and `clear` operations. A slow in-flight write can never complete after `clear()` to resurrect logged-out state, and superseded queued writes are skipped before touching disk.
 
 ---
 

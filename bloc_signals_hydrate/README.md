@@ -44,6 +44,7 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 
 - 📦 **`dynamic` / `Object?` JSON Support**: `fromJson(dynamic json)` and `toJson(StateType state)` accept primitives (`num`, `String`, `bool`, `List`, `Map`). Primitive states do **not** require map wrappers like `{"value": 42}`!
 - ⚡ **Synchronous Initial Hydration**: State is restored synchronously during constructor execution—meaning initial widget builds render hydrated data immediately with **zero frame flicker**.
+- 🔒 **Serialized Async Persistence**: Storage writes, deletes, and `clear()` calls are serialized via FIFO `Mutex` locks and generation tombstones so rapid state updates or logout `clear()` calls never resurrect stale state.
 - 🛠️ **Zero-Dependency Default**: Ships with `MemoryHydratedStorage` for fast in-memory unit testing out-of-the-box.
 
 ---

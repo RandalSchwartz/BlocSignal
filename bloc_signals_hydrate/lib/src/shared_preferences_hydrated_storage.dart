@@ -22,9 +22,14 @@ import 'package:bloc_signals_hydrate/src/hydrated_storage.dart';
 /// ```
 class SharedPreferencesHydratedStorage implements HydratedStorage {
   /// Creates a [SharedPreferencesHydratedStorage] adapter wrapping `prefs`.
+  ///
+  /// Defaults [prefix] to [kDefaultHydratedStoragePrefix]
+  /// (`'bloc_signals_hydrate_'`) so [read], [write], [delete], and [clear]
+  /// only touch keys managed by `bloc_signals_hydrate`. Pass `prefix: ''`
+  /// explicitly to read and write legacy unprefixed keys directly.
   const SharedPreferencesHydratedStorage(
     this._prefs, {
-    this.prefix = '',
+    this.prefix = kDefaultHydratedStoragePrefix,
   });
 
   final dynamic _prefs;

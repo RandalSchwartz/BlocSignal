@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (hydrate)**: Namespace default `prefix` to `bloc_signals_hydrate_` on `SecureHydratedStorage` and `SharedPreferencesHydratedStorage` to prevent full-app keychain preload and `clear()` wipe (#417).
+
 ## 1.1.0
 
 - **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).

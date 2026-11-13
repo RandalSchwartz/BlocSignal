@@ -170,6 +170,8 @@ void main() async {
 }
 ```
 
+Both `SharedPreferencesHydratedStorage` and `SecureHydratedStorage` default `prefix` to `kDefaultHydratedStoragePrefix` (`'bloc_signals_hydrate_'`) so `SecureHydratedStorage.build()`, `read()`, `delete()`, and `clear()` only touch keys managed by `bloc_signals_hydrate`. Pass `prefix: ''` explicitly if you need to read or write legacy unprefixed keys directly (for example `SecureHydratedStorage.build(secureStorage, prefix: '')`).
+
 
 ---
 

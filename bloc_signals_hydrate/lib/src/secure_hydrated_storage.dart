@@ -29,23 +29,32 @@ class SecureHydratedStorage implements HydratedStorage {
   SecureHydratedStorage._(
     this._secureStorage,
     Map<String, dynamic> initialCache, {
-    this.prefix = '',
+    this.prefix = kDefaultHydratedStoragePrefix,
   }) : _cache = initialCache;
 
   final dynamic _secureStorage;
   final Map<String, dynamic> _cache;
 
   /// The prefix applied to all keys stored in secure storage.
+  ///
+  /// Defaults to [kDefaultHydratedStoragePrefix] (`'bloc_signals_hydrate_'`)
+  /// so [build] and [clear] only touch keys managed by `bloc_signals_hydrate`
+  /// instead of reading or deleting unrelated host-application keychain
+  /// entries. Pass `prefix: ''` explicitly to opt in to legacy unprefixed keys.
   final String prefix;
 
   String _prefixedKey(String key) => '$prefix$key';
 
-  /// Asynchronously pre-loads stored keys from [secureStorage] into memory,
-  /// returning a fully initialized [SecureHydratedStorage] ready for
-  /// synchronous frame 1 state hydration.
+  /// Asynchronously pre-loads stored keys matching [prefix] from
+  /// [secureStorage] into memory, returning a fully initialized
+  /// [SecureHydratedStorage] ready for synchronous frame 1 state hydration.
+  ///
+  /// Defaults [prefix] to [kDefaultHydratedStoragePrefix] so foreign keychain
+  /// entries are ignored. Pass `prefix: ''` explicitly if you must read legacy
+  /// unprefixed keys.
   static Future<SecureHydratedStorage> build(
     dynamic secureStorage, {
-    String prefix = '',
+    String prefix = kDefaultHydratedStoragePrefix,
   }) async {
     // Duck-typing support for flutter_secure_storage FlutterSecureStorage.
     // ignore: avoid_dynamic_calls

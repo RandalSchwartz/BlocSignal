@@ -50,7 +50,10 @@ void main() {
     test('reads and writes primitive values with default prefix', () async {
       await storage.write('counter', 42);
       expect(storage.read('counter'), equals(42));
-      expect(prefs.getString('counter'), equals('42'));
+      expect(
+        prefs.getString('${kDefaultHydratedStoragePrefix}counter'),
+        equals('42'),
+      );
     });
 
     test('supports custom prefix scoping', () async {
@@ -105,7 +108,10 @@ void main() {
 
     test('propagates jsonDecode exception on corrupt storage string in read()',
         () async {
-      await prefs.setString('corrupt_key', '{invalid_json');
+      await prefs.setString(
+        '${kDefaultHydratedStoragePrefix}corrupt_key',
+        '{invalid_json',
+      );
       expect(
         () => storage.read('corrupt_key'),
         throwsA(isA<FormatException>()),
@@ -113,14 +119,62 @@ void main() {
     });
 
     test('integrates seamlessly with HydratedCubitSignal', () async {
-      await prefs.setString('TestCounterCubit', '10');
+      await prefs.setString(
+        '${kDefaultHydratedStoragePrefix}TestCounterCubit',
+        '10',
+      );
 
       final cubit = TestCounterCubit(storage: storage);
       expect(cubit.stateValue, equals(10));
 
       cubit.increment();
       expect(cubit.stateValue, equals(11));
-      expect(prefs.getString('TestCounterCubit'), equals('11'));
+      expect(
+        prefs.getString('${kDefaultHydratedStoragePrefix}TestCounterCubit'),
+        equals('11'),
+      );
+    });
+
+    test(
+        '(Issue #417: clear() with default prefix deletes only '
+        'bloc_signals_hydrate_* keys)', () async {
+      await prefs.setString('foreign_app_setting', 'dark');
+
+      expect(storage.prefix, equals('bloc_signals_hydrate_'));
+      await storage.write('k1', 'v1');
+      await storage.write('k2', 'v2');
+      expect(prefs.getString('bloc_signals_hydrate_k1'), equals('"v1"'));
+
+      await storage.clear();
+
+      expect(storage.read('k1'), isNull);
+      expect(storage.read('k2'), isNull);
+      expect(prefs.getString('bloc_signals_hydrate_k1'), isNull);
+      expect(prefs.getString('bloc_signals_hydrate_k2'), isNull);
+      expect(prefs.getString('foreign_app_setting'), equals('dark'));
+    });
+
+    test(
+        '(Issue #417: default prefix ignores unprefixed/foreign keys on read '
+        'and preserves them on delete and clear)', () async {
+      await prefs.setString('foreign_counter', '42');
+      await storage.write('counter', 7);
+
+      expect(storage.read('foreign_counter'), isNull);
+      expect(storage.read('counter'), equals(7));
+
+      await storage.delete('foreign_counter');
+      expect(prefs.getString('foreign_counter'), equals('42'));
+
+      await storage.delete('counter');
+      expect(storage.read('counter'), isNull);
+      expect(
+        prefs.getString('bloc_signals_hydrate_counter'),
+        isNull,
+      );
+
+      await storage.clear();
+      expect(prefs.getString('foreign_counter'), equals('42'));
     });
   });
 }

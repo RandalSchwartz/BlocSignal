@@ -2793,6 +2793,155 @@ void main() {
         expect(MessageErrorMapper.map, isNotNull);
       });
     });
+
+    group('(Issue #413) Untrusted JSON Type Mismatch Defenses', () {
+      test(
+          'ProcessJsonMessage with non-string version emits SurfaceError and '
+          'forwards to onError without uncaught error', () {
+        final errors = <Object>[];
+        final bloc = _TrackingMultiSurfaceBloc(onErrorCallback: errors.add);
+        addTearDown(bloc.close);
+
+        bloc.add(const ProcessJsonMessage({'version': 123}));
+
+        expect(bloc.stateValue, isA<SurfaceError>());
+        expect(errors, hasLength(1));
+      });
+
+      test(
+          'ProcessJsonMessage with non-map createSurface emits SurfaceError '
+          'without uncaught error', () {
+        final errors = <Object>[];
+        final bloc = _TrackingMultiSurfaceBloc(onErrorCallback: errors.add);
+        addTearDown(bloc.close);
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': '1.0',
+            'createSurface': 'not-a-map',
+          }),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceError>());
+        expect(errors, hasLength(1));
+      });
+
+      test(
+          'ProcessJsonMessage with non-map component in updateComponents emits '
+          'SurfaceError without uncaught error', () {
+        final errors = <Object>[];
+        final bloc = _TrackingMultiSurfaceBloc(onErrorCallback: errors.add);
+        addTearDown(bloc.close);
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': '1.0',
+            'updateComponents': {
+              'surfaceId': 's1',
+              'components': [123],
+            },
+          }),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceError>());
+        expect(errors, hasLength(1));
+      });
+
+      test(
+          'IngestStream with malformed JSON array or non-string version emits '
+          'SurfaceError without crashing stream or zone', () async {
+        final errors = <Object>[];
+        final bloc = _TrackingMultiSurfaceBloc(onErrorCallback: errors.add);
+        addTearDown(bloc.close);
+
+        final arrayController = StreamController<Object>();
+        bloc.add(IngestStream(arrayController.stream));
+        arrayController.add('[1, 2, 3]');
+        await arrayController.close();
+        await Future<void>.microtask(() {});
+
+        expect(bloc.stateValue, isA<SurfaceError>());
+        expect(errors, hasLength(1));
+
+        final mapController = StreamController<Object>();
+        bloc.add(IngestStream(mapController.stream));
+        mapController.add({'version': 123});
+        await mapController.close();
+        await Future<void>.microtask(() {});
+
+        expect(bloc.stateValue, isA<SurfaceError>());
+        expect(errors, hasLength(2));
+      });
+
+      test(
+          '_validateForm handles string-typed minLength and maxLength cleanly '
+          'without throwing TypeError', () {
+        final errors = <Object>[];
+        final bloc = _TrackingMultiSurfaceBloc(onErrorCallback: errors.add);
+        addTearDown(bloc.close);
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'surf_str_bounds',
+              'catalogId': minimalCatalogId,
+            },
+          }),
+        );
+        // Inject component properties directly to simulate a permissive
+        // custom catalog where string-typed numeric bounds reach _validateForm.
+        bloc.processor.model
+            .getSurface('surf_str_bounds')!
+            .componentsModel
+            .addComponent(
+              ComponentModel(
+                'tf_name',
+                'TextField',
+                const {
+                  'label': 'Name',
+                  'minLength': '3',
+                  'maxLength': '10',
+                  'value': {'@path': '/name'},
+                },
+              ),
+            );
+
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_str_bounds',
+            path: '/name',
+            value: 'Al',
+          ),
+        );
+        var ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(ready.validationErrors.single, contains('at least 3'));
+
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_str_bounds',
+            path: '/name',
+            value: '12345678901',
+          ),
+        );
+        ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(ready.validationErrors.single, contains('at most 10'));
+
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_str_bounds',
+            path: '/name',
+            value: 'Alice',
+          ),
+        );
+        ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isTrue);
+        expect(ready.validationErrors, isEmpty);
+        expect(errors, isEmpty);
+      });
+    });
   });
 }
 

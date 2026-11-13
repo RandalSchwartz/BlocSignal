@@ -54,6 +54,19 @@ class A2uiSurfaceView extends StatefulWidget {
   /// If [catalog] is omitted, defaults to [A2uiFlutterCatalog.standard].
   /// If [surfaceId] is specified, targets and renders that specific surface
   /// rather than the globally active surface in [bloc].
+  /// [maxDepth] defaults to [defaultMaxDepth] (`32`) and bounds the maximum
+  /// component nesting depth per surface render pass.
+  /// [nodeBudget] defaults to [defaultNodeBudget] (`1000`) and bounds the
+  /// total number of rendered nodes per surface render pass to prevent
+  /// exponential DAG fan-out.
+  ///
+  /// ```dart
+  /// A2uiSurfaceView(
+  ///   bloc: surfaceBloc,
+  ///   maxDepth: 24,
+  ///   nodeBudget: 500,
+  /// )
+  /// ```
   A2uiSurfaceView({
     required this.bloc,
     this.surfaceId,
@@ -63,8 +76,27 @@ class A2uiSurfaceView extends StatefulWidget {
     this.submittingBuilder,
     this.errorBuilder,
     this.validationErrorsBuilder,
+    this.maxDepth = defaultMaxDepth,
+    this.nodeBudget = defaultNodeBudget,
     super.key,
-  }) : catalog = catalog ?? A2uiFlutterCatalog.standard();
+  })  : assert(maxDepth > 0, 'maxDepth must be greater than 0.'),
+        assert(nodeBudget > 0, 'nodeBudget must be greater than 0.'),
+        catalog = catalog ?? A2uiFlutterCatalog.standard();
+
+  /// Default maximum component tree depth enforced per surface render pass.
+  ///
+  /// ```dart
+  /// const depthLimit = A2uiSurfaceView.defaultMaxDepth;
+  /// ```
+  static const int defaultMaxDepth = 32;
+
+  /// Default maximum number of component nodes rendered per surface render
+  /// pass.
+  ///
+  /// ```dart
+  /// const budgetLimit = A2uiSurfaceView.defaultNodeBudget;
+  /// ```
+  static const int defaultNodeBudget = 1000;
 
   /// The underlying [A2uiSurfaceBloc] orchestrating generative state.
   final A2uiSurfaceBloc bloc;
@@ -92,6 +124,12 @@ class A2uiSurfaceView extends StatefulWidget {
 
   /// Optional custom builder rendered when [SurfaceReady.isValid] is false.
   final A2uiValidationErrorsBuilder? validationErrorsBuilder;
+
+  /// Maximum component nesting depth allowed per surface render pass.
+  final int maxDepth;
+
+  /// Maximum total component nodes rendered per surface render pass.
+  final int nodeBudget;
 
   @override
   State<A2uiSurfaceView> createState() => _A2uiSurfaceViewState();
@@ -164,6 +202,8 @@ class _A2uiSurfaceViewState extends State<A2uiSurfaceView> {
               surfaceReady: state,
               catalog: widget.catalog,
               bloc: widget.bloc,
+              maxDepth: widget.maxDepth,
+              nodeBudget: widget.nodeBudget,
               validationErrorsBuilder: widget.validationErrorsBuilder,
             );
           }
@@ -180,6 +220,8 @@ class _A2uiSurfaceViewState extends State<A2uiSurfaceView> {
               surfaceReady: targetedReady,
               catalog: widget.catalog,
               bloc: widget.bloc,
+              maxDepth: widget.maxDepth,
+              nodeBudget: widget.nodeBudget,
               validationErrorsBuilder: widget.validationErrorsBuilder,
             );
           }
@@ -312,17 +354,32 @@ class _A2uiSurfaceViewState extends State<A2uiSurfaceView> {
   }
 }
 
+class _RenderBudget {
+  _RenderBudget({
+    required this.maxDepth,
+    required this.nodeBudget,
+  });
+
+  final int maxDepth;
+  final int nodeBudget;
+  int visitedNodes = 0;
+}
+
 class _SurfaceTreeRenderer extends StatefulWidget {
   const _SurfaceTreeRenderer({
     required this.surfaceReady,
     required this.catalog,
     required this.bloc,
+    required this.maxDepth,
+    required this.nodeBudget,
     this.validationErrorsBuilder,
   });
 
   final SurfaceReady surfaceReady;
   final A2uiFlutterCatalog catalog;
   final A2uiSurfaceBloc bloc;
+  final int maxDepth;
+  final int nodeBudget;
   final A2uiValidationErrorsBuilder? validationErrorsBuilder;
 
   @override
@@ -427,8 +484,11 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
 
   Widget _buildNode(
     ComponentNode<ComponentApi> node,
-    Set<String> ancestorPath,
-  ) {
+    Set<String> ancestorPath, {
+    required int depth,
+    required _RenderBudget budget,
+    String? siblingDisambiguator,
+  }) {
     switch (node.state) {
       case NodeState.pending:
         return SizedBox.shrink(
@@ -448,10 +508,42 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
           ),
         );
       case NodeState.resolved:
+        final errorKeySuffix = siblingDisambiguator == null
+            ? node.componentId
+            : '${node.componentId}_$siblingDisambiguator';
+        if (depth > budget.maxDepth) {
+          return KeyedSubtree(
+            key: ValueKey('a2ui_error_$errorKeySuffix'),
+            child: _buildComponentErrorFallback(
+              context,
+              node.componentId,
+              StateError(
+                'Render depth $depth exceeded maxDepth (${budget.maxDepth})',
+              ),
+            ),
+          );
+        }
+        if (++budget.visitedNodes > budget.nodeBudget) {
+          return KeyedSubtree(
+            key: ValueKey('a2ui_error_$errorKeySuffix'),
+            child: _buildComponentErrorFallback(
+              context,
+              node.componentId,
+              StateError(
+                'Render node budget (${budget.nodeBudget}) exceeded',
+              ),
+            ),
+          );
+        }
+        final nodeKeySuffix = siblingDisambiguator == null
+            ? node.instanceId
+            : '${node.instanceId}_$siblingDisambiguator';
         return _ResolvedNodeWidget(
-          key: ValueKey('a2ui_node_${node.instanceId}'),
+          key: ValueKey('a2ui_node_$nodeKeySuffix'),
           node: node,
           ancestorPath: ancestorPath,
+          depth: depth,
+          budget: budget,
           catalog: widget.catalog,
           bloc: widget.bloc,
           surfaceId: widget.surfaceReady.surfaceId,
@@ -465,8 +557,11 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
   Widget _buildComponent(
     String componentId,
     Set<String> ancestorPath, {
+    required int depth,
+    required _RenderBudget budget,
     String dataPath = '/',
     int? index,
+    String? siblingDisambiguator,
   }) {
     final pathKey = dataPath == '/' || dataPath.isEmpty
         ? componentId
@@ -483,16 +578,49 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
       return SizedBox.shrink(key: ValueKey('missing_$componentId'));
     }
 
+    final errorKeySuffix = siblingDisambiguator == null
+        ? componentId
+        : '${componentId}_$siblingDisambiguator';
+    if (depth > budget.maxDepth) {
+      return KeyedSubtree(
+        key: ValueKey('a2ui_error_$errorKeySuffix'),
+        child: _buildComponentErrorFallback(
+          context,
+          componentId,
+          StateError(
+            'Render depth $depth exceeded maxDepth (${budget.maxDepth})',
+          ),
+        ),
+      );
+    }
+    if (++budget.visitedNodes > budget.nodeBudget) {
+      return KeyedSubtree(
+        key: ValueKey('a2ui_error_$errorKeySuffix'),
+        child: _buildComponentErrorFallback(
+          context,
+          componentId,
+          StateError(
+            'Render node budget (${budget.nodeBudget}) exceeded',
+          ),
+        ),
+      );
+    }
+
     final binder = dataPath == '/' || dataPath.isEmpty
         ? _binders[componentId]
         : _createScopedBinder(surface, component, dataPath, index);
+    final boundKeySuffix = siblingDisambiguator == null
+        ? pathKey
+        : '${pathKey}_$siblingDisambiguator';
     return _BoundComponentWidget(
-      key: ValueKey('a2ui_bound_$pathKey'),
+      key: ValueKey('a2ui_bound_$boundKeySuffix'),
       component: component,
       binder: binder,
       ownsBinder: dataPath != '/' && dataPath.isNotEmpty,
       dataPath: dataPath,
       ancestorPath: ancestorPath,
+      depth: depth,
+      budget: budget,
       catalog: widget.catalog,
       bloc: widget.bloc,
       surfaceId: widget.surfaceReady.surfaceId,
@@ -627,10 +755,19 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
       return errorBanner ?? const SizedBox.shrink();
     }
 
+    final budget = _RenderBudget(
+      maxDepth: widget.maxDepth,
+      nodeBudget: widget.nodeBudget,
+    );
     final resolvedRoot = _resolver?.rootNode.value;
     Widget content;
     if (resolvedRoot != null) {
-      content = _buildNode(resolvedRoot, const <String>{});
+      content = _buildNode(
+        resolvedRoot,
+        const <String>{},
+        depth: 0,
+        budget: budget,
+      );
     } else {
       // Identify root components not referenced as a child by any other
       // component
@@ -695,16 +832,35 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: components
-              .map((c) => _buildComponent(c.id, const <String>{}))
+              .map(
+                (c) => _buildComponent(
+                  c.id,
+                  const <String>{},
+                  depth: 0,
+                  budget: budget,
+                ),
+              )
               .toList(),
         );
       } else if (rootComponents.length == 1) {
-        content = _buildComponent(rootComponents.first.id, const <String>{});
+        content = _buildComponent(
+          rootComponents.first.id,
+          const <String>{},
+          depth: 0,
+          budget: budget,
+        );
       } else {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: rootComponents
-              .map((c) => _buildComponent(c.id, const <String>{}))
+              .map(
+                (c) => _buildComponent(
+                  c.id,
+                  const <String>{},
+                  depth: 0,
+                  budget: budget,
+                ),
+              )
               .toList(),
         );
       }
@@ -729,6 +885,8 @@ class _ResolvedNodeWidget extends StatefulWidget {
   const _ResolvedNodeWidget({
     required this.node,
     required this.ancestorPath,
+    required this.depth,
+    required this.budget,
     required this.catalog,
     required this.bloc,
     required this.surfaceId,
@@ -740,18 +898,26 @@ class _ResolvedNodeWidget extends StatefulWidget {
 
   final ComponentNode<ComponentApi> node;
   final Set<String> ancestorPath;
+  final int depth;
+  final _RenderBudget budget;
   final A2uiFlutterCatalog catalog;
   final A2uiSurfaceBloc bloc;
   final String surfaceId;
   final Widget Function(
     ComponentNode<ComponentApi> node,
-    Set<String> ancestorPath,
-  ) buildNodeCallback;
+    Set<String> ancestorPath, {
+    required int depth,
+    required _RenderBudget budget,
+    String? siblingDisambiguator,
+  }) buildNodeCallback;
   final Widget Function(
     String componentId,
     Set<String> ancestorPath, {
+    required int depth,
+    required _RenderBudget budget,
     String dataPath,
     int? index,
+    String? siblingDisambiguator,
   }) buildComponentCallback;
   final Widget Function(
     BuildContext context,
@@ -766,6 +932,7 @@ class _ResolvedNodeWidget extends StatefulWidget {
 class _ResolvedNodeWidgetState extends State<_ResolvedNodeWidget> {
   void Function()? _unsubscribe;
   NodeProps? _lastProps;
+  bool _isSelfRebuild = false;
 
   @override
   void initState() {
@@ -789,7 +956,9 @@ class _ResolvedNodeWidgetState extends State<_ResolvedNodeWidget> {
       if (!identical(_lastProps, nextProps)) {
         _lastProps = nextProps;
         if (mounted) {
-          setState(() {});
+          setState(() {
+            _isSelfRebuild = true;
+          });
         }
       }
     });
@@ -840,15 +1009,32 @@ class _ResolvedNodeWidgetState extends State<_ResolvedNodeWidget> {
     };
     final childNodes = _collectChildNodes(rawProps);
 
-    Widget buildSingleChild(String childId) {
+    final activeBudget = _isSelfRebuild
+        ? _RenderBudget(
+            maxDepth: widget.budget.maxDepth,
+            nodeBudget: widget.budget.nodeBudget,
+          )
+        : widget.budget;
+    _isSelfRebuild = false;
+
+    Widget buildSingleChild(String childId, {String? siblingDisambiguator}) {
       final childNode = childNodes[childId];
       if (childNode != null) {
-        return widget.buildNodeCallback(childNode, nextPath);
+        return widget.buildNodeCallback(
+          childNode,
+          nextPath,
+          depth: widget.depth + 1,
+          budget: activeBudget,
+          siblingDisambiguator: siblingDisambiguator,
+        );
       }
       return widget.buildComponentCallback(
         childId,
         nextPath,
+        depth: widget.depth + 1,
+        budget: activeBudget,
         dataPath: node.dataPath,
+        siblingDisambiguator: siblingDisambiguator,
       );
     }
 
@@ -861,7 +1047,16 @@ class _ResolvedNodeWidgetState extends State<_ResolvedNodeWidget> {
       surfaceBloc: widget.bloc,
       surfaceId: widget.surfaceId,
       buildChildCallback: buildSingleChild,
-      buildChildrenCallback: (ids) => ids.map(buildSingleChild).toList(),
+      buildChildrenCallback: (ids) {
+        final seen = <String>{};
+        return [
+          for (var i = 0; i < ids.length; i++)
+            buildSingleChild(
+              ids[i],
+              siblingDisambiguator: seen.add(ids[i]) ? null : '$i',
+            ),
+        ];
+      },
     );
 
     try {
@@ -891,6 +1086,8 @@ class _BoundComponentWidget extends StatefulWidget {
     required this.component,
     required this.binder,
     required this.ancestorPath,
+    required this.depth,
+    required this.budget,
     required this.catalog,
     required this.bloc,
     required this.surfaceId,
@@ -907,6 +1104,8 @@ class _BoundComponentWidget extends StatefulWidget {
   final bool ownsBinder;
   final String dataPath;
   final Set<String> ancestorPath;
+  final int depth;
+  final _RenderBudget budget;
   final A2uiFlutterCatalog catalog;
   final A2uiSurfaceBloc bloc;
   final String surfaceId;
@@ -914,8 +1113,11 @@ class _BoundComponentWidget extends StatefulWidget {
   final Widget Function(
     String componentId,
     Set<String> ancestorPath, {
+    required int depth,
+    required _RenderBudget budget,
     String dataPath,
     int? index,
+    String? siblingDisambiguator,
   }) buildComponentCallback;
   final Widget Function(
     BuildContext context,
@@ -930,6 +1132,7 @@ class _BoundComponentWidget extends StatefulWidget {
 class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
   void Function()? _unsubscribe;
   Map<String, dynamic>? _lastProps;
+  bool _isSelfRebuild = false;
 
   @override
   void initState() {
@@ -958,7 +1161,9 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
         if (!identical(_lastProps, nextProps)) {
           _lastProps = nextProps;
           if (mounted) {
-            setState(() {});
+            setState(() {
+              _isSelfRebuild = true;
+            });
           }
         }
       });
@@ -1003,6 +1208,13 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
         entry.key: unwrapBinding(entry.value),
     };
     final templateChildNodes = _collectTemplateChildNodes(rawProps);
+    final activeBudget = _isSelfRebuild
+        ? _RenderBudget(
+            maxDepth: widget.budget.maxDepth,
+            nodeBudget: widget.budget.nodeBudget,
+          )
+        : widget.budget;
+    _isSelfRebuild = false;
 
     final componentCtx = A2uiComponentContext(
       component: widget.component,
@@ -1014,6 +1226,8 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
       buildChildCallback: (childId) => widget.buildComponentCallback(
         childId,
         nextPath,
+        depth: widget.depth + 1,
+        budget: activeBudget,
         dataPath: widget.dataPath,
       ),
       buildChildrenCallback: (ids) {
@@ -1024,20 +1238,25 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
               widget.buildComponentCallback(
                 templateChildNodes[i].id,
                 nextPath,
+                depth: widget.depth + 1,
+                budget: activeBudget,
                 dataPath: templateChildNodes[i].basePath,
                 index: templateChildNodes[i].index,
               ),
           ];
         }
-        return ids
-            .map(
-              (childId) => widget.buildComponentCallback(
-                childId,
-                nextPath,
-                dataPath: widget.dataPath,
-              ),
-            )
-            .toList();
+        final seen = <String>{};
+        return [
+          for (var i = 0; i < ids.length; i++)
+            widget.buildComponentCallback(
+              ids[i],
+              nextPath,
+              depth: widget.depth + 1,
+              budget: activeBudget,
+              dataPath: widget.dataPath,
+              siblingDisambiguator: seen.add(ids[i]) ? null : '$i',
+            ),
+        ];
       },
     );
 

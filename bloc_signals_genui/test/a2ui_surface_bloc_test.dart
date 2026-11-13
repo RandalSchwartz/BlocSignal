@@ -3354,6 +3354,65 @@ void main() {
         expect(A2uiSurfaceBloc.debugRegexCacheSize, greaterThan(0));
       });
     });
+
+    group('(Issue #415) A2uiSurfaceBloc default maxSurfaces', () {
+      test(
+          '(Issue #415) defaults maxSurfaces to defaultMaxSurfaces (20) and '
+          'evicts LRU surface on 21st surface', () {
+        expect(A2uiSurfaceBloc.defaultMaxSurfaces, equals(20));
+
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+        expect(bloc.maxSurfaces, equals(A2uiSurfaceBloc.defaultMaxSurfaces));
+
+        for (var i = 0; i <= A2uiSurfaceBloc.defaultMaxSurfaces; i++) {
+          bloc.add(
+            ProcessMessage(
+              CreateSurfaceMessage(
+                version: 'v0.9',
+                surfaceId: 'S$i',
+                catalogId: minimalCatalogId,
+              ),
+            ),
+          );
+        }
+
+        expect(
+          bloc.availableSurfaceIds.length,
+          equals(A2uiSurfaceBloc.defaultMaxSurfaces),
+        );
+        expect(bloc.availableSurfaceIds, isNot(contains('S0')));
+        expect(bloc.availableSurfaceIds, contains('S1'));
+        expect(
+          bloc.availableSurfaceIds,
+          contains('S${A2uiSurfaceBloc.defaultMaxSurfaces}'),
+        );
+      });
+
+      test(
+          '(Issue #415) A2uiSurfaceBloc(maxSurfaces: null) opts out of '
+          'eviction and retains more than 20 surfaces', () {
+        final bloc = A2uiSurfaceBloc(maxSurfaces: null);
+        addTearDown(bloc.close);
+        expect(bloc.maxSurfaces, isNull);
+
+        for (var i = 0; i < 25; i++) {
+          bloc.add(
+            ProcessMessage(
+              CreateSurfaceMessage(
+                version: 'v0.9',
+                surfaceId: 'S$i',
+                catalogId: minimalCatalogId,
+              ),
+            ),
+          );
+        }
+
+        expect(bloc.availableSurfaceIds.length, equals(25));
+        expect(bloc.availableSurfaceIds, contains('S0'));
+        expect(bloc.availableSurfaceIds, contains('S24'));
+      });
+    });
   });
 }
 

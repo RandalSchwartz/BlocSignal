@@ -2277,6 +2277,239 @@ void main() {
         },
       );
     });
+
+    group('(Issue #415) A2uiSurfaceView render depth and node budget', () {
+      testWidgets(
+        '(Issue #415) exposes defaultMaxDepth/defaultNodeBudget and asserts > 0',
+        (tester) async {
+          expect(A2uiSurfaceView.defaultMaxDepth, equals(32));
+          expect(A2uiSurfaceView.defaultNodeBudget, equals(1000));
+
+          final bloc = A2uiSurfaceBloc();
+          addTearDown(bloc.close);
+
+          expect(
+            () => A2uiSurfaceView(bloc: bloc, maxDepth: 0),
+            throwsAssertionError,
+          );
+          expect(
+            () => A2uiSurfaceView(bloc: bloc, maxDepth: -1),
+            throwsAssertionError,
+          );
+          expect(
+            () => A2uiSurfaceView(bloc: bloc, nodeBudget: 0),
+            throwsAssertionError,
+          );
+          expect(
+            () => A2uiSurfaceView(bloc: bloc, nodeBudget: -5),
+            throwsAssertionError,
+          );
+        },
+      );
+
+      testWidgets(
+        '(Issue #415) DAG fan-out payload terminates within nodeBudget and '
+        'renders fallback',
+        (tester) async {
+          final bloc = A2uiSurfaceBloc();
+          addTearDown(bloc.close);
+
+          // 12-level binary DAG: 2^12 - 1 = 4095 nodes > defaultNodeBudget
+          // (1000).
+          final components = <Map<String, Object?>>[
+            for (var i = 0; i < 11; i++)
+              {
+                'id': 'dag_$i',
+                'component': 'Column',
+                'children': ['dag_${i + 1}', 'dag_${i + 1}'],
+              },
+            {
+              'id': 'dag_11',
+              'component': 'Text',
+              'text': 'Leaf',
+            },
+          ];
+
+          bloc
+            ..add(
+              const ProcessJsonMessage({
+                'version': 'v0.9',
+                'createSurface': {
+                  'surfaceId': 's_dag',
+                  'catalogId': minimalCatalogId,
+                },
+              }),
+            )
+            ..add(
+              ProcessJsonMessage({
+                'version': 'v0.9',
+                'updateComponents': {
+                  'surfaceId': 's_dag',
+                  'components': components,
+                },
+              }),
+            );
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  child: A2uiSurfaceView(
+                    bloc: bloc,
+                    surfaceId: 's_dag',
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(
+            find.byWidgetPredicate(
+              (w) =>
+                  w.key is ValueKey<String> &&
+                  (w.key! as ValueKey<String>)
+                      .value
+                      .startsWith('error_fallback_'),
+            ),
+            findsWidgets,
+          );
+        },
+      );
+
+      testWidgets(
+        '(Issue #415) deep linear chain exceeding maxDepth renders fallback',
+        (tester) async {
+          final bloc = A2uiSurfaceBloc();
+          addTearDown(bloc.close);
+
+          // 35-level linear chain exceeds defaultMaxDepth (32).
+          final components = <Map<String, Object?>>[
+            for (var i = 0; i < 35; i++)
+              {
+                'id': 'chain_$i',
+                'component': 'Column',
+                'children': ['chain_${i + 1}'],
+              },
+            {
+              'id': 'chain_35',
+              'component': 'Text',
+              'text': 'Deep Leaf',
+            },
+          ];
+
+          bloc
+            ..add(
+              const ProcessJsonMessage({
+                'version': 'v0.9',
+                'createSurface': {
+                  'surfaceId': 's_chain',
+                  'catalogId': minimalCatalogId,
+                },
+              }),
+            )
+            ..add(
+              ProcessJsonMessage({
+                'version': 'v0.9',
+                'updateComponents': {
+                  'surfaceId': 's_chain',
+                  'components': components,
+                },
+              }),
+            );
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  child: A2uiSurfaceView(
+                    bloc: bloc,
+                    surfaceId: 's_chain',
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(find.text('Deep Leaf'), findsNothing);
+          expect(
+            find.byWidgetPredicate(
+              (w) =>
+                  w.key is ValueKey<String> &&
+                  (w.key! as ValueKey<String>)
+                      .value
+                      .startsWith('error_fallback_'),
+            ),
+            findsOneWidget,
+          );
+        },
+      );
+
+      testWidgets(
+        '(Issue #415) custom maxDepth and nodeBudget override defaults',
+        (tester) async {
+          final bloc = A2uiSurfaceBloc();
+          addTearDown(bloc.close);
+
+          bloc
+            ..add(
+              const ProcessJsonMessage({
+                'version': 'v0.9',
+                'createSurface': {
+                  'surfaceId': 's_custom',
+                  'catalogId': minimalCatalogId,
+                },
+              }),
+            )
+            ..add(
+              const ProcessJsonMessage({
+                'version': 'v0.9',
+                'updateComponents': {
+                  'surfaceId': 's_custom',
+                  'components': [
+                    {
+                      'id': 'c0',
+                      'component': 'Column',
+                      'children': ['c1', 'c2'],
+                    },
+                    {
+                      'id': 'c1',
+                      'component': 'Text',
+                      'text': 'Child 1',
+                    },
+                    {
+                      'id': 'c2',
+                      'component': 'Text',
+                      'text': 'Child 2',
+                    },
+                  ],
+                },
+              }),
+            );
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc,
+                  surfaceId: 's_custom',
+                  nodeBudget: 2,
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(find.text('Child 1'), findsOneWidget);
+          expect(find.text('Child 2'), findsNothing);
+          expect(
+            find.byKey(const ValueKey('error_fallback_c2')),
+            findsOneWidget,
+          );
+        },
+      );
+    });
   });
 }
 

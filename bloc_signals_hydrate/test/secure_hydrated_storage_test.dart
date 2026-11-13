@@ -45,15 +45,15 @@ void main() {
     test('pre-loads existing storage values via build() with default prefix',
         () async {
       await secureStorage.write(
-        key: 'auth_token',
+        key: '${kDefaultHydratedStoragePrefix}auth_token',
         value: '"secret_jwt_token"',
       );
       await secureStorage.write(
-        key: 'user_id',
+        key: '${kDefaultHydratedStoragePrefix}user_id',
         value: '12345',
       );
       await secureStorage.write(
-        key: 'raw_string',
+        key: '${kDefaultHydratedStoragePrefix}raw_string',
         value: 'not_json_string',
       );
 
@@ -89,7 +89,9 @@ void main() {
       await storage.write('session_key', 'abc-987');
       expect(storage.read('session_key'), equals('abc-987'));
 
-      final storedValue = await secureStorage.read(key: 'session_key');
+      final storedValue = await secureStorage.read(
+        key: '${kDefaultHydratedStoragePrefix}session_key',
+      );
       expect(storedValue, equals('"abc-987"'));
     });
 
@@ -162,7 +164,7 @@ void main() {
         'integrates seamlessly with HydratedCubitSignal for zero-flicker reads',
         () async {
       await secureStorage.write(
-        key: 'TestAuthTokenCubit',
+        key: '${kDefaultHydratedStoragePrefix}TestAuthTokenCubit',
         value: '"pre_existing_session_token"',
       );
 
@@ -174,9 +176,74 @@ void main() {
       cubit.setToken('new_updated_token');
       expect(cubit.stateValue, equals('new_updated_token'));
 
-      final updatedInSecureStorage =
-          await secureStorage.read(key: 'TestAuthTokenCubit');
+      final updatedInSecureStorage = await secureStorage.read(
+        key: '${kDefaultHydratedStoragePrefix}TestAuthTokenCubit',
+      );
       expect(updatedInSecureStorage, equals('"new_updated_token"'));
+    });
+
+    test(
+        '(Issue #417: build() with default prefix ignores foreign/unprefixed keys)',
+        () async {
+      await secureStorage.write(
+        key: 'foreign_oauth_token',
+        value: '"do_not_load"',
+      );
+      await secureStorage.write(
+        key: 'bloc_signals_hydrate_session',
+        value: '"hydrated_value"',
+      );
+
+      final storage = await SecureHydratedStorage.build(secureStorage);
+
+      expect(storage.prefix, equals('bloc_signals_hydrate_'));
+      expect(storage.read('foreign_oauth_token'), isNull);
+      expect(storage.read('session'), equals('hydrated_value'));
+    });
+
+    test(
+        '(Issue #417: clear() with default prefix deletes only '
+        'bloc_signals_hydrate_* keys)', () async {
+      await secureStorage.write(
+        key: 'foreign_secret',
+        value: 'keep_me',
+      );
+
+      final storage = await SecureHydratedStorage.build(secureStorage);
+      await storage.write('k1', 'v1');
+      await storage.write('k2', 'v2');
+
+      expect(
+        await secureStorage.read(key: 'bloc_signals_hydrate_k1'),
+        equals('"v1"'),
+      );
+
+      await storage.clear();
+
+      expect(storage.read('k1'), isNull);
+      expect(storage.read('k2'), isNull);
+      expect(await secureStorage.read(key: 'bloc_signals_hydrate_k1'), isNull);
+      expect(await secureStorage.read(key: 'bloc_signals_hydrate_k2'), isNull);
+      expect(
+        await secureStorage.read(key: 'foreign_secret'),
+        equals('keep_me'),
+      );
+    });
+
+    test("(Issue #417: explicit prefix: '' opts in to legacy unprefixed keys)",
+        () async {
+      await secureStorage.write(
+        key: 'legacy_token',
+        value: '"legacy_secret"',
+      );
+
+      final storage = await SecureHydratedStorage.build(
+        secureStorage,
+        prefix: '',
+      );
+
+      expect(storage.prefix, equals(''));
+      expect(storage.read('legacy_token'), equals('legacy_secret'));
     });
   });
 }

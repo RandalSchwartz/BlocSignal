@@ -1,5 +1,13 @@
 import 'dart:async';
 
+/// Default key prefix used by namespaced [HydratedStorage] adapters such as
+/// `SecureHydratedStorage` and `SharedPreferencesHydratedStorage`.
+///
+/// Namespacing prevents storage adapters from pre-loading or clearing
+/// unrelated host-application keys. Pass `prefix: ''` explicitly if you need
+/// to target legacy unprefixed keys directly.
+const String kDefaultHydratedStoragePrefix = 'bloc_signals_hydrate_';
+
 /// An abstract interface for state persistence backends used by
 /// `HydratedBlocSignal` and `HydratedCubitSignal`.
 ///

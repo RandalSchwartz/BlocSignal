@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (lint)**: `AvoidMultipleSynchronousEmits` now treats a `catch` clause as starting after a suspension boundary when the `try` body contains an `await` (outside nested closures, including `await for`), so the canonical `Loading` to terminal async pattern is no longer reported while synchronous double emissions still are (#406).
+
 ## 1.3.4
 
 - **Fix (lint)**: Fix MixinElement NullCheckError in AvoidDirectSignalMutationOutsideBloc when mixins invoke .emit() and remove test AST workaround (#407).

@@ -350,11 +350,20 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
         onViolation,
       );
 
+      // A `catch` clause is reached either by a synchronous throw before the
+      // `try` body's first suspension, or by an `await` that failed. When the
+      // body contains an `await`, the clause is treated as coming after a
+      // suspension boundary: emissions that happened before the `try` are not
+      // on its linear path (the rule's contract is "no intervening await").
+      // Bodies without an `await` keep the pre-`try` emission state, so a
+      // genuinely synchronous double emission is still reported.
+      final catchInputPaths = _catchInputPaths(active, stmt.body);
+
       final catchPaths = <_PathState>[];
       for (final catchClause in stmt.catchClauses) {
         final afterCatch = _analyzeStatement(
           catchClause.body,
-          active.map((p) => p.clone()).toList(),
+          catchInputPaths.map((p) => p.clone()).toList(),
           emittingMethods,
           onViolation,
         );
@@ -581,6 +590,34 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
     return incomingPaths;
   }
 
+  /// Computes the path states a `catch` clause starts from.
+  ///
+  /// A clause is reached either by a synchronous throw before the `try` body's
+  /// first suspension, or by an `await` that failed. When [body] contains an
+  /// `await` (outside nested closures), the clause is treated as coming after a
+  /// suspension boundary, so the emission flag is cleared. A body without an
+  /// `await` keeps the pre-`try` state, so a genuinely synchronous double
+  /// emission is still reported.
+  static List<_PathState> _catchInputPaths(
+    List<_PathState> incoming,
+    Statement body,
+  ) {
+    final separatedByAwait = _containsAwait(body);
+    return incoming.map((path) {
+      final clone = path.clone();
+      if (separatedByAwait) {
+        clone.hasEmitted = false;
+      }
+      return clone;
+    }).toList();
+  }
+
+  static bool _containsAwait(Statement body) {
+    var found = false;
+    body.accept(_AwaitDetector(() => found = true));
+    return found;
+  }
+
   static void _evaluateExpression(
     Expression expr,
     List<_PathState> paths,
@@ -660,6 +697,34 @@ class _PathState {
         isContinued: isContinued,
         continueLabel: continueLabel,
       );
+}
+
+/// Detects an `await` on the enclosing execution path, ignoring nested
+/// closures (their awaits do not suspend the path being analysed).
+class _AwaitDetector extends RecursiveAstVisitor<void> {
+  _AwaitDetector(this.onAwait);
+
+  final void Function() onAwait;
+
+  @override
+  void visitFunctionExpression(FunctionExpression node) {
+    // Awaits inside a nested closure do not suspend the enclosing path.
+    return;
+  }
+
+  @override
+  void visitAwaitExpression(AwaitExpression node) {
+    onAwait();
+  }
+
+  @override
+  void visitForStatement(ForStatement node) {
+    if (node.awaitKeyword != null) {
+      onAwait();
+      return;
+    }
+    super.visitForStatement(node);
+  }
 }
 
 class _ClosureVisitor extends RecursiveAstVisitor<void> {

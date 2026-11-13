@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (genui_jaspr)**: Enforce per-render tree depth (`maxDepth`, defaulting to `A2uiSurfaceView.defaultMaxDepth` = `32`) and total node budget (`nodeBudget`, defaulting to `A2uiSurfaceView.defaultNodeBudget` = `1000`) in `A2uiSurfaceView`, rendering localized fallback components when exceeded (#415).
+
 ## 2.0.0
 
 - **BREAKING (genui_jaspr)**: Upgrade `a2ui_core` to `^0.7.0` and `bloc_signals_genui` to `^2.0.0` (#434).

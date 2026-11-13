@@ -25,9 +25,10 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   ///
   /// If [catalogs] is omitted, defaults to registering [StandardCatalog],
   /// [BasicCatalog.v0_9], and [BasicCatalog.v1_0].
-  /// If [maxSurfaces] is provided (must be greater than `0`), enforces bounded
+  /// [maxSurfaces] defaults to [defaultMaxSurfaces] (`20`) and enforces bounded
   /// Least-Recently-Used (LRU) eviction of inactive surfaces when the number of
-  /// tracked surfaces exceeds [maxSurfaces].
+  /// tracked surfaces exceeds [maxSurfaces] (must be greater than `0` when
+  /// non-null). Pass `maxSurfaces: null` to explicitly opt out of eviction.
   /// [maxResponseHistory] (defaults to `100`, must be greater than or equal to
   /// `0`) bounds the number of submitted [A2uiActionResponse] items buffered in
   /// memory for replay to late [actionResponses] subscribers.
@@ -57,7 +58,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// ```
   A2uiSurfaceBloc({
     List<Catalog<ComponentApi, FunctionImplementation>>? catalogs,
-    this.maxSurfaces,
+    this.maxSurfaces = defaultMaxSurfaces,
     this.maxResponseHistory = 100,
     OutboundMessageListener? outboundListener,
     this.defaultRpcTimeout = const Duration(seconds: 30),
@@ -109,13 +110,23 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     on<ResetSurface>(_onResetSurface);
   }
 
+  /// Default maximum number of surfaces retained in memory before evicting the
+  /// least-recently-used inactive surface.
+  ///
+  /// ```dart
+  /// final bloc = A2uiSurfaceBloc();
+  /// assert(bloc.maxSurfaces == A2uiSurfaceBloc.defaultMaxSurfaces);
+  /// ```
+  static const int defaultMaxSurfaces = 20;
+
   /// The active component catalogs registered with this surface bloc.
   final List<Catalog<ComponentApi, FunctionImplementation>> catalogs;
 
   /// Optional maximum number of surfaces to retain in memory before evicting
   /// the least-recently-used inactive surface.
   ///
-  /// When `null`, surface count is unbounded.
+  /// Defaults to [defaultMaxSurfaces] (`20`). When explicitly set to `null`,
+  /// surface count is unbounded.
   final int? maxSurfaces;
 
   /// Maximum number of submitted [A2uiActionResponse] instances retained in

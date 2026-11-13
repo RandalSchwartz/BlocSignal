@@ -50,7 +50,7 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 
 ## ⚡ Key Features
 
-- 🎨 **`A2uiSurfaceView`**: Reactive Jaspr web component handling the complete `A2uiSurfaceState` lifecycle (`SurfaceInitial`, `SurfaceStreaming`, `SurfaceReady`, `SurfaceSubmitting`, and `SurfaceError`) with customizable builders and per-component error boundaries.
+- 🎨 **`A2uiSurfaceView`**: Reactive Jaspr web component handling the complete `A2uiSurfaceState` lifecycle (`SurfaceInitial`, `SurfaceStreaming`, `SurfaceReady`, `SurfaceSubmitting`, and `SurfaceError`) with customizable builders, per-component error boundaries, and bounded per-render `maxDepth` (default `32`) / `nodeBudget` (default `1000`) guards against exponential DAG payloads.
 - 🧱 **`A2uiJasprCatalog`**: Extensible component registry pre-populated with all 16 `BasicCatalog` DOM components (`Text`, `Row`, `Column`, `Card`, `Divider`, `Button`, `TextField`, `List`, `Tabs`, `Modal`, `Icon`, `Image`, `CheckBox`, `ChoicePicker`, `Slider`, and `DateTimeInput`) alongside immutable composition helpers (`copyWith`, `copyWithout`, `registerAll`).
 - ♿ **A2UI 1.0 Conformance (`NodeAction`, `weight`, `accessibility`, `metadata`)**: Supports `NodeAction` `functionCall` execution via `A2uiComponentContext.triggerAction()`, positive finite child `weight` (`flex-grow`) via `buildWeightedChildren`, universal `accessibility` envelopes (`hidden`, `aria-label`, `aria-description`), and component `metadata` access.
 - ✅ **Reactive `CheckRule` Validation UI**: Automatically surfaces `GenericBinder` validation state (`isValid`, `validationErrors`, `validationResults`) across form inputs and disables button submissions when validation rules fail.

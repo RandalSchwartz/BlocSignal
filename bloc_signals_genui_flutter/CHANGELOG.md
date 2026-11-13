@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
+## Unreleased
+
+- **Fix (genui_flutter)**: Enforce per-render tree depth (`maxDepth`, defaulting to `A2uiSurfaceView.defaultMaxDepth` = `32`) and total node budget (`nodeBudget`, defaulting to `A2uiSurfaceView.defaultNodeBudget` = `1000`) in `A2uiSurfaceView`, rendering localized fallback widgets when exceeded and disambiguating duplicate sibling component keys in DAG payloads (#415).
+
 ## 2.0.0
 
 - **BREAKING (genui_flutter)**: Upgrade `a2ui_core` to `^0.7.0` and `bloc_signals_genui` to `^2.0.0` (#434).

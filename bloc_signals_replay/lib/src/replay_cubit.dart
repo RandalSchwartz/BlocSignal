@@ -98,13 +98,27 @@ mixin ReplayMixin<State> on BlocSignalBase<State> {
         _Change<State>(
           oldState,
           newState,
-          () => emit(newState),
-          emit,
+          () => onRedo(() => emit(newState)),
+          (val) => onUndo(() => emit(val)),
         ),
       );
     }
     super.emit(newState);
   }
+
+  /// Executes a redo restoration [action].
+  ///
+  /// Subclasses or mixins can override this to wrap restoration with event
+  /// notifications or zone values.
+  @protected
+  void onRedo(void Function() action) => action();
+
+  /// Executes an undo restoration [action].
+  ///
+  /// Subclasses or mixins can override this to wrap restoration with event
+  /// notifications or zone values.
+  @protected
+  void onUndo(void Function() action) => action();
 
   /// Undo the last change.
   void undo() {

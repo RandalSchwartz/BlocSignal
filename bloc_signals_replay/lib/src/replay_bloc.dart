@@ -166,54 +166,25 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
   }
 
   @override
-  void emit(State newState) {
-    if (isClosed) return;
-    if (equals(stateValue, newState)) return;
+  @protected
+  void onRedo(void Function() action) => _runReplayEvent(_Redo(), action);
 
-    if (!_isReplaying) {
-      _changeStack.add(
-        _Change<State>(
-          stateValue,
-          newState,
-          () {
-            final event = _Redo();
-            _notifyReplayEvent(event);
-            try {
-              runZoned(
-                () => emit(newState),
-                zoneValues: {
-                  zoneEventKey: event,
-                  zoneBlocKey: this,
-                },
-              );
-            } finally {
-              _notifyReplayEventCompleted(event);
-            }
-          },
-          (val) {
-            final event = _Undo();
-            _notifyReplayEvent(event);
-            try {
-              runZoned(
-                () => emit(val),
-                zoneValues: {
-                  zoneEventKey: event,
-                  zoneBlocKey: this,
-                },
-              );
-            } finally {
-              _notifyReplayEventCompleted(event);
-            }
-          },
-        ),
-      );
-    }
-    final previousReplaying = _isReplaying;
-    _isReplaying = true;
+  @override
+  @protected
+  void onUndo(void Function() action) => _runReplayEvent(_Undo(), action);
+
+  void _runReplayEvent(ReplayEvent event, void Function() action) {
+    _notifyReplayEvent(event);
     try {
-      super.emit(newState);
+      runZoned(
+        action,
+        zoneValues: {
+          zoneEventKey: event,
+          zoneBlocKey: this,
+        },
+      );
     } finally {
-      _isReplaying = previousReplaying;
+      _notifyReplayEventCompleted(event);
     }
   }
 }

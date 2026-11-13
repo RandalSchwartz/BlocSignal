@@ -1,5 +1,6 @@
 ## Unreleased
 
+- **Fix (replay)**: Prevent ReplayBlocMixin.emit from silently dropping nested synchronous transitions during reactive effect callbacks (#409).
 - **Fix (replay)**: Remove unsound `covariant` `onEvent`/`onTransition` overrides from `ReplayBlocMixin`, introduce `onReplay` hook, and pair `BlocSignalObserver.onEvent` with `onEventCompleted` on undo/redo (#408).
 
 ## 1.3.0

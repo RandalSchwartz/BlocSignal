@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_signals_replay/bloc_signals_replay.dart';
+import 'package:signals_core/signals_core.dart';
 import 'package:test/test.dart';
 
 import 'blocs/counter_bloc.dart';
@@ -1029,6 +1030,136 @@ void main() {
       );
     },
   );
+
+  group('(Issue #409: F01) nested synchronous reactive transitions', () {
+    test(
+      'effect() calling bloc.add() synchronously records all transitions for '
+      'undo and redo',
+      () async {
+        final bloc = CounterBloc();
+        addTearDown(bloc.close);
+
+        var triggerEnabled = true;
+        final disposeEffect = effect(() {
+          if (triggerEnabled && bloc.state.value == 1) {
+            bloc.add(const CounterIncrementPressed());
+          }
+        });
+        addTearDown(disposeEffect);
+
+        bloc.add(const CounterIncrementPressed());
+        expect(bloc.stateValue, equals(2));
+
+        triggerEnabled = false;
+        disposeEffect();
+
+        bloc.undo();
+        expect(bloc.stateValue, equals(1));
+        bloc.undo();
+        expect(bloc.stateValue, equals(0));
+        expect(bloc.canUndo, isFalse);
+
+        bloc.redo();
+        expect(bloc.stateValue, equals(1));
+        bloc.redo();
+        expect(bloc.stateValue, equals(2));
+        expect(bloc.canRedo, isFalse);
+      },
+    );
+
+    test(
+      'createEffect() calling emit() synchronously records all transitions for '
+      'undo and redo',
+      () async {
+        final bloc = _DirectEmitCounterBloc();
+        addTearDown(bloc.close);
+
+        var triggerEnabled = true;
+        final disposeEffect = bloc.registerEffect(() {
+          if (triggerEnabled && bloc.state.value == 1) {
+            bloc.emitDirect(2);
+          }
+        });
+        addTearDown(disposeEffect);
+
+        bloc.add(const CounterIncrementPressed());
+        expect(bloc.stateValue, equals(2));
+
+        triggerEnabled = false;
+        disposeEffect();
+
+        bloc.undo();
+        expect(bloc.stateValue, equals(1));
+        bloc.undo();
+        expect(bloc.stateValue, equals(0));
+        expect(bloc.canUndo, isFalse);
+
+        bloc.redo();
+        expect(bloc.stateValue, equals(1));
+        bloc.redo();
+        expect(bloc.stateValue, equals(2));
+        expect(bloc.canRedo, isFalse);
+      },
+    );
+
+    test(
+      'BlocSignalObserver receives _Undo and _Redo zone event notifications '
+      'after nested synchronous transitions',
+      () async {
+        final previousObserver = BlocSignalObserver.observer;
+        final observer = _SpanPairingObserver();
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+        BlocSignalObserver.observer = observer;
+
+        final bloc = CounterBloc();
+        addTearDown(bloc.close);
+
+        var triggerEnabled = true;
+        final disposeEffect = effect(() {
+          if (triggerEnabled && bloc.state.value == 1) {
+            bloc.add(const CounterIncrementPressed());
+          }
+        });
+        addTearDown(disposeEffect);
+
+        bloc.add(const CounterIncrementPressed());
+        expect(bloc.stateValue, equals(2));
+
+        triggerEnabled = false;
+        disposeEffect();
+        observer.log.clear();
+
+        bloc.undo();
+        expect(bloc.stateValue, equals(1));
+        bloc.undo();
+        expect(bloc.stateValue, equals(0));
+
+        bloc.redo();
+        expect(bloc.stateValue, equals(1));
+        bloc.redo();
+        expect(bloc.stateValue, equals(2));
+
+        expect(observer.openSpans, isEmpty);
+        expect(
+          observer.log,
+          equals([
+            'onEvent:Undo',
+            'onTransition:Undo:1',
+            'onEventCompleted:Undo',
+            'onEvent:Undo',
+            'onTransition:Undo:0',
+            'onEventCompleted:Undo',
+            'onEvent:Redo',
+            'onTransition:Redo:1',
+            'onEventCompleted:Redo',
+            'onEvent:Redo',
+            'onTransition:Redo:2',
+            'onEventCompleted:Redo',
+          ]),
+        );
+      },
+    );
+  });
 }
 
 mixin _BlocPersistenceTrackingMixin<State> on BlocSignalBase<State> {
@@ -1205,4 +1336,10 @@ class _ThrowingOnEventCompletedObserver extends BlocSignalObserver {
     super.onEventCompleted(bloc, event);
     throw Exception('observer onEventCompleted failure');
   }
+}
+
+class _DirectEmitCounterBloc extends CounterBloc {
+  void emitDirect(int value) => emit(value);
+
+  void Function() registerEffect(void Function() fn) => createEffect(fn);
 }

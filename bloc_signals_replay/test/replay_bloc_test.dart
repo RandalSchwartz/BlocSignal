@@ -384,8 +384,8 @@ void main() {
     );
 
     test(
-      'isolates BlocSignalObserver.onTransition exception when onTransition is '
-      'invoked directly with a ReplayEvent',
+      'isolates BlocSignalObserver.onTransition exception when '
+      'handleTransition is invoked directly with a ReplayEvent',
       () async {
         addTearDown(() => BlocSignalObserver.observer = null);
         BlocSignalObserver.observer = _ThrowingReplayObserver();
@@ -395,13 +395,9 @@ void main() {
         addTearDown(bloc.close);
 
         expect(
-          () => bloc.onTransition(
-            const Transition<ReplayEvent, int>(
-              currentState: 0,
-              event: _CustomReplayEvent(),
-              nextState: 1,
-            ),
-          ),
+          // Exercising protected handleTransition directly for ReplayEvent.
+          // ignore: invalid_use_of_protected_member
+          () => bloc.handleTransition(const _CustomReplayEvent(), 0, 1),
           returnsNormally,
         );
         expect(
@@ -929,6 +925,110 @@ void main() {
       );
     });
   });
+
+  group(
+    '(Issue #408: F01) ReplayBloc covariant override safety and observer '
+    'span pairing',
+    () {
+      test(
+        'allows subclass overriding onEvent and onTransition with concrete '
+        'Event type without TypeError on undo and redo',
+        () async {
+          final bloc = _TypedOverrideCounterBloc();
+          addTearDown(bloc.close);
+
+          expect(bloc.stateValue, equals(0));
+          bloc.add(const CounterIncrementPressed());
+          expect(bloc.stateValue, equals(1));
+          expect(
+            bloc.recordedEvents,
+            equals([const CounterIncrementPressed()]),
+          );
+          expect(bloc.recordedTransitions.length, equals(1));
+
+          expect(bloc.undo, returnsNormally);
+          expect(bloc.stateValue, equals(0));
+
+          expect(bloc.redo, returnsNormally);
+          expect(bloc.stateValue, equals(1));
+        },
+      );
+
+      test(
+        'pairs onEvent, onTransition, and onEventCompleted 1:1 in order '
+        'with zero leaked open spans on undo and redo',
+        () async {
+          addTearDown(() => BlocSignalObserver.observer = null);
+          final observer = _SpanPairingObserver();
+          BlocSignalObserver.observer = observer;
+
+          final bloc = CounterBloc();
+          addTearDown(bloc.close);
+
+          bloc.add(const CounterIncrementPressed());
+          expect(observer.openSpans, isEmpty);
+          observer.log.clear();
+
+          bloc.undo();
+          expect(bloc.stateValue, equals(0));
+          expect(
+            observer.log,
+            equals([
+              'onEvent:Undo',
+              'onTransition:Undo:0',
+              'onEventCompleted:Undo',
+            ]),
+          );
+          expect(observer.openSpans, isEmpty);
+
+          observer.log.clear();
+          bloc.redo();
+          expect(bloc.stateValue, equals(1));
+          expect(
+            observer.log,
+            equals([
+              'onEvent:Redo',
+              'onTransition:Redo:1',
+              'onEventCompleted:Redo',
+            ]),
+          );
+          expect(observer.openSpans, isEmpty);
+        },
+      );
+
+      test(
+        'isolates Exception thrown by BlocSignalObserver.onEventCompleted '
+        'and routes it to onError without aborting undo or redo',
+        () async {
+          addTearDown(() => BlocSignalObserver.observer = null);
+          BlocSignalObserver.observer = _ThrowingOnEventCompletedObserver();
+
+          final errors = <Object>[];
+          final bloc = _ErrorRecordingCounterBloc(onErrorCallback: errors.add);
+          addTearDown(bloc.close);
+
+          bloc.add(const CounterIncrementPressed());
+          expect(bloc.stateValue, equals(1));
+          errors.clear();
+
+          expect(bloc.undo, returnsNormally);
+          expect(bloc.stateValue, equals(0));
+          expect(
+            errors.map((e) => e.toString()),
+            equals(['Exception: observer onEventCompleted failure']),
+          );
+
+          errors.clear();
+          expect(bloc.redo, returnsNormally);
+          expect(bloc.stateValue, equals(1));
+          expect(
+            errors.map((e) => e.toString()),
+            equals(['Exception: observer onEventCompleted failure']),
+          );
+        },
+      );
+    },
+  );
 }
 
 mixin _BlocPersistenceTrackingMixin<State> on BlocSignalBase<State> {
@@ -1018,11 +1118,9 @@ class _SyncThrowingOnEventBloc extends _ErrorRecordingCounterBloc {
   _SyncThrowingOnEventBloc({required super.onErrorCallback});
 
   @override
-  void onEvent(ReplayEvent event) {
-    unawaited(Future.value(super.onEvent(event)));
-    if (event is! CounterEvent) {
-      throw Exception('sync onEvent failure on $event');
-    }
+  void onReplay(ReplayEvent event) {
+    unawaited(Future.value(super.onReplay(event)));
+    throw Exception('sync onEvent failure on $event');
   }
 }
 
@@ -1030,11 +1128,9 @@ class _AsyncThrowingOnEventBloc extends _ErrorRecordingCounterBloc {
   _AsyncThrowingOnEventBloc({required super.onErrorCallback});
 
   @override
-  Future<void> onEvent(ReplayEvent event) async {
-    await super.onEvent(event);
-    if (event is! CounterEvent) {
-      throw Exception('async onEvent failure on $event');
-    }
+  Future<void> onReplay(ReplayEvent event) async {
+    await super.onReplay(event);
+    throw Exception('async onEvent failure on $event');
   }
 }
 
@@ -1050,5 +1146,63 @@ class _PositionalCounterBloc extends ReplayBloc<CounterEvent, int> {
       // ignore: deprecated_member_use_from_same_package
       : super.positional() {
     on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
+  }
+}
+
+class _TypedOverrideCounterBloc extends ReplayBloc<CounterEvent, int> {
+  _TypedOverrideCounterBloc() : super(initialState: 0) {
+    on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
+  }
+
+  final recordedEvents = <CounterEvent>[];
+  final recordedTransitions = <Transition<CounterEvent, int>>[];
+
+  @override
+  FutureOr<void> onEvent(CounterEvent event) {
+    unawaited(Future.value(super.onEvent(event)));
+    recordedEvents.add(event);
+  }
+
+  @override
+  void onTransition(Transition<CounterEvent, int> transition) {
+    super.onTransition(transition);
+    recordedTransitions.add(transition);
+  }
+}
+
+class _SpanPairingObserver extends BlocSignalObserver {
+  final log = <String>[];
+  final openSpans = <Object?>[];
+
+  @override
+  void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {
+    super.onEvent(bloc, event);
+    openSpans.add(event);
+    log.add('onEvent:$event');
+  }
+
+  @override
+  void onTransition(
+    BlocSignalBase<dynamic> bloc,
+    Object? event,
+    Object? state,
+  ) {
+    super.onTransition(bloc, event, state);
+    log.add('onTransition:$event:$state');
+  }
+
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+    super.onEventCompleted(bloc, event);
+    openSpans.remove(event);
+    log.add('onEventCompleted:$event');
+  }
+}
+
+class _ThrowingOnEventCompletedObserver extends BlocSignalObserver {
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+    super.onEventCompleted(bloc, event);
+    throw Exception('observer onEventCompleted failure');
   }
 }

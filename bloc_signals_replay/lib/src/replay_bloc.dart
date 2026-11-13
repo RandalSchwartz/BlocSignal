@@ -101,63 +101,65 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
   @override
   @protected
   void handleTransition(Object event, State oldState, State newState) {
-    if (event is ReplayEvent) {
-      onTransition(
-        Transition<ReplayEvent, State>(
-          currentState: oldState,
-          event: event,
-          nextState: newState,
-        ),
-      );
+    if (event is Event) {
+      super.handleTransition(event, oldState, newState);
+    } else if (event is ReplayEvent) {
+      try {
+        BlocSignalObserver.observer?.onTransition(this, event, newState);
+      } on Exception catch (e, stackTrace) {
+        onError(e, stackTrace);
+      }
     } else {
       super.handleTransition(event, oldState, newState);
     }
   }
 
-  @override
+  /// Called whenever a synthetic [ReplayEvent] (`Undo` or `Redo`) is
+  /// dispatched during [undo] or [redo].
+  ///
+  /// Notifies [BlocSignalObserver.observer] via `onEvent` while isolating any
+  /// thrown [Exception] to [onError]. Subclasses that override [onReplay] must
+  /// call `super.onReplay(event)`.
+  ///
+  /// ```dart
+  /// class LoggingCounterBloc extends ReplayBloc<CounterEvent, int> {
+  ///   LoggingCounterBloc() : super(initialState: 0) {
+  ///     on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
+  ///   }
+  ///
+  ///   @override
+  ///   FutureOr<void> onReplay(ReplayEvent event) {
+  ///     super.onReplay(event);
+  ///     // Record or inspect synthetic Undo / Redo events.
+  ///   }
+  /// }
+  /// ```
+  @protected
   @mustCallSuper
-  void onTransition(covariant Transition<ReplayEvent, State> transition) {
-    if (transition.event is Event) {
-      super.onTransition(
-        Transition<Event, State>(
-          currentState: transition.currentState,
-          event: transition.event as Event,
-          nextState: transition.nextState,
-        ),
-      );
-    } else {
-      try {
-        BlocSignalObserver.observer
-            ?.onTransition(this, transition.event, transition.nextState);
-      } on Exception catch (e, stackTrace) {
-        onError(e, stackTrace);
-      }
-    }
-  }
-
-  @override
-  @mustCallSuper
-  FutureOr<void> onEvent(covariant ReplayEvent event) {
-    if (event is _Undo || event is _Redo) {
-      try {
-        BlocSignalObserver.observer?.onEvent(this, event);
-      } on Exception catch (e, stackTrace) {
-        onError(e, stackTrace);
-      }
-    }
-    if (event is Event) {
-      return super.onEvent(event);
+  FutureOr<void> onReplay(ReplayEvent event) {
+    try {
+      BlocSignalObserver.observer?.onEvent(this, event);
+    } on Exception catch (e, stackTrace) {
+      onError(e, stackTrace);
     }
   }
 
   void _notifyReplayEvent(ReplayEvent event) {
     try {
       unawaited(
-        Future.value(onEvent(event)).catchError(
+        Future.value(onReplay(event)).catchError(
           onError,
           test: (e) => e is Exception,
         ),
       );
+    } on Exception catch (e, stackTrace) {
+      onError(e, stackTrace);
+    }
+  }
+
+  void _notifyReplayEventCompleted(ReplayEvent event) {
+    try {
+      BlocSignalObserver.observer?.onEventCompleted(this, event);
     } on Exception catch (e, stackTrace) {
       onError(e, stackTrace);
     }
@@ -176,24 +178,32 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
           () {
             final event = _Redo();
             _notifyReplayEvent(event);
-            runZoned(
-              () => emit(newState),
-              zoneValues: {
-                zoneEventKey: event,
-                zoneBlocKey: this,
-              },
-            );
+            try {
+              runZoned(
+                () => emit(newState),
+                zoneValues: {
+                  zoneEventKey: event,
+                  zoneBlocKey: this,
+                },
+              );
+            } finally {
+              _notifyReplayEventCompleted(event);
+            }
           },
           (val) {
             final event = _Undo();
             _notifyReplayEvent(event);
-            runZoned(
-              () => emit(val),
-              zoneValues: {
-                zoneEventKey: event,
-                zoneBlocKey: this,
-              },
-            );
+            try {
+              runZoned(
+                () => emit(val),
+                zoneValues: {
+                  zoneEventKey: event,
+                  zoneBlocKey: this,
+                },
+              );
+            } finally {
+              _notifyReplayEventCompleted(event);
+            }
           },
         ),
       );

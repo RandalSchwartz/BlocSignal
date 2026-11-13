@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (replay)**: Remove unsound `covariant` `onEvent`/`onTransition` overrides from `ReplayBlocMixin`, introduce `onReplay` hook, and pair `BlocSignalObserver.onEvent` with `onEventCompleted` on undo/redo (#408).
+
 ## 1.3.0
 
 - **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).

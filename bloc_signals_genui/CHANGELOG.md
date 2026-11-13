@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
+## Unreleased
+
+- **Fix (genui)**: Handle untrusted JSON type mismatches (`TypeError`, `ArgumentError`) as `SurfaceError` instead of uncaught `Error` crashes during stream and message ingestion, and safely coerce string numeric validation properties in `_validateForm` (#413).
+
 ## 2.0.0
 
 - **BREAKING (genui)**: Upgrade publicly re-exported `a2ui_core` from `^0.3.0` to `^0.7.0` (including upstream removal of `Catalog.withPeerCatalogs` and `Catalog.peerCatalogs` in favor of `Catalog.derive`, unmodifiable `MessageProcessor.catalogs`, `A2uiProtocolVersion.v1_0.jsonValue` unified on `'1.0'`, required `value` binding on `BasicCatalog.v1_0` `TextField`, and local evaluation of `functionCall` actions on `SubmitAction` without transitioning to `SurfaceSubmitting`) (#434).

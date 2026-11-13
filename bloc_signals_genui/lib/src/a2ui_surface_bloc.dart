@@ -432,6 +432,11 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   bool _isClosing = false;
   StreamSubscription<dynamic>? _activeStreamSubscription;
+  static bool _isFatalVmError(Object error) =>
+      error is OutOfMemoryError ||
+      error is StackOverflowError ||
+      error is AssertionError;
+
   Completer<void>? _activeStreamCompleter;
   int _messageCount = 0;
 
@@ -484,8 +489,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
               _emitSurfaceSnapshot(emit, messageCount: messageCount);
             }
             // Intentional `on Object catch` (SCAR-ERR-02): report stream chunk
-            // failures to `onError`, clean up active stream completer/pointer,
-            // and rethrow fatal `Error` subtypes via `if (error is Error) rethrow;`.
+            // failures to `onError`, emit `SurfaceError`, clean up active stream
+            // completer/pointer, and rethrow only fatal VM errors.
           } on Object catch (error, stackTrace) {
             onError(error, stackTrace);
             if (!isClosed &&
@@ -504,7 +509,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
               _activeStreamSubscription = null;
             }
             if (!completer.isCompleted) completer.complete();
-            if (error is Error) rethrow;
+            if (_isFatalVmError(error)) rethrow;
           }
         },
         onError: (Object error, StackTrace stackTrace) async {
@@ -525,7 +530,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
             _activeStreamSubscription = null;
           }
           if (!completer.isCompleted) completer.complete();
-          if (error is Error) {
+          if (_isFatalVmError(error) || error is StateError) {
             Error.throwWithStackTrace(error, stackTrace);
           }
         },
@@ -573,11 +578,11 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       _messageCount++;
       _emitSurfaceSnapshot(emit);
       // Intentional `on Object catch` (SCAR-ERR-02): report to `onError` and
-      // rethrow fatal `Error` subtypes via `if (error is Error) rethrow;`
-      // before emitting `SurfaceError` for recoverable exceptions.
+      // rethrow only fatal VM errors via `_isFatalVmError(error)` before
+      // emitting `SurfaceError` for recoverable exceptions and type mismatches.
     } on Object catch (error, stackTrace) {
       onError(error, stackTrace);
-      if (error is Error) rethrow;
+      if (_isFatalVmError(error)) rethrow;
       emit(
         SurfaceError(
           error: error,
@@ -600,11 +605,11 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       _messageCount++;
       _emitSurfaceSnapshot(emit);
       // Intentional `on Object catch` (SCAR-ERR-02): report to `onError` and
-      // rethrow fatal `Error` subtypes via `if (error is Error) rethrow;`
-      // before emitting `SurfaceError` for recoverable exceptions.
+      // rethrow only fatal VM errors via `_isFatalVmError(error)` before
+      // emitting `SurfaceError` for recoverable exceptions and type mismatches.
     } on Object catch (error, stackTrace) {
       onError(error, stackTrace);
-      if (error is Error) rethrow;
+      if (_isFatalVmError(error)) rethrow;
       emit(
         SurfaceError(
           error: error,
@@ -627,11 +632,11 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       _messageCount += normalizedMessages.length;
       _emitSurfaceSnapshot(emit);
       // Intentional `on Object catch` (SCAR-ERR-02): report to `onError` and
-      // rethrow fatal `Error` subtypes via `if (error is Error) rethrow;`
-      // before emitting `SurfaceError` for recoverable exceptions.
+      // rethrow only fatal VM errors via `_isFatalVmError(error)` before
+      // emitting `SurfaceError` for recoverable exceptions and type mismatches.
     } on Object catch (error, stackTrace) {
       onError(error, stackTrace);
-      if (error is Error) rethrow;
+      if (_isFatalVmError(error)) rethrow;
       emit(
         SurfaceError(
           error: error,
@@ -965,24 +970,60 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     _emitSurfaceSnapshot(emit);
   }
 
+  static Map<String, dynamic> _toStringKeyedMap(
+    Map<dynamic, dynamic> map, {
+    String context = 'JSON object',
+  }) {
+    if (map is Map<String, dynamic>) {
+      return map;
+    }
+    final result = <String, dynamic>{};
+    for (final entry in map.entries) {
+      final key = entry.key;
+      if (key is! String) {
+        throw FormatException(
+          'Expected String keys in $context, got ${key.runtimeType}.',
+        );
+      }
+      result[key] = entry.value;
+    }
+    return result;
+  }
+
   List<A2uiMessage> _parseChunkToMessages(dynamic chunk) {
     if (chunk is A2uiMessage) {
       return [_normalizeMessage(chunk)];
     }
-    if (chunk is Map<String, dynamic>) {
-      return [A2uiMessage.fromJson(_normalizeJson(chunk))];
+    if (chunk is Map) {
+      return [
+        A2uiMessage.fromJson(_normalizeJson(_toStringKeyedMap(chunk))),
+      ];
     }
     if (chunk is String) {
       final trimmed = chunk.trim();
       if (trimmed.isEmpty) return const [];
       final decoded = jsonDecode(trimmed);
       if (decoded is List) {
-        return decoded
-            .cast<Map<String, dynamic>>()
-            .map((c) => A2uiMessage.fromJson(_normalizeJson(c)))
-            .toList();
-      } else if (decoded is Map<String, dynamic>) {
-        return [A2uiMessage.fromJson(_normalizeJson(decoded))];
+        final messages = <A2uiMessage>[];
+        for (final item in decoded) {
+          if (item is! Map) {
+            throw FormatException(
+              'Expected JSON object in message list, got ${item.runtimeType}.',
+            );
+          }
+          messages.add(
+            A2uiMessage.fromJson(
+              _normalizeJson(
+                _toStringKeyedMap(item, context: 'message list item'),
+              ),
+            ),
+          );
+        }
+        return messages;
+      } else if (decoded is Map) {
+        return [
+          A2uiMessage.fromJson(_normalizeJson(_toStringKeyedMap(decoded))),
+        ];
       }
     }
     return const [];
@@ -1054,12 +1095,14 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   List<dynamic> _normalizeComponentList(List<dynamic> comps) {
     return comps.map((c) {
-      if (c is Map<String, dynamic>) {
-        return _normalizeComponentMap(c);
-      } else if (c is Map) {
-        return _normalizeComponentMap(c.cast<String, dynamic>());
+      if (c is! Map) {
+        throw FormatException(
+          'Expected component JSON object, got ${c.runtimeType}.',
+        );
       }
-      return c;
+      return _normalizeComponentMap(
+        _toStringKeyedMap(c, context: 'component'),
+      );
     }).toList();
   }
 
@@ -1073,31 +1116,66 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     }
     if (normalized.containsKey('updateComponents')) {
       final update = normalized['updateComponents'];
-      if (update is Map && update.containsKey('components')) {
-        final comps = update['components'];
-        if (comps is List) {
-          return {
-            ...normalized,
-            'updateComponents': {
-              ...update,
-              'components': _normalizeComponentList(comps),
-            },
-          };
+      if (update != null && update is! Map) {
+        throw FormatException(
+          'Expected JSON object for updateComponents, '
+          'got ${update.runtimeType}.',
+        );
+      }
+      if (update is Map) {
+        final updateMap = _toStringKeyedMap(
+          update,
+          context: 'updateComponents',
+        );
+        if (updateMap.containsKey('components')) {
+          final comps = updateMap['components'];
+          if (comps != null && comps is! List) {
+            throw FormatException(
+              'Expected components list in updateComponents, '
+              'got ${comps.runtimeType}.',
+            );
+          }
+          if (comps is List) {
+            return {
+              ...normalized,
+              'updateComponents': {
+                ...updateMap,
+                'components': _normalizeComponentList(comps),
+              },
+            };
+          }
         }
       }
     }
     if (normalized.containsKey('createSurface')) {
       final create = normalized['createSurface'];
-      if (create is Map && create.containsKey('components')) {
-        final comps = create['components'];
-        if (comps is List) {
-          return {
-            ...normalized,
-            'createSurface': {
-              ...create,
-              'components': _normalizeComponentList(comps),
-            },
-          };
+      if (create != null && create is! Map) {
+        throw FormatException(
+          'Expected JSON object for createSurface, got ${create.runtimeType}.',
+        );
+      }
+      if (create is Map) {
+        final createMap = _toStringKeyedMap(
+          create,
+          context: 'createSurface',
+        );
+        if (createMap.containsKey('components')) {
+          final comps = createMap['components'];
+          if (comps != null && comps is! List) {
+            throw FormatException(
+              'Expected components list in createSurface, '
+              'got ${comps.runtimeType}.',
+            );
+          }
+          if (comps is List) {
+            return {
+              ...normalized,
+              'createSurface': {
+                ...createMap,
+                'components': _normalizeComponentList(comps),
+              },
+            };
+          }
         }
       }
     }
@@ -1106,10 +1184,22 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   Map<String, dynamic> _normalizeComponentMap(Map<String, dynamic> comp) {
     var result = comp;
-    if (comp.containsKey('properties') && comp['properties'] is Map) {
-      final props = (comp['properties'] as Map).cast<String, dynamic>();
-      final copy = Map<String, dynamic>.from(comp)..remove('properties');
-      result = {...copy, ...props};
+    if (comp.containsKey('properties')) {
+      final rawProps = comp['properties'];
+      if (rawProps != null && rawProps is! Map) {
+        throw FormatException(
+          'Expected JSON object for component properties, '
+          'got ${rawProps.runtimeType}.',
+        );
+      }
+      if (rawProps is Map) {
+        final props = _toStringKeyedMap(
+          rawProps,
+          context: 'component properties',
+        );
+        final copy = Map<String, dynamic>.from(comp)..remove('properties');
+        result = {...copy, ...props};
+      }
     }
     if (result.containsKey('child')) {
       final child = result['child'];
@@ -1266,6 +1356,13 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     return compiled;
   }
 
+  static int? _coerceInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value.trim());
+    return null;
+  }
+
   List<String> _validateForm(
     SurfaceModel<ComponentApi> surface,
     Map<String, dynamic> formValues,
@@ -1329,11 +1426,11 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
             errors.add('Field "$label" does not match the required pattern.');
           }
         }
-        final minLength = (props['minLength'] as num?)?.toInt();
+        final minLength = _coerceInt(props['minLength']);
         if (minLength != null && fieldValue.length < minLength) {
           errors.add('Field "$label" must be at least $minLength characters.');
         }
-        final maxLength = (props['maxLength'] as num?)?.toInt();
+        final maxLength = _coerceInt(props['maxLength']);
         if (maxLength != null && fieldValue.length > maxLength) {
           errors.add('Field "$label" must be at most $maxLength characters.');
         }

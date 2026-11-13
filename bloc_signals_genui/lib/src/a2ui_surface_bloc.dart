@@ -46,6 +46,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// [outboundMessages] as [ActionMessage] envelopes.
   /// [maxAgentCallCacheEntries] (defaults to `256`) bounds settled agent
   /// function call responses retained per surface.
+  /// [patternValidator] optionally overrides the built-in ReDoS safety check
+  /// for component validation `pattern` and `validationRegexp` strings.
   ///
   /// ```dart
   /// final bloc = A2uiSurfaceBloc(
@@ -63,6 +65,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     this.reportErrorsOnly = false,
     this.unifiedOutbound = false,
     this.maxAgentCallCacheEntries = 256,
+    this.patternValidator,
   })  : assert(
           maxSurfaces == null || maxSurfaces > 0,
           'maxSurfaces must be null or greater than 0.',
@@ -154,6 +157,20 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   /// Maximum number of settled agent function call responses cached per surface.
   final int maxAgentCallCacheEntries;
+
+  /// Optional callback that overrides the built-in ReDoS safety heuristic for
+  /// form validation `pattern` and `validationRegexp` strings.
+  ///
+  /// When provided, patterns exceeding [maxValidationPatternLength] are still
+  /// rejected before invoking this callback, and compiled patterns bypass the
+  /// shared static cache so custom policies do not affect other instances.
+  ///
+  /// ```dart
+  /// final bloc = A2uiSurfaceBloc(
+  ///   patternValidator: (pattern) => !pattern.contains('forbidden'),
+  /// );
+  /// ```
+  final bool Function(String pattern)? patternValidator;
 
   final OutboundMessageListener? _userOutboundListener;
 
@@ -1323,8 +1340,26 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     emit(const SurfaceInitial());
   }
 
+  /// Maximum permitted character length for a component `pattern` or
+  /// `validationRegexp` string before it is rejected as potentially unsafe.
+  ///
+  /// ```dart
+  /// const limit = A2uiSurfaceBloc.maxValidationPatternLength; // 256
+  /// ```
+  static const int maxValidationPatternLength = 256;
+
+  /// Maximum permitted character length for a string form field value evaluated
+  /// against a regular expression validation pattern.
+  ///
+  /// ```dart
+  /// const limit = A2uiSurfaceBloc.maxValidationInputLength; // 2048
+  /// ```
+  static const int maxValidationInputLength = 2048;
+
   static const int _maxRegexCacheSize = 100;
+  static const int _maxRegexCacheTotalChars = 16384;
   static final Map<String, RegExp?> _regexCache = <String, RegExp?>{};
+  static int _regexCacheTotalChars = 0;
 
   /// Returns the current number of entries in the validation regular expression
   /// cache.
@@ -1335,24 +1370,211 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   @visibleForTesting
   static void clearRegexCache() {
     _regexCache.clear();
+    _regexCacheTotalChars = 0;
   }
 
-  static RegExp? _resolveValidationRegExp(String pattern) {
+  static int? _quantifierEndIndex(String pattern, int index) {
+    if (index >= pattern.length) return null;
+    final code = pattern.codeUnitAt(index);
+    // '*', '+', '?'
+    if (code == 42 || code == 43 || code == 63) {
+      var end = index + 1;
+      if (end < pattern.length && pattern.codeUnitAt(end) == 63) {
+        end++;
+      }
+      return end;
+    }
+    // '{n}', '{n,}', '{n,m}'
+    if (code == 123) {
+      var cursor = index + 1;
+      final digitsStart = cursor;
+      while (cursor < pattern.length &&
+          pattern.codeUnitAt(cursor) >= 48 &&
+          pattern.codeUnitAt(cursor) <= 57) {
+        cursor++;
+      }
+      if (cursor == digitsStart) return null;
+      if (cursor < pattern.length && pattern.codeUnitAt(cursor) == 44) {
+        cursor++;
+        while (cursor < pattern.length &&
+            pattern.codeUnitAt(cursor) >= 48 &&
+            pattern.codeUnitAt(cursor) <= 57) {
+          cursor++;
+        }
+      }
+      if (cursor < pattern.length && pattern.codeUnitAt(cursor) == 125) {
+        var end = cursor + 1;
+        if (end < pattern.length && pattern.codeUnitAt(end) == 63) {
+          end++;
+        }
+        return end;
+      }
+    }
+    return null;
+  }
+
+  static bool _hasOverlappingBranches(List<String> branches) {
+    if (branches.length < 2) return false;
+    final seenFirstChars = <int>{};
+    for (final branch in branches) {
+      if (branch.isEmpty) return true;
+      final first = branch.codeUnitAt(0);
+      // Wildcards, character classes, nested groups, or escapes can overlap.
+      // 46='.', 91='[', 40='(', 92='\'
+      if (first == 46 || first == 91 || first == 40 || first == 92) {
+        return true;
+      }
+      if (!seenFirstChars.add(first)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Performs a linear-time $O(M)$ static check rejecting nested quantifiers
+  /// and overlapping quantified alternations that can cause catastrophic
+  /// backtracking (ReDoS).
+  static bool _isSafeValidationPattern(String pattern) {
+    final stack = <_RegexGroupFrame>[];
+    var inCharClass = false;
+    var escaped = false;
+    var i = 0;
+
+    while (i < pattern.length) {
+      final code = pattern.codeUnitAt(i);
+      if (escaped) {
+        if (stack.isNotEmpty && !inCharClass) {
+          stack.last.appendBranchChar(pattern[i]);
+        }
+        escaped = false;
+        i++;
+        continue;
+      }
+      if (code == 92) {
+        // '\'
+        if (stack.isNotEmpty && !inCharClass) {
+          stack.last.appendBranchChar(r'\');
+        }
+        escaped = true;
+        i++;
+        continue;
+      }
+      if (inCharClass) {
+        if (code == 93) {
+          // ']'
+          inCharClass = false;
+        }
+        i++;
+        continue;
+      }
+      if (code == 91) {
+        // '['
+        inCharClass = true;
+        if (stack.isNotEmpty) {
+          stack.last.appendBranchChar('[');
+        }
+        i++;
+        continue;
+      }
+      if (code == 40) {
+        // '('
+        if (stack.isNotEmpty) {
+          stack.last.appendBranchChar('(');
+        }
+        stack.add(_RegexGroupFrame());
+        i++;
+        continue;
+      }
+      if (code == 41) {
+        // ')'
+        if (stack.isEmpty) {
+          i++;
+          continue;
+        }
+        final frame = stack.removeLast();
+        final quantEnd = _quantifierEndIndex(pattern, i + 1);
+        if (quantEnd != null) {
+          if (frame.hasQuantifier ||
+              (frame.branches.length > 1 &&
+                  _hasOverlappingBranches(frame.branches))) {
+            return false;
+          }
+          if (stack.isNotEmpty) {
+            stack.last.hasQuantifier = true;
+          }
+          i = quantEnd;
+          continue;
+        }
+        if (frame.hasQuantifier && stack.isNotEmpty) {
+          stack.last.hasQuantifier = true;
+        }
+        i++;
+        continue;
+      }
+      if (code == 124 && stack.isNotEmpty) {
+        // '|'
+        stack.last.startNewBranch();
+        i++;
+        continue;
+      }
+
+      final quantEnd = _quantifierEndIndex(pattern, i);
+      if (quantEnd != null) {
+        if (stack.isNotEmpty) {
+          stack.last.hasQuantifier = true;
+        }
+        i = quantEnd;
+        continue;
+      }
+
+      if (stack.isNotEmpty) {
+        stack.last.appendBranchChar(pattern[i]);
+      }
+      i++;
+    }
+    return true;
+  }
+
+  static RegExp? _resolveValidationRegExp(
+    String pattern, {
+    bool Function(String pattern)? patternValidator,
+  }) {
+    if (pattern.length > maxValidationPatternLength) {
+      return null;
+    }
+    if (patternValidator != null) {
+      if (!patternValidator(pattern)) {
+        return null;
+      }
+      try {
+        return RegExp(pattern);
+      } on FormatException {
+        return null;
+      }
+    }
     if (_regexCache.containsKey(pattern)) {
       final cached = _regexCache.remove(pattern);
       _regexCache[pattern] = cached;
       return cached;
     }
     RegExp? compiled;
-    try {
-      compiled = RegExp(pattern);
-    } on FormatException {
-      compiled = null;
+    if (_isSafeValidationPattern(pattern)) {
+      try {
+        compiled = RegExp(pattern);
+      } on FormatException {
+        compiled = null;
+      }
     }
-    if (_regexCache.length >= _maxRegexCacheSize) {
-      _regexCache.remove(_regexCache.keys.first);
+    while (_regexCache.isNotEmpty &&
+        (_regexCache.length >= _maxRegexCacheSize ||
+            _regexCacheTotalChars + pattern.length >
+                _maxRegexCacheTotalChars)) {
+      final oldestKey = _regexCache.keys.first;
+      _regexCache.remove(oldestKey);
+      _regexCacheTotalChars -= oldestKey.length;
     }
     _regexCache[pattern] = compiled;
+    _regexCacheTotalChars += pattern.length;
     return compiled;
   }
 
@@ -1418,12 +1640,22 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       }
 
       if (fieldValue is String && fieldValue.isNotEmpty) {
-        final pattern = props['pattern']?.toString() ??
-            props['validationRegexp']?.toString();
-        if (pattern != null) {
-          final regExp = _resolveValidationRegExp(pattern);
-          if (regExp != null && !regExp.hasMatch(fieldValue)) {
-            errors.add('Field "$label" does not match the required pattern.');
+        if (fieldValue.length > maxValidationInputLength) {
+          errors.add(
+            'Field "$label" must be at most '
+            '$maxValidationInputLength characters.',
+          );
+        } else {
+          final pattern = props['pattern']?.toString() ??
+              props['validationRegexp']?.toString();
+          if (pattern != null) {
+            final regExp = _resolveValidationRegExp(
+              pattern,
+              patternValidator: patternValidator,
+            );
+            if (regExp != null && !regExp.hasMatch(fieldValue)) {
+              errors.add('Field "$label" does not match the required pattern.');
+            }
           }
         }
         final minLength = _coerceInt(props['minLength']);
@@ -1474,5 +1706,20 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     } on Exception catch (error, stackTrace) {
       onError(error, stackTrace);
     }
+  }
+}
+
+class _RegexGroupFrame {
+  bool hasQuantifier = false;
+  final List<String> branches = <String>[''];
+
+  void appendBranchChar(String ch) {
+    if (branches.last.isEmpty) {
+      branches[branches.length - 1] = ch;
+    }
+  }
+
+  void startNewBranch() {
+    branches.add('');
   }
 }

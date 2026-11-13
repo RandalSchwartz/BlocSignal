@@ -211,6 +211,15 @@ This document details the codified failure modes, architectural wounds, traps, a
   4. **Bounded LRU Surface Retention**: Support `A2uiSurfaceBloc(maxSurfaces: k)` (`assert(maxSurfaces == null || maxSurfaces > 0)`) to automatically evict the least-recently-used non-active surface when `allSurfaces.length > maxSurfaces`.
 
 
+### 🩹 Scar: GenUI Synchronous Form Validation ReDoS & Cache Budget Exhaustion (`SCAR-GENUI-10`)
+- **The Pathogen / Wound**: In `bloc_signals_genui` (Issue #414), `A2uiSurfaceBloc._validateForm` compiled untrusted `pattern` / `validationRegexp` strings via `RegExp(pattern)` and executed `regExp.hasMatch(fieldValue)` synchronously on the UI isolate on every stream chunk and form submission. Without pattern length bounds, input length bounds, or nested-quantifier rejection, catastrophic backtracking patterns (for example `(a+)+$` or `(a|aa)+$`) froze the UI isolate indefinitely. Additionally, bounding `_regexCache` solely by entry count (`100`) allowed large patterns to consume unbounded cache characters.
+- **The Antigen / Vulnerability Vector**: Compiling and evaluating untrusted regular expressions synchronously without static complexity screening, input length bounds, or character-budgeted cache eviction.
+- **The Antibody / Permanent Reflex**:
+  1. **Pattern & Input Length Bounds**: Enforce `A2uiSurfaceBloc.maxValidationPatternLength` (`256`) before compiling patterns and `A2uiSurfaceBloc.maxValidationInputLength` (`2048`) before invoking `regExp.hasMatch(fieldValue)`.
+  2. **Linear-Time Static ReDoS Guard & Policy Hook**: Screen patterns with an $O(M)$ stack-based check (`_isSafeValidationPattern`) rejecting nested quantifiers and overlapping quantified alternations without regex-on-regex backtracking, caching rejected patterns as `null` in `_regexCache`. Expose optional `A2uiSurfaceBloc(patternValidator: ...)` to override the safety policy per instance without polluting the shared static cache.
+  3. **Character-Budgeted LRU Cache**: Bound `_regexCache` by both entry count (`100`) and total pattern character budget (`16384`), evicting oldest LRU entries before insertion.
+
+
 ### 🩹 Scar: Traceable Test Naming & Artifact Longevity (`SCAR-TEST-22`)
 - **The Pathogen / Wound**: Characterization tests and regression suites are authored using ephemeral, local finding numbers (for example, `test('F13: ...')` or bare `BLOCKER-:` labels). Once the temporary audit document, characterization report, or PR branch is archived and merged, the ephemeral finding numbers and blocker labels lose semantic navigability in `git blame`, IDE test runners, and CI test logs, breaking the forensic audit trail linking the test harness back to the originating GitHub issue.
 - **The Antigen / Vulnerability Vector**: The Local Frame-of-Reference Trap. Treating ephemeral finding numbers (`F1`, `F11`, `F12`) or ad-hoc review labels as globally durable identifiers, forgetting that repository history outlives the current audit cycle.

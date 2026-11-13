@@ -4,6 +4,7 @@ All notable changes to `bloc_signals_genui` will be documented in this file.
 
 ## Unreleased
 
+- **Fix (genui)**: Mitigate UI-thread ReDoS from untrusted validation patterns in `A2uiSurfaceBloc` by enforcing `maxValidationPatternLength` (256), `maxValidationInputLength` (2048), a linear-time nested-quantifier/overlapping-alternation check (`patternValidator` overrideable), and character-budgeted (`16384`) LRU cache eviction (#414).
 - **Fix (genui)**: Handle untrusted JSON type mismatches (`TypeError`, `ArgumentError`) as `SurfaceError` instead of uncaught `Error` crashes during stream and message ingestion, and safely coerce string numeric validation properties in `_validateForm` (#413).
 
 ## 2.0.0

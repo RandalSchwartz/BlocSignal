@@ -2942,6 +2942,418 @@ void main() {
         expect(errors, isEmpty);
       });
     });
+
+    group('(Issue #414) ReDoS validation defense and bounds', () {
+      setUp(A2uiSurfaceBloc.clearRegexCache);
+      tearDown(A2uiSurfaceBloc.clearRegexCache);
+
+      test(
+          '(Issue #414) rejects oversized pattern (> 256 chars) safely without '
+          'compiling or caching', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        final oversizedPattern = '^${'a' * 260}\$';
+        expect(
+          oversizedPattern.length,
+          greaterThan(A2uiSurfaceBloc.maxValidationPatternLength),
+        );
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_oversized_pat',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_oversized_pat',
+              components: [
+                {
+                  'id': 'tf_long_pat',
+                  'component': 'TextField',
+                  'label': 'LongPattern',
+                  'value': {'path': '/long_pat'},
+                  'pattern': oversizedPattern,
+                },
+              ],
+            ),
+          ]),
+        );
+
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_oversized_pat',
+            path: '/long_pat',
+            value: 'mismatch',
+          ),
+        );
+
+        final ready = bloc.value as SurfaceReady;
+        expect(ready.isValid, isTrue);
+        expect(ready.validationErrors, isEmpty);
+        expect(A2uiSurfaceBloc.debugRegexCacheSize, equals(0));
+      });
+
+      test(
+          '(Issue #414) fails oversized fieldValue (> 2048 chars) with length '
+          'error without invoking RegExp.hasMatch', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_oversized_val',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_oversized_val',
+              components: const [
+                {
+                  'id': 'tf_bio',
+                  'component': 'TextField',
+                  'label': 'Bio',
+                  'value': {'path': '/bio'},
+                  'pattern': r'^[a-z]+$',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        final oversizedValue =
+            'a' * (A2uiSurfaceBloc.maxValidationInputLength + 1);
+        bloc.add(
+          UpdateFormField(
+            surfaceId: 'surf_oversized_val',
+            path: '/bio',
+            value: oversizedValue,
+          ),
+        );
+
+        final ready = bloc.value as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        const expectedError = 'Field "Bio" must be at most '
+            '${A2uiSurfaceBloc.maxValidationInputLength} characters.';
+        expect(ready.validationErrors, equals([expectedError]));
+      });
+
+      test(
+          '(Issue #414) rejects known ReDoS patterns immediately without '
+          'hanging and caches them as null', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        const redosPatterns = <String>[
+          r'(a+)+$',
+          r'(a|aa)+$',
+          r'([a-zA-Z]+)*$',
+          r'(\d+)+$',
+        ];
+        final adversarialInput = '${'a' * 30}!';
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_redos',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_redos',
+              components: [
+                for (var i = 0; i < redosPatterns.length; i++)
+                  {
+                    'id': 'tf_redos_$i',
+                    'component': 'TextField',
+                    'label': 'ReDoS $i',
+                    'value': {'path': '/r_$i'},
+                    'pattern': redosPatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        final stopwatch = Stopwatch()..start();
+        for (var i = 0; i < redosPatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_redos',
+              path: '/r_$i',
+              value: adversarialInput,
+            ),
+          );
+        }
+        stopwatch.stop();
+
+        expect(stopwatch.elapsedMilliseconds, lessThan(200));
+        expect(
+          A2uiSurfaceBloc.debugRegexCacheSize,
+          equals(redosPatterns.length),
+        );
+
+        final ready = bloc.value as SurfaceReady;
+        expect(ready.isValid, isTrue);
+        expect(ready.validationErrors, isEmpty);
+      });
+
+      test(
+          '(Issue #414) does not falsely reject escaped quantifiers or valid '
+          'patterns', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_safe_patterns',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_safe_patterns',
+              components: const [
+                {
+                  'id': 'tf_escaped',
+                  'component': 'TextField',
+                  'label': 'Escaped',
+                  'value': {'path': '/escaped'},
+                  'pattern': r'^\(\+\)\+$',
+                },
+                {
+                  'id': 'tf_escaped_plus',
+                  'component': 'TextField',
+                  'label': 'EscapedPlus',
+                  'value': {'path': '/escaped_plus'},
+                  'pattern': r'^a\+b$',
+                },
+                {
+                  'id': 'tf_email',
+                  'component': 'TextField',
+                  'label': 'Email',
+                  'value': {'path': '/email'},
+                  'pattern': r'^[\w.+-]+@[\w-]+\.[\w.-]+$',
+                },
+                {
+                  'id': 'tf_alnum',
+                  'component': 'TextField',
+                  'label': 'Alnum',
+                  'value': {'path': '/alnum'},
+                  'pattern': r'^[a-zA-Z0-9]+$',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        bloc
+          ..add(
+            const UpdateFormField(
+              surfaceId: 'surf_safe_patterns',
+              path: '/escaped',
+              value: 'wrong',
+            ),
+          )
+          ..add(
+            const UpdateFormField(
+              surfaceId: 'surf_safe_patterns',
+              path: '/escaped_plus',
+              value: 'wrong',
+            ),
+          )
+          ..add(
+            const UpdateFormField(
+              surfaceId: 'surf_safe_patterns',
+              path: '/email',
+              value: 'not-an-email',
+            ),
+          )
+          ..add(
+            const UpdateFormField(
+              surfaceId: 'surf_safe_patterns',
+              path: '/alnum',
+              value: 'invalid!',
+            ),
+          );
+
+        var ready = bloc.value as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(ready.validationErrors, hasLength(4));
+
+        bloc
+          ..add(
+            const UpdateFormField(
+              surfaceId: 'surf_safe_patterns',
+              path: '/escaped',
+              value: '(+)+',
+            ),
+          )
+          ..add(
+            const UpdateFormField(
+              surfaceId: 'surf_safe_patterns',
+              path: '/escaped_plus',
+              value: 'a+b',
+            ),
+          )
+          ..add(
+            const UpdateFormField(
+              surfaceId: 'surf_safe_patterns',
+              path: '/email',
+              value: 'user@example.com',
+            ),
+          )
+          ..add(
+            const UpdateFormField(
+              surfaceId: 'surf_safe_patterns',
+              path: '/alnum',
+              value: 'abc123',
+            ),
+          );
+
+        ready = bloc.value as SurfaceReady;
+        expect(ready.isValid, isTrue);
+        expect(ready.validationErrors, isEmpty);
+      });
+
+      test(
+          '(Issue #414) optional patternValidator overrides pattern safety '
+          'policy without poisoning shared cache', () {
+        final strictBloc = A2uiSurfaceBloc(
+          patternValidator: (pattern) => !pattern.contains('forbidden'),
+        );
+        addTearDown(strictBloc.close);
+
+        strictBloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_custom_val',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_custom_val',
+              components: const [
+                {
+                  'id': 'tf_custom',
+                  'component': 'TextField',
+                  'label': 'Custom',
+                  'value': {'path': '/custom'},
+                  'pattern': r'^forbidden$',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        strictBloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_custom_val',
+            path: '/custom',
+            value: 'other',
+          ),
+        );
+
+        final ready = strictBloc.value as SurfaceReady;
+        expect(ready.isValid, isTrue);
+        expect(ready.validationErrors, isEmpty);
+        expect(A2uiSurfaceBloc.debugRegexCacheSize, equals(0));
+
+        // Default bloc still enforces r'^forbidden$'
+        final defaultBloc = A2uiSurfaceBloc();
+        addTearDown(defaultBloc.close);
+        defaultBloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_default_val',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_default_val',
+              components: const [
+                {
+                  'id': 'tf_default',
+                  'component': 'TextField',
+                  'label': 'Default',
+                  'value': {'path': '/default'},
+                  'pattern': r'^forbidden$',
+                },
+              ],
+            ),
+          ]),
+        );
+        defaultBloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_default_val',
+            path: '/default',
+            value: 'other',
+          ),
+        );
+        final defaultReady = defaultBloc.value as SurfaceReady;
+        expect(defaultReady.isValid, isFalse);
+        expect(A2uiSurfaceBloc.debugRegexCacheSize, equals(1));
+      });
+
+      test(
+          '(Issue #414) evicts older cache entries when total pattern '
+          'character budget (16384) is exceeded', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        // 80 patterns of length 250 = 20,000 chars > 16,384, even though 80 < 100
+        const patternCount = 80;
+        final components = <Map<String, dynamic>>[
+          for (var i = 0; i < patternCount; i++)
+            {
+              'id': 'tf_budget_$i',
+              'component': 'TextField',
+              'label': 'Budget $i',
+              'value': {'path': '/b_$i'},
+              'pattern': '^${i.toString().padLeft(3, '0')}_${'x' * 244}\$',
+            },
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_budget',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_budget',
+              components: components,
+            ),
+          ]),
+        );
+
+        final surface = bloc.processor.model.getSurface('surf_budget')!;
+        for (var i = 0; i < patternCount; i++) {
+          surface.dataModel.set('/b_$i', 'test');
+        }
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_budget',
+            path: '/b_0',
+            value: 'trigger',
+          ),
+        );
+
+        // Each pattern is 250 chars; 16384 ~/ 250 = 65 max entries
+        expect(A2uiSurfaceBloc.debugRegexCacheSize, lessThanOrEqualTo(65));
+        expect(A2uiSurfaceBloc.debugRegexCacheSize, greaterThan(0));
+      });
+    });
   });
 }
 

@@ -2,7 +2,7 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
-## Unreleased
+## 2.0.1
 
 - **Fix (genui)**: Default `A2uiSurfaceBloc.maxSurfaces` to `A2uiSurfaceBloc.defaultMaxSurfaces` (`20`) to bound surface memory growth by default while preserving `maxSurfaces: null` opt-out (#415).
 - **Fix (genui)**: Mitigate UI-thread ReDoS from untrusted validation patterns in `A2uiSurfaceBloc` by enforcing `maxValidationPatternLength` (256), `maxValidationInputLength` (2048), a linear-time nested-quantifier/overlapping-alternation check (`patternValidator` overrideable), and character-budgeted (`16384`) LRU cache eviction (#414).

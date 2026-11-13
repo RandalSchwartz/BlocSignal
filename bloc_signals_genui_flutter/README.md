@@ -75,8 +75,8 @@ dependencies:
     sdk: flutter
   bloc_signals: ^1.7.1
   bloc_signals_flutter: ^1.5.0
-  bloc_signals_genui: ^2.0.0
-  bloc_signals_genui_flutter: ^2.0.0
+  bloc_signals_genui: ^2.0.1
+  bloc_signals_genui_flutter: ^2.0.1
   a2ui_core: ^0.7.0
 ```
 

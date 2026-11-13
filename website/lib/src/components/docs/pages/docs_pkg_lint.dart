@@ -32,7 +32,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
         h2([Component.text('Overview & Installation')]),
         p([
           Component.text(
-            'The bloc_signals_lint package is an official custom_lint plugin providing 18 specialized analyzer rules. '
+            'The bloc_signals_lint package is an official custom_lint plugin providing 20 specialized analyzer rules. '
             'It detects dangerous runtime pitfalls—such as emitting states during widget build cycles, omitting mixin initializers, or unmanaged signal effects—directly in VS Code and Android Studio with one-click automated quick-fixes.',
           ),
         ]),
@@ -224,7 +224,37 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                 ]),
                 td([
                   Component.text(
-                    'Flags multiple synchronous emit() calls along the same execution path without an intervening await to preserve state atomicity.',
+                    'Flags multiple synchronous emit() calls along the same linear execution path without an intervening await (treating catch clauses after an await-containing try body, outside nested closures including await for, as starting after a suspension boundary) to preserve state atomicity.',
+                  ),
+                ]),
+              ]),
+              tr([
+                td([
+                  code([Component.text('avoid_primitive_event_types')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    'Flags BlocSignal<Event, State> or BlocSignalMixin declarations using primitive or untyped types (such as int, String, bool, or dynamic) as event types.',
+                  ),
+                ]),
+              ]),
+              tr([
+                td([
+                  code([Component.text('avoid_pseudo_events_in_telemetry')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    "Flags emitTelemetry('...') calls inside CubitSignal containers whose names match UI event action patterns (such as Pressed, Clicked, or Submitted).",
                   ),
                 ]),
               ]),

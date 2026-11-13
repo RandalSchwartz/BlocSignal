@@ -70,8 +70,8 @@ dependencies:
     sdk: flutter
   bloc_signals: ^1.7.1
   bloc_signals_flutter: ^1.5.0
-  bloc_signals_genui: ^2.0.0
-  bloc_signals_genui_flutter: ^2.0.0
+  bloc_signals_genui: ^2.0.1
+  bloc_signals_genui_flutter: ^2.0.1
   a2ui_core: ^0.7.0
 ''',
         ),
@@ -246,11 +246,11 @@ Row(
         ),
         const DocsCallout(
           type: CalloutType.note,
-          title: 'Error Boundary Protection',
+          title: 'Error Boundary & Render Budget Protection',
           children: [
             p([
               Component.text(
-                'Every catalog component rendered by A2uiSurfaceView is wrapped in an isolation boundary and ancestor-path cycle detector, preventing malformed LLM JSON payloads or unrecognized component types from crashing the Flutter widget tree.',
+                'Every catalog component rendered by A2uiSurfaceView is wrapped in an isolation boundary, ancestor-path cycle detector, bounded nesting limit (maxDepth defaulting to A2uiSurfaceView.defaultMaxDepth = 32), and per-surface render node budget (nodeBudget defaulting to A2uiSurfaceView.defaultNodeBudget = 1000), preventing malformed or exponentially fanned-out LLM DAGs from hanging the Flutter widget tree.',
               ),
             ]),
           ],

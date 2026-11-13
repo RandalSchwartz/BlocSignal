@@ -66,7 +66,7 @@ class const DocsPkgGenuiPage({super.key}) extends StatelessComponent {
           code: '''
 dependencies:
   bloc_signals: ^1.7.1
-  bloc_signals_genui: ^2.0.0
+  bloc_signals_genui: ^2.0.1
   a2ui_core: ^0.7.0
 ''',
         ),
@@ -125,10 +125,21 @@ dependencies:
               code([Component.text('SurfaceError')]),
             ]),
             Component.text(
-              ': Stream parsing error, missing surface target, or network failure routed through onError().',
+              ': Untrusted JSON wire-payload type mismatches, stream parsing errors, missing surface targets, or network failures routed cleanly through onError().',
             ),
           ]),
         ]),
+        const DocsCallout(
+          type: CalloutType.note,
+          title: 'ReDoS-Safe Form Validation',
+          children: [
+            p([
+              Component.text(
+                'Built-in schema pattern checks enforce bounded pattern lengths (maxValidationPatternLength = 256), bounded input lengths (maxValidationInputLength = 2048), and linear-time ReDoS screening against nested quantifiers, backreferences, and lookarounds. Supply a custom patternValidator callback on A2uiSurfaceBloc when an app needs custom dialect semantics.',
+              ),
+            ]),
+          ],
+        ),
       ]),
 
       // 3. Streaming Ingestion & Concurrency
@@ -289,6 +300,11 @@ final seat = await surfaceBloc.callAgentFunction(
           Component.text(
             ' decouples active navigation coordinates (activeSurfaceId) from per-surface content revisions. '
             'Dispatch SelectSurface to switch the active surface without bumping component versions, or CloseSurface to evict a surface and promote the most-recently-accessed survivor.',
+          ),
+        ]),
+        p([
+          Component.text(
+            'To prevent unbounded multi-turn memory growth, maxSurfaces defaults to A2uiSurfaceBloc.defaultMaxSurfaces (20) with LRU eviction; pass maxSurfaces: null to opt out explicitly.',
           ),
         ]),
       ]),

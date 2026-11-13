@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.5
 
 - **Fix (lint)**: `AvoidMultipleSynchronousEmits` now treats a `catch` clause as starting after a suspension boundary when the `try` body contains an `await` (outside nested closures, including `await for`), so the canonical `Loading` to terminal async pattern is no longer reported while synchronous double emissions still are (#406).
 

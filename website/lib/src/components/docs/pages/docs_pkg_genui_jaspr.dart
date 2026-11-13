@@ -54,6 +54,17 @@ class const DocsPkgGenuiJasprPage({super.key}) extends StatelessComponent {
           language: 'bash',
           code: 'dart pub add bloc_signals_genui bloc_signals_genui_jaspr',
         ),
+        const DocsCodeBlock(
+          title: 'pubspec.yaml',
+          language: 'yaml',
+          code: '''
+dependencies:
+  bloc_signals: ^1.7.1
+  bloc_signals_genui: ^2.0.1
+  bloc_signals_genui_jaspr: ^2.0.1
+  a2ui_core: ^0.7.0
+''',
+        ),
         p([
           Component.text(
             'Add both the pure-Dart state machine (bloc_signals_genui) and the Jaspr DOM bindings (bloc_signals_genui_jaspr) to your web project dependencies.',
@@ -90,6 +101,17 @@ Component buildSurface(A2uiSurfaceBloc bloc) {
             'A2uiSurfaceView automatically observes surface transitions and renders the appropriate UI: an empty placeholder for SurfaceInitial, a skeleton for SurfaceStreaming, and interactive HTML elements for SurfaceReady.',
           ),
         ]),
+        const DocsCallout(
+          type: CalloutType.note,
+          title: 'Render Depth & Node Budget Guards',
+          children: [
+            p([
+              Component.text(
+                'To prevent exponential DAG fan-out from freezing the browser DOM, A2uiSurfaceView enforces per-render nesting depth (maxDepth defaulting to A2uiSurfaceView.defaultMaxDepth = 32) and total component node limits (nodeBudget defaulting to A2uiSurfaceView.defaultNodeBudget = 1000).',
+              ),
+            ]),
+          ],
+        ),
       ]),
 
       // 3. Standard Component Suite

@@ -174,6 +174,11 @@ enum DocSymbol(
     'bloc_signals_hydrate',
     'SecureHydratedStorage-class.html',
   ),
+  kDefaultHydratedStoragePrefix(
+    'kDefaultHydratedStoragePrefix',
+    'bloc_signals_hydrate',
+    'kDefaultHydratedStoragePrefix-constant.html',
+  ),
 
   // Replay (bloc_signals_replay)
   replayMixin('ReplayMixin', 'bloc_signals_replay', 'ReplayMixin-mixin.html'),
@@ -189,6 +194,7 @@ enum DocSymbol(
     'bloc_signals_replay',
     'ReplayBlocMixin-mixin.html',
   ),
+  onReplay('onReplay', 'bloc_signals_replay', 'ReplayBlocMixin/onReplay.html'),
 
   // Riverpod (bloc_signals_riverpod)
   riverpodBlocSignal(

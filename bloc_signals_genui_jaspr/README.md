@@ -75,8 +75,8 @@ dependencies:
   jaspr: ^0.23.1
   bloc_signals: ^1.7.1
   bloc_signals_jaspr: ^1.3.0
-  bloc_signals_genui: ^2.0.0
-  bloc_signals_genui_jaspr: ^2.0.0
+  bloc_signals_genui: ^2.0.1
+  bloc_signals_genui_jaspr: ^2.0.1
   a2ui_core: ^0.7.0
 ```
 

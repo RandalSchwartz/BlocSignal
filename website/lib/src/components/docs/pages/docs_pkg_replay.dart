@@ -166,8 +166,11 @@ class CanvasToolbar extends StatelessWidget {
           Component.text('For event-driven architectures, extend '),
           apiLink(DocSymbol.replayBloc),
           Component.text(
-            '. ReplayBloc routes undo and redo commands through synthetic ReplayEvents, ensuring that '
-            'BlocSignalObservers observe complete lifecycle transitions during time-travel operations.',
+            '. ReplayBloc routes undo and redo commands through internal ',
+          ),
+          apiLink(DocSymbol.onReplay),
+          Component.text(
+            ' hooks, emitting paired onEvent and onEventCompleted observer spans (1:1 lifecycle tracking) while keeping concrete onEvent and onTransition subclass overrides type-safe and preserving nested synchronous transitions triggered by reactive effects.',
           ),
         ]),
         const DocsCodeBlock(
@@ -248,7 +251,12 @@ class FormFieldCubit extends ReplayCubit<FormFieldState> {
         p([
           Component.text(
             'If your state container already extends a custom base class or another satellite container '
-            '(such as HydratedCubitSignal), compose replay functionality using ReplayCubitMixin or ReplayBlocMixin:',
+            '(such as HydratedCubitSignal), compose replay functionality using ReplayCubitMixin or ReplayBlocMixin. '
+            'When custom subclassing ReplayBloc or ReplayBlocMixin, hook time-travel handling via @protected ',
+          ),
+          apiLink(DocSymbol.onReplay),
+          Component.text(
+            ' (or onUndo / onRedo) rather than checking ReplayEvent inside concrete event or transition overrides, while replay guards stay tightly scoped so downstream reactive effects still record history:',
           ),
         ]),
         const DocsCodeBlock(

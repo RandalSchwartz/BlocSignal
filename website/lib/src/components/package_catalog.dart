@@ -62,7 +62,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_hydrate',
-    version: '1.1.0',
+    version: '1.1.1',
     desc: 'Synchronous state persistence across app restarts with primitive and collection storage support.',
     icon: '💾',
     category: 'State & Interop',
@@ -71,7 +71,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_replay',
-    version: '1.3.0',
+    version: '1.3.1',
     desc: 'Replay, undo, and redo state tracking utilities (ReplayCubit, ReplayBloc, ReplayEvent).',
     icon: '↩️',
     category: 'State & Interop',
@@ -98,7 +98,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui',
-    version: '2.0.0',
+    version: '2.0.1',
     desc: 'Pure-Dart A2UI streaming state machine and Generative UI adapter for the BlocSignal ecosystem.',
     icon: '🤖',
     category: 'Generative UI',
@@ -107,7 +107,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui_flutter',
-    version: '2.0.0',
+    version: '2.0.1',
     desc: 'Declarative Flutter surface containers and A2UI catalog widget adapters for generative user interfaces.',
     icon: '🎨',
     category: 'Generative UI',
@@ -116,7 +116,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui_jaspr',
-    version: '2.0.0',
+    version: '2.0.1',
     desc: 'Declarative Jaspr web components and DOM catalog adapters for generative user interfaces.',
     icon: '🌐',
     category: 'Generative UI',
@@ -134,7 +134,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_lint',
-    version: '1.3.4',
+    version: '1.3.5',
     desc: 'Analyzer plugin with 20 static analysis lint rules and 8 automated IDE quick-fixes.',
     icon: '🛡️',
     category: 'DevTools & Tooling',

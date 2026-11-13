@@ -155,7 +155,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_lint')],
                   ),
                 ]),
-                td([Component.text('^1.3.4')]),
+                td([Component.text('^1.3.5')]),
                 td([
                   Component.text(
                     'Custom analyzer lints and automated IDE quick-fixes for enforcing best practices.',
@@ -172,7 +172,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_hydrate')],
                   ),
                 ]),
-                td([Component.text('^1.1.0')]),
+                td([Component.text('^1.1.1')]),
                 td([
                   Component.text(
                     'Synchronous frame 1 state persistence across app restarts.',
@@ -189,7 +189,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_replay')],
                   ),
                 ]),
-                td([Component.text('^1.3.0')]),
+                td([Component.text('^1.3.1')]),
                 td([
                   Component.text(
                     'Undo and redo state history management with customizable bounds.',
@@ -274,7 +274,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_genui')],
                   ),
                 ]),
-                td([Component.text('^2.0.0')]),
+                td([Component.text('^2.0.1')]),
                 td([
                   Component.text(
                     'Pure-Dart A2UI streaming state machine and Generative UI runtime adapter.',
@@ -291,7 +291,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_genui_flutter')],
                   ),
                 ]),
-                td([Component.text('^2.0.0')]),
+                td([Component.text('^2.0.1')]),
                 td([
                   Component.text(
                     'Declarative Flutter surface views and Material 3 catalog widgets for A2UI.',
@@ -308,7 +308,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_genui_jaspr')],
                   ),
                 ]),
-                td([Component.text('^2.0.0')]),
+                td([Component.text('^2.0.1')]),
                 td([
                   Component.text(
                     'Declarative Jaspr web components and HTML DOM catalog adapters for A2UI.',

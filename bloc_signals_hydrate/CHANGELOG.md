@@ -1,4 +1,4 @@
-## Unreleased
+## 1.1.1
 
 - **Fix (hydrate)**: Serialize async storage `write`, `delete`, and `clear` operations in `HydratedMixin`, `SecureHydratedStorage`, and `SharedPreferencesHydratedStorage` with generation tombstones to prevent post-logout state resurrection (#416).
 - **Fix (hydrate)**: Namespace default `prefix` to `bloc_signals_hydrate_` on `SecureHydratedStorage` and `SharedPreferencesHydratedStorage` to prevent full-app keychain preload and `clear()` wipe (#417).

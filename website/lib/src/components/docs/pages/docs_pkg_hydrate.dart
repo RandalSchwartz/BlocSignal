@@ -53,7 +53,9 @@ class const DocsPkgHydratePage({super.key}) extends StatelessComponent {
           language: 'yaml',
           code: '''
 dependencies:
-  bloc_signals_hydrate: ^1.0.0
+  bloc_signals: ^1.7.1
+  bloc_signals_hydrate: ^1.1.1
+  shared_preferences: ^2.3.0
 ''',
         ),
         p([
@@ -69,7 +71,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize SharedPreferences or custom storage engine
-  HydratedStorage.storage = await SharedPreferencesHydratedStorage.create();
+  final prefs = await SharedPreferences.getInstance();
+  HydratedStorage.storage = SharedPreferencesHydratedStorage(prefs);
 
   runApp(const MyApp());
 }''',
@@ -270,7 +273,11 @@ class UserProfileCubit extends HydratedCubitSignal<UserProfile?> {
           li([
             apiLink(DocSymbol.sharedPreferencesHydratedStorage),
             Component.text(
-              ': Standard, lightweight local key-value persistence for mobile and web.',
+              ': Standard, lightweight local key-value persistence for mobile and web. Defaults to the ',
+            ),
+            apiLink(DocSymbol.kDefaultHydratedStoragePrefix),
+            Component.text(
+              " prefix ('bloc_signals_hydrate_') to isolate persisted state from app preferences (pass prefix: '' to opt out for legacy keys).",
             ),
           ]),
           li([
@@ -280,7 +287,7 @@ class UserProfileCubit extends HydratedCubitSignal<UserProfile?> {
             ),
           ]),
           li([
-            strong([Component.text('InMemoryHydratedStorage')]),
+            strong([Component.text('MemoryHydratedStorage')]),
             Component.text(
               ': Ephemeral in-memory storage designed for lightning-fast hermetic unit testing.',
             ),
@@ -292,7 +299,7 @@ class UserProfileCubit extends HydratedCubitSignal<UserProfile?> {
           children: [
             p([
               Component.text(
-                'In unit tests, set HydratedStorage.storage = InMemoryHydratedStorage() in setUp() and clear it in tearDown() to ensure full isolation between test cases.',
+                'In unit tests, set HydratedStorage.storage = MemoryHydratedStorage() in setUp() and clear it in tearDown() to ensure full isolation between test cases.',
               ),
             ]),
           ],
@@ -305,7 +312,8 @@ class UserProfileCubit extends HydratedCubitSignal<UserProfile?> {
         p([
           Component.text(
             'To clear persisted state on user logout or session reset, invoke clear(). '
-            'This removes the persisted data from disk and resets the in-memory state to initialState without re-persisting the initial state back to storage.',
+            'This removes the persisted data from disk and resets the in-memory state to initialState without re-persisting the initial state back to storage. '
+            'Storage persist() and clear() operations are serialized through a per-instance FIFO Mutex with generation tombstones so concurrent async writes cannot resurrect state cleared mid-flight.',
           ),
         ]),
         const DocsCodeBlock(

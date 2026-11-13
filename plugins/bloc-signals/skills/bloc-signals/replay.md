@@ -8,7 +8,7 @@ The `bloc_signals_replay` package provides automatic undo and redo state trackin
 
 - **`ReplayMixin<State>`**: Shared base mixin on `BlocSignalBase<State>` providing `undo()`, `redo()`, `canUndo`, `canRedo`, `clearHistory()`, `limit`, `shouldReplay(state)`, and `emit(newState)` history recording.
 - **`ReplayCubit<State>` & `ReplayCubitMixin<State>`**: Extends or mixes into `CubitSignal<State>` (with `ReplayCubitMixin<State>` aliased to `ReplayMixin<State>`) to provide undo/redo history tracking.
-- **`ReplayBloc<Event, State>` & `ReplayBlocMixin<Event, State>`**: Extends or mixes into `BlocSignal<Event, State>` alongside `ReplayMixin<State>` to provide undo/redo history tracking. Emits synthetic `_Undo` and `_Redo` events into `onEvent` and `onTransition` so observers track replay actions.
+- **`ReplayBloc<Event, State>` & `ReplayBlocMixin<Event, State>`**: Extends or mixes into `BlocSignal<Event, State>` alongside `ReplayMixin<State>` to provide undo/redo history tracking. Emits synthetic `_Undo` and `_Redo` events into `@protected onReplay(ReplayEvent)` and `onTransition` so observers track replay actions 1:1.
 - **`ReplayEvent`**: Base event class for `ReplayBloc` events.
 
 ---
@@ -112,7 +112,7 @@ class SelectiveCubit extends ReplayCubit<MyState> {
 ## 🛡️ Replay Execution Protection & Lifecycle Gating
 
 ### Duplicate Emission Protection & Mixin Composition Order Independence
-Calling `undo()` or `redo()` internally triggers `this.emit()` to restore the selected state while `_isReplaying` is `true`. Because replay restorations route through `this.emit()` while guarding `_changeStack.add` behind `!_isReplaying`, downstream `emit()` overrides such as `HydratedMixin` (`package:bloc_signals_hydrate`) execute and persist restored states regardless of whether `HydratedMixin` is mixed before or after `ReplayMixin` / `ReplayBlocMixin`, without pushing duplicate entries into the undo stack or erasing the redo stack.
+Calling `undo()` or `redo()` invokes `@protected onUndo` / `@protected onRedo` hooks on `ReplayMixin` and triggers `this.emit()` to restore the selected state while `_isReplaying` is `true` strictly for the immediate restoration step. Because `ReplayMixin` scopes `_isReplaying` around `undo()` / `redo()` rather than holding it across `ReplayBlocMixin.emit()`, downstream `emit()` overrides such as `HydratedMixin` (`package:bloc_signals_hydrate`) persist restored states regardless of mixin composition order, and nested synchronous transitions triggered inside reactive effect callbacks (`createEffect` / `signal.subscribe`) are still recorded properly in history without being silently dropped.
 
 ### Lifecycle Gating
 - **Post-Close Safety**: Once `close()` has been called, subsequent emissions (for example from pending asynchronous tasks) are strictly prevented from mutating or appending to the undo/redo history stack.

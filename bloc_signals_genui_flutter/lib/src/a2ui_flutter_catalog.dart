@@ -1,4 +1,5 @@
 import 'package:bloc_signals_genui_flutter/src/a2ui_component_context.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/a2ui_image_url_policy.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/adaptive_catalog.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/cupertino_catalog.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/cupertino_tokens.dart';
@@ -25,9 +26,11 @@ class A2uiFlutterCatalog {
 
   /// Creates a standard catalog pre-populated with standard component builders
   /// (for example Text, Row, Column, Button, TextField, Card, Divider).
-  factory A2uiFlutterCatalog.standard() {
+  factory A2uiFlutterCatalog.standard({
+    A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy(),
+  }) {
     final catalog = A2uiFlutterCatalog();
-    registerStandardComponents(catalog);
+    registerStandardComponents(catalog, imagePolicy: imagePolicy);
     return catalog;
   }
 
@@ -44,9 +47,15 @@ class A2uiFlutterCatalog {
   factory A2uiFlutterCatalog.cupertino({
     CupertinoCatalogTokens? tokens,
     CupertinoThemeData? theme,
+    A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy(),
   }) {
     final catalog = A2uiFlutterCatalog();
-    registerCupertinoComponents(catalog, tokens: tokens, theme: theme);
+    registerCupertinoComponents(
+      catalog,
+      tokens: tokens,
+      theme: theme,
+      imagePolicy: imagePolicy,
+    );
     return catalog;
   }
 
@@ -61,6 +70,7 @@ class A2uiFlutterCatalog {
     CupertinoCatalogTokens? tokens,
     CupertinoThemeData? cupertinoTheme,
     TargetPlatform? platformOverride,
+    A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy(),
   }) {
     final catalog = A2uiFlutterCatalog();
     registerAdaptiveComponents(
@@ -68,6 +78,7 @@ class A2uiFlutterCatalog {
       tokens: tokens,
       cupertinoTheme: cupertinoTheme,
       platformOverride: platformOverride,
+      imagePolicy: imagePolicy,
     );
     return catalog;
   }

@@ -116,5 +116,45 @@ void main() {
         equals(['a', 'b']),
       );
     });
+
+    group('(Issue #424) non-finite numeric guards', () {
+      test(
+          '(Issue #424) asDouble returns defaultValue for non-finite num and '
+          'String inputs', () {
+        expect(asDouble(double.nan, 7.5), equals(7.5));
+        expect(asDouble(double.infinity, 7.5), equals(7.5));
+        expect(asDouble(double.negativeInfinity, 7.5), equals(7.5));
+        expect(asDouble('NaN', 7.5), equals(7.5));
+        expect(asDouble('Infinity', 7.5), equals(7.5));
+        expect(asDouble('-Infinity', 7.5), equals(7.5));
+        expect(
+          asDouble(const ResolvedBinding<Object?>(double.nan), 7.5),
+          equals(7.5),
+        );
+        expect(
+          asDouble(const ResolvedBinding<Object?>('Infinity'), 7.5),
+          equals(7.5),
+        );
+      });
+
+      test(
+          '(Issue #424) asInt returns defaultValue for non-finite num and '
+          'String inputs', () {
+        expect(asInt(double.nan, 11), equals(11));
+        expect(asInt(double.infinity, 11), equals(11));
+        expect(asInt(double.negativeInfinity, 11), equals(11));
+        expect(asInt('NaN', 11), equals(11));
+        expect(asInt('Infinity', 11), equals(11));
+        expect(asInt('-Infinity', 11), equals(11));
+        expect(
+          asInt(const ResolvedBinding<Object?>(double.nan), 11),
+          equals(11),
+        );
+        expect(
+          asInt(const ResolvedBinding<Object?>('Infinity'), 11),
+          equals(11),
+        );
+      });
+    });
   });
 }

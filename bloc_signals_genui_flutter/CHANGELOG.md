@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
+## Unreleased
+
+- **Fix (genui_flutter)**: Guard `asDouble` and `asInt` in `safe_prop_parser.dart` against non-finite numeric and string inputs (`NaN`, `Infinity`, `-Infinity`), falling back to `defaultValue` (#424).
+
 ## 2.0.1
 
 - **Fix (genui_flutter)**: Enforce per-render tree depth (`maxDepth`, defaulting to `A2uiSurfaceView.defaultMaxDepth` = `32`) and total node budget (`nodeBudget`, defaulting to `A2uiSurfaceView.defaultNodeBudget` = `1000`) in `A2uiSurfaceView`, rendering localized fallback widgets when exceeded and disambiguating duplicate sibling component keys in DAG payloads (#415).

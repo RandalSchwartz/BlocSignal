@@ -3413,6 +3413,157 @@ void main() {
         expect(bloc.availableSurfaceIds, contains('S24'));
       });
     });
+
+    group(
+        '(Issue #424) component property flattening and non-finite int guards',
+        () {
+      test(
+          '(Issue #424) nested properties cannot clobber top-level reserved '
+          'component keys in _normalizeComponentMap', () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'surf_flatten',
+              'catalogId': minimalCatalogId,
+            },
+          }),
+        );
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'updateComponents': {
+              'surfaceId': 'surf_flatten',
+              'components': [
+                {
+                  'id': 'col_root',
+                  'component': 'Column',
+                  'children': ['txt_safe', 'btn_safe'],
+                  'properties': {
+                    'id': 'evil_col',
+                    'component': 'Row',
+                    'type': 'EvilType',
+                    'children': ['evil_child'],
+                  },
+                },
+                {
+                  'id': 'txt_safe',
+                  'component': 'Text',
+                  'properties': {
+                    'id': 'evil_txt',
+                    'component': 'Button',
+                    'text': 'Preserved text',
+                  },
+                },
+                {
+                  'id': 'btn_safe',
+                  'component': 'Button',
+                  'child': 'btn_label',
+                  'action': {'name': 'real_action'},
+                  'properties': {
+                    'id': 'evil_btn',
+                    'component': 'Text',
+                    'child': 'evil_btn_label',
+                    'action': {'name': 'evil_action'},
+                  },
+                },
+                {
+                  'id': 'btn_label',
+                  'component': 'Text',
+                  'text': 'Click me',
+                },
+              ],
+            },
+          }),
+        );
+
+        final ready = bloc.stateValue as SurfaceReady;
+        final col = ready.surface.componentsModel.get('col_root');
+        final txt = ready.surface.componentsModel.get('txt_safe');
+        final btn = ready.surface.componentsModel.get('btn_safe');
+
+        expect(col, isNotNull);
+        expect(col!.type, equals('Column'));
+        expect(col.properties['children'], equals(['txt_safe', 'btn_safe']));
+
+        expect(txt, isNotNull);
+        expect(txt!.type, equals('Text'));
+        expect(txt.properties['text'], equals('Preserved text'));
+
+        expect(btn, isNotNull);
+        expect(btn!.type, equals('Button'));
+        expect(btn.properties['child'], equals('btn_label'));
+        expect(
+          btn.properties['action'],
+          equals({
+            'event': {'name': 'real_action'},
+          }),
+        );
+      });
+
+      test(
+          '(Issue #424) _coerceInt ignores non-finite num values without '
+          'throwing UnsupportedError', () {
+        final errors = <Object>[];
+        final bloc = _TrackingMultiSurfaceBloc(onErrorCallback: errors.add);
+        addTearDown(bloc.close);
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'surf_nan_bounds',
+              'catalogId': minimalCatalogId,
+            },
+          }),
+        );
+        bloc.processor.model
+            .getSurface('surf_nan_bounds')!
+            .componentsModel
+            .addComponent(
+              ComponentModel(
+                'tf_nan',
+                'TextField',
+                const {
+                  'label': 'Name',
+                  'minLength': double.nan,
+                  'maxLength': double.infinity,
+                  'value': {'@path': '/name'},
+                },
+              ),
+            );
+        bloc.processor.model
+            .getSurface('surf_nan_bounds')!
+            .componentsModel
+            .addComponent(
+              ComponentModel(
+                'tf_neg_inf',
+                'TextField',
+                const {
+                  'label': 'Bio',
+                  'minLength': double.negativeInfinity,
+                  'value': {'@path': '/bio'},
+                },
+              ),
+            );
+
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_nan_bounds',
+            path: '/name',
+            value: 'Alice',
+          ),
+        );
+
+        final ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isTrue);
+        expect(ready.validationErrors, isEmpty);
+        expect(errors, isEmpty);
+      });
+    });
   });
 }
 

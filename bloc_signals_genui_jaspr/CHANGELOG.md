@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Fix (genui_jaspr)**: Guard `asDouble` and `asInt` in `safe_prop_parser.dart` against non-finite numeric and string inputs (`NaN`, `Infinity`, `-Infinity`), falling back to `defaultValue` (#424).
 - **Fix (genui_jaspr)**: Allowlist Button variant before interpolating into DOM CSS classes (#425).
 
 ## 2.0.1

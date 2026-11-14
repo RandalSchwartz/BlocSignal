@@ -1226,7 +1226,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           context: 'component properties',
         );
         final copy = Map<String, dynamic>.from(comp)..remove('properties');
-        result = {...copy, ...props};
+        result = {...props, ...copy};
       }
     }
     if (result.containsKey('child')) {
@@ -1591,7 +1591,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   static int? _coerceInt(Object? value) {
     if (value is int) return value;
-    if (value is num) return value.toInt();
+    if (value is num) return value.isFinite ? value.toInt() : null;
     if (value is String) return int.tryParse(value.trim());
     return null;
   }

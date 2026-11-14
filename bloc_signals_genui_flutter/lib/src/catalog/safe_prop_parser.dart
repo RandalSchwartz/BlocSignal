@@ -21,9 +21,12 @@ dynamic unwrapBinding(dynamic value) {
 /// Automatically unwraps [ResolvedBinding] and [WritableBinding] instances.
 double asDouble(dynamic value, [double defaultValue = 0.0]) {
   final unwrapped = unwrapBinding(value);
-  if (unwrapped is num) return unwrapped.toDouble();
+  if (unwrapped is num) {
+    return unwrapped.isFinite ? unwrapped.toDouble() : defaultValue;
+  }
   if (unwrapped is String) {
-    return double.tryParse(unwrapped) ?? defaultValue;
+    final parsed = double.tryParse(unwrapped);
+    return parsed != null && parsed.isFinite ? parsed : defaultValue;
   }
   return defaultValue;
 }
@@ -34,7 +37,9 @@ double asDouble(dynamic value, [double defaultValue = 0.0]) {
 /// Automatically unwraps [ResolvedBinding] and [WritableBinding] instances.
 int asInt(dynamic value, [int defaultValue = 0]) {
   final unwrapped = unwrapBinding(value);
-  if (unwrapped is num) return unwrapped.toInt();
+  if (unwrapped is num) {
+    return unwrapped.isFinite ? unwrapped.toInt() : defaultValue;
+  }
   if (unwrapped is String) {
     return int.tryParse(unwrapped) ?? defaultValue;
   }

@@ -112,3 +112,13 @@ class BoundedCubit extends ReplayCubit<int> {
   bool shouldReplay(int state) => !state.isEven;
 }
 ```
+
+---
+
+## Memory Management & Sensitive State History
+
+Because `ReplayMixin` retains historical state instances in memory to power `undo()` and `redo()`, take the following precautions when managing large or sensitive state:
+
+- **Bound History Depth (`limit`)**: Pass `limit:` (or `maxHistoryLength:`) in the constructor or assign `limit` at runtime to cap retained states. Set `limit = 0` during sensitive flows (for example password entry, authentication tokens, or personally identifiable information) to clear existing history and disable recording.
+- **Clear at Session Boundaries (`clearHistory()`)**: Call `clearHistory()` explicitly at logout or session boundaries to immediately release retained state references.
+- **Automatic Cleanup on Disposal (`close()`)**: Calling `close()` automatically invokes `clearHistory()`, releasing all retained state references and resetting `canUndo` and `canRedo` to `false`.

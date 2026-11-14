@@ -72,17 +72,32 @@ abstract class ReplayCubit<State> extends CubitSignal<State>
 ///   void increment() => emit(stateValue + 1);
 /// }
 /// ```
+///
+/// ## Memory Management and Sensitive State
+///
+/// Because [ReplayMixin] retains historical state instances in memory,
+/// applications holding sensitive state (for example passwords, authentication
+/// tokens, or personally identifiable information) should configure a bounded
+/// [limit] (or set `limit = 0` during sensitive flows) and call [clearHistory]
+/// at logout or session boundaries. Calling [close] automatically invokes
+/// [clearHistory] to release retained state references and reset [canUndo]
+/// and [canRedo].
 mixin ReplayMixin<State> on BlocSignalBase<State> {
   late final _changeStack = _ChangeStack<State>(shouldReplay: shouldReplay);
 
   /// The internal `undo`/`redo` size limit.
   ///
-  /// If `null`, there is no limit.
+  /// If `null`, there is no limit. For containers holding sensitive state (for
+  /// example passwords, authentication tokens, or personally identifiable
+  /// information), configure a bounded [limit] or set `limit = 0` during
+  /// sensitive flows to prevent unbounded retention in memory.
   int? get limit => _changeStack.limit;
 
   /// Sets the internal `undo`/`redo` size limit.
   ///
-  /// By default there is no limit.
+  /// By default there is no limit. Setting `limit` to `0` or less immediately
+  /// clears existing history and disables further recording until a positive
+  /// limit (or `null`) is configured.
   set limit(int? limit) => _changeStack.limit = limit;
 
   bool _isReplaying = false;
@@ -149,7 +164,23 @@ mixin ReplayMixin<State> on BlocSignalBase<State> {
   bool get canRedo => _changeStack.canRedo;
 
   /// Clears internal undo/redo history.
+  ///
+  /// Call [clearHistory] at logout or session boundaries when a container
+  /// holds sensitive state (for example passwords, authentication tokens, or
+  /// personally identifiable information) to release retained state
+  /// references immediately.
   void clearHistory() => _changeStack.clear();
+
+  /// Closes the container and clears the internal undo/redo history.
+  ///
+  /// Automatically invokes [clearHistory] to release retained state references
+  /// and reset [canUndo] and [canRedo] to `false`.
+  @override
+  @mustCallSuper
+  Future<void> close() {
+    clearHistory();
+    return super.close();
+  }
 
   /// Checks whether the given state should be replayed from the undo/redo
   /// stack.

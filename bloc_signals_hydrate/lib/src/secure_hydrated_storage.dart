@@ -83,7 +83,7 @@ class SecureHydratedStorage implements HydratedStorage {
   }
 
   @override
-  dynamic read(String key) => _cache[key];
+  dynamic read(String key) => cloneHydratedJsonValue(_cache[key]);
 
   @override
   FutureOr<void> write(String key, dynamic value) => _mutex.protect(() async {
@@ -91,7 +91,7 @@ class SecureHydratedStorage implements HydratedStorage {
         // Duck-typing support for flutter_secure_storage write.
         // ignore: avoid_dynamic_calls
         await _secureStorage.write(key: _prefixedKey(key), value: encoded);
-        _cache[key] = value;
+        _cache[key] = jsonDecode(encoded);
       });
 
   @override

@@ -192,8 +192,8 @@ void main() {
 
     test('isolates storage keys by instance id', () {
       storage
-        ..write('PrimitiveCounterCubit_user_1', 10)
-        ..write('PrimitiveCounterCubit_user_2', 20);
+        ..write('PrimitiveCounterCubit:user_1', 10)
+        ..write('PrimitiveCounterCubit:user_2', 20);
 
       final cubit1 = PrimitiveCounterCubit(id: 'user_1');
       final cubit2 = PrimitiveCounterCubit(id: 'user_2');
@@ -202,8 +202,8 @@ void main() {
       expect(cubit2.stateValue, equals(20));
 
       cubit1.increment();
-      expect(storage.read('PrimitiveCounterCubit_user_1'), equals(11));
-      expect(storage.read('PrimitiveCounterCubit_user_2'), equals(20));
+      expect(storage.read('PrimitiveCounterCubit:user_1'), equals(11));
+      expect(storage.read('PrimitiveCounterCubit:user_2'), equals(20));
     });
 
     test('supports HydratedBlocSignal event handling and persistence', () {
@@ -336,7 +336,13 @@ void main() {
         expect(message, isNot(contains('alice@example.com')));
         expect(message, contains('ZeroOverrideCounterCubit'));
         expect(message, contains('int'));
-        expect(message, contains('payload type: ${payload.runtimeType}'));
+        expect(
+          message,
+          contains(
+            'payload type: '
+            '${storage.read('ZeroOverrideCounterCubit').runtimeType}',
+          ),
+        );
       },
     );
   });
@@ -346,7 +352,7 @@ void main() {
       'hydrates initial state and persists emissions when mixed directly with '
       'CubitSignalMixin',
       () async {
-        storage.write('CustomHydratedMixinCounter_custom_1', 7);
+        storage.write('CustomHydratedMixinCounter:custom_1', 7);
 
         final counter = CustomHydratedMixinCounter(
           id: 'custom_1',
@@ -356,7 +362,7 @@ void main() {
 
         counter.increment();
         expect(counter.stateValue, equals(8));
-        expect(storage.read('CustomHydratedMixinCounter_custom_1'), equals(8));
+        expect(storage.read('CustomHydratedMixinCounter:custom_1'), equals(8));
 
         // Emitting equal state does not re-persist
         counter.emitSelf();
@@ -365,7 +371,7 @@ void main() {
         await counter.close();
         counter.increment();
         expect(counter.stateValue, equals(8));
-        expect(storage.read('CustomHydratedMixinCounter_custom_1'), equals(8));
+        expect(storage.read('CustomHydratedMixinCounter:custom_1'), equals(8));
       },
     );
 
@@ -440,7 +446,141 @@ void main() {
         expect(counter.stateValue, equals(11));
       },
     );
+
+    test(
+      '(Issue #427: MemoryHydratedStorage isolates nested Map and List '
+      'mutations across write and read)',
+      () {
+        final storage = MemoryHydratedStorage();
+        final inputMap = <String, dynamic>{
+          'list': <int>[1, 2],
+          'nested': <String, dynamic>{'a': 1},
+        };
+        storage.write('map_key', inputMap);
+
+        // Mutating the input after write must not affect stored state.
+        (inputMap['list'] as List<int>).add(3);
+        (inputMap['nested'] as Map<String, dynamic>)['a'] = 99;
+        inputMap['extra'] = true;
+
+        final read1 = storage.read('map_key') as Map<String, dynamic>;
+        expect(
+          read1,
+          equals(<String, dynamic>{
+            'list': <int>[1, 2],
+            'nested': <String, dynamic>{'a': 1},
+          }),
+        );
+
+        // Mutating the returned value must not affect subsequent reads.
+        (read1['list'] as List<dynamic>).add(4);
+        (read1['nested'] as Map<String, dynamic>)['a'] = 88;
+        read1['injected'] = 'bad';
+
+        final read2 = storage.read('map_key') as Map<String, dynamic>;
+        expect(
+          read2,
+          equals(<String, dynamic>{
+            'list': <int>[1, 2],
+            'nested': <String, dynamic>{'a': 1},
+          }),
+        );
+
+        // Top-level List isolation.
+        final inputList = <dynamic>[
+          <String, dynamic>{'x': 1},
+          <int>[2, 3],
+        ];
+        storage.write('list_key', inputList);
+        (inputList[0] as Map<String, dynamic>)['x'] = 42;
+        (inputList[1] as List<int>).add(4);
+
+        final readList1 = storage.read('list_key') as List<dynamic>;
+        expect(
+          readList1,
+          equals(<dynamic>[
+            <String, dynamic>{'x': 1},
+            <int>[2, 3],
+          ]),
+        );
+
+        (readList1[0] as Map<String, dynamic>)['x'] = 77;
+        (readList1[1] as List<dynamic>).add(99);
+        final readList2 = storage.read('list_key') as List<dynamic>;
+        expect(
+          readList2,
+          equals(<dynamic>[
+            <String, dynamic>{'x': 1},
+            <int>[2, 3],
+          ]),
+        );
+      },
+    );
+
+    test(
+      '(Issue #427: HydratedMixin.storageToken produces collision-free '
+      'tokens and preserves storagePrefix when id is null)',
+      () {
+        final storage = MemoryHydratedStorage();
+        final cubitUnderscoreA = _CustomPrefixTokenCubit(
+          prefix: 'a_b',
+          id: 'c',
+          storage: storage,
+        );
+        final cubitUnderscoreB = _CustomPrefixTokenCubit(
+          prefix: 'a',
+          id: 'b_c',
+          storage: storage,
+        );
+        final cubitColonA = _CustomPrefixTokenCubit(
+          prefix: 'a:b',
+          id: 'c',
+          storage: storage,
+        );
+        final cubitColonB = _CustomPrefixTokenCubit(
+          prefix: 'a',
+          id: 'b:c',
+          storage: storage,
+        );
+        final cubitNoId = _CustomPrefixTokenCubit(
+          prefix: 'my_prefix',
+          storage: storage,
+        );
+
+        addTearDown(() async {
+          await cubitUnderscoreA.close();
+          await cubitUnderscoreB.close();
+          await cubitColonA.close();
+          await cubitColonB.close();
+          await cubitNoId.close();
+        });
+
+        expect(
+          cubitUnderscoreA.storageToken,
+          isNot(equals(cubitUnderscoreB.storageToken)),
+        );
+        expect(
+          cubitColonA.storageToken,
+          isNot(equals(cubitColonB.storageToken)),
+        );
+        expect(cubitNoId.storageToken, equals('my_prefix'));
+      },
+    );
   });
+}
+
+class _CustomPrefixTokenCubit extends HydratedCubitSignal<int> {
+  _CustomPrefixTokenCubit({
+    required String prefix,
+    super.id,
+    super.storage,
+  })  : _prefix = prefix,
+        super(initialState: 0);
+
+  final String _prefix;
+
+  @override
+  String get storagePrefix => _prefix;
 }
 
 class DeferredHydratedMixinCounter

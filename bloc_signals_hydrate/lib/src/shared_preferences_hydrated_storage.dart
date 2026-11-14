@@ -11,6 +11,12 @@ import 'package:bloc_signals_hydrate/src/hydrated_storage.dart';
 /// storage instance via an internal [Mutex] while preserving the `const`
 /// constructor.
 ///
+/// **Security Warning**: `SharedPreferences` stores data in plaintext
+/// (unencrypted XML/plist on mobile and `localStorage` on web). Do not use
+/// [SharedPreferencesHydratedStorage] for sensitive state such as auth tokens,
+/// credentials, or personally identifiable information; use
+/// `SecureHydratedStorage` instead.
+///
 /// Example:
 /// ```dart
 /// import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
@@ -49,6 +55,11 @@ class SharedPreferencesHydratedStorage implements HydratedStorage {
 
   String _prefixedKey(String key) => '$prefix$key';
 
+  /// Reads and JSON-decodes the stored value for [key].
+  ///
+  /// Throws a [FormatException] if the stored string is not valid JSON so
+  /// `HydratedMixin.initHydratedState` can route the error to `onError` and
+  /// fall back to `initialState`.
   @override
   dynamic read(String key) {
     // Duck-typing support for shared_preferences getString.

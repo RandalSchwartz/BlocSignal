@@ -2,4 +2,4 @@
 library;
 
 export 'src/hydrated_bloc_signal.dart';
-export 'src/hydrated_storage.dart';
+export 'src/hydrated_storage.dart' hide cloneHydratedJsonValue;

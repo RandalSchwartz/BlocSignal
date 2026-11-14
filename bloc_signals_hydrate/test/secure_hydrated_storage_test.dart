@@ -245,5 +245,73 @@ void main() {
       expect(storage.prefix, equals(''));
       expect(storage.read('legacy_token'), equals('legacy_secret'));
     });
+
+    test(
+        '(Issue #427: SecureHydratedStorage isolates nested Map and List '
+        'mutations across write and read)', () async {
+      final storage = await SecureHydratedStorage.build(secureStorage);
+      final inputMap = <String, dynamic>{
+        'list': <int>[1, 2],
+        'nested': <String, dynamic>{'a': 1},
+      };
+      await storage.write('map_key', inputMap);
+
+      // Mutating input after write must not mutate internal _cache.
+      (inputMap['list'] as List<int>).add(3);
+      (inputMap['nested'] as Map<String, dynamic>)['a'] = 99;
+      inputMap['extra'] = true;
+
+      final read1 = storage.read('map_key') as Map<String, dynamic>;
+      expect(
+        read1,
+        equals(<String, dynamic>{
+          'list': <int>[1, 2],
+          'nested': <String, dynamic>{'a': 1},
+        }),
+      );
+
+      // Mutating returned value must not mutate _cache or subsequent reads.
+      (read1['list'] as List<dynamic>).add(4);
+      (read1['nested'] as Map<String, dynamic>)['a'] = 88;
+      read1['injected'] = 'bad';
+
+      final read2 = storage.read('map_key') as Map<String, dynamic>;
+      expect(
+        read2,
+        equals(<String, dynamic>{
+          'list': <int>[1, 2],
+          'nested': <String, dynamic>{'a': 1},
+        }),
+      );
+
+      // Top-level List isolation.
+      final inputList = <dynamic>[
+        <String, dynamic>{'x': 1},
+        <int>[2, 3],
+      ];
+      await storage.write('list_key', inputList);
+      (inputList[0] as Map<String, dynamic>)['x'] = 42;
+      (inputList[1] as List<int>).add(4);
+
+      final readList1 = storage.read('list_key') as List<dynamic>;
+      expect(
+        readList1,
+        equals(<dynamic>[
+          <String, dynamic>{'x': 1},
+          <int>[2, 3],
+        ]),
+      );
+
+      (readList1[0] as Map<String, dynamic>)['x'] = 77;
+      (readList1[1] as List<dynamic>).add(99);
+      final readList2 = storage.read('list_key') as List<dynamic>;
+      expect(
+        readList2,
+        equals(<dynamic>[
+          <String, dynamic>{'x': 1},
+          <int>[2, 3],
+        ]),
+      );
+    });
   });
 }

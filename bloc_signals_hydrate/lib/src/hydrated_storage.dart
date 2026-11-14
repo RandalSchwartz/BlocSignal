@@ -1,4 +1,25 @@
 import 'dart:async';
+import 'dart:convert';
+
+import 'package:meta/meta.dart';
+
+/// Returns a deep copy of an already-decoded JSON [value] so callers cannot
+/// mutate cached [Map] or [List] instances in place.
+@internal
+dynamic cloneHydratedJsonValue(dynamic value) {
+  if (value is Map) {
+    return <String, dynamic>{
+      for (final entry in value.entries)
+        entry.key.toString(): cloneHydratedJsonValue(entry.value),
+    };
+  }
+  if (value is List) {
+    return <dynamic>[
+      for (final item in value) cloneHydratedJsonValue(item),
+    ];
+  }
+  return value;
+}
 
 /// Default key prefix used by namespaced [HydratedStorage] adapters such as
 /// `SecureHydratedStorage` and `SharedPreferencesHydratedStorage`.
@@ -62,11 +83,11 @@ class MemoryHydratedStorage implements HydratedStorage {
   final Map<String, dynamic> _storage = {};
 
   @override
-  dynamic read(String key) => _storage[key];
+  dynamic read(String key) => cloneHydratedJsonValue(_storage[key]);
 
   @override
   void write(String key, dynamic value) {
-    _storage[key] = value;
+    _storage[key] = jsonDecode(jsonEncode(value));
   }
 
   @override

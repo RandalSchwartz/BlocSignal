@@ -101,11 +101,11 @@ class UserCubit extends HydratedCubitSignal<UserModel> {
 
 ### 3. Storage Keys & Instance Scoping
 
-Storage keys are derived via the `storageToken` getter (`'$storagePrefix${id != null ? '_$id' : ''}'`).
+Storage keys are derived via the `storageToken` getter (`id != null ? '${Uri.encodeComponent(storagePrefix)}:${Uri.encodeComponent(id!)}' : storagePrefix`).
 
-* **Singletons**: Omit `id` (defaults to `null`). Storage key automatically uses the class name (for example `'CounterCubit'`).
-* **Multi-Instance**: Pass `id` via constructor to scope storage per user/session (`CounterCubit(id: 'user_123')` -> key `'CounterCubit_user_123'`).
-* **Custom Keys**: Override `storageToken` or `storagePrefix` directly for custom key formats:
+* **Singletons**: Omit `id` (defaults to `null`). Storage key automatically uses `storagePrefix` (for example `'CounterCubit'`).
+* **Multi-Instance**: Pass `id` via constructor to scope storage per user/session (`CounterCubit(id: 'user_123')` -> key `'CounterCubit:user_123'`).
+* **Custom Keys**: Override `storageToken` or `storagePrefix` directly for custom key formats (recommended for production Web/JS/Wasm builds where `runtimeType.toString()` is minified):
 
 ```dart
 class CounterCubit extends HydratedCubitSignal<int> {

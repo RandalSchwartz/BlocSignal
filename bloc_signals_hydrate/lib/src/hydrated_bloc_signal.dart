@@ -17,11 +17,23 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
 
   /// The prefix key used to scope this class in [HydratedStorage]. Defaults to
   /// `runtimeType.toString()`.
+  ///
+  /// **Production Minification Warning**: In release Flutter Web (`dart2js` /
+  /// `dart2wasm`) or obfuscated builds, `runtimeType.toString()` is minified
+  /// and can change across builds, causing persisted state to be orphaned or
+  /// collide. Override [storagePrefix] with a stable string literal in
+  /// production applications.
   String get storagePrefix => runtimeType.toString();
 
   /// The unique storage token key derived from [storagePrefix] and optional
   /// [id].
-  String get storageToken => '$storagePrefix${id != null ? '_$id' : ''}';
+  ///
+  /// When [id] is non-null, both [storagePrefix] and [id] are percent-encoded
+  /// via [Uri.encodeComponent] and joined with `:` to guarantee collision-free
+  /// keys. When [id] is `null`, returns [storagePrefix] directly.
+  String get storageToken => id != null
+      ? '${Uri.encodeComponent(storagePrefix)}:${Uri.encodeComponent(id!)}'
+      : storagePrefix;
 
   /// An explicit [HydratedStorage] override instance for this container. If
   /// `null`, falls back to [HydratedStorage.storage].

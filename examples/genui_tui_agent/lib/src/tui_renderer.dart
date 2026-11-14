@@ -3,6 +3,25 @@ import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 /// ANSI terminal renderer that formats A2UI component trees into
 /// visual terminal boxes matching `agy-cli` styling.
 class TuiRenderer {
+  static final RegExp _ansiEscapeRegex = RegExp(
+    r'\x1B(?:\[[0-?]*[ -/]*[@-~]|\].*?(?:\x07|\x1B\\)|[@-Z\\^_`a-~])',
+    dotAll: true,
+  );
+
+  static final RegExp _controlCharRegex = RegExp(
+    r'[\x00-\x08\x0B-\x1F\x7F-\x9F]',
+  );
+
+  /// Strips ANSI escape sequences and C0/C1 control characters from [value],
+  /// preserving horizontal tabs (`\t`) and newlines (`\n`).
+  static String sanitize(Object? value) {
+    if (value == null) return '';
+    return value
+        .toString()
+        .replaceAll(_ansiEscapeRegex, '')
+        .replaceAll(_controlCharRegex, '');
+  }
+
   /// Formats an [A2uiSurfaceState] into an ANSI terminal representation.
   static String renderState(A2uiSurfaceState state) {
     return switch (state) {
@@ -30,31 +49,36 @@ class TuiRenderer {
   }
 
   static String _renderStreaming(String? surfaceId, int count) {
+    final safeSurfaceId = sanitize(surfaceId ?? 'Initializing...');
     return '''
 \x1B[1;33m┌────────────────────────────────────────────────────────────┐
 │ [STREAMING] Processing A2UI chunk stream...                │
-│ Surface ID: ${surfaceId ?? 'Initializing...'}
+│ Surface ID: $safeSurfaceId
 │ Messages Received: $count                                   │
 └────────────────────────────────────────────────────────────┘\x1B[0m
 ''';
   }
 
   static String _renderSubmitting(String surfaceId, String action) {
+    final safeSurfaceId = sanitize(surfaceId);
+    final safeAction = sanitize(action);
     return '''
 \x1B[1;35m┌────────────────────────────────────────────────────────────┐
 │ [SUBMITTING] Dispatching client tool response...           │
-│ Surface ID: $surfaceId                                      │
-│ Action: $action                                            │
+│ Surface ID: $safeSurfaceId                                      │
+│ Action: $safeAction                                            │
 └────────────────────────────────────────────────────────────┘\x1B[0m
 ''';
   }
 
   static String _renderError(Object error, String? surfaceId) {
+    final safeSurfaceId = sanitize(surfaceId ?? 'unknown');
+    final safeError = sanitize(error);
     return '''
 \x1B[1;31m┌────────────────────────────────────────────────────────────┐
 │ [ERROR] Surface Exception Encountered                      │
-│ Surface: ${surfaceId ?? 'unknown'}
-│ Message: $error
+│ Surface: $safeSurfaceId
+│ Message: $safeError
 └────────────────────────────────────────────────────────────┘\x1B[0m
 ''';
   }
@@ -64,9 +88,10 @@ class TuiRenderer {
     SurfaceModel<ComponentApi> surface,
     Map<String, dynamic> formValues,
   ) {
+    final safeSurfaceId = sanitize(surfaceId);
     final buffer = StringBuffer();
     buffer.writeln(
-      '\x1B[1;32m┌── Surface: $surfaceId ────────────────────────────────────┐\x1B[0m',
+      '\x1B[1;32m┌── Surface: $safeSurfaceId ────────────────────────────────────┐\x1B[0m',
     );
 
     final components = surface.componentsModel.all.toList();
@@ -88,7 +113,9 @@ class TuiRenderer {
         '\x1B[1;34m├─ Form Model ──────────────────────────────────────────────┤\x1B[0m',
       );
       formValues.forEach((key, value) {
-        buffer.writeln('│  • \x1B[33m$key\x1B[0m: $value');
+        buffer.writeln(
+          '│  • \x1B[33m${sanitize(key)}\x1B[0m: ${sanitize(value)}',
+        );
       });
     }
 
@@ -128,12 +155,12 @@ class TuiRenderer {
     final props = comp.properties;
     switch (comp.type) {
       case 'Text':
-        final text = _resolveProp(props['text'], formValues, surface) ?? '';
+        final text = sanitize(_resolveProp(props['text'], formValues, surface));
         final variant = props['variant'] ?? 'body';
         if (variant == 'h1' || variant == 'h2') {
           return ['\x1B[1;37m### $text\x1B[0m'];
         }
-        return ['$text'];
+        return [text];
       case 'Button':
         final action = props['action'];
         var actionName = 'submit';
@@ -147,63 +174,71 @@ class TuiRenderer {
         } else if (action is String) {
           actionName = action;
         }
-        return ['[\x1B[1;32m 🔘 Action: $actionName \x1B[0m]'];
+        return ['[\x1B[1;32m 🔘 Action: ${sanitize(actionName)} \x1B[0m]'];
       case 'TextField':
-        final label = props['label'] ?? 'Input';
+        final label = sanitize(props['label'] ?? 'Input');
         final currentVal = _resolveProp(props['value'], formValues, surface);
-        final valSuffix = currentVal != null ? ': $currentVal' : '';
+        final valSuffix = currentVal != null ? ': ${sanitize(currentVal)}' : '';
         return ['[\x1B[1;36m ✏️  $label$valSuffix \x1B[0m]'];
       case 'CheckBox':
-        final label = props['label'] ?? 'CheckBox';
+        final label = sanitize(props['label'] ?? 'CheckBox');
         final rawVal = _resolveProp(props['value'], formValues, surface);
         final checked = rawVal == true || rawVal?.toString() == 'true';
         final mark = checked ? '[x]' : '[ ]';
         return ['[\x1B[1;32m $mark $label \x1B[0m]'];
       case 'ChoicePicker':
-        final label = props['label'] ?? 'ChoicePicker';
+        final label = sanitize(props['label'] ?? 'ChoicePicker');
         final rawVal = _resolveProp(props['value'], formValues, surface);
         final selectedStr = rawVal is Iterable
-            ? rawVal.join(', ')
-            : (rawVal?.toString() ?? '');
+            ? rawVal.map(sanitize).join(', ')
+            : sanitize(rawVal);
         final suffix = selectedStr.isNotEmpty ? ' ($selectedStr)' : '';
         return ['[\x1B[1;35m 🎯 ChoicePicker: $label$suffix \x1B[0m]'];
       case 'Slider':
-        final label = props['label'] ?? 'Slider';
-        final val = _resolveProp(props['value'], formValues, surface) ?? 0;
-        final min = props['min'] ?? 0;
-        final max = props['max'] ?? 100;
+        final label = sanitize(props['label'] ?? 'Slider');
+        final val = sanitize(
+          _resolveProp(props['value'], formValues, surface) ?? 0,
+        );
+        final min = sanitize(props['min'] ?? 0);
+        final max = sanitize(props['max'] ?? 100);
         return ['[\x1B[1;33m 🎚️  $label: $val ($min..$max) \x1B[0m]'];
       case 'DateTimeInput':
-        final label = props['label'] ?? 'Date';
-        final val = _resolveProp(props['value'], formValues, surface) ?? '';
+        final label = sanitize(props['label'] ?? 'Date');
+        final val = sanitize(
+          _resolveProp(props['value'], formValues, surface) ?? '',
+        );
         return ['[\x1B[1;36m 📅 $label: $val \x1B[0m]'];
       case 'Icon':
         final rawName = props['name'] ?? props['icon'] ?? 'icon';
-        final name = rawName is Map
-            ? (rawName['name'] ?? rawName['svgPath'] ?? 'icon')
-            : rawName;
+        final name = sanitize(
+          rawName is Map
+              ? (rawName['name'] ?? rawName['svgPath'] ?? 'icon')
+              : rawName,
+        );
         return ['[\x1B[1;34m 🔹 Icon: $name \x1B[0m]'];
       case 'Image':
-        final desc = props['description'] ?? 'Image';
-        final url = props['url'] ?? '';
+        final desc = sanitize(props['description'] ?? 'Image');
+        final url = sanitize(props['url'] ?? '');
         return ['[\x1B[1;34m 🖼️  Image: $desc ($url) \x1B[0m]'];
       case 'Video':
-        final url = props['url'] ?? '';
+        final url = sanitize(props['url'] ?? '');
         return ['[\x1B[1;34m 🎬 Video: $url \x1B[0m]'];
       case 'AudioPlayer':
-        final desc = props['description'] ?? 'Audio';
-        final url = props['url'] ?? '';
+        final desc = sanitize(props['description'] ?? 'Audio');
+        final url = sanitize(props['url'] ?? '');
         return ['[\x1B[1;34m 🔊 AudioPlayer: $desc ($url) \x1B[0m]'];
       case 'Card':
         return ['\x1B[2m[Card]\x1B[0m'];
       case 'Divider':
         return ['\x1B[2m────────────────────────────────────────\x1B[0m'];
       case 'List':
-        final direction = props['direction'] ?? props['axis'] ?? 'vertical';
+        final direction = sanitize(
+          props['direction'] ?? props['axis'] ?? 'vertical',
+        );
         final children = props['children'];
         if (children is Map && children.containsKey('path')) {
-          final path = children['path']?.toString() ?? '';
-          final tplId = children['componentId']?.toString() ?? '';
+          final path = sanitize(children['path']);
+          final tplId = sanitize(children['componentId']);
           return [
             '\x1B[2m[List ($direction, template: $tplId @ $path)]\x1B[0m',
           ];
@@ -215,21 +250,25 @@ class TuiRenderer {
         if (rawTabs is Iterable) {
           for (final item in rawTabs) {
             if (item is Map && item['title'] != null) {
-              titles.add(item['title'].toString());
+              titles.add(sanitize(item['title']));
             }
           }
         }
         final joined = titles.isEmpty ? 'Tabs' : titles.join(' | ');
         return ['[\x1B[1;36m 🗂️  Tabs: $joined \x1B[0m]'];
       case 'Modal':
-        final trigger = props['trigger'] ?? props['entryPointChild'] ?? '';
+        final trigger = sanitize(
+          props['trigger'] ?? props['entryPointChild'] ?? '',
+        );
         return ['\x1B[2m[Modal (trigger: $trigger)]\x1B[0m'];
       case 'Column':
         return ['\x1B[2m[Column Layout]\x1B[0m'];
       case 'Row':
         return ['\x1B[2m[Row Layout]\x1B[0m'];
       default:
-        return ['[Component: ${comp.type} (id: ${comp.id})]'];
+        return [
+          '[Component: ${sanitize(comp.type)} (id: ${sanitize(comp.id)})]',
+        ];
     }
   }
 }

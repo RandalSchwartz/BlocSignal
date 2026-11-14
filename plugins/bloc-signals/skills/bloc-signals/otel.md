@@ -59,7 +59,7 @@ In standard flows, an event that waits indefinitely does not produce `onEventCom
 
 ## Data safety & Redaction
 
-`state.value` records `state.toString()` by default. To sanitize PII, secrets, or high-cardinality tokens, configure a custom `stateRedactor`:
+`state.value`, `event.value`, and error messages record `.toString()` by default. To sanitize PII, secrets, or high-cardinality tokens, and to bound attribute sizes, configure `stateRedactor`, `eventRedactor`, `errorRedactor`, and `maxAttributeLength`:
 
 ```dart
 BlocSignalObserver.observer = OtelBlocSignalObserver(
@@ -69,8 +69,16 @@ BlocSignalObserver.observer = OtelBlocSignalObserver(
     }
     return state?.toString();
   },
+  eventRedactor: (bloc, event) => event is LoginSubmitted ? 'LoginSubmitted([REDACTED])' : event?.toString(),
+  errorRedactor: (bloc, error) => error is AuthException ? 'AuthException([REDACTED])' : error.toString(),
+  maxAttributeLength: 512,
 );
 ```
+
+- Returning `null` from `stateRedactor` or `eventRedactor` omits `state.value` or `event.value` respectively.
+- Returning `null` from `errorRedactor` omits the span status description and records `'[REDACTED]'` for `exception.message` (in both `OtelBlocSignalObserver.onError` and `traced` / `tracedBloc`).
+- `maxAttributeLength` (must be `> 0`) truncates `state.value`, `event.value`, error messages, and stringified `onTelemetry` metadata values.
+- `onTelemetry` normalizes `metadata` before passing to `OTelAPI.attributesFromMap`: `null` becomes `'null'`, `bool`/`int`/`double` are preserved, `String` is capped, homogeneous `List<bool>`/`List<int>`/`List<double>` are preserved, mixed numeric `int`/`double` lists are converted to `List<double>`, `List<String>` / mixed / object `Iterable`s (`List`, `Set`) are converted to `List<String>` with each item capped, and `Map` or custom objects are stringified and capped.
 
 Spans are disambiguated using a FIFO queue per event key (`Map<String, List<APISpan>>`), preventing span collisions when identical events are dispatched back-to-back. Spans are also concluded on `onEventCompleted` for zero-emit handlers, and in `tracedBloc` when events are dropped under concurrency.
 
@@ -109,5 +117,5 @@ class OrderBloc extends BlocSignal<OrderEvent, OrderState> {
 }
 ```
 
-- **`traced(transformer, {tracer, spanName})`**: Wraps a standard 3-parameter `EventTransformer` in a `BlocEventTransformer` that automatically creates an OpenTelemetry span (`APISpan`) tagged with `bloc.type` and `event.type`. If `tracer` (`APITracer?`) is omitted, `OTelAPI.tracerProvider().getTracer('bloc_signals_otel')` is used. Unhandled exceptions are recorded on the span with `SpanStatusCode.Error` before rethrowing.
-- **`tracedBloc(transformer, {tracer, spanName})`**: Decorates an existing contextual 4-parameter `BlocEventTransformer` with the same OpenTelemetry span instrumentation.
+- **`traced(transformer, {tracer, spanName, errorRedactor, maxAttributeLength})`**: Wraps a standard 3-parameter `EventTransformer` in a `BlocEventTransformer` that automatically creates an OpenTelemetry span (`APISpan`) tagged with `bloc.type` and `event.type`. If `tracer` (`APITracer?`) is omitted, `OTelAPI.tracerProvider().getTracer('bloc_signals_otel')` is used. Unhandled exceptions are recorded on the span with `SpanStatusCode.Error` (and optional `errorRedactor` / `maxAttributeLength` sanitization) before rethrowing.
+- **`tracedBloc(transformer, {tracer, spanName, errorRedactor, maxAttributeLength})`**: Decorates an existing contextual 4-parameter `BlocEventTransformer` with the same OpenTelemetry span instrumentation and error sanitization options.

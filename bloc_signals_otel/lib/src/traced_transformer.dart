@@ -17,6 +17,14 @@ import 'package:dartastic_opentelemetry_api/dartastic_opentelemetry_api.dart'
 /// An optional [spanName] can be specified to override the default span name
 /// (`'${bloc.runtimeType}.${event.runtimeType}'`).
 ///
+/// An optional [errorRedactor] callback can be provided to format or redact
+/// error descriptions before recording them on span status descriptions and
+/// `exception.message` attributes. Returning `null` omits the span status
+/// description and records `'[REDACTED]'` for `exception.message`.
+///
+/// An optional [maxAttributeLength] caps the character length of recorded
+/// error messages when greater than zero.
+///
 /// ### Example
 /// ```dart
 /// class SearchBloc extends BlocSignal<SearchEvent, SearchState> {
@@ -32,11 +40,19 @@ BlocEventTransformer<E, StateType> traced<E, StateType>(
   EventTransformer<E, StateType> transformer, {
   otel.APITracer? tracer,
   String? spanName,
+  String? Function(BlocSignalBase<dynamic> bloc, Object error)? errorRedactor,
+  int? maxAttributeLength,
 }) {
+  assert(
+    maxAttributeLength == null || maxAttributeLength > 0,
+    'maxAttributeLength must be greater than zero.',
+  );
   return tracedBloc(
     transformer.toBlocTransformer(),
     tracer: tracer,
     spanName: spanName,
+    errorRedactor: errorRedactor,
+    maxAttributeLength: maxAttributeLength,
   );
 }
 
@@ -52,6 +68,14 @@ BlocEventTransformer<E, StateType> traced<E, StateType>(
 /// An optional [spanName] can be specified to override the default span name
 /// (`'${bloc.runtimeType}.${event.runtimeType}'`).
 ///
+/// An optional [errorRedactor] callback can be provided to format or redact
+/// error descriptions before recording them on span status descriptions and
+/// `exception.message` attributes. Returning `null` omits the span status
+/// description and records `'[REDACTED]'` for `exception.message`.
+///
+/// An optional [maxAttributeLength] caps the character length of recorded
+/// error messages when greater than zero.
+///
 /// ### Example
 /// ```dart
 /// on<SearchQueryChanged>(
@@ -65,7 +89,13 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
   BlocEventTransformer<E, StateType> transformer, {
   otel.APITracer? tracer,
   String? spanName,
+  String? Function(BlocSignalBase<dynamic> bloc, Object error)? errorRedactor,
+  int? maxAttributeLength,
 }) {
+  assert(
+    maxAttributeLength == null || maxAttributeLength > 0,
+    'maxAttributeLength must be greater than zero.',
+  );
   return (bloc, event, handler, emit) {
     final effectiveTracer =
         tracer ?? otel.OTelAPI.tracerProvider().getTracer('bloc_signals_otel');
@@ -84,9 +114,23 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
     void recordError(Object error, StackTrace stackTrace) {
       if (!exceptionRecorded) {
         exceptionRecorded = true;
+        var errorMessage = errorRedactor != null
+            ? errorRedactor(bloc, error)
+            : error.toString();
+        if (errorMessage != null &&
+            maxAttributeLength != null &&
+            errorMessage.length > maxAttributeLength) {
+          errorMessage = errorMessage.substring(0, maxAttributeLength);
+        }
         span
-          ..recordException(error, stackTrace: stackTrace)
-          ..setStatus(otel.SpanStatusCode.Error, error.toString());
+          ..recordException(
+            error,
+            stackTrace: stackTrace,
+            attributes: otel.OTelAPI.attributesFromMap({
+              'exception.message': errorMessage ?? '[REDACTED]',
+            }),
+          )
+          ..setStatus(otel.SpanStatusCode.Error, errorMessage);
       }
     }
 

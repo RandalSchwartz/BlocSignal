@@ -1,4 +1,5 @@
 import 'package:bloc_signals_genui_flutter/src/a2ui_flutter_catalog.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/a2ui_image_url_policy.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/a2ui_button.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/a2ui_card.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/a2ui_check_box.dart';
@@ -23,7 +24,10 @@ import 'package:bloc_signals_genui_flutter/src/catalog/widgets/a2ui_text_field.d
 /// final catalog = A2uiFlutterCatalog();
 /// registerStandardComponents(catalog);
 /// ```
-void registerStandardComponents(A2uiFlutterCatalog catalog) {
+void registerStandardComponents(
+  A2uiFlutterCatalog catalog, {
+  A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy(),
+}) {
   catalog
     ..register('Text', buildA2uiText)
     ..register('Row', buildA2uiRow)
@@ -36,7 +40,14 @@ void registerStandardComponents(A2uiFlutterCatalog catalog) {
     ..register('Tabs', buildA2uiTabs)
     ..register('Modal', buildA2uiModal)
     ..register('Icon', buildA2uiIcon)
-    ..register('Image', buildA2uiImage)
+    ..register(
+      'Image',
+      (context, componentContext) => buildA2uiImage(
+        context,
+        componentContext,
+        imagePolicy: imagePolicy,
+      ),
+    )
     ..register('CheckBox', buildA2uiCheckBox)
     ..register('ChoicePicker', buildA2uiChoicePicker)
     ..register('Slider', buildA2uiSlider)

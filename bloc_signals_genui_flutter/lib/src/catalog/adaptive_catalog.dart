@@ -1,4 +1,5 @@
 import 'package:bloc_signals_genui_flutter/src/a2ui_flutter_catalog.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/a2ui_image_url_policy.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/cupertino_tokens.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/a2ui_button.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/a2ui_card.dart';
@@ -69,6 +70,7 @@ void registerAdaptiveComponents(
   CupertinoCatalogTokens? tokens,
   CupertinoThemeData? cupertinoTheme,
   TargetPlatform? platformOverride,
+  A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy(),
 }) {
   var effectiveCupertinoTheme = cupertinoTheme;
   if (tokens != null) {
@@ -194,8 +196,16 @@ void registerAdaptiveComponents(
     ..register(
       'Image',
       adaptive(
-        materialBuilder: buildA2uiImage,
-        cupertinoBuilder: buildCupertinoImage,
+        materialBuilder: (context, componentContext) => buildA2uiImage(
+          context,
+          componentContext,
+          imagePolicy: imagePolicy,
+        ),
+        cupertinoBuilder: (context, componentContext) => buildCupertinoImage(
+          context,
+          componentContext,
+          imagePolicy: imagePolicy,
+        ),
       ),
     )
     ..register(

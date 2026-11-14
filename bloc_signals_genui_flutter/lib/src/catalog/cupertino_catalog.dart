@@ -1,4 +1,5 @@
 import 'package:bloc_signals_genui_flutter/src/a2ui_flutter_catalog.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/a2ui_image_url_policy.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/cupertino_tokens.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/cupertino/cupertino_button.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/cupertino/cupertino_card.dart';
@@ -32,6 +33,7 @@ void registerCupertinoComponents(
   A2uiFlutterCatalog catalog, {
   CupertinoCatalogTokens? tokens,
   CupertinoThemeData? theme,
+  A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy(),
 }) {
   var effectiveTheme = theme;
   if (tokens != null) {
@@ -92,7 +94,16 @@ void registerCupertinoComponents(
     ..register('Tabs', wrapWithTheme(buildCupertinoTabs))
     ..register('Modal', wrapWithTheme(buildCupertinoModal))
     ..register('Icon', wrapWithTheme(buildCupertinoIcon))
-    ..register('Image', wrapWithTheme(buildCupertinoImage))
+    ..register(
+      'Image',
+      wrapWithTheme(
+        (context, componentContext) => buildCupertinoImage(
+          context,
+          componentContext,
+          imagePolicy: imagePolicy,
+        ),
+      ),
+    )
     ..register(
       'CheckBox',
       wrapWithTheme(

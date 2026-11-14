@@ -1,19 +1,22 @@
 import 'package:bloc_signals_genui_flutter/src/a2ui_component_context.dart';
+import 'package:bloc_signals_genui_flutter/src/catalog/a2ui_image_url_policy.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
 import 'package:flutter/material.dart';
 
 /// Renders an A2UI `Image` component supporting `url`, `description`, `fit`
 /// (`contain`, `cover`, `fill`, `none`, `scaleDown`), and `variant` sizing
 /// (`icon`, `avatar`, `smallFeature`, `mediumFeature`, `largeFeature`,
-/// `header`) with a resilient offline `errorBuilder` fallback.
+/// `header`) with URL policy validation via [imagePolicy], bounded decode
+/// `cacheWidth`/`cacheHeight`, and a resilient offline `errorBuilder` fallback.
 ///
 /// ```dart
 /// final widget = buildA2uiImage(context, componentContext);
 /// ```
 Widget buildA2uiImage(
   BuildContext context,
-  A2uiComponentContext componentContext,
-) {
+  A2uiComponentContext componentContext, {
+  A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy(),
+}) {
   final props = componentContext.props;
   final url = asString(props['url']);
   final description = unwrapBinding(props['description'])?.toString();
@@ -51,19 +54,29 @@ Widget buildA2uiImage(
     );
   }
 
-  if (url.isEmpty) {
+  if (!imagePolicy.isAllowed(url)) {
     return ClipRRect(
       borderRadius: borderRadius,
       child: fallbackPlaceholder(),
     );
   }
 
+  final dpr = MediaQuery.devicePixelRatioOf(context);
+  int? boundedCacheExtent(double logical) {
+    if (!logical.isFinite || logical <= 0 || !dpr.isFinite || dpr <= 0) {
+      return null;
+    }
+    return (logical * dpr).round().clamp(1, 1 << 30);
+  }
+
   return ClipRRect(
     borderRadius: borderRadius,
     child: Image.network(
-      url,
+      url.trim(),
       width: width,
       height: height,
+      cacheWidth: boundedCacheExtent(width),
+      cacheHeight: boundedCacheExtent(height),
       fit: boxFit,
       semanticLabel: description,
       errorBuilder: (context, error, stackTrace) => fallbackPlaceholder(),

@@ -54,12 +54,14 @@ When `DevToolsBlocSignalObserver` is registered, the following VM Service RPC en
 
 | Method | Parameters | Description |
 | :--- | :--- | :--- |
-| `ext.bloc_signal.getInstances` | None | Returns a JSON list of all active container instances (`instanceHashCode`, `blocType`, `currentState`, `isClosed`). |
-| `ext.bloc_signal.getHistory` | `{"instanceHashCode": 123}` | Returns transition history ring buffer for the target container. |
-| `ext.bloc_signal.dispatch` | `{"instanceHashCode": 123, "event": {...}}` | Synthetically dispatches an event over RPC (handles JSON-RPC -32602 on bad format). |
+| `ext.bloc_signal.getInstances` | None | Returns a JSON list of all active container instances (`hashCode`, `type`, `stateValue`, `isClosed`) and evicts history for garbage-collected containers. |
+| `ext.bloc_signal.getHistory` | `{"hashCode": "123"}` | Returns transition history ring buffer for the target container. |
+| `ext.bloc_signal.dispatch` | `{"hashCode": "123", "event": "..."}` | Synthetically dispatches an event over RPC to a `BlocSignalMixin` target (returns JSON-RPC `-32602` for missing/empty `event`, payloads exceeding `DevToolsService.kMaxDispatchPayloadLength` / 64 KB, `CubitSignal` targets, or malformed JSON). |
 
 ### Custom Event Deserialization
-For complex event objects dispatched from DevTools, register deserializers by container type or `eventName` in your app bootstrap, and unregister or clear them when tearing down scoped modules or tests:
+For complex event objects dispatched from DevTools, register deserializers by container type and/or `eventName` in your app bootstrap, and unregister or clear them when tearing down scoped modules or tests:
+- When a concrete container type `<T>` is provided alongside `eventName`, the deserializer is scoped strictly to `<T>` and will not resolve for other container types.
+- When `<T>` is omitted and `eventName` is provided, the deserializer acts as a global named fallback.
 
 ```dart
 // Register by container type (or optional eventName):
@@ -78,7 +80,7 @@ DevToolsService.instance.clearEventDeserializers();
 ```
 
 ### Zero Release Overhead (`DevToolsService.isEnabled`)
-In release builds (`kReleaseMode`), `DevToolsService.isEnabled` is set to `false`. All instance tracking, transition history buffers, and payload serialization are completely skipped for zero runtime memory overhead.
+In release builds (`!_inDebugMode`), `DevToolsService.isEnabled` is forced to `false` (and setting `isEnabled = true` is ignored). All instance tracking, transition history buffers, extension registration, and `developer.postEvent` calls are completely skipped for zero runtime memory overhead.
 
 ---
 

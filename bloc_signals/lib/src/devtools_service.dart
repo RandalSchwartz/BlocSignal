@@ -57,9 +57,20 @@ class DevToolsService {
   /// The singleton instance of [DevToolsService].
   static final DevToolsService instance = DevToolsService._();
 
+  /// Maximum allowed length for a `dispatch` RPC event payload (64 KB).
+  static const int kMaxDispatchPayloadLength = 65536;
+
   final Map<int, WeakReference<BlocSignalBase<dynamic>>> _containers = {};
   final Map<int, List<DevToolsHistoryEntry>> _history = {};
-  final Map<Object, Object? Function(dynamic raw)> _eventDeserializers = {};
+  final Map<Type, Map<String, Object? Function(dynamic raw)>>
+      _typedNamedDeserializers = {};
+  final Map<Type, Object? Function(dynamic raw)> _typedDeserializers = {};
+  final Map<String, Object? Function(dynamic raw)> _globalNamedDeserializers =
+      {};
+  late final Finalizer<int> _containerFinalizer = Finalizer<int>((id) {
+    _containers.remove(id);
+    _history.remove(id);
+  });
   bool _extensionsRegistered = false;
 
   static bool _hasExplicitTypeBound<T extends BlocSignalBase<dynamic>>() =>
@@ -68,8 +79,11 @@ class DevToolsService {
   /// Registers an event deserializer callback for containers of type [T]
   /// and/or a specific [eventName].
   ///
-  /// This allows the DevTools `dispatch` RPC to reconstruct typed events from
-  /// JSON maps or strings when interacting with strongly-typed blocs.
+  /// Either an explicit container type [T] (not `BlocSignalBase`) or a non-null
+  /// [eventName] must be provided. When [T] is explicitly provided, the
+  /// deserializer is scoped strictly to containers of type [T] and will not
+  /// resolve for other container types. When [T] is omitted and [eventName] is
+  /// provided, the deserializer is registered as a global named fallback.
   ///
   /// ```dart
   /// DevToolsService.instance.registerEventDeserializer<CounterBloc>((raw) {
@@ -83,11 +97,22 @@ class DevToolsService {
     Object? Function(dynamic raw) deserializer, {
     String? eventName,
   }) {
-    if (eventName != null) {
-      _eventDeserializers[eventName] = deserializer;
+    assert(
+      _hasExplicitTypeBound<T>() || eventName != null,
+      'registerEventDeserializer requires an explicit container type <T> '
+      'or a non-null eventName.',
+    );
+    if (_hasExplicitTypeBound<T>()) {
+      if (eventName != null) {
+        (_typedNamedDeserializers[T] ??= {})[eventName] = deserializer;
+      } else {
+        _typedDeserializers[T] = deserializer;
+      }
+      return;
     }
-    if (_hasExplicitTypeBound<T>() || eventName == null) {
-      _eventDeserializers[T] = deserializer;
+
+    if (eventName != null) {
+      _globalNamedDeserializers[eventName] = deserializer;
     }
   }
 
@@ -104,15 +129,23 @@ class DevToolsService {
   bool unregisterEventDeserializer<T extends BlocSignalBase<dynamic>>([
     String? eventName,
   ]) {
-    var removed = false;
-    if (eventName != null && _eventDeserializers.remove(eventName) != null) {
-      removed = true;
+    if (_hasExplicitTypeBound<T>()) {
+      if (eventName != null) {
+        final scoped = _typedNamedDeserializers[T];
+        if (scoped == null) return false;
+        final removed = scoped.remove(eventName) != null;
+        if (scoped.isEmpty) {
+          _typedNamedDeserializers.remove(T);
+        }
+        return removed;
+      }
+      return _typedDeserializers.remove(T) != null;
     }
-    if ((_hasExplicitTypeBound<T>() || eventName == null) &&
-        _eventDeserializers.remove(T) != null) {
-      removed = true;
+
+    if (eventName != null) {
+      return _globalNamedDeserializers.remove(eventName) != null;
     }
-    return removed;
+    return _typedDeserializers.remove(T) != null;
   }
 
   /// Clears all registered event deserializers from [DevToolsService].
@@ -124,7 +157,9 @@ class DevToolsService {
   /// DevToolsService.instance.clearEventDeserializers();
   /// ```
   void clearEventDeserializers() {
-    _eventDeserializers.clear();
+    _typedNamedDeserializers.clear();
+    _typedDeserializers.clear();
+    _globalNamedDeserializers.clear();
   }
 
   static bool get _inDebugMode {
@@ -143,37 +178,33 @@ class DevToolsService {
 
   /// Whether DevTools history tracking and extension registration are enabled.
   ///
-  /// Defaults to `true` in debug mode (asserts enabled) and `false` in release
-  /// builds to eliminate runtime history retention and allocation overhead.
-  bool get isEnabled => _isEnabled ?? _inDebugMode;
+  /// Defaults to `true` in debug mode (asserts enabled) and is forced to
+  /// `false` in release builds to eliminate runtime history retention and
+  /// allocation overhead.
+  bool get isEnabled => _inDebugMode && (_isEnabled ?? true);
 
   set isEnabled(bool value) {
+    if (!_inDebugMode) return;
     _isEnabled = value;
   }
 
   /// Registers VM Service RPC extensions if running under VM service
   /// inspection.
   void registerExtensions() {
-    if (_extensionsRegistered || !isEnabled) return;
-    assert(
-      () {
-        developer.registerExtension(
-          'ext.bloc_signal.getInstances',
-          handleGetInstances,
-        );
-        developer.registerExtension(
-          'ext.bloc_signal.getHistory',
-          handleGetHistory,
-        );
-        developer.registerExtension(
-          'ext.bloc_signal.dispatch',
-          handleDispatch,
-        );
-        _extensionsRegistered = true;
-        return true;
-      }(),
-      'Failed to register DevTools VM Service RPC extensions',
+    if (_extensionsRegistered || !isEnabled || !_inDebugMode) return;
+    developer.registerExtension(
+      'ext.bloc_signal.getInstances',
+      handleGetInstances,
     );
+    developer.registerExtension(
+      'ext.bloc_signal.getHistory',
+      handleGetHistory,
+    );
+    developer.registerExtension(
+      'ext.bloc_signal.dispatch',
+      handleDispatch,
+    );
+    _extensionsRegistered = true;
   }
 
   /// Tracks container creation.
@@ -183,6 +214,7 @@ class DevToolsService {
     final id = identityHashCode(bloc);
     _containers[id] = WeakReference(bloc);
     _history[id] ??= [];
+    _containerFinalizer.attach(bloc, id, detach: bloc);
   }
 
   /// Tracks container transition.
@@ -258,8 +290,25 @@ class DevToolsService {
   void trackClose(BlocSignalBase<dynamic> bloc) {
     if (!isEnabled) return;
     final id = identityHashCode(bloc);
+    _containerFinalizer.detach(bloc);
     _containers.remove(id);
     _history.remove(id);
+  }
+
+  /// Resets all tracked containers, history, deserializers, and enabled state
+  /// for unit tests.
+  @visibleForTesting
+  void reset() {
+    for (final ref in _containers.values) {
+      final target = ref.target;
+      if (target != null) {
+        _containerFinalizer.detach(target);
+      }
+    }
+    _containers.clear();
+    _history.clear();
+    clearEventDeserializers();
+    _isEnabled = null;
   }
 
   /// Returns recorded history entries for [id] in unit tests.
@@ -282,7 +331,10 @@ class DevToolsService {
     final instances = <Map<String, dynamic>>[];
     _containers.removeWhere((id, ref) {
       final bloc = ref.target;
-      if (bloc == null) return true;
+      if (bloc == null) {
+        _history.remove(id);
+        return true;
+      }
       instances.add({
         'hashCode': id,
         'type': bloc.runtimeType.toString(),
@@ -328,23 +380,37 @@ class DevToolsService {
     Map<String, String> parameters,
     dynamic eventPayload,
   ) {
-    final typed = _eventDeserializers[containerType];
-    if (typed != null) return typed;
-
     final paramEventName = parameters['eventName'];
-    if (paramEventName != null) {
-      final byParam = _eventDeserializers[paramEventName];
-      if (byParam != null) return byParam;
-    }
-
+    String? payloadEventName;
     if (eventPayload is Map) {
       final rawName = eventPayload['event'] ??
           eventPayload['type'] ??
           eventPayload['name'] ??
           eventPayload['action'];
       if (rawName is String) {
-        return _eventDeserializers[rawName];
+        payloadEventName = rawName;
       }
+    }
+
+    final typedNamed = _typedNamedDeserializers[containerType];
+    if (typedNamed != null) {
+      if (paramEventName != null && typedNamed[paramEventName] != null) {
+        return typedNamed[paramEventName];
+      }
+      if (payloadEventName != null && typedNamed[payloadEventName] != null) {
+        return typedNamed[payloadEventName];
+      }
+    }
+
+    final typed = _typedDeserializers[containerType];
+    if (typed != null) return typed;
+
+    if (paramEventName != null) {
+      final byParam = _globalNamedDeserializers[paramEventName];
+      if (byParam != null) return byParam;
+    }
+    if (payloadEventName != null) {
+      return _globalNamedDeserializers[payloadEventName];
     }
 
     return null;
@@ -363,6 +429,19 @@ class DevToolsService {
         'Missing hashCode parameter',
       );
     }
+    if (eventStr == null || eventStr.isEmpty) {
+      return developer.ServiceExtensionResponse.error(
+        developer.ServiceExtensionResponse.invalidParams,
+        'Missing or empty event parameter',
+      );
+    }
+    if (eventStr.length > kMaxDispatchPayloadLength) {
+      return developer.ServiceExtensionResponse.error(
+        developer.ServiceExtensionResponse.invalidParams,
+        'Event payload exceeds maximum length of '
+        '$kMaxDispatchPayloadLength characters',
+      );
+    }
     final id = int.tryParse(idStr);
     final bloc = _containers[id]?.target;
     if (bloc == null || bloc.isClosed) {
@@ -371,52 +450,57 @@ class DevToolsService {
         'Target container not found or closed',
       );
     }
-
-    if (eventStr != null && bloc is BlocSignalMixin<dynamic, dynamic>) {
-      dynamic eventPayload = eventStr;
-      if (eventStr.startsWith('{') || eventStr.startsWith('[')) {
-        try {
-          eventPayload = jsonDecode(eventStr);
-        } on FormatException catch (e) {
-          return developer.ServiceExtensionResponse.error(
-            developer.ServiceExtensionResponse.invalidParams,
-            'Invalid JSON event payload: ${e.message}',
-          );
-        }
-      }
-
-      final deserializer = _resolveDeserializer(
-        bloc.runtimeType,
-        parameters,
-        eventPayload,
+    if (bloc is! BlocSignalMixin<dynamic, dynamic>) {
+      return developer.ServiceExtensionResponse.error(
+        developer.ServiceExtensionResponse.invalidParams,
+        'Target container ${bloc.runtimeType} does not support event dispatch',
       );
-      if (deserializer != null) {
-        try {
-          eventPayload = deserializer(eventPayload);
-          // Intentional `on Object catch` (SCAR-ERR-02): VM Service RPC
-          // extensions must return a structured JSON-RPC error response rather
-          // than crashing the target isolate if a custom deserializer throws
-          // `TypeError` or `StateError`.
-        } on Object catch (e) {
-          return developer.ServiceExtensionResponse.error(
-            developer.ServiceExtensionResponse.invalidParams,
-            'Failed to deserialize event for ${bloc.runtimeType}: $e',
-          );
-        }
-      }
+    }
 
+    dynamic eventPayload = eventStr;
+    final trimmed = eventStr.trimLeft();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
       try {
-        bloc.add(eventPayload);
+        eventPayload = jsonDecode(trimmed);
+      } on FormatException catch (e) {
+        return developer.ServiceExtensionResponse.error(
+          developer.ServiceExtensionResponse.invalidParams,
+          'Invalid JSON event payload: ${e.message}',
+        );
+      }
+    }
+
+    final deserializer = _resolveDeserializer(
+      bloc.runtimeType,
+      parameters,
+      eventPayload,
+    );
+    if (deserializer != null) {
+      try {
+        eventPayload = deserializer(eventPayload);
         // Intentional `on Object catch` (SCAR-ERR-02): VM Service RPC
         // extensions must return a structured JSON-RPC error response rather
-        // than crashing the target isolate when dispatching an invalid or
-        // unregistered event throws `TypeError` or `StateError`.
+        // than crashing the target isolate if a custom deserializer throws
+        // `TypeError` or `StateError`.
       } on Object catch (e) {
         return developer.ServiceExtensionResponse.error(
           developer.ServiceExtensionResponse.invalidParams,
-          'Failed to dispatch event to ${bloc.runtimeType}: $e',
+          'Failed to deserialize event for ${bloc.runtimeType}: $e',
         );
       }
+    }
+
+    try {
+      bloc.add(eventPayload);
+      // Intentional `on Object catch` (SCAR-ERR-02): VM Service RPC
+      // extensions must return a structured JSON-RPC error response rather
+      // than crashing the target isolate when dispatching an invalid or
+      // unregistered event throws `TypeError` or `StateError`.
+    } on Object catch (e) {
+      return developer.ServiceExtensionResponse.error(
+        developer.ServiceExtensionResponse.invalidParams,
+        'Failed to dispatch event to ${bloc.runtimeType}: $e',
+      );
     }
 
     return developer.ServiceExtensionResponse.result(

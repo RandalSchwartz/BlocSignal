@@ -139,7 +139,6 @@ void main() {
         'website/lib/src/components/hero.dart',
         'website/lib/src/components/package_catalog.dart',
         'website/lib/src/pages/publications_page.dart',
-        'website/tool/update_publications.dart',
       ];
 
       for (final relativePath in modifiedFiles) {

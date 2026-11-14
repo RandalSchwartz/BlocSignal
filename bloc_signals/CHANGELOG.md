@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (core)**: Evict `_history` entries via `Finalizer<int>` and `handleGetInstances` dead `WeakReference` pruning, scope typed `registerEventDeserializer<T>` registrations by container type while preserving unscoped `eventName` fallbacks, validate `handleDispatch` payloads (`kMaxDispatchPayloadLength = 65536`, non-empty `event`, `BlocSignalMixin` target), and enforce release-mode `isEnabled` guards without side-effecting `assert(...)` closures (#429).
+
 ## 1.7.1
 
 - **Fix (core)**: Guard `CubitSignalMixin.createEffect` after `close()`, assert in debug mode (returning a no-op closure in release mode), and clean up manually disposed closures from internal effect tracking (#410).

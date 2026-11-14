@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:test/test.dart';
@@ -27,6 +28,22 @@ class JsonBloc extends BlocSignal<Map<String, dynamic>, String> {
       emit(event['name'] as String);
     });
   }
+}
+
+class OtherBloc extends BlocSignal<String, int> {
+  OtherBloc() : super(initialState: 0) {
+    on<String>((event, emit) {
+      if (event == 'inc') {
+        emit(stateValue + 1);
+      }
+    });
+  }
+}
+
+@pragma('vm:never-inline')
+(int, WeakReference<CounterBloc>) _createUnclosedBlocForGc() {
+  final bloc = CounterBloc()..add('inc');
+  return (identityHashCode(bloc), WeakReference(bloc));
 }
 
 void main() {
@@ -454,6 +471,230 @@ void main() {
           isFalse,
         );
       });
+    });
+
+    group('(Issue #429) DevToolsService hardening', () {
+      test(
+        '(Issue #429) handleGetInstances prunes dead WeakReferences and '
+        'evicts _history[id]',
+        () async {
+          final (id, weakRef) = _createUnclosedBlocForGc();
+          expect(DevToolsService.instance.getHistoryForTest(id), isNotNull);
+
+          // Allocate memory to encourage GC of the unreferenced CounterBloc.
+          for (var i = 0; i < 128 && weakRef.target != null; i++) {
+            Uint8List(1024 * 1024);
+            await Future<void>.delayed(Duration.zero);
+          }
+
+          expect(
+            weakRef.target,
+            isNull,
+            reason: 'Unclosed CounterBloc must be garbage collected after '
+                'allocations',
+          );
+
+          await DevToolsService.instance.handleGetInstances(
+            'ext.bloc_signal.getInstances',
+            {},
+          );
+          expect(DevToolsService.instance.getHistoryForTest(id), isNull);
+
+          final historyRes = await DevToolsService.instance.handleGetHistory(
+            'ext.bloc_signal.getHistory',
+            {'hashCode': id.toString()},
+          );
+          expect(historyRes.errorCode, equals(-32602));
+        },
+      );
+
+      test(
+        '(Issue #429) container-scoped registerEventDeserializer does not '
+        'resolve for other container types while unscoped remains global '
+        'fallback',
+        () async {
+          final counterBloc = CounterBloc();
+          final otherBloc = OtherBloc();
+          addTearDown(() async {
+            await counterBloc.close();
+            await otherBloc.close();
+          });
+
+          DevToolsService.instance.registerEventDeserializer<CounterBloc>(
+            (raw) => 'inc',
+            eventName: 'scopedEvent',
+          );
+
+          // Should resolve for CounterBloc.
+          final resCounter = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {
+              'hashCode': counterBloc.hashCode.toString(),
+              'event': '{"event":"scopedEvent"}',
+            },
+          );
+          expect(
+            (jsonDecode(resCounter.result!) as Map<String, dynamic>)['success'],
+            isTrue,
+          );
+          expect(counterBloc.stateValue, equals(1));
+
+          // Should NOT resolve for OtherBloc.
+          final resOther = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {
+              'hashCode': otherBloc.hashCode.toString(),
+              'event': '{"event":"scopedEvent"}',
+            },
+          );
+          expect(resOther.errorCode, equals(-32602));
+          expect(otherBloc.stateValue, equals(0));
+
+          // Unscoped registration acts as global fallback for both.
+          DevToolsService.instance.registerEventDeserializer(
+            (raw) => 'inc',
+            eventName: 'globalEvent',
+          );
+
+          final resGlobalOther = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {
+              'hashCode': otherBloc.hashCode.toString(),
+              'event': '{"event":"globalEvent"}',
+            },
+          );
+          expect(
+            (jsonDecode(resGlobalOther.result!)
+                as Map<String, dynamic>)['success'],
+            isTrue,
+          );
+          expect(otherBloc.stateValue, equals(1));
+        },
+      );
+
+      test(
+        '(Issue #429) handleDispatch returns invalidParams for missing/empty '
+        'event, oversized payload, or non-BlocSignalMixin target',
+        () async {
+          final bloc = CounterBloc();
+          final cubit = CounterCubit();
+          addTearDown(() async {
+            await bloc.close();
+            await cubit.close();
+          });
+
+          // Missing event parameter.
+          final resMissing = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {'hashCode': bloc.hashCode.toString()},
+          );
+          expect(resMissing.errorCode, equals(-32602));
+
+          // Empty event parameter.
+          final resEmpty = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {'hashCode': bloc.hashCode.toString(), 'event': ''},
+          );
+          expect(resEmpty.errorCode, equals(-32602));
+
+          // Oversized payload (> 65536 bytes).
+          final resOversized = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {
+              'hashCode': bloc.hashCode.toString(),
+              'event': 'a' * (DevToolsService.kMaxDispatchPayloadLength + 1),
+            },
+          );
+          expect(resOversized.errorCode, equals(-32602));
+          expect(DevToolsService.kMaxDispatchPayloadLength, equals(65536));
+
+          // Target is a CubitSignal (not BlocSignalMixin).
+          final resCubit = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {
+              'hashCode': cubit.hashCode.toString(),
+              'event': 'inc',
+            },
+          );
+          expect(resCubit.errorCode, equals(-32602));
+        },
+      );
+
+      test(
+        '(Issue #429) isEnabled = false disables history retention and '
+        'extension registration',
+        () async {
+          DevToolsService.instance.isEnabled = false;
+          addTearDown(() => DevToolsService.instance.isEnabled = true);
+
+          final bloc = CounterBloc()..add('inc');
+          addTearDown(bloc.close);
+
+          expect(
+            DevToolsService.instance.getHistoryForTest(identityHashCode(bloc)),
+            isNull,
+          );
+        },
+      );
+
+      test(
+        '(Issue #429) reset detaches finalizers and clears containers, '
+        'history, and deserializers',
+        () async {
+          final bloc = CounterBloc()..add('inc');
+          addTearDown(bloc.close);
+          final id = identityHashCode(bloc);
+
+          DevToolsService.instance.registerEventDeserializer<CounterBloc>(
+            (raw) => 'inc',
+            eventName: 'scopedOnly',
+          );
+          expect(DevToolsService.instance.getHistoryForTest(id), isNotNull);
+
+          DevToolsService.instance.reset();
+
+          expect(DevToolsService.instance.getHistoryForTest(id), isNull);
+          expect(
+            DevToolsService.instance
+                .unregisterEventDeserializer<CounterBloc>('scopedOnly'),
+            isFalse,
+          );
+        },
+      );
+
+      test(
+        '(Issue #429) handleDispatch decodes JSON payloads with leading '
+        'whitespace',
+        () async {
+          final bloc = JsonBloc();
+          addTearDown(bloc.close);
+
+          final response = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {
+              'hashCode': bloc.hashCode.toString(),
+              'event': '  \n\t {"name":"bob"}',
+            },
+          );
+
+          final json = jsonDecode(response.result!) as Map<String, dynamic>;
+          expect(json['success'], isTrue);
+          expect(bloc.stateValue, equals('bob'));
+        },
+      );
+
+      test(
+        '(Issue #429) registerEventDeserializer asserts when neither explicit '
+        'type nor eventName is provided',
+        () {
+          expect(
+            () => DevToolsService.instance.registerEventDeserializer(
+              (raw) => raw,
+            ),
+            throwsA(isA<AssertionError>()),
+          );
+        },
+      );
     });
   });
 }

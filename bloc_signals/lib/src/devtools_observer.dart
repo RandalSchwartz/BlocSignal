@@ -25,13 +25,8 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
   final BlocSignalObserver? previousObserver;
 
   void _post(String eventKind, Map<String, dynamic> eventData) {
-    assert(
-      () {
-        developer.postEvent(eventKind, eventData);
-        return true;
-      }(),
-      'Failed to post DevTools event',
-    );
+    if (!DevToolsService.instance.isEnabled) return;
+    developer.postEvent(eventKind, eventData);
   }
 
   @override

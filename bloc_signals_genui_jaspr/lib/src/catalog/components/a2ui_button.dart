@@ -18,7 +18,11 @@ Component buildA2uiButton(
 ) {
   final props = componentContext.props;
   final childId = extractChildId(props['child']);
-  final variant = asString(props['variant'], 'primary');
+  final rawVariant = asString(props['variant'], 'primary');
+  final variant = switch (rawVariant) {
+    'borderless' => 'borderless',
+    _ => 'primary',
+  };
 
   final isEnabled =
       componentContext.isValid && asBool(props['enabled'], defaultValue: true);

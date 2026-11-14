@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (genui_jaspr)**: Allowlist Button variant before interpolating into DOM CSS classes (#425).
+
 ## 2.0.1
 
 - **Fix (genui_jaspr)**: Enforce per-render tree depth (`maxDepth`, defaulting to `A2uiSurfaceView.defaultMaxDepth` = `32`) and total node budget (`nodeBudget`, defaulting to `A2uiSurfaceView.defaultNodeBudget` = `1000`) in `A2uiSurfaceView`, rendering localized fallback components when exceeded (#415).

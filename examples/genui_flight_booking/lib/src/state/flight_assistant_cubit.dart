@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:genui_flight_booking/src/models/chat_message.dart';
 import 'package:genui_flight_booking/src/models/flight_models.dart';
 import 'package:genui_flight_booking/src/services/flight_mock_streamer.dart';
+import 'package:genui_flight_booking/src/services/gemini_sse_streamer.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
 /// Execution mode for Generative UI generation.
@@ -154,16 +156,16 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
   FlightAssistantCubit({
     required this.surfaceBloc,
     String? geminiApiKey,
-  })  : _geminiApiKey = geminiApiKey,
+    HttpClient? httpClient,
+  })  : _geminiApiKey = _normalizeApiKey(geminiApiKey),
+        _httpClient = httpClient,
         super(
           initialState: const FlightAssistantState(
             messages: [],
             mode: ExecutionMode.mockSimulation,
           ),
         ) {
-    // Ignore unused _geminiApiKey in offline simulation mode while keeping it
-    // available for live Gemini extension hooks.
-    assert(_geminiApiKey == null || _geminiApiKey.isNotEmpty || true, '');
+    assert(_geminiApiKey == null || _geminiApiKey.isNotEmpty);
 
     // Listen to action submissions from A2uiSurfaceBloc
     _actionSubscription = surfaceBloc.actionResponses.listen((response) {
@@ -181,10 +183,16 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
         surfaceBloc.outboundMessages.listen(_handleOutboundRpcMessage);
   }
 
+  static String? _normalizeApiKey(String? rawKey) {
+    final trimmed = rawKey?.trim();
+    return (trimmed != null && trimmed.isNotEmpty) ? trimmed : null;
+  }
+
   /// The underlying A2UI surface bloc managing declarative UI state.
   final A2uiSurfaceBloc surfaceBloc;
 
   final String? _geminiApiKey;
+  final HttpClient? _httpClient;
   StreamSubscription<A2uiActionResponse>? _actionSubscription;
   StreamSubscription<RendererToAgentMessage>? _outboundRpcSubscription;
   void Function()? _surfaceStateUnsubscribe;
@@ -352,6 +360,72 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
   /// Stream delay duration for mock responses.
   Duration streamDelay = const Duration(milliseconds: 10);
 
+  Future<int> _ingestStreamAndWait(
+    Stream<Map<String, dynamic>> rawStream,
+  ) async {
+    var chunkCount = 0;
+    final controller = StreamController<Map<String, dynamic>>();
+    final streamDone = Completer<void>();
+
+    surfaceBloc.add(IngestStream(controller.stream));
+
+    var isRawStreamDone = false;
+    final subscription = rawStream.listen(
+      (chunk) {
+        chunkCount++;
+        if (!controller.isClosed) {
+          controller.add(chunk);
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        if (!controller.isClosed) {
+          controller.addError(error, stackTrace);
+        }
+      },
+      onDone: () {
+        isRawStreamDone = true;
+        if (!controller.isClosed) {
+          unawaited(controller.close());
+        }
+        if (!streamDone.isCompleted) {
+          streamDone.complete();
+        }
+      },
+    );
+
+    try {
+      await streamDone.future;
+    } finally {
+      if (!isRawStreamDone) {
+        await subscription.cancel();
+      }
+      if (!controller.isClosed) {
+        await controller.close();
+      }
+    }
+
+    if (!isClosed &&
+        !surfaceBloc.isClosed &&
+        surfaceBloc.stateValue is SurfaceStreaming) {
+      final settled = Completer<void>();
+      final unsubscribe = surfaceBloc.state.subscribe((state) {
+        if (state is! SurfaceStreaming && !settled.isCompleted) {
+          settled.complete();
+        }
+      });
+      try {
+        if (surfaceBloc.stateValue is SurfaceStreaming &&
+            !settled.isCompleted) {
+          await settled.future;
+        }
+      } finally {
+        unsubscribe();
+      }
+    }
+
+    return chunkCount;
+  }
+
   /// Initiates the flight search discovery turn.
   ///
   /// Optionally accepts [streamOverride] for testing or custom stream sources.
@@ -382,27 +456,31 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
       ),
     );
 
-    // Stream the flight discovery surface while monitoring chunk arrival count
-    var chunkCount = 0;
-    final rawStream = streamOverride ??
-        FlightMockStreamer.streamDiscoverySurface(delay: effectiveDelay);
-    final stream = rawStream.transform(
-      StreamTransformer<Map<String, dynamic>,
-          Map<String, dynamic>>.fromHandlers(
-        handleData: (chunk, sink) {
-          chunkCount++;
-          sink.add(chunk);
-        },
-        handleError: (error, stackTrace, sink) {
-          sink.addError(error, stackTrace);
-        },
-      ),
-    );
-    surfaceBloc.add(IngestStream(stream));
+    final Stream<Map<String, dynamic>> rawStream;
+    if (streamOverride != null) {
+      rawStream = streamOverride;
+    } else if (value.mode == ExecutionMode.liveGemini) {
+      final apiKey = _geminiApiKey;
+      if (apiKey != null) {
+        rawStream = GeminiSseStreamer.streamFromGemini(
+          apiKey: apiKey,
+          prompt: query,
+          client: _httpClient,
+        );
+      } else {
+        rawStream = Stream<Map<String, dynamic>>.error(
+          Exception(
+            'Cannot stream from live Gemini: GEMINI_API_KEY is not configured.',
+          ),
+        );
+      }
+    } else {
+      rawStream = FlightMockStreamer.streamDiscoverySurface(
+        delay: effectiveDelay,
+      );
+    }
 
-    // Wait briefly for ingestion to settle
-    await Future<void>.delayed(
-        effectiveDelay * 3 + const Duration(milliseconds: 20));
+    final chunkCount = await _ingestStreamAndWait(rawStream);
     if (isClosed || _activeOperationId != operationId) return;
 
     // Defense against zero-chunk stream failure (SCAR-GENUI-3):
@@ -466,10 +544,7 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
     final stream = FlightMockStreamer.streamCustomizationSurface(
       delay: streamDelay,
     );
-    surfaceBloc.add(IngestStream(stream));
-
-    await Future<void>.delayed(
-        streamDelay * 3 + const Duration(milliseconds: 20));
+    await _ingestStreamAndWait(stream);
     if (isClosed || _activeOperationId != operationId) return;
 
     final assistantMsg = ChatMessage.assistant(
@@ -528,10 +603,7 @@ class FlightAssistantCubit extends CubitSignal<FlightAssistantState> {
       finalPrice: value.calculatedTotal,
       delay: streamDelay,
     );
-    surfaceBloc.add(IngestStream(stream));
-
-    await Future<void>.delayed(
-        streamDelay * 3 + const Duration(milliseconds: 20));
+    await _ingestStreamAndWait(stream);
     if (isClosed || _activeOperationId != operationId) return;
 
     final assistantMsg = ChatMessage.assistant(

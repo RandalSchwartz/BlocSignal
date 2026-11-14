@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (hydrate)**: Omit raw stored JSON payload from FormatException error messages in initHydratedState (#421)
+
 ## 1.1.1
 
 - **Fix (hydrate)**: Serialize async storage `write`, `delete`, and `clear` operations in `HydratedMixin`, `SecureHydratedStorage`, and `SharedPreferencesHydratedStorage` with generation tombstones to prevent post-logout state resurrection (#416).

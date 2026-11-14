@@ -130,7 +130,7 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
           onError(
             FormatException(
               'Failed to deserialize stored JSON for $storageToken into '
-              '$StateType: $json',
+              '$StateType (payload type: ${json.runtimeType})',
             ),
             StackTrace.current,
           );

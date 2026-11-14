@@ -613,5 +613,92 @@ void main() {
         Builder(builder: (context) => buildA2uiDivider(context, compCtxVert)),
       );
     });
+
+    group('buildA2uiButton variant allowlist (Issue #425)', () {
+      A2uiComponentContext makeButtonContext(String? variant) {
+        final props = <String, Object?>{
+          'enabled': true,
+          if (variant != null) 'variant': variant,
+        };
+        return A2uiComponentContext(
+          component: ComponentModel('btn_variant', 'Button', props),
+          props: props,
+          surfaceBloc: bloc,
+          surfaceId: 's1',
+          buildChildCallback: (_) => const div([]),
+          buildChildrenCallback: (_) => const [],
+        );
+      }
+
+      testComponents('allows primary and borderless variants', (tester) async {
+        late BuildContext testContext;
+        tester.pumpComponent(
+          Builder(
+            builder: (context) {
+              testContext = context;
+              return const div([]);
+            },
+          ),
+        );
+
+        final primaryButton =
+            buildA2uiButton(testContext, makeButtonContext('primary'))
+                as button;
+        expect(primaryButton.classes, 'a2ui-button a2ui-button-primary');
+        expect(
+          primaryButton.styles?.properties['background-color'],
+          '#2563eb',
+        );
+
+        final borderlessButton = buildA2uiButton(
+          testContext,
+          makeButtonContext('borderless'),
+        ) as button;
+        expect(borderlessButton.classes, 'a2ui-button a2ui-button-borderless');
+        expect(
+          borderlessButton.styles?.properties['background-color'],
+          'transparent',
+        );
+      });
+
+      testComponents(
+          'sanitizes unknown and injection-containing variants to primary',
+          (tester) async {
+        late BuildContext testContext;
+        tester.pumpComponent(
+          Builder(
+            builder: (context) {
+              testContext = context;
+              return const div([]);
+            },
+          ),
+        );
+
+        const untrustedVariants = [
+          'secondary',
+          'unknown',
+          'primary evil-class',
+          'borderless extra',
+          'primary"><script>',
+        ];
+
+        for (final rawVariant in untrustedVariants) {
+          final rendered = buildA2uiButton(
+            testContext,
+            makeButtonContext(rawVariant),
+          ) as button;
+          expect(
+            rendered.classes,
+            'a2ui-button a2ui-button-primary',
+            reason: 'Variant "$rawVariant" should sanitize to primary',
+          );
+          expect(
+            rendered.styles?.properties['background-color'],
+            '#2563eb',
+            reason: 'Variant "$rawVariant" should use primary styles',
+          );
+        }
+      });
+    });
   });
 }

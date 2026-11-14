@@ -8,24 +8,31 @@ class GeminiSseStreamer {
   static Stream<Map<String, dynamic>> streamFromGemini({
     required String apiKey,
     required String prompt,
+    HttpClient? client,
   }) async* {
-    final client = HttpClient();
+    final effectiveClient = client ?? HttpClient();
     try {
       final uri = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse&key=$apiKey',
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:streamGenerateContent?alt=sse',
       );
 
-      final request = await client.postUrl(uri);
+      final request = await effectiveClient.postUrl(uri);
       request.headers.set('Content-Type', 'application/json');
+      request.headers.set('x-goog-api-key', apiKey);
 
       final body = jsonEncode({
+        'system_instruction': {
+          'parts': [
+            {
+              'text':
+                  'You are a flight booking assistant that outputs A2UI declarative JSON messages.',
+            },
+          ],
+        },
         'contents': [
           {
             'parts': [
-              {
-                'text':
-                    'You are a flight booking assistant that outputs A2UI declarative JSON messages.\n$prompt',
-              },
+              {'text': prompt},
             ],
           },
         ],
@@ -33,6 +40,14 @@ class GeminiSseStreamer {
 
       request.write(body);
       final response = await request.close();
+
+      if (response.statusCode != HttpStatus.ok) {
+        final errorBody = await response.transform(utf8.decoder).join();
+        throw HttpException(
+          'Gemini API streaming error (status ${response.statusCode}): $errorBody',
+          uri: uri,
+        );
+      }
 
       await for (final line
           in response.transform(utf8.decoder).transform(const LineSplitter())) {
@@ -51,7 +66,9 @@ class GeminiSseStreamer {
         }
       }
     } finally {
-      client.close();
+      if (client == null) {
+        effectiveClient.close();
+      }
     }
   }
 }

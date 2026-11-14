@@ -1,7 +1,12 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:genui_flight_booking/src/models/chat_message.dart';
 import 'package:genui_flight_booking/src/models/flight_models.dart';
+import 'package:genui_flight_booking/src/services/flight_mock_streamer.dart';
 import 'package:genui_flight_booking/src/state/flight_assistant_cubit.dart';
 
 class _FailingRpcSurfaceBloc extends A2uiSurfaceBloc {
@@ -12,6 +17,92 @@ class _FailingRpcSurfaceBloc extends A2uiSurfaceBloc {
     CallOptions? options,
   }) =>
       Future<Object?>.error(Exception('Transient RPC timeout'));
+}
+
+class _FakeHttpHeaders implements HttpHeaders {
+  final Map<String, List<String>> values = <String, List<String>>{};
+
+  @override
+  void set(String name, Object value, {bool preserveHeaderCase = false}) {
+    values[name.toLowerCase()] = <String>[value.toString()];
+  }
+
+  @override
+  String? value(String name) => values[name.toLowerCase()]?.firstOrNull;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeHttpClientResponse extends Stream<List<int>>
+    implements HttpClientResponse {
+  _FakeHttpClientResponse({
+    required this.statusCode,
+    required List<int> bodyBytes,
+  }) : _stream = Stream<List<int>>.value(bodyBytes);
+
+  @override
+  final int statusCode;
+
+  final Stream<List<int>> _stream;
+
+  @override
+  StreamSubscription<List<int>> listen(
+    void Function(List<int> event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return _stream.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeHttpClientRequest implements HttpClientRequest {
+  _FakeHttpClientRequest(this._response);
+
+  final HttpClientResponse _response;
+  final _FakeHttpHeaders _headers = _FakeHttpHeaders();
+
+  @override
+  HttpHeaders get headers => _headers;
+
+  @override
+  void write(Object? object) {}
+
+  @override
+  Future<HttpClientResponse> close() async => _response;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeHttpClient implements HttpClient {
+  _FakeHttpClient(this._response);
+
+  final HttpClientResponse _response;
+  Uri? capturedUri;
+  late _FakeHttpClientRequest capturedRequest;
+
+  @override
+  Future<HttpClientRequest> postUrl(Uri url) async {
+    capturedUri = url;
+    capturedRequest = _FakeHttpClientRequest(_response);
+    return capturedRequest;
+  }
+
+  @override
+  void close({bool force = false}) {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -411,6 +502,139 @@ void main() {
         final fallbackSeat = await timeoutCubit.requestSeatAssignment();
         expect(fallbackSeat, equals('2A (Lie-Flat Suite)'));
         expect(timeoutCubit.value.assignedSeat, equals('2A (Lie-Flat Suite)'));
+      });
+    });
+
+    group('(Issue #411) Deterministic Stream Completion and Live Gemini Wiring',
+        () {
+      test(
+          '(Issue #411) startDiscoverySearch waits for full slow stream '
+          'completion before emitting isStreaming: false and SurfaceReady',
+          () async {
+        cubit.streamDelay = Duration.zero;
+        final controller = StreamController<Map<String, dynamic>>();
+        addTearDown(controller.close);
+
+        final searchFuture = cubit.startDiscoverySearch(
+          query: 'Slow stream query',
+          delay: Duration.zero,
+          streamOverride: controller.stream,
+        );
+
+        // Wait longer than the legacy effectiveDelay * 3 + 20ms (20ms) window
+        // before emitting the first chunk.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        expect(cubit.value.isStreaming, isTrue);
+
+        controller
+          ..add(<String, dynamic>{
+            'version': 'v0.9',
+            'createSurface': <String, dynamic>{
+              'surfaceId': 'surf-flight-discovery',
+              'catalogId': FlightMockStreamer.basicCatalogId,
+            },
+          })
+          ..add(<String, dynamic>{
+            'version': 'v0.9',
+            'updateComponents': <String, dynamic>{
+              'surfaceId': 'surf-flight-discovery',
+              'components': <Map<String, dynamic>>[
+                <String, dynamic>{
+                  'id': 'root',
+                  'component': 'Text',
+                  'text': 'Slow flight loaded',
+                },
+              ],
+            },
+          });
+        await controller.close();
+
+        await searchFuture;
+
+        expect(cubit.value.isStreaming, isFalse);
+        expect(cubit.value.messages, hasLength(2));
+        expect(cubit.value.activeSurfaceId, equals('surf-flight-discovery'));
+        expect(surfaceBloc.value, isA<SurfaceReady>());
+      });
+
+      test(
+          '(Issue #411) ExecutionMode.liveGemini wires GeminiSseStreamer with '
+          'injected HttpClient and reaches SurfaceReady', () async {
+        final sseChunks = <String>[
+          jsonEncode(<String, dynamic>{
+            'version': 'v0.9',
+            'createSurface': <String, dynamic>{
+              'surfaceId': 'surf-flight-discovery',
+              'catalogId': FlightMockStreamer.basicCatalogId,
+            },
+          }),
+          jsonEncode(<String, dynamic>{
+            'version': 'v0.9',
+            'updateComponents': <String, dynamic>{
+              'surfaceId': 'surf-flight-discovery',
+              'components': <Map<String, dynamic>>[
+                <String, dynamic>{
+                  'id': 'root',
+                  'component': 'Text',
+                  'text': 'Live Gemini Flight Result',
+                },
+              ],
+            },
+          }),
+        ];
+        final ssePayload = sseChunks.map((c) => 'data: $c\n\n').join();
+        final fakeResponse = _FakeHttpClientResponse(
+          statusCode: HttpStatus.ok,
+          bodyBytes: utf8.encode(ssePayload),
+        );
+        final fakeClient = _FakeHttpClient(fakeResponse);
+
+        final liveSurfaceBloc = A2uiSurfaceBloc();
+        final liveCubit = FlightAssistantCubit(
+          surfaceBloc: liveSurfaceBloc,
+          geminiApiKey: '  test-gemini-key  ',
+          httpClient: fakeClient,
+        );
+        addTearDown(() async {
+          await liveCubit.close();
+          await liveSurfaceBloc.close();
+        });
+
+        liveCubit.toggleMode(ExecutionMode.liveGemini);
+        await liveCubit.startDiscoverySearch(query: 'Fly SFO to HND');
+
+        expect(fakeClient.capturedUri, isNotNull);
+        expect(
+          fakeClient.capturedRequest.headers.value('x-goog-api-key'),
+          equals('test-gemini-key'),
+        );
+        expect(liveCubit.value.isStreaming, isFalse);
+        expect(liveCubit.value.messages, hasLength(2));
+        expect(liveSurfaceBloc.value, isA<SurfaceReady>());
+      });
+
+      test(
+          '(Issue #411) ExecutionMode.liveGemini with empty or null '
+          'geminiApiKey transitions surfaceBloc to SurfaceError and prunes '
+          'optimistic user turn', () async {
+        for (final blankKey in <String?>['', '   ', null]) {
+          final errSurfaceBloc = A2uiSurfaceBloc();
+          final errCubit = FlightAssistantCubit(
+            surfaceBloc: errSurfaceBloc,
+            geminiApiKey: blankKey,
+          );
+          addTearDown(() async {
+            await errCubit.close();
+            await errSurfaceBloc.close();
+          });
+
+          errCubit.toggleMode(ExecutionMode.liveGemini);
+          await errCubit.startDiscoverySearch(query: 'Fly SFO to HND');
+
+          expect(errSurfaceBloc.value, isA<SurfaceError>());
+          expect(errCubit.value.isStreaming, isFalse);
+          expect(errCubit.value.messages, isEmpty);
+        }
       });
     });
   });

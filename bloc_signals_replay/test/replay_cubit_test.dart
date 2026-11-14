@@ -3,6 +3,16 @@ import 'package:test/test.dart';
 
 import 'cubits/counter_cubit.dart';
 
+class _CloseOverrideCounterCubit extends CounterCubit {
+  bool closeOverrideCalled = false;
+
+  @override
+  Future<void> close() {
+    closeOverrideCalled = true;
+    return super.close();
+  }
+}
+
 void main() {
   group('ReplayCubit', () {
     group('initial state', () {
@@ -91,12 +101,12 @@ void main() {
 
           expect(cubit.undo, returnsNormally);
           expect(cubit.stateValue, equals(1));
-          expect(cubit.canUndo, isTrue);
+          expect(cubit.canUndo, isFalse);
           expect(cubit.canRedo, isFalse);
 
           expect(cubit.redo, returnsNormally);
           expect(cubit.stateValue, equals(1));
-          expect(cubit.canUndo, isTrue);
+          expect(cubit.canUndo, isFalse);
           expect(cubit.canRedo, isFalse);
         },
       );
@@ -111,6 +121,46 @@ void main() {
         expect(cubit.canUndo, isFalse);
         await cubit.close();
       });
+
+      test(
+        '(Issue #428) clears change stack on close() and resets canUndo and '
+        'canRedo',
+        () async {
+          final cubit = CounterCubit()
+            ..increment()
+            ..increment()
+            ..undo();
+          expect(cubit.canUndo, isTrue);
+          expect(cubit.canRedo, isTrue);
+
+          await cubit.close();
+
+          expect(cubit.canUndo, isFalse);
+          expect(cubit.canRedo, isFalse);
+          expect(cubit.undo, returnsNormally);
+          expect(cubit.redo, returnsNormally);
+          expect(cubit.stateValue, equals(1));
+        },
+      );
+
+      test(
+        '(Issue #428) clears change stack when subclass overrides close() and '
+        'calls super.close()',
+        () async {
+          final cubit = _CloseOverrideCounterCubit()
+            ..increment()
+            ..increment()
+            ..undo();
+          expect(cubit.canUndo, isTrue);
+          expect(cubit.canRedo, isTrue);
+
+          await cubit.close();
+
+          expect(cubit.closeOverrideCalled, isTrue);
+          expect(cubit.canUndo, isFalse);
+          expect(cubit.canRedo, isFalse);
+        },
+      );
     });
 
     group('undo', () {

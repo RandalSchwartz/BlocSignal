@@ -121,12 +121,12 @@ void main() {
 
           expect(bloc.undo, returnsNormally);
           expect(bloc.stateValue, equals(1));
-          expect(bloc.canUndo, isTrue);
+          expect(bloc.canUndo, isFalse);
           expect(bloc.canRedo, isFalse);
 
           expect(bloc.redo, returnsNormally);
           expect(bloc.stateValue, equals(1));
-          expect(bloc.canUndo, isTrue);
+          expect(bloc.canUndo, isFalse);
           expect(bloc.canRedo, isFalse);
         },
       );
@@ -141,6 +141,24 @@ void main() {
         expect(bloc.canUndo, isFalse);
         await bloc.close();
       });
+
+      test(
+        '(Issue #428) clears change stack on close() and resets canUndo and '
+        'canRedo',
+        () async {
+          final bloc = CounterBloc()
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed())
+            ..undo();
+          expect(bloc.canUndo, isTrue);
+          expect(bloc.canRedo, isTrue);
+
+          await bloc.close();
+
+          expect(bloc.canUndo, isFalse);
+          expect(bloc.canRedo, isFalse);
+        },
+      );
     });
 
     group('undo', () {

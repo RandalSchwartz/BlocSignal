@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:blocsignal_website/src/models/string_escape.dart';
+import 'package:blocsignal_website/src/models/publication_generator.dart';
+
+export 'package:blocsignal_website/src/models/publication_generator.dart';
 
 /// Automated tool to fetch the latest DEV.to articles for @randalschwartz
-/// and regenerate `website/lib/src/pages/publications_page.dart`.
+/// and regenerate `website/lib/src/models/publications_data.g.dart`.
 Future<void> main() async {
   final apiKey = Platform.environment['DEVTO_API_KEY'];
   final client = HttpClient();
@@ -34,7 +36,8 @@ Future<void> main() async {
     exit(1);
   }
 
-  final List<dynamic> articles = jsonDecode(jsonString);
+  final List<dynamic> rawArticles = jsonDecode(jsonString) as List<dynamic>;
+  final articles = rawArticles.cast<Map<String, dynamic>>();
 
   // Check if latest symmetry of state article is present; if not, prepend it
   const symmetryArticleUrl =
@@ -117,7 +120,7 @@ Future<void> main() async {
   if (!hasPrimaryArticle) {
     articles.insert(1, {
       'title': 'Dart 3.13 Primary Constructors + BlocSignal: Boilerplate-Free Reactive Architecture',
-      'description': 'Discover how Dart 3.13 primary constructors, \'this\' constructor bodies, and constructor shorthands transform BlocSignal into the cleanest state management architecture in Flutter.',
+      'description': "Discover how Dart 3.13 primary constructors, 'this' constructor bodies, and constructor shorthands transform BlocSignal into the cleanest state management architecture in Flutter.",
       'url': primaryConstArticleUrl,
       'canonical_url': primaryConstArticleUrl,
       'readable_publish_date': 'Aug 14',
@@ -128,244 +131,15 @@ Future<void> main() async {
 
   print('✅ Found ${articles.length} published articles on DEV.to.');
 
-  final buffer = StringBuffer();
-  buffer.writeln("import 'package:jaspr/dom.dart';");
-  buffer.writeln("import 'package:jaspr/jaspr.dart';");
-  buffer.writeln("import '../components/footer.dart';");
-  buffer.writeln("import '../components/navbar.dart';");
-  buffer.writeln("import '../models/app_route.dart';");
-  buffer.writeln();
-  buffer.writeln('class const PublicationItem({');
-  buffer.writeln('  required final String title,');
-  buffer.writeln('  required final String description,');
-  buffer.writeln('  required final String url,');
-  buffer.writeln('  required final String date,');
-  buffer.writeln('  required final String readTime,');
-  buffer.writeln('  required final String category,');
-  buffer.writeln('  required final String type,');
-  buffer.writeln('  required final List<String> tags,');
-  buffer.writeln('}) {');
-  buffer.writeln("  bool get isHttps => url.startsWith('https://');");
-  buffer.writeln('}');
-  buffer.writeln();
-  buffer.writeln('const List<PublicationItem> _publications = [');
-
-  for (final article in articles) {
-    final rawTitle = article['title'] as String;
-    final description = article['description'] as String;
-    final url = article['canonical_url'] ?? article['url'];
-    final readTime = '${article['reading_time_minutes']} min read';
-    String publishDate = article['readable_publish_date']?.toString() ?? '';
-    if (publishDate.isEmpty || publishDate == 'null') {
-      final rawDate = article['published_at'] ?? article['created_at'];
-      if (rawDate != null) {
-        try {
-          final dt = DateTime.parse(rawDate.toString());
-          final months = [
-            'Jan',
-            'Feb',
-            'Mar',
-            'Apr',
-            'May',
-            'Jun',
-            'Jul',
-            'Aug',
-            'Sep',
-            'Oct',
-            'Nov',
-            'Dec',
-          ];
-          publishDate = '${months[dt.month - 1]} ${dt.day}';
-        } catch (_) {
-          publishDate = 'Aug 8';
-        }
-      } else {
-        publishDate = 'Aug 8';
-      }
-    }
-    final tagList = (article['tag_list'] as List<dynamic>)
-        .map((t) => t.toString())
-        .toList();
-
-    // Categorization logic
-    String category = 'Architecture';
-    final lowerTitle = rawTitle.toLowerCase();
-    if (tagList.contains('jaspr') ||
-        lowerTitle.contains('flutter') ||
-        lowerTitle.contains('form')) {
-      category = 'Flutter & Jaspr';
-    } else if (lowerTitle.contains('bloc') ||
-        lowerTitle.contains('state') ||
-        lowerTitle.contains('fsm') ||
-        lowerTitle.contains('cubit')) {
-      category = 'State Machines';
-    } else if (tagList.contains('opentelemetry') ||
-        lowerTitle.contains('observability') ||
-        lowerTitle.contains('async')) {
-      category = 'Interop & Telemetry';
-    }
-
-    buffer.writeln(
-      generatePublicationItemCode(
-        title: rawTitle,
-        description: description,
-        url: url,
-        date: publishDate,
-        readTime: readTime,
-        category: category,
-        type: 'Article',
-        tags: tagList,
-      ),
-    );
-  }
-
-  buffer.writeln('];');
-  buffer.writeln();
-  buffer.writeln(
-    '''class const PublicationsPage({super.key}) extends StatefulComponent {
-  static const allPublications = _publications;
-
-  @override
-  State<PublicationsPage> createState() => _PublicationsPageState();
-}
-
-class _PublicationsPageState() extends State<PublicationsPage> {
-  String _activeCategory = 'All';
-
-  @override
-  Component build(BuildContext context) {
-    final filteredPublications = _activeCategory == 'All'
-        ? _publications
-        : _publications
-            .where((pub) => pub.category == _activeCategory || pub.type == _activeCategory)
-            .toList();
-
-    final validPublications =
-        filteredPublications.where((pub) => pub.isHttps).toList();
-
-    return div(classes: 'app-root', [
-      const Navbar(currentRoute: AppRoute.publications),
-      main_([
-        div(classes: 'publications-hero container', [
-          div(classes: 'section-badge', [
-            span([Component.text('📚 Media & Articles')]),
-          ]),
-          h1(classes: 'hero-title', [
-            Component.text('BlocSignal '),
-            span(classes: 'highlight-text', [Component.text('Publications')]),
-          ]),
-          p(classes: 'hero-motto', [
-            Component.text(
-                'Explore technical deep dives, architectural guides, DEV.to articles, and video walkthroughs by Randal L. Schwartz.'),
-          ]),
-        ]),
-
-        // Featured Video Section
-        div(classes: 'container', [
-          div(classes: 'video-featured-card', [
-            div(classes: 'video-card-badge', [
-              span(classes: 'badge-video', [Component.text('🎬 Featured Video')]),
-              span(classes: 'badge-date', [Component.text('Aug 06, 2026')]),
-            ]),
-            h2(classes: 'video-title', [
-              Component.text('BlocSignal 1.0 Architecture & Overview'),
-            ]),
-            p(classes: 'video-desc', [
-              Component.text(
-                  'By Randal L. Schwartz — A comprehensive technical walkthrough demonstrating synchronous signal graph propagation, 0ms microtask delay, BLoC event traceability, and multi-package interop across Flutter, Riverpod, and Jaspr web.'),
-            ]),
-            div(classes: 'video-player-box', [
-              iframe(
-                src: 'https://www.youtube-nocookie.com/embed/fwmlVOjsdgQ',
-                attributes: {
-                  'title': 'BlocSignal 1.0 Architecture & Overview',
-                  'allow':
-                      'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
-                  'allowfullscreen': 'true',
-                },
-                [],
-              ),
-            ]),
-            div(classes: 'video-watch-footer', [
-              a(
-                href: 'https://www.youtube.com/watch?v=fwmlVOjsdgQ',
-                target: Target.blank,
-                attributes: const {'rel': 'noopener noreferrer'},
-                classes: 'btn-primary btn-watch-video',
-                [Component.text('Watch on YouTube ↗')],
-              ),
-            ]),
-          ]),
-        ]),
-
-        // Category Filter Tags
-        div(classes: 'container pub-filter-container', [
-          h3(classes: 'pub-section-heading', [
-            Component.text('Published DEV.to Articles by Randal L. Schwartz'),
-          ]),
-          div(classes: 'pub-filter-tags', [
-            for (final cat in [
-              'All',
-              'Architecture',
-              'Flutter & Jaspr',
-              'State Machines',
-              'Interop & Telemetry'
-            ])
-              button(
-                classes: 'btn-filter \${_activeCategory == cat ? 'active' : ''}',
-                onClick: () {
-                  setState(() {
-                    _activeCategory = cat;
-                  });
-                },
-                [Component.text(cat)],
-              ),
-          ]),
-        ]),
-
-        // Article Cards Grid
-        div(classes: 'container pub-grid-section', [
-          div(classes: 'pub-grid', [
-            for (final pub in validPublications)
-              a(
-                href: pub.url,
-                target: Target.blank,
-                attributes: const {'rel': 'noopener noreferrer'},
-                classes: 'pub-card',
-                [
-                  div(classes: 'pub-card-top', [
-                    span(classes: 'pub-category', [Component.text(pub.category)]),
-                    span(classes: 'pub-readtime', [Component.text(pub.readTime)]),
-                  ]),
-                  h3(classes: 'pub-card-title', [Component.text(pub.title)]),
-                  p(classes: 'pub-card-desc', [Component.text(pub.description)]),
-                  div(classes: 'pub-card-footer', [
-                    div(classes: 'pub-tags-list', [
-                      for (final tag in pub.tags)
-                        span(classes: 'pub-tag-pill', [Component.text('#\$tag')]),
-                    ]),
-                    span(classes: 'pub-link-btn', [
-                      Component.text('Read on DEV.to ↗'),
-                    ]),
-                  ]),
-                ],
-              ),
-          ]),
-        ]),
-      ]),
-      const Footer(),
-    ]);
-  }
-}''',
-  );
+  final generatedContent = generatePublicationsDataFile(articles);
 
   final websiteDir = Directory.current.path.endsWith('/website')
       ? Directory.current
       : Directory('website');
   final targetFile = File(
-    '${websiteDir.path}/lib/src/pages/publications_page.dart',
+    '${websiteDir.path}/lib/src/models/publications_data.g.dart',
   );
-  await targetFile.writeAsString(buffer.toString());
+  await targetFile.writeAsString(generatedContent);
   print('💾 Updated ${targetFile.path}');
 
   // Format code
@@ -377,84 +151,4 @@ class _PublicationsPageState() extends State<PublicationsPage> {
   print(
     '🎉 Done! Run `dart compile js lib/main.dart -o build/www/main.dart.js` to build static site.',
   );
-}
-
-/// Validates that [rawUrl] is a non-empty String representing a valid HTTPS URL
-/// with a non-empty host.
-///
-/// Throws [FormatException] if [rawUrl] is null, not a String, empty,
-/// whitespace-only, malformed, or has a scheme other than 'https'.
-String validateHttpsUrl(dynamic rawUrl) {
-  if (rawUrl == null || rawUrl is! String) {
-    throw const FormatException('URL must be a non-null String.');
-  }
-  final trimmed = rawUrl.trim();
-  if (trimmed.isEmpty) {
-    throw const FormatException('URL cannot be empty.');
-  }
-  final uri = Uri.tryParse(trimmed);
-  if (uri == null ||
-      !uri.hasScheme ||
-      uri.scheme.toLowerCase() != 'https' ||
-      uri.host.trim().isEmpty) {
-    throw FormatException('Invalid or non-HTTPS URL: $rawUrl');
-  }
-  return trimmed;
-}
-
-/// Formats a list of tags as a const Dart List code literal, escaping each tag.
-///
-/// Returns `'const []'` if [tags] is null or empty.
-/// Otherwise returns `'const [\'tag1\', \'tag2\']'`.
-String formatTagsCode(List<dynamic>? tags) {
-  if (tags == null || tags.isEmpty) {
-    return 'const []';
-  }
-  final formattedElements = tags
-      .map((t) {
-        final str = t?.toString() ?? '';
-        return "'${escapeDartString(str)}'";
-      })
-      .join(', ');
-  return 'const [$formattedElements]';
-}
-
-/// Generates the Dart source code representation of a `PublicationItem(...)`
-/// instance with all fields properly escaped against code injection and
-/// string interpolation.
-///
-/// Throws [FormatException] if [url] is not a valid HTTPS URL.
-String generatePublicationItemCode({
-  required String title,
-  required String description,
-  required dynamic url,
-  required String date,
-  required String readTime,
-  required String category,
-  String type = 'Article',
-  List<dynamic>? tags,
-  String indent = '  ',
-}) {
-  final validatedUrl = validateHttpsUrl(url);
-  final escapedTitle = escapeDartString(title);
-  final escapedDescription = escapeDartString(description);
-  final escapedUrl = escapeDartString(validatedUrl);
-  final escapedDate = escapeDartString(date);
-  final escapedReadTime = escapeDartString(readTime);
-  final escapedCategory = escapeDartString(category);
-  final escapedType = escapeDartString(type);
-  final formattedTags = formatTagsCode(tags);
-
-  final buffer = StringBuffer();
-  buffer.writeln('${indent}PublicationItem(');
-  buffer.writeln("$indent  title: '$escapedTitle',");
-  buffer.writeln("$indent  description: '$escapedDescription',");
-  buffer.writeln("$indent  url: '$escapedUrl',");
-  buffer.writeln("$indent  date: '$escapedDate',");
-  buffer.writeln("$indent  readTime: '$escapedReadTime',");
-  buffer.writeln("$indent  category: '$escapedCategory',");
-  buffer.writeln("$indent  type: '$escapedType',");
-  buffer.writeln('$indent  tags: $formattedTags,');
-  buffer.write('$indent),');
-  return buffer.toString();
 }

@@ -57,7 +57,7 @@ When authoring code snippets and documentation in the website:
 
 ### Automated DEV.to Publications Sync Tools
 - **Publications Directory Sync**: `website/tool/update_publications.dart`
-  - Function: Queries the DEV.to public API (`https://dev.to/api/articles?username=randalschwartz&per_page=50`), extracts canonical article URLs, titles, descriptions, reading times, publish dates, and tags, and automatically regenerates `website/lib/src/pages/publications_page.dart`.
+  - Function: Queries the DEV.to public API (`https://dev.to/api/articles?username=randalschwartz&per_page=50`), extracts canonical article URLs, titles, descriptions, reading times, publish dates, and tags, and automatically regenerates `website/lib/src/models/publications_data.g.dart` (consumed by `website/lib/src/pages/publications_page.dart`).
   - Command: `cd website && dart run tool/update_publications.dart`
 - **Markdown Article Archive Sync**: `tool/sync_all_articles.dart`
   - Function: Downloads and refreshes the full markdown bodies of all published DEV.to articles into `doc/articles/` to maintain a local repository knowledge base.

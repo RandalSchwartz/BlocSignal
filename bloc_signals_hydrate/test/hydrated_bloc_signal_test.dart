@@ -305,6 +305,40 @@ void main() {
         expect(cubit.stateValue, equals(<String?>['a', null, 'b']));
       },
     );
+
+    test(
+      '(Issue #421: FormatException omits raw stored JSON payload)',
+      () {
+        final previousObserver = BlocSignalObserver.observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        Object? capturedError;
+        BlocSignalObserver.observer = _TestObserver(
+          onErrorCallback: (bloc, error, stackTrace) {
+            capturedError = error;
+          },
+        );
+
+        const payload = <String, dynamic>{
+          'secret_token': 'top-secret-jwt-12345',
+          'email': 'alice@example.com',
+        };
+        storage.write('ZeroOverrideCounterCubit', payload);
+
+        final cubit = ZeroOverrideCounterCubit();
+        addTearDown(cubit.close);
+
+        expect(cubit.stateValue, equals(0));
+        expect(capturedError, isA<FormatException>());
+        final message = (capturedError! as FormatException).message;
+        expect(message, isNot(contains('top-secret-jwt-12345')));
+        expect(message, isNot(contains('secret_token')));
+        expect(message, isNot(contains('alice@example.com')));
+        expect(message, contains('ZeroOverrideCounterCubit'));
+        expect(message, contains('int'));
+        expect(message, contains('payload type: ${payload.runtimeType}'));
+      },
+    );
   });
 
   group('(Issue #333: R19) HydratedMixin standalone composition', () {

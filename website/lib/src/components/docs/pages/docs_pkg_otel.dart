@@ -17,6 +17,10 @@ class const DocsPkgOtelPage({super.key}) extends StatelessComponent {
       anchor: 'error-correlation',
     ),
     TocHeading(title: 'Memory Leak Prevention', anchor: 'leak-prevention'),
+    TocHeading(
+      title: 'Data Safety & Metadata Normalization',
+      anchor: 'data-safety',
+    ),
   ];
 
   @override
@@ -148,6 +152,31 @@ Future<void> main() async {
             '(default 100 entries) with automatic FIFO (oldest-span) eviction and enforces flush on onClose().',
           ),
         ]),
+      ]),
+
+      // 6. Data Safety & Metadata Normalization
+      section(id: 'data-safety', classes: 'docs-section', [
+        h2([Component.text('Data Safety & Metadata Normalization')]),
+        p([
+          Component.text(
+            'Configure stateRedactor, eventRedactor, errorRedactor, and maxAttributeLength on OtelBlocSignalObserver '
+            '(and errorRedactor / maxAttributeLength on traced / tracedBloc) to scrub PII or secrets and bound attribute '
+            'string lengths. Returning null from stateRedactor or eventRedactor omits the attribute, while returning null '
+            'from errorRedactor omits the span status description and records [REDACTED] for exception.message. '
+            'onTelemetry also normalizes metadata values (preserving primitives and homogeneous primitive lists, converting '
+            'mixed numeric lists to List<double>, stringifying other iterables and objects, and applying maxAttributeLength).',
+          ),
+        ]),
+        DocsCodeBlock(
+          filename: 'otel_redaction.dart',
+          code: '''
+BlocSignalObserver.observer = OtelBlocSignalObserver(
+  stateRedactor: (bloc, state) => '[REDACTED_STATE]',
+  eventRedactor: (bloc, event) => null, // Omit event.value
+  errorRedactor: (bloc, error) => 'SanitizedError',
+  maxAttributeLength: 512,
+);''',
+        ),
       ]),
     ]);
   }

@@ -448,5 +448,218 @@ void main() {
         );
       },
     );
+
+    group('(Issue #422) Redaction, Truncation, and Metadata Normalization', () {
+      test(
+        '(Issue #422: F01) eventRedactor formats or omits event.value on '
+        'transition events',
+        () async {
+          final customObserver = OtelBlocSignalObserver(
+            tracer: tracer,
+            eventRedactor: (bloc, event) => '[REDACTED_EVENT]',
+          );
+          BlocSignalObserver.observer = customObserver;
+
+          final bloc = TestBloc()..add(const Increment());
+          await bloc.close();
+
+          expect(exporter.spans, hasLength(1));
+          final transition = exporter.spans.first.spanEvents!.first;
+          expect(
+            transition.attributes?.getString('event.value'),
+            equals('[REDACTED_EVENT]'),
+          );
+
+          harness.clear();
+          final omittingObserver = OtelBlocSignalObserver(
+            tracer: tracer,
+            eventRedactor: (bloc, event) => null,
+          );
+          BlocSignalObserver.observer = omittingObserver;
+
+          final bloc2 = TestBloc()..add(const Increment());
+          await bloc2.close();
+
+          expect(exporter.spans, hasLength(1));
+          final transition2 = exporter.spans.first.spanEvents!.first;
+          expect(transition2.attributes?.getString('event.value'), isNull);
+        },
+      );
+
+      test(
+        '(Issue #422: F02) errorRedactor formats or omits error details on '
+        'active and transient spans',
+        () async {
+          final customObserver = OtelBlocSignalObserver(
+            tracer: tracer,
+            errorRedactor: (bloc, error) => 'SafeError',
+          );
+          BlocSignalObserver.observer = customObserver;
+
+          final bloc = TestBloc(initialState: -1);
+          expect(() => bloc.add(const Increment()), throwsArgumentError);
+          await bloc.close();
+
+          expect(exporter.spans, hasLength(1));
+          final activeSpan = exporter.spans.first;
+          expect(activeSpan.statusDescription, equals('SafeError'));
+          final exceptionEvent =
+              activeSpan.spanEvents!.firstWhere((e) => e.name == 'exception');
+          expect(
+            exceptionEvent.attributes?.getString('exception.message'),
+            equals('SafeError'),
+          );
+
+          harness.clear();
+          final omittingObserver = OtelBlocSignalObserver(
+            tracer: tracer,
+            errorRedactor: (bloc, error) => null,
+          );
+          BlocSignalObserver.observer = omittingObserver;
+
+          final bloc2 = TestBloc();
+          omittingObserver.onError(
+            bloc2,
+            ArgumentError('Sensitive token=secret123'),
+            StackTrace.empty,
+          );
+          await bloc2.close();
+
+          expect(exporter.spans, hasLength(1));
+          final transientSpan = exporter.spans.first;
+          expect(transientSpan.statusDescription, isNull);
+          final transientException = transientSpan.spanEvents!
+              .firstWhere((e) => e.name == 'exception');
+          expect(
+            transientException.attributes?.getString('exception.message'),
+            equals('[REDACTED]'),
+          );
+        },
+      );
+
+      test(
+        '(Issue #422: F03) maxAttributeLength asserts > 0 and truncates '
+        'state, event, error, and string metadata',
+        () async {
+          expect(
+            () => OtelBlocSignalObserver(maxAttributeLength: 0),
+            throwsA(isA<AssertionError>()),
+          );
+          expect(
+            () => OtelBlocSignalObserver(maxAttributeLength: -5),
+            throwsA(isA<AssertionError>()),
+          );
+
+          final cappedObserver = OtelBlocSignalObserver(
+            tracer: tracer,
+            maxAttributeLength: 5,
+            stateRedactor: (bloc, state) => 'STATE_123456',
+            eventRedactor: (bloc, event) => 'EVENT_123456',
+            errorRedactor: (bloc, error) => 'ERROR_123456',
+          );
+          BlocSignalObserver.observer = cappedObserver;
+
+          final bloc = TestBloc()..add(const Increment());
+          cappedObserver.onTelemetry(
+            bloc,
+            'capped_meta',
+            metadata: const {'msg': 'METADATA_123456'},
+          );
+          cappedObserver.onError(
+            bloc,
+            ArgumentError('RAW_ERROR'),
+            StackTrace.empty,
+          );
+          await bloc.close();
+
+          expect(exporter.spans, hasLength(3));
+          final eventSpan = exporter.spans[0];
+          expect(
+            eventSpan.attributes.getString('state.value'),
+            equals('STATE'),
+          );
+          final transitionEvent =
+              eventSpan.spanEvents!.firstWhere((e) => e.name == 'transition');
+          expect(
+            transitionEvent.attributes?.getString('state.value'),
+            equals('STATE'),
+          );
+          expect(
+            transitionEvent.attributes?.getString('event.value'),
+            equals('EVENT'),
+          );
+
+          final telemetrySpan = exporter.spans[1];
+          expect(telemetrySpan.attributes.getString('msg'), equals('METAD'));
+
+          final errorSpan = exporter.spans[2];
+          expect(errorSpan.statusDescription, equals('ERROR'));
+          final exceptionEvent =
+              errorSpan.spanEvents!.firstWhere((e) => e.name == 'exception');
+          expect(
+            exceptionEvent.attributes?.getString('exception.message'),
+            equals('ERROR'),
+          );
+        },
+      );
+
+      test(
+        '(Issue #422: F04) onTelemetry normalizes and caps all metadata types',
+        () async {
+          final cappedObserver = OtelBlocSignalObserver(
+            tracer: tracer,
+            maxAttributeLength: 6,
+          );
+          BlocSignalObserver.observer = cappedObserver;
+
+          final cubit = TestCubit();
+          cappedObserver.onTelemetry(
+            cubit,
+            'normalized_meta',
+            metadata: <String, dynamic>{
+              'null_val': null,
+              'bool_val': true,
+              'int_val': 42,
+              'double_val': 3.14,
+              'str_val': 'long_string_value',
+              'bool_list': <bool>[true, false],
+              'int_list': <int>[1, 2, 3],
+              'double_list': <double>[1.5, 2.5],
+              'mixed_num_list': <num>[1, 2.5],
+              'str_list': <String>['alpha_long', 'beta'],
+              'mixed_list': <Object?>['x_long_item', 99, null],
+              'set_val': <Object>{'set_item_long', 7},
+              'map_val': <String, Object>{'key': 'val'},
+              'custom_obj': const CustomMetadataObject('very_long_label'),
+            },
+          );
+
+          expect(exporter.spans, hasLength(1));
+          final attrs = exporter.spans.first.attributes;
+          expect(attrs.getString('null_val'), equals('null'));
+          expect(attrs.getBool('bool_val'), equals(true));
+          expect(attrs.getInt('int_val'), equals(42));
+          expect(attrs.getDouble('double_val'), equals(3.14));
+          expect(attrs.getString('str_val'), equals('long_s'));
+          expect(attrs.getBoolList('bool_list'), equals([true, false]));
+          expect(attrs.getIntList('int_list'), equals([1, 2, 3]));
+          expect(attrs.getDoubleList('double_list'), equals([1.5, 2.5]));
+          expect(attrs.getDoubleList('mixed_num_list'), equals([1.0, 2.5]));
+          expect(attrs.getStringList('str_list'), equals(['alpha_', 'beta']));
+          expect(
+            attrs.getStringList('mixed_list'),
+            equals(['x_long', '99', 'null']),
+          );
+          expect(
+            attrs.getStringList('set_val'),
+            equals(['set_it', '7']),
+          );
+          expect(attrs.getString('map_val'), equals('{key: '));
+          expect(attrs.getString('custom_obj'), equals('Custom'));
+
+          await cubit.close();
+        },
+      );
+    });
   });
 }

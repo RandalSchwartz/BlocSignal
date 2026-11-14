@@ -381,5 +381,131 @@ void main() {
         await bloc.close();
       },
     );
+
+    group('(Issue #422) Error Redaction and Attribute Length Caps', () {
+      test(
+        '(Issue #422: F02) traced and tracedBloc apply errorRedactor for '
+        'custom strings and null omission',
+        () async {
+          final bloc = TracedTestBloc(
+            workTransformer: sequential(),
+            tracer: tracer,
+          );
+
+          final redactedTx = traced<DoWorkEvent, String>(
+            (event, handler, emit) => handler(event, emit),
+            tracer: tracer,
+            errorRedactor: (b, error) => 'SanitizedError',
+          );
+
+          Object? captured;
+          try {
+            final res = redactedTx(
+              bloc,
+              DoWorkEvent('fail'),
+              (e, emit) => throw StateError('Secret stack detail'),
+              bloc.emit,
+            );
+            if (res is Future) await res;
+          } on Object catch (e) {
+            captured = e;
+          }
+
+          expect(captured, isA<StateError>());
+          expect(exporter.spans, hasLength(1));
+          final span1 = exporter.spans.first;
+          expect(span1.statusDescription, equals('SanitizedError'));
+          final exc1 =
+              span1.spanEvents!.firstWhere((e) => e.name == 'exception');
+          expect(
+            exc1.attributes?.getString('exception.message'),
+            equals('SanitizedError'),
+          );
+
+          harness.clear();
+          final omittingTx = tracedBloc<DoWorkEvent, String>(
+            (b, event, handler, emit) => handler(event, emit),
+            tracer: tracer,
+            errorRedactor: (b, error) => null,
+          );
+
+          try {
+            final res = omittingTx(
+              bloc,
+              DoWorkEvent('fail2'),
+              (e, emit) => throw StateError('Secret token=abc'),
+              bloc.emit,
+            );
+            if (res is Future) await res;
+          } on Object catch (_) {}
+
+          expect(exporter.spans, hasLength(1));
+          final span2 = exporter.spans.first;
+          expect(span2.statusDescription, isNull);
+          final exc2 =
+              span2.spanEvents!.firstWhere((e) => e.name == 'exception');
+          expect(
+            exc2.attributes?.getString('exception.message'),
+            equals('[REDACTED]'),
+          );
+
+          await bloc.close();
+        },
+      );
+
+      test(
+        '(Issue #422: F03) traced and tracedBloc assert maxAttributeLength > 0 '
+        'and truncate error messages',
+        () async {
+          expect(
+            () => traced<DoWorkEvent, String>(
+              sequential(),
+              maxAttributeLength: 0,
+            ),
+            throwsA(isA<AssertionError>()),
+          );
+          expect(
+            () => tracedBloc<DoWorkEvent, String>(
+              (b, event, handler, emit) => handler(event, emit),
+              maxAttributeLength: -1,
+            ),
+            throwsA(isA<AssertionError>()),
+          );
+
+          final bloc = TracedTestBloc(
+            workTransformer: sequential(),
+            tracer: tracer,
+          );
+
+          final cappedTx = tracedBloc<DoWorkEvent, String>(
+            (b, event, handler, emit) => handler(event, emit),
+            tracer: tracer,
+            errorRedactor: (b, error) => 'LONG_ERROR_MESSAGE',
+            maxAttributeLength: 4,
+          );
+
+          try {
+            final res = cappedTx(
+              bloc,
+              DoWorkEvent('fail_cap'),
+              (e, emit) => throw StateError('raw'),
+              bloc.emit,
+            );
+            if (res is Future) await res;
+          } on Object catch (_) {}
+
+          expect(exporter.spans, hasLength(1));
+          final span = exporter.spans.first;
+          expect(span.statusDescription, equals('LONG'));
+          final exc = span.spanEvents!.firstWhere((e) => e.name == 'exception');
+          expect(
+            exc.attributes?.getString('exception.message'),
+            equals('LONG'),
+          );
+
+          await bloc.close();
+        },
+      );
+    });
   });
 }

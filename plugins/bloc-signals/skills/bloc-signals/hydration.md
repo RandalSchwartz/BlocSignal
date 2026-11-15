@@ -66,15 +66,18 @@ class UserCubit extends HydratedCubitSignal<UserModel> {
 Persistent keys in storage are determined by the `storageToken` getter on `HydratedMixin`:
 
 ```dart
-String get storageToken => '$storagePrefix${id != null ? '_$id' : ''}';
+String get storageToken => id != null
+    ? '${Uri.encodeComponent(storagePrefix)}:${Uri.encodeComponent(id!)}'
+    : storagePrefix;
 ```
 
 - **`storagePrefix`**: Defaults to `runtimeType.toString()` (for example `'CounterCubit'`).
-- **`id`**: An optional instance identifier (defaults to `null`).
+  > **Production Minification Warning**: In release Flutter Web (`dart2js` / `dart2wasm`) or obfuscated mobile/desktop builds, `runtimeType.toString()` is minified and can change between releases, orphaning persisted state or causing collisions. Always override `storagePrefix` with a stable string literal in production containers (for example `@override String get storagePrefix => 'counter_cubit';`).
+- **`id`**: An optional instance identifier (defaults to `null`). When `id` is non-null, both `storagePrefix` and `id` are percent-encoded with `Uri.encodeComponent` and joined with `:` to guarantee collision-free keys (`#427`).
 
 ### Singletons vs Multi-Instance Cubits
-- **Global / Singleton Cubits**: Leave `id` as `null` (default). Storage key is simply the class name (for example `'CounterCubit'`).
-- **Multi-Instance / Scoped Cubits**: Pass `id: 'user_123'` or `id: 'tab_home'`. The storage keys will be `'CounterCubit_user_123'` and `'CounterCubit_tab_home'` without collisions.
+- **Global / Singleton Cubits**: Leave `id` as `null` (default). Storage key is simply `storagePrefix` (for example `'CounterCubit'`).
+- **Multi-Instance / Scoped Cubits**: Pass `id: 'user_123'` or `id: 'tab_home'`. The storage keys will be `'CounterCubit:user_123'` and `'CounterCubit:tab_home'` without separator collisions.
 
 ---
 
@@ -86,6 +89,8 @@ String get storageToken => '$storagePrefix${id != null ? '_$id' : ''}';
 - **Listing Stored Keys**: The `HydratedStorage` interface (`read`, `write`, `delete`, `clear`) does not include a `listKeys()` method to keep storage contracts backend-agnostic. Query the underlying storage engine directly (for example `prefs.getKeys()`).
 - **Test Tear-Down**: Always invoke `HydratedStorage.reset()` inside `tearDown(() => ...)` in tests to prevent cross-test storage leakage.
 - **Serialized Async Persistence & Logout Safety**: `HydratedMixin` serializes asynchronous `persist()` and `clear()` calls through an internal `Mutex` paired with a monotonic `_storageGeneration` tombstone, while `SecureHydratedStorage` and `SharedPreferencesHydratedStorage` serialize backend `write`, `delete`, and `clear` operations. A slow in-flight write can never complete after `clear()` to resurrect logged-out state, and superseded queued writes are skipped before touching disk.
+- **Cached Collection Isolation (`#427`)**: `MemoryHydratedStorage` and `SecureHydratedStorage` deep-clone cached `Map` and `List` structures on `read()` via `cloneHydratedJsonValue` and store an isolated JSON snapshot on `write()` (`jsonDecode(jsonEncode(value))`) so in-place caller mutations can never corrupt cached storage.
+- **Redacted Deserialization Errors (`#421`)**: `initHydratedState` omits raw decrypted/stored JSON payloads from `FormatException` messages when reporting corrupt records to `onError`, preventing sensitive persisted fields from leaking into logs or telemetry.
 
 ---
 
@@ -94,6 +99,8 @@ String get storageToken => '$storagePrefix${id != null ? '_$id' : ''}';
 Use the built-in storage adapters exported directly from sub-libraries in `package:bloc_signals_hydrate`:
 
 ### `SharedPreferences`
+
+> **Plaintext Security Warning (`#427`)**: `SharedPreferences` persists values in unencrypted plaintext (XML/plist files on mobile and `localStorage` on web). Do not store auth tokens, credentials, or sensitive personal data in `SharedPreferencesHydratedStorage`; use `SecureHydratedStorage` instead.
 ```dart
 import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
 import 'package:bloc_signals_hydrate/shared_preferences.dart';
@@ -131,7 +138,7 @@ Both `SharedPreferencesHydratedStorage` and `SecureHydratedStorage` default `pre
 
 ---
 
-## 5. Complete Flutter Hydrated Counter App
+## 6. Complete Flutter Hydrated Counter App
 
 ```dart
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
@@ -195,7 +202,7 @@ class CounterScreen extends StatelessWidget {
 
 ---
 
-## 6. Persisted Form Field Synchronization (`TextFormField` with `ValueKey`)
+## 7. Persisted Form Field Synchronization (`TextFormField` with `ValueKey`)
 
 When hydrating form fields (`TextFormField`) with `HydratedCubitSignal`, avoid mutating a `TextEditingController.text` property inside a `build` method or `useEffect` hook:
 
@@ -218,7 +225,7 @@ Pairing `initialValue` with a state-derived `ValueKey` allows fields to hydrate 
 
 ---
 
-## 7. `HydratedCubitSignal` vs `PersistentSignal` (`signals.dart`)
+## 8. `HydratedCubitSignal` vs `PersistentSignal` (`signals.dart`)
 
 If evaluating state persistence approaches, `bloc_signals_hydrate` and `signals.dart`'s native `PersistentSignal` cater to different architectural patterns:
 
@@ -248,7 +255,7 @@ class CounterCubit extends CubitSignal<int> {
 
 ---
 
-## 8. Storage Scoping & Asynchronous Reliability
+## 9. Storage Scoping & Asynchronous Reliability
 
 ### Scoped Storage Prefixes
 For multi-tenant applications or multi-user sessions, both `SharedPreferencesHydratedStorage` and `SecureHydratedStorage` accept an optional `prefix:` parameter to isolate keys:

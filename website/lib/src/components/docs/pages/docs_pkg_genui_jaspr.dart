@@ -59,9 +59,9 @@ class const DocsPkgGenuiJasprPage({super.key}) extends StatelessComponent {
           language: 'yaml',
           code: '''
 dependencies:
-  bloc_signals: ^1.7.1
-  bloc_signals_genui: ^2.0.1
-  bloc_signals_genui_jaspr: ^2.0.1
+  bloc_signals: ^1.7.2
+  bloc_signals_genui: ^2.0.2
+  bloc_signals_genui_jaspr: ^2.0.2
   a2ui_core: ^0.7.0
 ''',
         ),
@@ -132,7 +132,7 @@ Component buildSurface(A2uiSurfaceBloc bloc) {
           li([
             strong([Component.text('Button: ')]),
             Component.text(
-              'Interactive actions with primary and borderless variants, CheckRule validation gating, and NodeAction execution.',
+              'Interactive actions with strictly allowlisted primary and borderless variants before DOM CSS class interpolation, CheckRule validation gating, and NodeAction execution.',
             ),
           ]),
           li([
@@ -179,6 +179,11 @@ Component buildSurface(A2uiSurfaceBloc bloc) {
             strong([Component.text('Divider: ')]),
             Component.text('Horizontal or vertical rule separating sections.'),
           ]),
+        ]),
+        p([
+          Component.text(
+            'Property parsing across all Jaspr BasicCatalog components uses safe_prop_parser.dart, guarding asDouble and asInt against non-finite NaN and Infinity numeric or string values.',
+          ),
         ]),
       ]),
 

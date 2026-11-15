@@ -198,8 +198,9 @@ class EditorBloc extends ReplayBloc<EditorEvent, String> {
         h2([Component.text('History Limits & Memory Bounds')]),
         p([
           Component.text(
-            'To prevent unbounded memory consumption in long-running sessions, pass maxHistoryLength to the super constructor. '
-            'When the stack exceeds this capacity, the oldest history entries are automatically discarded.',
+            'To prevent unbounded memory consumption or long-lived retention of sensitive data, pass maxHistoryLength (or limit) to the super constructor—or set limit = 0 during sensitive flows. '
+            'When the stack exceeds capacity, oldest history entries are evicted automatically. '
+            'Call clearHistory() at logout or session boundaries to purge recorded snapshots immediately, and close() automatically invokes clearHistory() to release retained state references and reset canUndo/canRedo.',
           ),
         ]),
         const DocsCodeBlock(

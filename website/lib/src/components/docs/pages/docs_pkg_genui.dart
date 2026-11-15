@@ -65,8 +65,8 @@ class const DocsPkgGenuiPage({super.key}) extends StatelessComponent {
           language: 'yaml',
           code: '''
 dependencies:
-  bloc_signals: ^1.7.1
-  bloc_signals_genui: ^2.0.1
+  bloc_signals: ^1.7.2
+  bloc_signals_genui: ^2.0.2
   a2ui_core: ^0.7.0
 ''',
         ),
@@ -131,11 +131,12 @@ dependencies:
         ]),
         const DocsCallout(
           type: CalloutType.note,
-          title: 'ReDoS-Safe Form Validation',
+          title: 'ReDoS-Safe Form Validation & Structural Wire Hardening',
           children: [
             p([
               Component.text(
-                'Built-in schema pattern checks enforce bounded pattern lengths (maxValidationPatternLength = 256), bounded input lengths (maxValidationInputLength = 2048), and linear-time ReDoS screening against nested quantifiers, backreferences, and lookarounds. Supply a custom patternValidator callback on A2uiSurfaceBloc when an app needs custom dialect semantics.',
+                'Built-in schema pattern checks enforce bounded pattern lengths (maxValidationPatternLength = 256), bounded input lengths (maxValidationInputLength = 2048), and linear-time ReDoS screening against nested quantifiers, backreferences, and lookarounds. Supply a custom patternValidator callback on A2uiSurfaceBloc when an app needs custom dialect semantics. '
+                'Component normalization preserves top-level structural keys (for example id, type, component, child, children, and checks) so nested properties cannot overwrite them, while integer coercion guards reject non-finite NaN and Infinity values.',
               ),
             ]),
           ],

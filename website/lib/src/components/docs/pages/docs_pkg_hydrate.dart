@@ -53,8 +53,8 @@ class const DocsPkgHydratePage({super.key}) extends StatelessComponent {
           language: 'yaml',
           code: '''
 dependencies:
-  bloc_signals: ^1.7.1
-  bloc_signals_hydrate: ^1.1.1
+  bloc_signals: ^1.7.2
+  bloc_signals_hydrate: ^1.1.2
   shared_preferences: ^2.3.0
 ''',
         ),
@@ -273,25 +273,39 @@ class UserProfileCubit extends HydratedCubitSignal<UserProfile?> {
           li([
             apiLink(DocSymbol.sharedPreferencesHydratedStorage),
             Component.text(
-              ': Standard, lightweight local key-value persistence for mobile and web. Defaults to the ',
+              ': Lightweight local key-value persistence for mobile and web. Defaults to the ',
             ),
             apiLink(DocSymbol.kDefaultHydratedStoragePrefix),
             Component.text(
-              " prefix ('bloc_signals_hydrate_') to isolate persisted state from app preferences (pass prefix: '' to opt out for legacy keys).",
+              " prefix ('bloc_signals_hydrate_') to isolate persisted state from app preferences (pass prefix: '' to opt out for legacy keys). ",
+            ),
+            strong([Component.text('Plaintext Warning: ')]),
+            Component.text(
+              'SharedPreferences stores unencrypted XML/plist/localStorage data; use SecureHydratedStorage for tokens, credentials, or personal data.',
             ),
           ]),
           li([
             apiLink(DocSymbol.secureHydratedStorage),
             Component.text(
-              ': AES-encrypted storage powered by platform keychain and keystore services for sensitive auth tokens and credentials.',
+              ': AES-encrypted storage powered by platform keychain and keystore services for sensitive auth tokens and credentials. ',
+            ),
+            Component.text(
+              'Deep-clones cached Map and List collections on read and write so in-place caller mutations never corrupt cached storage.',
             ),
           ]),
           li([
-            strong([Component.text('MemoryHydratedStorage')]),
+            apiLink(DocSymbol.memoryHydratedStorage),
             Component.text(
-              ': Ephemeral in-memory storage designed for lightning-fast hermetic unit testing.',
+              ': Ephemeral in-memory storage designed for hermetic unit testing, isolating cached Map and List collections with deep JSON cloning.',
             ),
           ]),
+        ]),
+        p([
+          Component.text(
+            'When an id is set, HydratedMixin.storageToken percent-encodes storagePrefix and id via Uri.encodeComponent joined by ":" to prevent separator collisions. '
+            'Override storagePrefix with a stable string literal in release web/obfuscated builds where runtimeType.toString() is minified, '
+            'and deserialization FormatExceptions omit raw stored JSON payloads when routed to onError().',
+          ),
         ]),
         const DocsCallout(
           type: CalloutType.tip,

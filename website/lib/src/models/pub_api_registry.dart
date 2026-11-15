@@ -179,6 +179,11 @@ enum DocSymbol(
     'bloc_signals_hydrate',
     'kDefaultHydratedStoragePrefix-constant.html',
   ),
+  memoryHydratedStorage(
+    'MemoryHydratedStorage',
+    'bloc_signals_hydrate',
+    'MemoryHydratedStorage-class.html',
+  ),
 
   // Replay (bloc_signals_replay)
   replayMixin('ReplayMixin', 'bloc_signals_replay', 'ReplayMixin-mixin.html'),
@@ -237,6 +242,11 @@ enum DocSymbol(
     'DevToolsBlocSignalObserver',
     'bloc_signals',
     'DevToolsBlocSignalObserver-class.html',
+  ),
+  devToolsService(
+    'DevToolsService',
+    'bloc_signals',
+    'DevToolsService-class.html',
   ),
 
   // Classic BLoC (bloc_signals_bloc)
@@ -375,6 +385,11 @@ enum DocSymbol(
     'GenUiControllerAdapter',
     'bloc_signals_genui_flutter',
     'GenUiControllerAdapter-class.html',
+  ),
+  a2uiImageUrlPolicy(
+    'A2uiImageUrlPolicy',
+    'bloc_signals_genui_flutter',
+    'A2uiImageUrlPolicy-class.html',
   ),
   a2uiJasprCatalog(
     'A2uiJasprCatalog',

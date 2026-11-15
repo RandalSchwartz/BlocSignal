@@ -58,7 +58,11 @@ class const DocsPkgDevtoolsPage({super.key}) extends StatelessComponent {
         p([
           Component.text('Enable DevTools telemetry by attaching '),
           apiLink(DocSymbol.devToolsBlocSignalObserver),
-          Component.text(' in debug mode:'),
+          Component.text(' in debug mode (backed by '),
+          apiLink(DocSymbol.devToolsService),
+          Component.text(
+            ', which enforces release-mode isEnabled guards cleanly without debug-only side-effecting assertions):',
+          ),
         ]),
         const DocsCodeBlock(
           title: 'lib/main.dart',
@@ -106,7 +110,13 @@ void main() {
         p([
           Component.text(
             'The leak detector automatically flags containers that receive events after close() has been called, '
-            'or instances that remain un-garbage-collected after their parent widget has unmounted.',
+            'or instances that remain un-garbage-collected after their parent widget has unmounted. ',
+          ),
+          apiLink(DocSymbol.devToolsService),
+          Component.text(
+            ' automatically evicts container history entries via Finalizer<int> and dead WeakReference pruning upon GC, '
+            'scopes typed registerEventDeserializer<T>() registrations by container type while preserving unscoped eventName fallbacks, '
+            'and enforces a 64 KB dispatch payload cap (DevToolsService.kMaxDispatchPayloadLength = 65536) on BlocSignalMixin targets.',
           ),
         ]),
         const DocsCallout(

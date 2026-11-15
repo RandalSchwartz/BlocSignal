@@ -73,10 +73,10 @@ Or declare it in your `pubspec.yaml`:
 dependencies:
   flutter:
     sdk: flutter
-  bloc_signals: ^1.7.1
+  bloc_signals: ^1.7.2
   bloc_signals_flutter: ^1.5.0
-  bloc_signals_genui: ^2.0.1
-  bloc_signals_genui_flutter: ^2.0.1
+  bloc_signals_genui: ^2.0.2
+  bloc_signals_genui_flutter: ^2.1.0
   a2ui_core: ^0.7.0
 ```
 
@@ -107,7 +107,11 @@ class AgentSurfaceScreen extends StatelessWidget {
       appBar: AppBar(title: const Text('Generative UI Surface')),
       body: A2uiSurfaceView(
         bloc: surfaceBloc,
-        catalog: A2uiFlutterCatalog.standard(),
+        // All catalog factories (.standard, .cupertino, .adaptive) enforce
+        // A2uiImageUrlPolicy (HTTPS + non-loopback/non-link-local) by default.
+        catalog: A2uiFlutterCatalog.standard(
+          imagePolicy: const A2uiImageUrlPolicy(),
+        ),
       ),
     );
   }
@@ -126,7 +130,11 @@ class ModernAgentSurfaceScreen({
       appBar: AppBar(title: const Text('Generative UI Surface')),
       body: A2uiSurfaceView(
         bloc: surfaceBloc,
-        catalog: A2uiFlutterCatalog.standard(),
+        // All catalog factories (.standard, .cupertino, .adaptive) enforce
+        // A2uiImageUrlPolicy (HTTPS + non-loopback/non-link-local) by default.
+        catalog: A2uiFlutterCatalog.standard(
+          imagePolicy: const A2uiImageUrlPolicy(),
+        ),
       ),
     );
   }

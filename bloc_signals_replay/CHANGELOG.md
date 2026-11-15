@@ -1,4 +1,4 @@
-## Unreleased
+## 1.3.2
 
 - **Fix (replay)**: Clear change stack on `close()` to release retained states and reset `canUndo`/`canRedo` (#428).
 - **Docs (replay)**: Document bounding sensitive state history with `limit`, `clearHistory()`, and disposal cleanup (#428).

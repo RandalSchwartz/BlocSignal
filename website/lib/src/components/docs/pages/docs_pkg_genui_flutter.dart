@@ -68,10 +68,10 @@ class const DocsPkgGenuiFlutterPage({super.key}) extends StatelessComponent {
 dependencies:
   flutter:
     sdk: flutter
-  bloc_signals: ^1.7.1
+  bloc_signals: ^1.7.2
   bloc_signals_flutter: ^1.5.0
-  bloc_signals_genui: ^2.0.1
-  bloc_signals_genui_flutter: ^2.0.1
+  bloc_signals_genui: ^2.0.2
+  bloc_signals_genui_flutter: ^2.1.0
   a2ui_core: ^0.7.0
 ''',
         ),
@@ -167,7 +167,11 @@ class AgentSurfaceScreen extends StatelessWidget {
           li([
             strong([Component.text('Content & Media Display')]),
             Component.text(
-              ': Text (h1 through h5, subtitle, body, and caption variants), Icon, Image, Video, and AudioPlayer.',
+              ': Text (h1 through h5, subtitle, body, and caption variants), Icon, Image (enforcing ',
+            ),
+            apiLink(DocSymbol.a2uiImageUrlPolicy),
+            Component.text(
+              ' scheme/host allowlisting and DPR-bounded decode cacheWidth/cacheHeight), Video, and AudioPlayer. Defensive property parsing rejects non-finite NaN and Infinity numbers.',
             ),
           ]),
         ]),
@@ -180,6 +184,23 @@ class AgentSurfaceScreen extends StatelessWidget {
             '.firstValidationErrorSignal reactively evaluates the rules against the DataModel in 0ms—displaying inline error text on TextField widgets and automatically disabling Button submissions until all required checks pass.',
           ),
         ]),
+        DocsCallout(
+          type: CalloutType.note,
+          title: 'Image URL Policy & Decode Bounds',
+          children: [
+            p([
+              Component.text('All '),
+              apiLink(DocSymbol.a2uiFlutterCatalog),
+              Component.text(
+                ' factories (.standard(), .cupertino(), and .adaptive()) accept an ',
+              ),
+              apiLink(DocSymbol.a2uiImageUrlPolicy),
+              Component.text(
+                ' (defaulting to https and blocking loopback/link-local hosts such as localhost or 169.254.0.0/16) and bound Image.network decode memory using DPR-scaled cacheWidth/cacheHeight.',
+              ),
+            ]),
+          ],
+        ),
       ]),
 
       // 4. Extending A2uiFlutterCatalog

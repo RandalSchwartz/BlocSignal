@@ -2,10 +2,11 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
-## Unreleased
+## 2.1.0
 
-- **Fix (genui_flutter)**: Enforce `Image.network` URL scheme/host policy via `A2uiImageUrlPolicy` and bound decode `cacheWidth`/`cacheHeight` (#423).
+- **Feat (genui_flutter)**: Enforce `Image.network` URL scheme/host policy via `A2uiImageUrlPolicy` and bound decode `cacheWidth`/`cacheHeight` (#423).
 - **Fix (genui_flutter)**: Guard `asDouble` and `asInt` in `safe_prop_parser.dart` against non-finite numeric and string inputs (`NaN`, `Infinity`, `-Infinity`), falling back to `defaultValue` (#424).
+- **Dependencies**: Bump `bloc_signals_genui` dependency constraint to `^2.0.2`.
 
 ## 2.0.1
 

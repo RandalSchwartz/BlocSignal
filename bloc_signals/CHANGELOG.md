@@ -1,4 +1,4 @@
-## Unreleased
+## 1.7.2
 
 - **Fix (core)**: Evict `_history` entries via `Finalizer<int>` and `handleGetInstances` dead `WeakReference` pruning, scope typed `registerEventDeserializer<T>` registrations by container type while preserving unscoped `eventName` fallbacks, validate `handleDispatch` payloads (`kMaxDispatchPayloadLength = 65536`, non-empty `event`, `BlocSignalMixin` target), and enforce release-mode `isEnabled` guards without side-effecting `assert(...)` closures (#429).
 

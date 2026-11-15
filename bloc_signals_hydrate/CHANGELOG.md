@@ -1,7 +1,7 @@
-## Unreleased
+## 1.1.2
 
-- **Fix (hydrate)**: Isolate cached `Map` and `List` collections in `MemoryHydratedStorage` and `SecureHydratedStorage`, harden `HydratedMixin.storageToken` with `Uri.encodeComponent` framing, and document `storagePrefix` minification and `SharedPreferencesHydratedStorage` plaintext storage warnings (#427)
-- **Fix (hydrate)**: Omit raw stored JSON payload from FormatException error messages in initHydratedState (#421)
+- **Fix (hydrate)**: Isolate cached `Map` and `List` collections in `MemoryHydratedStorage` and `SecureHydratedStorage`, harden `HydratedMixin.storageToken` with `Uri.encodeComponent` framing, and document `storagePrefix` minification and `SharedPreferencesHydratedStorage` plaintext storage warnings (#427).
+- **Fix (hydrate)**: Omit raw stored JSON payload from `FormatException` error messages in `initHydratedState` (#421).
 
 ## 1.1.1
 

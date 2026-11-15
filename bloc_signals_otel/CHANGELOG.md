@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 2.1.0
 
-- **Fix (otel)**: Add `eventRedactor`, `errorRedactor`, `maxAttributeLength`, and `onTelemetry` metadata normalization to `OtelBlocSignalObserver`, and add `errorRedactor` and `maxAttributeLength` to `traced` and `tracedBloc` (#422).
+- **Feat (otel)**: Add `eventRedactor`, `errorRedactor`, `maxAttributeLength`, and `onTelemetry` metadata normalization to `OtelBlocSignalObserver`, and add `errorRedactor` and `maxAttributeLength` to `traced` and `tracedBloc` (#422).
 
 ## 2.0.1
 

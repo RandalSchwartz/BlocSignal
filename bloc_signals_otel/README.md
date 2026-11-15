@@ -45,6 +45,7 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 - 📊 **Span Correlation**: Maps incoming BLoC events directly to active OpenTelemetry trace spans.
 - 🚨 **Error Tracing**: Captures exceptions in `onError` and attaches identity hash-matched stack traces to the active span.
 - 🛡️ **Memory-Leak Protection**: Internal active span map capped (default 100 items) with FIFO (oldest-span) eviction to prevent heap leaks.
+- 🔒 **PII Redaction & Attribute Caps**: Redact sensitive state, event, and error values via `stateRedactor`, `eventRedactor`, and `errorRedactor`, and bound exported telemetry strings with `maxAttributeLength`.
 
 ---
 
@@ -54,8 +55,8 @@ Add `bloc_signals_otel` and `dartastic_opentelemetry` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^1.5.0
-  bloc_signals_otel: ^2.0.0
+  bloc_signals: ^1.7.2
+  bloc_signals_otel: ^2.1.0
   dartastic_opentelemetry: ^0.11.0
   dartastic_opentelemetry_api: ^0.11.0
 ```

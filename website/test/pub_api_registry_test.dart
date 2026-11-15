@@ -59,6 +59,8 @@ void main() {
       expect(names, contains('HydratedCubitSignal'));
       expect(names, contains('HydratedBlocSignal'));
       expect(names, contains('kDefaultHydratedStoragePrefix'));
+      expect(names, contains('MemoryHydratedStorage'));
+      expect(names, contains('DevToolsService'));
       expect(names, contains('ClassicBlocSignal'));
       expect(names, contains('ClassicCubitSignal'));
       expect(names, contains('ReplayMixin'));
@@ -138,6 +140,11 @@ void main() {
           'GenUiControllerAdapter',
           'bloc_signals_genui_flutter',
           'GenUiControllerAdapter-class.html',
+        ),
+        DocSymbol.a2uiImageUrlPolicy: (
+          'A2uiImageUrlPolicy',
+          'bloc_signals_genui_flutter',
+          'A2uiImageUrlPolicy-class.html',
         ),
         DocSymbol.a2uiJasprCatalog: (
           'A2uiJasprCatalog',

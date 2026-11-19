@@ -1,6 +1,6 @@
 # Core API and event processing
 
-This reference matches `bloc_signals` 1.3.x. Re-read the installed source when the project uses a
+This reference matches `bloc_signals` 1.8.x. Re-read the installed source when the project uses a
 different version.
 
 ## Public state and lifecycle
@@ -22,11 +22,14 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 | `createEffect(callback, options: ..., onDispose: ...)` | Creates an effect immediately, assigning `options?.name` (defaulting to `'$runtimeType.effect#N'`) and registering its disposer with the base. |
 | `isClosed` | Reports whether `close()` has run. |
 | `close()` | Returns `Future<void>`, disposes registered effects, and is idempotent. |
+| `@protected onReset()` | Lifecycle hook invoked when container state resets to baseline (for example during persistence clearing), allowing sibling mixins to clear auxiliary state (`super.onReset()`). |
+| `@protected isHistorySuppressed` | Reports whether auxiliary history recording (such as undo/redo stacks) is currently suppressed on this container instance. |
+| `@protected runWithoutHistory(action)` | Executes `action` with auxiliary history recording suppressed via a per-instance nesting counter. |
 | `toString()` | Overridden by `BlocSignalBase` to output `'$runtimeType($stateValue)'`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses. |
-| `signal.toBlocSignal()` | Adapts any `ReadonlySignal<T>` (including `Signal`, `Computed`, `StreamSignal`, and `value.$`) into a `SignalBlocSignal<T>`. |
+| `signal.toBlocSignal()` | Adapts any `ReadonlySignal<T>` (including `Signal`, `Computed`, `StreamSignal`, and `value.$`) into a `SignalBlocSignal<T>` (`disposeSignalOnClose: false` by default so caller-owned signals remain active). |
 | `future.toBlocSignal(required initialState:)` | Adapts any `Future<T>` into a `FutureBlocSignal<T>` holding raw values with an initial state. |
-| `future.toAsyncBlocSignal()` | Adapts any `Future<T>` into a `SignalBlocSignal<AsyncState<T>>` container backed by a `FutureSignal`. |
-| `stream.toAsyncBlocSignal()` | Adapts any `Stream<T>` into a `SignalBlocSignal<AsyncState<T>>` container backed by a `StreamSignal`. |
+| `future.toAsyncBlocSignal()` | Adapts any `Future<T>` into an owned `SignalBlocSignal<AsyncState<T>>` (`disposeSignalOnClose: true`) backed by a `FutureSignal` with a `Completer` late-settlement guard and early timeout cancellation on `close()`. |
+| `stream.toAsyncBlocSignal()` | Adapts any `Stream<T>` into an owned `SignalBlocSignal<AsyncState<T>>` (`disposeSignalOnClose: true`) backed by a `StreamSignal` disposed on `close()`. |
 
 ### The Diagnostic Triad (`emit`, `emitError`, `emitTelemetry`)
 
@@ -539,12 +542,12 @@ BlocSignalObserver.observer = CompositeBlocSignalObserver([
 ]);
 ```
 
-### Observer Exception Isolation
+### Observer Exception Isolation & Reentrancy
 All observer hooks (`onCreate`, `onEvent`, `onTransition`, `onChange`, `onTelemetry`, `onEventCompleted`, and `onClose`)
 are wrapped in defensive `on Exception catch` isolation boundaries. Recoverable `Exception` instances thrown by an observer are automatically
 captured and forwarded to `bloc.onError()`, ensuring that a failing observer cannot abort synchronous
-state emissions (`_state.value = newState`) or corrupt container lifecycles. In composite observers,
-an `Exception` in one observer does not prevent subsequent observers from receiving the notification. Programming defects (`Error` subtypes such as `AssertionError`, `TypeError`, or `StateError`) are not swallowed and propagate immediately to the caller.
+state emissions (`_state.value = newState`) or corrupt container lifecycles. In `CompositeBlocSignalObserver`,
+each hook iterates over a snapshot (`_observers.toList(growable: false)`) so reentrant `addObserver`/`removeObserver` calls inside observer callbacks never throw `ConcurrentModificationError`, and an `Exception` in one observer does not prevent subsequent observers from receiving the notification. Likewise, `DevToolsBlocSignalObserver` isolates `previousObserver` exceptions across all 8 hooks via `bloc.onError()` (and safely absorbs `previousObserver.onError` exceptions to avoid recursive loops). Programming defects (`Error` subtypes such as `AssertionError`, `TypeError`, or `StateError`) are not swallowed and propagate immediately to the caller.
 
 `onCreate` runs before the subclass constructor body and late fields are initialized, so
 observers should not read subtype-specific fields there. Local `onTransition`, `onChange`,

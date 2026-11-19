@@ -73,7 +73,7 @@ Or declare it in your `pubspec.yaml`:
 ```yaml
 dependencies:
   jaspr: ^0.23.1
-  bloc_signals: ^1.7.2
+  bloc_signals: ^1.8.0
   bloc_signals_jaspr: ^1.3.0
   bloc_signals_genui: ^2.0.2
   bloc_signals_genui_jaspr: ^2.0.2

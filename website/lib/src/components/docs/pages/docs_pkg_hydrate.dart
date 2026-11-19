@@ -53,8 +53,8 @@ class const DocsPkgHydratePage({super.key}) extends StatelessComponent {
           language: 'yaml',
           code: '''
 dependencies:
-  bloc_signals: ^1.7.2
-  bloc_signals_hydrate: ^1.1.2
+  bloc_signals: ^1.8.0
+  bloc_signals_hydrate: ^1.1.3
   shared_preferences: ^2.3.0
 ''',
         ),
@@ -327,7 +327,18 @@ class UserProfileCubit extends HydratedCubitSignal<UserProfile?> {
         p([
           Component.text(
             'To clear persisted state on user logout or session reset, invoke clear(). '
-            'This removes the persisted data from disk and resets the in-memory state to initialState without re-persisting the initial state back to storage. '
+            'This removes the persisted data from disk and executes ',
+          ),
+          apiLink(DocSymbol.blocSignalOnReset),
+          Component.text(' and '),
+          apiLink(DocSymbol.blocSignalRunWithoutHistory),
+          Component.text(
+            ' inside batch() to reset the in-memory state to initialState atomically without re-persisting or polluting composed ReplayMixin history stacks. '
+            'Similarly, cold-boot hydrate() wraps restoration in ',
+          ),
+          apiLink(DocSymbol.blocSignalRunWithoutHistory),
+          Component.text(
+            ' regardless of mixin composition order. '
             'Storage persist() and clear() operations are serialized through a per-instance FIFO Mutex with generation tombstones so concurrent async writes cannot resurrect state cleared mid-flight.',
           ),
         ]),

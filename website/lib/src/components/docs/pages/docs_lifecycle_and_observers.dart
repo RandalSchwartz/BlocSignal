@@ -250,7 +250,11 @@ class AppBlocObserver extends BlocSignalObserver {
           ),
           apiLink(DocSymbol.devToolsBlocSignalObserver),
           Component.text(
-            ' posts diagnostic events via dart:developer for Flutter DevTools.',
+            ' posts diagnostic events via dart:developer for Flutter DevTools and isolates previousObserver exceptions across all 8 lifecycle hooks. When combining multiple observers, ',
+          ),
+          apiLink(DocSymbol.compositeBlocSignalObserver),
+          Component.text(
+            ' snapshots its observer list across all 8 hooks so reentrant addObserver/removeObserver calls inside callbacks never cause concurrent modification errors.',
           ),
         ]),
       ]),

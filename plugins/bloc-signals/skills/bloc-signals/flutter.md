@@ -1,6 +1,6 @@
 # Flutter bindings and ownership
 
-This reference matches `bloc_signals_flutter` 1.2.x. Inspect the installed package when the version
+This reference matches `bloc_signals_flutter` 1.5.x. Inspect the installed package when the version
 differs.
 
 ## Provider ownership
@@ -332,7 +332,7 @@ BlocSignalBuilder<UserDataCubit, UserData>(
 
 ## Declarative Routing & Route Guards (Kaisel / GoRouter)
 
-`bloc_signals_flutter` provides `extension BlocSignalValueListenableX<T> on BlocSignalBase<T>` which exposes `bloc.toValueListenable()`. This bridges synchronous signal emissions into Flutter's `ValueListenable` ecosystem, enabling declarative routers (such as Kaisel 1.1 or GoRouter) to re-evaluate route guards automatically on state transitions.
+`bloc_signals_flutter` provides `extension BlocSignalValueListenableX<T> on BlocSignalBase<T>` which exposes `bloc.toValueListenable()`. It implements `ValueListenable<T>` directly without extending `ValueNotifier<T>`, eliminating initial-state pinning and `FlutterMemoryAllocations` leak-tracker warnings when used transiently while preserving lazy `0 -> 1` / `1 -> 0` signal subscription, snapshot-safe listener dispatch, and idempotent `dispose()`. This bridges synchronous signal emissions into Flutter's `ValueListenable` ecosystem, enabling declarative routers (such as Kaisel 1.1 or GoRouter) to re-evaluate route guards automatically on state transitions.
 
 ```dart
 final router = KaiselRouterConfig(

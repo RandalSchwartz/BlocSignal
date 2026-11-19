@@ -1,4 +1,4 @@
-## Unreleased
+## 1.5.1
 
 - **Fix (flutter)**: Refactor `toValueListenable()` to implement `ValueListenable<T>` directly without extending `ValueNotifier<T>`, eliminating initial-state pinning and `FlutterMemoryAllocations` leak-tracker reports while preserving lazy subscription and idempotent `dispose()` (#470).
 

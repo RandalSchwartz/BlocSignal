@@ -87,7 +87,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals')],
                   ),
                 ]),
-                td([Component.text('^1.7.2')]),
+                td([Component.text('^1.8.0')]),
                 td([
                   Component.text(
                     'Core Pure Dart state containers (BlocSignal, CubitSignal, Transformers, Observers).',
@@ -104,7 +104,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_flutter')],
                   ),
                 ]),
-                td([Component.text('^1.5.0')]),
+                td([Component.text('^1.5.1')]),
                 td([
                   Component.text(
                     'Flutter bindings, O(1) providers, builders, listeners, selectors, and context extensions.',
@@ -172,7 +172,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_hydrate')],
                   ),
                 ]),
-                td([Component.text('^1.1.2')]),
+                td([Component.text('^1.1.3')]),
                 td([
                   Component.text(
                     'Synchronous frame 1 state persistence across app restarts.',
@@ -189,7 +189,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_replay')],
                   ),
                 ]),
-                td([Component.text('^1.3.2')]),
+                td([Component.text('^1.4.0')]),
                 td([
                   Component.text(
                     'Undo and redo state history management with customizable bounds.',
@@ -223,7 +223,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_bloc')],
                   ),
                 ]),
-                td([Component.text('^1.0.3')]),
+                td([Component.text('^1.0.4')]),
                 td([
                   Component.text(
                     'Bidirectional classic BLoC 8 & 9 interoperability adapters and event bridges.',

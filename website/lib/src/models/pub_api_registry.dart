@@ -26,6 +26,16 @@ enum DocSymbol(
     'bloc_signals',
     'BlocSignalObserver-class.html',
   ),
+  compositeBlocSignalObserver(
+    'CompositeBlocSignalObserver',
+    'bloc_signals',
+    'CompositeBlocSignalObserver-class.html',
+  ),
+  signalBlocSignal(
+    'SignalBlocSignal',
+    'bloc_signals',
+    'SignalBlocSignal-class.html',
+  ),
   transition('Transition', 'bloc_signals', 'Transition-class.html'),
   change('Change', 'bloc_signals', 'Change-class.html'),
   blocSignalOn('on', 'bloc_signals', 'BlocSignal/on.html'),
@@ -52,6 +62,17 @@ enum DocSymbol(
   ),
   blocSignalAdd('add', 'bloc_signals', 'BlocSignal/add.html'),
   blocSignalClose('close', 'bloc_signals', 'BlocSignalBase/close.html'),
+  blocSignalOnReset('onReset', 'bloc_signals', 'BlocSignalBase/onReset.html'),
+  blocSignalIsHistorySuppressed(
+    'isHistorySuppressed',
+    'bloc_signals',
+    'BlocSignalBase/isHistorySuppressed.html',
+  ),
+  blocSignalRunWithoutHistory(
+    'runWithoutHistory',
+    'bloc_signals',
+    'BlocSignalBase/runWithoutHistory.html',
+  ),
   blocSignalState('state', 'bloc_signals', 'BlocSignalBase/state.html'),
   blocSignalStateValue(
     'stateValue',
@@ -200,6 +221,16 @@ enum DocSymbol(
     'ReplayBlocMixin-mixin.html',
   ),
   onReplay('onReplay', 'bloc_signals_replay', 'ReplayBlocMixin/onReplay.html'),
+  canUndoSignal(
+    'canUndoSignal',
+    'bloc_signals_replay',
+    'ReplayMixin/canUndoSignal.html',
+  ),
+  canRedoSignal(
+    'canRedoSignal',
+    'bloc_signals_replay',
+    'ReplayMixin/canRedoSignal.html',
+  ),
 
   // Riverpod (bloc_signals_riverpod)
   riverpodBlocSignal(

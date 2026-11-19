@@ -38,8 +38,17 @@ class const DocsPkgReplayPage({super.key}) extends StatelessComponent {
         p([
           Component.text(
             'The bloc_signals_replay package equips state containers with time-travel capabilities. '
-            'It records state history stacks without copying heavyweight objects, exposing synchronous '
-            'canUndo and canRedo signals that bind seamlessly to Flutter buttons and key shortcuts.',
+            'It records state history stacks without copying heavyweight objects, exposing reactive ',
+          ),
+          code([Component.text('canUndo')]),
+          Component.text(', '),
+          code([Component.text('canRedo')]),
+          Component.text(', '),
+          apiLink(DocSymbol.canUndoSignal),
+          Component.text(', and '),
+          apiLink(DocSymbol.canRedoSignal),
+          Component.text(
+            ' signals backed by Computed<bool> (autoDispose: false) so context.select, Watch, computed(), and effect() update atomically inside batch() alongside stateValue.',
           ),
         ]),
         const DocsCodeBlock(
@@ -95,8 +104,12 @@ class DrawingCubit() extends ReplayCubit<CanvasState> {
         ),
         p([
           Component.text(
-            'In your UI, bind undo and redo buttons directly to canUndo and canRedo signals:',
+            'In your UI, bind undo and redo buttons directly to canUndo/canRedo via context.select (or pass ',
           ),
+          apiLink(DocSymbol.canUndoSignal),
+          Component.text(' / '),
+          apiLink(DocSymbol.canRedoSignal),
+          Component.text(' directly to signal builders):'),
         ]),
         const DocsCodeBlock(
           title: 'lib/canvas_toolbar.dart',
@@ -252,7 +265,14 @@ class FormFieldCubit extends ReplayCubit<FormFieldState> {
         p([
           Component.text(
             'If your state container already extends a custom base class or another satellite container '
-            '(such as HydratedCubitSignal), compose replay functionality using ReplayCubitMixin or ReplayBlocMixin. '
+            '(such as HydratedCubitSignal), compose replay functionality using ReplayCubitMixin or ReplayBlocMixin in either mixin order. '
+            'Cold-boot hydration suppresses history via ',
+          ),
+          apiLink(DocSymbol.blocSignalRunWithoutHistory),
+          Component.text(', and HydratedMixin.clear() executes '),
+          apiLink(DocSymbol.blocSignalOnReset),
+          Component.text(
+            ' inside batch() so undo and redo stacks clear atomically on logout. '
             'When custom subclassing ReplayBloc or ReplayBlocMixin, hook time-travel handling via @protected ',
           ),
           apiLink(DocSymbol.onReplay),

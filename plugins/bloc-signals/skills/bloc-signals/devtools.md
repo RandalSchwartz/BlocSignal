@@ -10,7 +10,7 @@ This guide details Flutter DevTools inspection and VM service telemetry for `Blo
 
 - **Lifecycle Telemetry**: Intercepts `onCreate`, `onEvent`, `onTransition`, `onChange`, `onError`, and `onClose`.
 - **Causal Trace Correlation**: Links incoming `add(event)` IDs to their exact caused `emit(state)` transitions.
-- **Observer Chaining**: Accepts a `previousObserver` parameter so developers can combine DevTools telemetry with OpenTelemetry (`bloc_signals_otel`) seamlessly.
+- **Observer Chaining**: Accepts a `previousObserver` parameter so developers can combine DevTools telemetry with OpenTelemetry (`bloc_signals_otel`) seamlessly, isolating any `previousObserver` `Exception` across all 8 lifecycle hooks via `bloc.onError()` (and safely absorbing `previousObserver.onError` exceptions to prevent recursion).
 - **Zero Release Overhead**: Telemetry posting calls are guarded with `kDebugMode` / debug assertions and stripped in production release builds.
 
 ---
@@ -93,7 +93,7 @@ Add `bloc_signals_devtools` to your application's `dev_dependencies`:
 
 ```yaml
 dev_dependencies:
-  bloc_signals_devtools: ^1.0.2
+  bloc_signals_devtools: ^1.0.3
 ```
 
 ### 2. Automatic Discovery

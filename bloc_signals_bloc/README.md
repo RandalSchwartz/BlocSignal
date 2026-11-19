@@ -106,8 +106,8 @@ BlocBuilder<BlocSignalToClassicBloc<CounterEvent, int>, int>(
 
 | Direction | Mechanism | Lifecycle Coupling |
 | :--- | :--- | :--- |
-| **Classic → `BlocSignal`** <br> (`toBlocSignal`) | Subscribes to `bloc.stream` and forwards state emissions. | `autoClose: false` (default) keeps the classic Bloc open. `autoClose: true` closes the underlying classic Bloc when the adapter closes. |
-| **`BlocSignal` → Classic** <br> (`toClassicBloc`) | Subscribes to `blocSignal.state` and emits classic stream events. | `autoClose: false` (default) keeps the `BlocSignal` open. `autoClose: true` closes the `BlocSignal` when the classic adapter closes. |
+| **Classic → `BlocSignal`** <br> (`toBlocSignal`) | Subscribes to `bloc.stream` and forwards state emissions; `ClassicBlocSignal.add` isolates `BlocSignalObserver.onEvent` exceptions via `onError` and pairs `onEventCompleted` in `finally`. | `autoClose: false` (default) keeps the classic Bloc open. `autoClose: true` closes the underlying classic Bloc when the adapter closes. |
+| **`BlocSignal` → Classic** <br> (`toClassicBloc` / `toClassicCubit`) | Subscribes to `blocSignal.state` and emits classic stream events. | `autoClose: false` (default) keeps the `BlocSignal` open when the classic adapter closes; `autoClose: true` closes the `BlocSignal`. In both modes, closing the wrapped `BlocSignalBase` automatically closes `BlocSignalToClassicBloc` / `BlocSignalToClassicCubit` cleanly. |
 
 ---
 

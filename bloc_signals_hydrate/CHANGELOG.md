@@ -1,7 +1,8 @@
-## Unreleased
+## 1.1.3
 
 - **Fix (hydrate)**: Suppress history recording during `HydratedMixin.hydrate()` and `HydratedMixin.clear()` via `runWithoutHistory()`, and invoke `onReset()` inside `batch()` on `clear()` so composed `ReplayMixin` stacks do not pollute undo history on cold boot or resurrect wiped state after logout (#471).
 - **Fix (hydrate)**: Isolate recoverable deserialization `Error` subtypes (`TypeError`, `ArgumentError`, `RangeError`, `StateError`, `UnsupportedError`) and non-`Error` platform objects (such as Web `DOMException` / `QuotaExceededError`) via `onError`, strip `source` from `FormatException` in `SharedPreferencesHydratedStorage.read`, and reject corrupt non-JSON entries in `SecureHydratedStorage` with sanitized `FormatException` instead of caching raw strings (#469).
+- **Dependencies**: Bump `bloc_signals` to `^1.8.0`.
 
 ## 1.1.2
 

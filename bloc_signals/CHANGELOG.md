@@ -1,4 +1,4 @@
-## Unreleased
+## 1.8.0
 
 - **Feat (core)**: Add `@protected` coordination hooks (`onReset()`, `isHistorySuppressed`, and `runWithoutHistory()`) on `BlocSignalBase` and `CubitSignalMixin` so sibling persistence and replay mixins coordinate reset and unrecorded emissions without cross-package coupling (#471).
 - **Fix (core)**: Dispose owned `StreamSignal` and `FutureSignal` instances in `toAsyncBlocSignal()` on `close()` with a `Completer` late-settlement guard preventing post-dispose `SignalsWriteAfterDisposeError` (#470).

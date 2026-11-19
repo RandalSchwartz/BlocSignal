@@ -301,11 +301,23 @@ class LegacyBlocView extends StatelessWidget {
           Component.text('By default, adapting a classic Bloc with '),
           code([Component.text('toBlocSignal(autoClose: true)')]),
           Component.text(
-            ' will automatically close the underlying classic Bloc when the adapted BlocSignal is closed. '
+            ' will automatically close the underlying classic Bloc when the adapted ',
+          ),
+          apiLink(DocSymbol.classicBlocSignal),
+          Component.text(
+            ' is closed, and ClassicBlocSignal.add isolates BlocSignalObserver.onEvent exceptions via onError while pairing onEventCompleted in a finally block. '
             'If you want the classic Bloc to remain open after the adapter is closed, pass ',
           ),
           code([Component.text('autoClose: false')]),
-          Component.text('.'),
+          Component.text(
+            '. Conversely, when adapting a modern BlocSignalBase with ',
+          ),
+          apiLink(DocSymbol.blocSignalToClassicBloc),
+          Component.text(' or '),
+          apiLink(DocSymbol.blocSignalToClassicCubit),
+          Component.text(
+            ', closing the wrapped BlocSignalBase automatically closes the classic adapter cleanly regardless of autoClose, and repeated or reentrant close() calls share a cached completion Future.',
+          ),
         ]),
         const DocsCodeBlock(
           title: 'lib/lifecycle_example.dart',

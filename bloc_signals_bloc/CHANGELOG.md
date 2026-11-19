@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.0.4
 
 - **Fix (bloc)**: Isolate `BlocSignalObserver.onEvent` exceptions and pair `onEventCompleted` in `finally` inside `ClassicBlocSignal.add`, and automatically close `BlocSignalToClassicBloc` and `BlocSignalToClassicCubit` when the wrapped `BlocSignalBase` closes (#470).
 

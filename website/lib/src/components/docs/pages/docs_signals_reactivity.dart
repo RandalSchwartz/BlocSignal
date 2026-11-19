@@ -1,3 +1,4 @@
+import 'package:blocsignal_website/src/models/pub_api_registry.dart';
 import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -202,6 +203,16 @@ final disposeEffect = effect(() {
           Component.text(
             'You can seamlessly convert any ReadonlySignal (including raw signals, computed values, stream signals, and lifted primitives), '
             'asynchronous Future, or Stream into a BlocSignalBase state container using the .toBlocSignal() and .toAsyncBlocSignal() extensions:',
+          ),
+        ]),
+        p([
+          Component.text(
+            'Both Future.toAsyncBlocSignal() and Stream.toAsyncBlocSignal() return an owned ',
+          ),
+          apiLink(DocSymbol.signalBlocSignal),
+          Component.text(
+            ' (with disposeSignalOnClose: true) that automatically disposes its internally created FutureSignal or StreamSignal, cancels explicit timeout timers, and guards against late settlements on close(). '
+            'By contrast, signal.toBlocSignal() defaults to disposeSignalOnClose: false so caller-owned signals remain active after the adapter closes.',
           ),
         ]),
         const DocsCodeBlock(

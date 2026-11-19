@@ -50,7 +50,7 @@ Add `bloc_signals_genui` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^1.7.2
+  bloc_signals: ^1.8.0
   bloc_signals_genui: ^2.0.2
   a2ui_core: ^0.7.0
 ```

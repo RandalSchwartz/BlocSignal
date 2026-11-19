@@ -46,6 +46,11 @@ void main() {
       expect(names, contains('CubitSignalMixin'));
       expect(names, contains('BlocSignalMixin'));
       expect(names, contains('BlocSignalObserver'));
+      expect(names, contains('CompositeBlocSignalObserver'));
+      expect(names, contains('SignalBlocSignal'));
+      expect(names, contains('onReset'));
+      expect(names, contains('isHistorySuppressed'));
+      expect(names, contains('runWithoutHistory'));
       expect(names, contains('droppable'));
       expect(names, contains('restartable'));
       expect(names, contains('sequential'));
@@ -67,6 +72,8 @@ void main() {
       expect(names, contains('ReplayCubit'));
       expect(names, contains('ReplayBloc'));
       expect(names, contains('onReplay'));
+      expect(names, contains('canUndoSignal'));
+      expect(names, contains('canRedoSignal'));
       expect(names, contains('on'));
       expect(names, contains('emit'));
       expect(names, contains('emitError'));

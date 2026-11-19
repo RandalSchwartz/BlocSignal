@@ -61,7 +61,7 @@ class const DocsPkgDevtoolsPage({super.key}) extends StatelessComponent {
           Component.text(' in debug mode (backed by '),
           apiLink(DocSymbol.devToolsService),
           Component.text(
-            ', which enforces release-mode isEnabled guards cleanly without debug-only side-effecting assertions):',
+            ', which enforces release-mode isEnabled guards cleanly without debug-only side-effecting assertions). When chaining a previousObserver, DevToolsBlocSignalObserver isolates previousObserver exceptions across all 8 lifecycle hooks via bloc.onError() while safeguarding onError from recursive exceptions:',
           ),
         ]),
         const DocsCodeBlock(

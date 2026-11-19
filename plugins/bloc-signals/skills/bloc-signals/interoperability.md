@@ -51,6 +51,8 @@ final priceBloc = 49.99.$.toBlocSignal();
 ```
 
 ### Future ➔ `BlocSignal` (Pushing Async to the Boundary)
+`toAsyncBlocSignal()` constructs an owned `SignalBlocSignal<AsyncState<T>>` (`disposeSignalOnClose: true`) so calling `close()` disposes the internally created `FutureSignal`, cancels explicit timeout timers, and guards late `Future` settlements against `SignalsWriteAfterDisposeError` via a `Completer` wrapper. By contrast, `signal.toBlocSignal()` defaults to `disposeSignalOnClose: false` so caller-owned signals remain active after the adapter closes.
+
 ```dart
 // 1. Raw State: Converts Future<T> to BlocSignalBase<T> with required initialState
 final userBloc = api.fetchUser(id).toBlocSignal(initialState: User.anonymous());
@@ -76,6 +78,7 @@ BlocSignalBuilder(
 The dedicated `bloc_signals_bloc` package provides full bidirectional read-and-mutate bridges between classic `package:bloc` components (`Bloc`, `Cubit`, `BlocBase`) and modern `BlocSignal` containers:
 
 ### Classic BLoC ➔ `BlocSignal` (Bidirectional Read & Mutate)
+`ClassicBlocSignal.add` isolates `BlocSignalObserver.onEvent` exceptions via `onError` and pairs `onEventCompleted` in `finally`, while forwarding events to the underlying classic `Bloc`.
 ```dart
 import 'package:bloc_signals_bloc/bloc_signals_bloc.dart';
 
@@ -108,7 +111,7 @@ cubitSignal.cubit.increment();
 ```
 
 ### Modern `BlocSignal` ➔ Classic BLoC (Legacy UI Compatibility)
-Drop modern streamless `BlocSignal` or `CubitSignal` containers directly into legacy `flutter_bloc` UI widgets without rewriting existing presentation trees:
+Drop modern streamless `BlocSignal` or `CubitSignal` containers directly into legacy `flutter_bloc` UI widgets without rewriting existing presentation trees. When the wrapped `BlocSignalBase` closes, `BlocSignalToClassicBloc` and `BlocSignalToClassicCubit` automatically close cleanly (regardless of `autoClose`), and repeated/reentrant `close()` calls share a synchronously cached completion `Future`:
 
 ```dart
 final modernBloc = ModernCounterBloc();
@@ -212,7 +215,7 @@ final blocSignal = myChangeNotifier.toBlocSignal(
 ```
 
 ### `BlocSignal` ➔ `ValueListenable`
-Exposes a `ValueListenable<T>` for Flutter's `ValueListenableBuilder` or `package:provider` (lazily subscribing to `bloc.state` when the first listener is added and automatically unsubscribing when the last listener is removed):
+Exposes a `ValueListenable<T>` for Flutter's `ValueListenableBuilder` or `package:provider`, implementing `ValueListenable<T>` directly without extending `ValueNotifier<T>` (eliminating initial-state pinning and `FlutterMemoryAllocations` leak-tracker reports while lazily subscribing to `bloc.state` when the first listener is added, automatically unsubscribing when the last listener is removed, and exposing idempotent `dispose()`):
 
 ```dart
 final ValueListenable<int> listenable = myBlocSignal.toValueListenable();

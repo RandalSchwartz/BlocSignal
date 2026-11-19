@@ -66,7 +66,17 @@ class SharedPreferencesHydratedStorage implements HydratedStorage {
     // ignore: avoid_dynamic_calls
     final dynamic value = _prefs.getString(_prefixedKey(key));
     if (value == null || value is! String) return null;
-    return jsonDecode(value);
+    try {
+      return jsonDecode(value);
+    } on FormatException catch (error) {
+      // Strip raw `source` and parser `message` so persisted secrets/PII never
+      // leak into logs (for example via Web JSON.parse SyntaxError.message).
+      throw FormatException(
+        'Invalid JSON in hydrated storage',
+        null,
+        error.offset,
+      );
+    }
   }
 
   @override

@@ -304,7 +304,8 @@ class UserProfileCubit extends HydratedCubitSignal<UserProfile?> {
           Component.text(
             'When an id is set, HydratedMixin.storageToken percent-encodes storagePrefix and id via Uri.encodeComponent joined by ":" to prevent separator collisions. '
             'Override storagePrefix with a stable string literal in release web/obfuscated builds where runtimeType.toString() is minified, '
-            'and deserialization FormatExceptions omit raw stored JSON payloads when routed to onError().',
+            'and deserialization FormatExceptions omit raw stored JSON payloads (source == null) while rejecting corrupt SecureHydratedStorage entries instead of caching raw strings. '
+            'initHydratedState and storage I/O boundaries isolate recoverable deserialization errors and non-Error platform objects via onError() while keeping fatal VM Errors fail-fast.',
           ),
         ]),
         const DocsCallout(

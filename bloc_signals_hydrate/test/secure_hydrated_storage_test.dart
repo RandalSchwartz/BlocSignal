@@ -61,7 +61,7 @@ void main() {
 
       expect(storage.read('auth_token'), equals('secret_jwt_token'));
       expect(storage.read('user_id'), equals(12345));
-      expect(storage.read('raw_string'), equals('not_json_string'));
+      expect(() => storage.read('raw_string'), throwsFormatException);
     });
 
     test('pre-loads with custom prefix and isolates other keys', () async {
@@ -313,5 +313,140 @@ void main() {
         ]),
       );
     });
+
+    test(
+        '(Issue #469: build() + read() rejects corrupt non-JSON entries with '
+        'sanitized FormatException and HydratedCubitSignal falls back to '
+        'initialState)', () async {
+      const rawSecret = 'corrupt-raw-oauth-secret-999';
+      await secureStorage.write(
+        key: '${kDefaultHydratedStoragePrefix}_ErrorCapturingStringCubit',
+        value: rawSecret,
+      );
+
+      final storage = await SecureHydratedStorage.build(secureStorage);
+
+      Object? caught;
+      try {
+        storage.read('_ErrorCapturingStringCubit');
+      } on FormatException catch (e) {
+        caught = e;
+      }
+      expect(caught, isA<FormatException>());
+      final formatException = caught! as FormatException;
+      expect(formatException.source, isNull);
+      expect(formatException.toString(), isNot(contains(rawSecret)));
+
+      final cubit = _ErrorCapturingStringCubit(storage: storage);
+      addTearDown(cubit.close);
+      expect(cubit.stateValue, equals('default_token'));
+      expect(cubit.capturedErrors.single, isA<FormatException>());
+    });
+
+    test(
+        '(Issue #469: write(), delete(), and clear() clear corrupt key state '
+        'and write() isolates _cache via cloneHydratedJsonValue)', () async {
+      await secureStorage.write(
+        key: '${kDefaultHydratedStoragePrefix}k_write',
+        value: '{corrupt-1',
+      );
+      await secureStorage.write(
+        key: '${kDefaultHydratedStoragePrefix}k_delete',
+        value: '{corrupt-2',
+      );
+      await secureStorage.write(
+        key: '${kDefaultHydratedStoragePrefix}k_clear',
+        value: '{corrupt-3',
+      );
+
+      final storage = await SecureHydratedStorage.build(secureStorage);
+      expect(() => storage.read('k_write'), throwsFormatException);
+      expect(() => storage.read('k_delete'), throwsFormatException);
+      expect(() => storage.read('k_clear'), throwsFormatException);
+
+      // write() clears corrupt state and clones mutable collections.
+      final mutableMap = <String, dynamic>{
+        'nested': <int>[1, 2],
+        'meta': <String, dynamic>{'count': 1},
+      };
+      await storage.write('k_write', mutableMap);
+      (mutableMap['nested'] as List<int>).add(3);
+      (mutableMap['meta'] as Map<String, dynamic>)['count'] = 999;
+      mutableMap['injected'] = true;
+
+      final readBack = storage.read('k_write') as Map<String, dynamic>;
+      expect(identical(readBack, mutableMap), isFalse);
+      expect(identical(readBack['nested'], mutableMap['nested']), isFalse);
+      expect(identical(readBack['meta'], mutableMap['meta']), isFalse);
+      expect(
+        readBack,
+        equals(<String, dynamic>{
+          'nested': <int>[1, 2],
+          'meta': <String, dynamic>{'count': 1},
+        }),
+      );
+
+      // delete() clears corrupt state.
+      await storage.delete('k_delete');
+      expect(storage.read('k_delete'), isNull);
+
+      // clear() clears corrupt state and underlying storage.
+      await storage.clear();
+      expect(storage.read('k_clear'), isNull);
+      expect(
+        await secureStorage.read(
+          key: '${kDefaultHydratedStoragePrefix}k_clear',
+        ),
+        isNull,
+      );
+    });
+
+    test(
+        '(Issue #469: write() stores decoded JSON snapshot for '
+        'toJson()-encodable objects)', () async {
+      final storage = await SecureHydratedStorage.build(secureStorage);
+      final payload = _ToJsonPayload(
+        tags: <String>['alpha', 'beta'],
+        nested: <String, dynamic>{'count': 1},
+      );
+
+      await storage.write('obj_key', payload);
+      payload.tags.add('gamma');
+      payload.nested['count'] = 999;
+
+      final readBack = storage.read('obj_key') as Map<String, dynamic>;
+      expect(
+        readBack,
+        equals(<String, dynamic>{
+          'tags': <String>['alpha', 'beta'],
+          'nested': <String, dynamic>{'count': 1},
+        }),
+      );
+    });
   });
+}
+
+class _ToJsonPayload {
+  _ToJsonPayload({required this.tags, required this.nested});
+
+  final List<String> tags;
+  final Map<String, dynamic> nested;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+        'tags': tags,
+        'nested': nested,
+      };
+}
+
+class _ErrorCapturingStringCubit extends HydratedCubitSignal<String> {
+  _ErrorCapturingStringCubit({super.storage})
+      : super(initialState: 'default_token');
+
+  final List<Object> capturedErrors = [];
+
+  @override
+  void onError(Object error, StackTrace stackTrace) {
+    capturedErrors.add(error);
+    super.onError(error, stackTrace);
+  }
 }

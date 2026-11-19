@@ -277,15 +277,15 @@ void main() {
     );
 
     test(
-      '(Issue #340) fatal Error (StateError / AssertionError) in synchronous '
+      '(Issue #340) fatal Error (AssertionError / StateError) in synchronous '
       'hydrate, persist, and clear is NOT swallowed and fails fast',
       () async {
         final fatalReadStorage = _ConfigurableThrowingStorage(
-          onRead: () => throw StateError('fatal read bug'),
+          onRead: () => throw AssertionError('fatal read bug'),
         );
         expect(
           () => TestReliabilityCubit(storage: fatalReadStorage),
-          throwsStateError,
+          throwsA(isA<AssertionError>()),
         );
 
         final fatalWriteStorage = _ConfigurableThrowingStorage(
@@ -343,6 +343,213 @@ void main() {
         expect(cubit.capturedErrors, isEmpty);
       },
     );
+
+    test(
+      '(Issue #469: initHydratedState recovers from TypeError, ArgumentError, '
+      'RangeError, StateError, UnsupportedError, and non-Error platform '
+      'objects while propagating AssertionError)',
+      () async {
+        final recoverableErrors = <Object>[
+          TypeError(),
+          ArgumentError('bad arg'),
+          RangeError('bad range'),
+          StateError('bad state'),
+          UnsupportedError('unsupported'),
+          _FakeDomException('QuotaExceededError'),
+        ];
+
+        for (final err in recoverableErrors) {
+          final cubitStorage = MemoryHydratedStorage()
+            ..write('_FromJsonThrowingCubit', 99);
+          final cubit = _FromJsonThrowingCubit(
+            storage: cubitStorage,
+            errorToThrow: err,
+          );
+          addTearDown(cubit.close);
+          expect(cubit.stateValue, equals(0));
+          expect(cubit.capturedErrors.single, same(err));
+
+          final blocStorage = MemoryHydratedStorage()
+            ..write('_FromJsonThrowingBloc', 99);
+          final bloc = _FromJsonThrowingBloc(
+            storage: blocStorage,
+            errorToThrow: err,
+          );
+          addTearDown(bloc.close);
+          expect(bloc.stateValue, equals(0));
+          expect(bloc.capturedErrors.single, same(err));
+        }
+
+        final fatalStorage = MemoryHydratedStorage()
+          ..write('_FromJsonThrowingCubit', 99);
+        expect(
+          () => _FromJsonThrowingCubit(
+            storage: fatalStorage,
+            errorToThrow: AssertionError('fatal invariant'),
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+      },
+    );
+
+    test(
+      '(Issue #469: persist() and clear() isolate non-Error platform objects '
+      'via onError while Dart Error and toJson() Error fail fast)',
+      () async {
+        // Sync non-Error platform object on storage.write & storage.delete.
+        final syncPlatformError = _FakeDomException('DOMException sync');
+        final syncStorage = _ConfigurableThrowingStorage(
+          // Simulates Web DOMException which does not extend Exception/Error.
+          // ignore: only_throw_errors
+          onWrite: () => throw syncPlatformError,
+          // Simulates Web DOMException which does not extend Exception/Error.
+          // ignore: only_throw_errors
+          onDelete: () => throw syncPlatformError,
+        );
+        final syncCubit = TestReliabilityCubit(storage: syncStorage);
+        addTearDown(syncCubit.close);
+        syncCubit.increment();
+        expect(syncCubit.capturedErrors.length, equals(1));
+        expect(syncCubit.capturedErrors.last, same(syncPlatformError));
+
+        await syncCubit.clear();
+        expect(syncCubit.capturedErrors.length, equals(2));
+        expect(syncCubit.capturedErrors.last, same(syncPlatformError));
+
+        // Async Future.error non-Error platform object on write & delete.
+        final asyncPlatformError = _FakeDomException('QuotaExceededError');
+        final asyncStorage = _ConfigurableThrowingStorage(
+          onWrite: () => Future<void>.error(asyncPlatformError),
+          onDelete: () => Future<void>.error(asyncPlatformError),
+        );
+        final asyncCubit = TestReliabilityCubit(storage: asyncStorage);
+        addTearDown(asyncCubit.close);
+        asyncCubit.increment();
+        await Future<void>.delayed(Duration.zero);
+        expect(asyncCubit.capturedErrors.length, equals(1));
+        expect(asyncCubit.capturedErrors.last, same(asyncPlatformError));
+
+        await asyncCubit.clear();
+        expect(asyncCubit.capturedErrors.length, equals(2));
+        expect(asyncCubit.capturedErrors.last, same(asyncPlatformError));
+
+        // Queued mutex path when storage.write is in-flight.
+        final firstWriteCompleter = Completer<void>();
+        var writeCount = 0;
+        final queuedStorage = _ConfigurableThrowingStorage(
+          onWrite: () {
+            writeCount++;
+            if (writeCount == 1) return firstWriteCompleter.future;
+            return Future<void>.error(asyncPlatformError);
+          },
+        );
+        final queuedCubit = TestReliabilityCubit(storage: queuedStorage);
+        addTearDown(queuedCubit.close);
+        queuedCubit
+          ..increment() // holds _storageMutex
+          ..increment(); // queued in _storageMutex.protect
+        firstWriteCompleter.complete();
+        await Future<void>.delayed(Duration.zero);
+        expect(queuedCubit.capturedErrors.single, same(asyncPlatformError));
+
+        // toJson() Error still fails fast.
+        final toJsonErrorCubit = _ToJsonThrowingCubit(
+          storage: MemoryHydratedStorage(),
+        );
+        addTearDown(toJsonErrorCubit.close);
+        expect(
+          toJsonErrorCubit.increment,
+          throwsStateError,
+        );
+      },
+    );
+
+    test(
+      '(Issue #469: queued persist() Dart Error inside _storageMutex bypasses '
+      'onError, surfaces as unhandled zone error, and releases _storageMutex)',
+      () async {
+        final parentZone = Zone.current;
+        final uncaughtCompleter = Completer<Object>();
+        final firstWriteCompleter = Completer<void>();
+        var writeCalls = 0;
+        final writesSucceeded = <int>[];
+
+        final storage = _ConfigurableThrowingStorage(
+          onWrite: () {
+            writeCalls++;
+            if (writeCalls == 1) return firstWriteCompleter.future;
+            if (writeCalls == 2) throw StateError('queued fatal write');
+            writesSucceeded.add(writeCalls);
+            return null;
+          },
+        );
+        final cubit = TestReliabilityCubit(storage: storage);
+        addTearDown(cubit.close);
+
+        runZonedGuarded(
+          () {
+            cubit
+              ..increment() // holds _storageMutex
+              ..increment(); // queued in _storageMutex.protect
+            firstWriteCompleter.complete();
+          },
+          (error, stackTrace) {
+            if (uncaughtCompleter.isCompleted) {
+              parentZone.handleUncaughtError(error, stackTrace);
+              return;
+            }
+            uncaughtCompleter.complete(error);
+          },
+        );
+
+        final uncaught = await uncaughtCompleter.future.timeout(
+          const Duration(milliseconds: 200),
+        );
+        expect(uncaught, isA<StateError>());
+        expect(cubit.capturedErrors, isEmpty);
+
+        // Verify _storageMutex was released and subsequent persist() succeeds.
+        cubit.increment();
+        await Future<void>.delayed(Duration.zero);
+        expect(writesSucceeded, equals(<int>[3]));
+      },
+    );
+
+    test(
+      '(Issue #469: persist(null) storage.delete path isolates non-Error '
+      'platform objects and rethrows Error; storage.read TypeError recovers)',
+      () async {
+        // storage.read directly throwing TypeError recovers to initialState.
+        final typeErrorReadStorage = _ConfigurableThrowingStorage(
+          onRead: () => throw TypeError(),
+        );
+        final readCubit = TestReliabilityCubit(storage: typeErrorReadStorage);
+        addTearDown(readCubit.close);
+        expect(readCubit.stateValue, equals(0));
+        expect(readCubit.capturedErrors.single, isA<TypeError>());
+
+        // persist(null) -> storage.delete isolating _FakeDomException.
+        final domException = _FakeDomException('DOMException delete');
+        final domDeleteStorage = _ConfigurableThrowingStorage(
+          // Simulates Web DOMException which does not extend Exception/Error.
+          // ignore: only_throw_errors
+          onDelete: () => throw domException,
+        );
+        final domDeleteCubit = _NullableJsonCubit(storage: domDeleteStorage);
+        addTearDown(domDeleteCubit.close);
+        domDeleteCubit.emitNullJson();
+        expect(domDeleteCubit.capturedErrors.single, same(domException));
+
+        // persist(null) -> storage.delete rethrowing Dart Error.
+        final errorDeleteStorage = _ConfigurableThrowingStorage(
+          onDelete: () => throw StateError('fatal delete in persist'),
+        );
+        final errorDeleteCubit =
+            _NullableJsonCubit(storage: errorDeleteStorage);
+        addTearDown(errorDeleteCubit.close);
+        expect(errorDeleteCubit.emitNullJson, throwsStateError);
+      },
+    );
   });
 }
 
@@ -393,5 +600,84 @@ class _TestObserver extends BlocSignalObserver {
   ) {
     super.onError(bloc, error, stackTrace);
     onErrorCallback?.call(bloc, error, stackTrace);
+  }
+}
+
+class _FakeDomException {
+  _FakeDomException(this.name);
+  final String name;
+  @override
+  String toString() => 'DOMException: $name';
+}
+
+class _FromJsonThrowingCubit extends HydratedCubitSignal<int> {
+  _FromJsonThrowingCubit({
+    required this.errorToThrow,
+    super.storage,
+  }) : super(initialState: 0);
+
+  final Object errorToThrow;
+  final List<Object> capturedErrors = [];
+
+  @override
+  int? fromJson(dynamic json) {
+    // Throws parameterized test objects including non-Error platform fakes.
+    // ignore: only_throw_errors
+    throw errorToThrow;
+  }
+
+  @override
+  void onError(Object error, StackTrace stackTrace) {
+    capturedErrors.add(error);
+    super.onError(error, stackTrace);
+  }
+}
+
+class _FromJsonThrowingBloc extends HydratedBlocSignal<int, int> {
+  _FromJsonThrowingBloc({
+    required this.errorToThrow,
+    super.storage,
+  }) : super(initialState: 0);
+
+  final Object errorToThrow;
+  final List<Object> capturedErrors = [];
+
+  @override
+  int? fromJson(dynamic json) {
+    // Throws parameterized test objects including non-Error platform fakes.
+    // ignore: only_throw_errors
+    throw errorToThrow;
+  }
+
+  @override
+  void onError(Object error, StackTrace stackTrace) {
+    capturedErrors.add(error);
+    super.onError(error, stackTrace);
+  }
+}
+
+class _ToJsonThrowingCubit extends HydratedCubitSignal<int> {
+  _ToJsonThrowingCubit({super.storage}) : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
+
+  @override
+  dynamic toJson(int state) => throw StateError('toJson bug');
+}
+
+class _NullableJsonCubit extends HydratedCubitSignal<int> {
+  _NullableJsonCubit({super.storage}) : super(initialState: 0);
+
+  final List<Object> capturedErrors = [];
+
+  void emitNullJson() => emit(stateValue + 1);
+
+  @override
+  dynamic toJson(int state) => null;
+
+  @override
+  void onError(Object error, StackTrace stackTrace) {
+    capturedErrors.add(error);
+    super.onError(error, stackTrace);
   }
 }

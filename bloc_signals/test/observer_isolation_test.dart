@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:test/test.dart';
@@ -596,6 +597,160 @@ void main() {
       addTearDown(transitionBloc.close);
       expect(() => transitionBloc.add('go'), throwsStateError);
     });
+
+    test(
+      '(Issue #470) CompositeBlocSignalObserver tolerates addObserver and '
+      'removeObserver inside all 8 hooks without ConcurrentModificationError',
+      () async {
+        final composite = CompositeBlocSignalObserver();
+        BlocSignalObserver.observer = composite;
+        addTearDown(() => BlocSignalObserver.observer = null);
+
+        final extra = _NoopObserver();
+        final after = _RecordingNoopObserver();
+        final mutator = _ReentrantMutatingObserver(
+          composite: composite,
+          target: extra,
+        );
+        composite
+          ..add(mutator)
+          ..add(after);
+
+        final bloc = _SyncTestBloc();
+        expect(mutator.hookCalls, contains('onCreate'));
+        expect(after.hookCalls, contains('onCreate'));
+
+        bloc.add('go');
+        expect(
+          mutator.hookCalls,
+          containsAll([
+            'onEvent',
+            'onChange',
+            'onTransition',
+            'onEventCompleted',
+          ]),
+        );
+        expect(
+          after.hookCalls,
+          containsAll([
+            'onEvent',
+            'onChange',
+            'onTransition',
+            'onEventCompleted',
+          ]),
+        );
+
+        bloc.triggerError(Exception('boom'));
+        expect(mutator.hookCalls, contains('onError'));
+        expect(after.hookCalls, contains('onError'));
+
+        bloc.triggerTelemetry('metric');
+        expect(mutator.hookCalls, contains('onTelemetry'));
+        expect(after.hookCalls, contains('onTelemetry'));
+
+        await bloc.close();
+        expect(mutator.hookCalls, contains('onClose'));
+        expect(after.hookCalls, contains('onClose'));
+      },
+    );
+
+    test(
+      '(Issue #470) DevToolsBlocSignalObserver isolates throwing '
+      'previousObserver across all 8 hooks',
+      () async {
+        final previousEnabled = DevToolsService.instance.isEnabled;
+        DevToolsService.instance.isEnabled = true;
+        addTearDown(() {
+          DevToolsService.instance.isEnabled = previousEnabled;
+          BlocSignalObserver.observer = null;
+        });
+
+        for (final hook in [
+          'onCreate',
+          'onEvent',
+          'onEventCompleted',
+          'onTransition',
+          'onChange',
+          'onTelemetry',
+          'onClose',
+        ]) {
+          final throwingPrev = _ErrorThrowingObserver(
+            errorToThrow: Exception('devtools prev $hook'),
+            hookToThrow: hook,
+          );
+          BlocSignalObserver.observer =
+              DevToolsBlocSignalObserver(previousObserver: throwingPrev);
+
+          final bloc = _SyncTestBloc();
+          if (hook == 'onCreate') {
+            expect(
+              bloc.errors.any((e) => e.toString().contains('devtools prev')),
+              isTrue,
+              reason: 'onCreate exception should route to bloc.onError',
+            );
+          } else if (hook == 'onTelemetry') {
+            bloc.triggerTelemetry('m');
+            expect(
+              bloc.errors.any(
+                (e) => e.toString().contains('devtools prev onTelemetry'),
+              ),
+              isTrue,
+            );
+          } else if (hook == 'onClose') {
+            await bloc.close();
+            expect(
+              bloc.errors.any(
+                (e) => e.toString().contains('devtools prev onClose'),
+              ),
+              isTrue,
+            );
+          } else {
+            bloc.add('test_$hook');
+            expect(bloc.stateValue, equals(1));
+            final historyResp = await DevToolsService.instance.handleGetHistory(
+              'ext.bloc_signal.getHistory',
+              {'hashCode': '${identityHashCode(bloc)}'},
+            );
+            final historyJson =
+                jsonDecode(historyResp.result!) as Map<String, dynamic>;
+            expect(historyJson['history'], isNotEmpty);
+            expect(
+              bloc.errors.any(
+                (e) => e.toString().contains('devtools prev $hook'),
+              ),
+              isTrue,
+              reason: '$hook exception should route to bloc.onError',
+            );
+          }
+          if (!bloc.isClosed) {
+            await bloc.close();
+          }
+        }
+
+        // StateError thrown by previousObserver must propagate fail-fast
+        BlocSignalObserver.observer = DevToolsBlocSignalObserver(
+          previousObserver: _ErrorThrowingObserver(
+            errorToThrow: StateError('devtools prev fatal'),
+            hookToThrow: 'onEvent',
+          ),
+        );
+        final fatalBloc = _SyncTestBloc();
+        addTearDown(fatalBloc.close);
+        expect(() => fatalBloc.add('boom'), throwsStateError);
+
+        // onError hook must isolate without recursing into bloc.onError
+        final throwingOnError = _ErrorThrowingObserver(
+          errorToThrow: Exception('devtools prev onError'),
+          hookToThrow: 'onError',
+        );
+        BlocSignalObserver.observer =
+            DevToolsBlocSignalObserver(previousObserver: throwingOnError);
+        final bloc = _SyncTestBloc()..triggerError(Exception('root error'));
+        expect(bloc.errors, hasLength(1));
+        expect(bloc.errors.first.toString(), contains('root error'));
+        await bloc.close();
+      },
+    );
   });
 }
 
@@ -718,4 +873,114 @@ class _FatalHandleTransitionBloc extends BlocSignal<String, int> {
     super.handleTransition(event, oldState, newState);
     throw StateError('Fatal handleTransition invariant failure');
   }
+}
+
+class _NoopObserver extends BlocSignalObserver {}
+
+class _RecordingNoopObserver extends BlocSignalObserver {
+  final List<String> hookCalls = [];
+
+  @override
+  void onCreate(BlocSignalBase<dynamic> bloc) => hookCalls.add('onCreate');
+
+  @override
+  void onEvent(BlocSignalBase<dynamic> bloc, Object? event) =>
+      hookCalls.add('onEvent');
+
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) =>
+      hookCalls.add('onEventCompleted');
+
+  @override
+  void onTransition(
+    BlocSignalBase<dynamic> bloc,
+    Object? event,
+    Object? state,
+  ) =>
+      hookCalls.add('onTransition');
+
+  @override
+  void onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change) =>
+      hookCalls.add('onChange');
+
+  @override
+  void onError(
+    BlocSignalBase<dynamic> bloc,
+    Object error,
+    StackTrace stackTrace,
+  ) =>
+      hookCalls.add('onError');
+
+  @override
+  void onTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) =>
+      hookCalls.add('onTelemetry');
+
+  @override
+  void onClose(BlocSignalBase<dynamic> bloc) => hookCalls.add('onClose');
+}
+
+class _ReentrantMutatingObserver extends BlocSignalObserver {
+  _ReentrantMutatingObserver({
+    required this.composite,
+    required this.target,
+  });
+
+  final CompositeBlocSignalObserver composite;
+  final BlocSignalObserver target;
+  final List<String> hookCalls = [];
+
+  void _mutate(String hook) {
+    hookCalls.add(hook);
+    composite
+      ..add(target)
+      ..remove(target);
+  }
+
+  @override
+  void onCreate(BlocSignalBase<dynamic> bloc) => _mutate('onCreate');
+
+  @override
+  void onEvent(BlocSignalBase<dynamic> bloc, Object? event) =>
+      _mutate('onEvent');
+
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) =>
+      _mutate('onEventCompleted');
+
+  @override
+  void onTransition(
+    BlocSignalBase<dynamic> bloc,
+    Object? event,
+    Object? state,
+  ) =>
+      _mutate('onTransition');
+
+  @override
+  void onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change) =>
+      _mutate('onChange');
+
+  @override
+  void onError(
+    BlocSignalBase<dynamic> bloc,
+    Object error,
+    StackTrace stackTrace,
+  ) =>
+      _mutate('onError');
+
+  @override
+  void onTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) =>
+      _mutate('onTelemetry');
+
+  @override
+  void onClose(BlocSignalBase<dynamic> bloc) => _mutate('onClose');
 }

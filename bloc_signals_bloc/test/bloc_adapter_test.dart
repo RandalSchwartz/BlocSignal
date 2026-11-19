@@ -90,10 +90,13 @@ class ModernCounterCubit extends CubitSignal<int> {
 
 class TestObserver extends BlocSignalObserver {
   final List<Object?> events = [];
+  final List<Object?> completedEvents = [];
   final List<Change<dynamic>> changes = [];
   final List<Object> errors = [];
   final List<BlocSignalBase<dynamic>> created = [];
   final List<BlocSignalBase<dynamic>> closed = [];
+  bool throwOnEvent = false;
+  bool throwOnEventCompleted = false;
 
   @override
   void onCreate(BlocSignalBase<dynamic> bloc) {
@@ -103,6 +106,17 @@ class TestObserver extends BlocSignalObserver {
   @override
   void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {
     events.add(event);
+    if (throwOnEvent) {
+      throw Exception('onEvent boom');
+    }
+  }
+
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+    completedEvents.add(event);
+    if (throwOnEventCompleted) {
+      throw Exception('onEventCompleted boom');
+    }
   }
 
   @override
@@ -531,4 +545,249 @@ void main() {
       },
     );
   });
+
+  group('(Issue #470) ClassicBlocSignal event span pairing & isolation', () {
+    test(
+      'ClassicBlocSignal.add pairs onEvent and onEventCompleted and isolates '
+      'throwing onEvent/onEventCompleted',
+      () async {
+        final observer = TestObserver()
+          ..throwOnEvent = true
+          ..throwOnEventCompleted = true;
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = null);
+
+        final classicBloc = ClassicCounterBloc();
+        addTearDown(classicBloc.close);
+        final blocSignal = classicBloc.toBlocSignal();
+        addTearDown(blocSignal.close);
+
+        blocSignal.add(const IncrementEvent());
+        await Future<void>.delayed(Duration.zero);
+
+        expect(observer.events, contains(isA<IncrementEvent>()));
+        expect(observer.completedEvents, contains(isA<IncrementEvent>()));
+        expect(
+          observer.errors.where((e) => e.toString().contains('onEvent boom')),
+          hasLength(1),
+        );
+        expect(
+          observer.errors.where(
+            (e) => e.toString().contains('onEventCompleted boom'),
+          ),
+          hasLength(1),
+        );
+        expect(classicBloc.state, equals(1));
+      },
+    );
+
+    test(
+      'ClassicBlocSignal.add still calls onEventCompleted in finally when '
+      'underlying bloc.add throws',
+      () async {
+        final observer = TestObserver();
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = null);
+
+        final throwingBloc = _ThrowingAddClassicBloc();
+        addTearDown(throwingBloc.close);
+        final blocSignal = throwingBloc.toBlocSignal();
+        addTearDown(blocSignal.close);
+
+        expect(
+          () => blocSignal.add(const IncrementEvent()),
+          throwsStateError,
+        );
+        expect(observer.events, contains(isA<IncrementEvent>()));
+        expect(observer.completedEvents, contains(isA<IncrementEvent>()));
+        expect(observer.errors, contains(isA<StateError>()));
+      },
+    );
+
+    test(
+      'ClassicBlocSignal.add isolates Exception thrown by underlying bloc.add '
+      'via onError and still calls onEventCompleted',
+      () async {
+        final observer = TestObserver();
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = null);
+
+        final throwingBloc = _ThrowingExceptionAddClassicBloc();
+        addTearDown(throwingBloc.close);
+        final blocSignal = throwingBloc.toBlocSignal();
+        addTearDown(blocSignal.close);
+
+        expect(
+          () => blocSignal.add(const IncrementEvent()),
+          returnsNormally,
+        );
+        expect(observer.events, contains(isA<IncrementEvent>()));
+        expect(observer.completedEvents, contains(isA<IncrementEvent>()));
+        expect(observer.errors, contains(isA<FormatException>()));
+      },
+    );
+  });
+
+  group('(Issue #470) BlocSignalToClassic* close propagation', () {
+    test(
+      'BlocSignalToClassicBloc closes automatically when wrapped BlocSignal '
+      'closes after construction or is already closed',
+      () async {
+        final modernBloc = ModernCounterBloc();
+        final classicAdapter = modernBloc.toClassicBloc();
+        expect(classicAdapter.isClosed, isFalse);
+
+        await modernBloc.close();
+        await Future<void>.delayed(Duration.zero);
+        expect(classicAdapter.isClosed, isTrue);
+
+        // Already closed before construction
+        final preClosedClassic = modernBloc.toClassicBloc();
+        await Future<void>.delayed(Duration.zero);
+        expect(preClosedClassic.isClosed, isTrue);
+        await preClosedClassic.close();
+        expect(preClosedClassic.isClosed, isTrue);
+
+        // Concurrent / second close() awaits in-flight closeFuture
+        final concurrentBloc = ModernCounterBloc();
+        final concurrentClassic = concurrentBloc.toClassicBloc(autoClose: true);
+        unawaited(concurrentClassic.close());
+        await concurrentClassic.close();
+        expect(concurrentClassic.isClosed, isTrue);
+        expect(concurrentBloc.isClosed, isTrue);
+      },
+    );
+
+    test(
+      'BlocSignalToClassicCubit closes automatically when wrapped CubitSignal '
+      'closes after construction or is already closed',
+      () async {
+        final modernCubit = ModernCounterCubit();
+        final classicCubit = modernCubit.toClassicCubit();
+        expect(classicCubit.isClosed, isFalse);
+
+        await modernCubit.close();
+        await Future<void>.delayed(Duration.zero);
+        expect(classicCubit.isClosed, isTrue);
+        await classicCubit.close();
+        expect(classicCubit.isClosed, isTrue);
+
+        // Already closed before construction
+        final preClosedClassic = modernCubit.toClassicCubit();
+        await Future<void>.delayed(Duration.zero);
+        expect(preClosedClassic.isClosed, isTrue);
+        await preClosedClassic.close();
+        expect(preClosedClassic.isClosed, isTrue);
+
+        // Concurrent / second close() awaits in-flight closeFuture
+        final concurrentCubit = ModernCounterCubit();
+        final concurrentClassic =
+            concurrentCubit.toClassicCubit(autoClose: true);
+        unawaited(concurrentClassic.close());
+        await concurrentClassic.close();
+        expect(concurrentClassic.isClosed, isTrue);
+        expect(concurrentCubit.isClosed, isTrue);
+      },
+    );
+
+    test(
+      'synchronous re-entrant close() inside BlocObserver.onClose returns '
+      'identical shared close future',
+      () async {
+        final previousBlocObserver = bloc_lib.Bloc.observer;
+        final reentrantObserver = _ReentrantOnCloseObserver();
+        bloc_lib.Bloc.observer = reentrantObserver;
+        addTearDown(() => bloc_lib.Bloc.observer = previousBlocObserver);
+
+        final modernBloc = ModernCounterBloc();
+        final classicBloc = modernBloc.toClassicBloc(autoClose: true);
+        final outerBlocFuture = classicBloc.close();
+        await outerBlocFuture;
+        expect(
+          identical(
+            reentrantObserver.reentrantFutures[classicBloc],
+            outerBlocFuture,
+          ),
+          isTrue,
+        );
+
+        final modernCubit = ModernCounterCubit();
+        final classicCubit = modernCubit.toClassicCubit(autoClose: true);
+        final outerCubitFuture = classicCubit.close();
+        await outerCubitFuture;
+        expect(
+          identical(
+            reentrantObserver.reentrantFutures[classicCubit],
+            outerCubitFuture,
+          ),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      'BlocObserver.onClose is invoked exactly once when closing '
+      'BlocSignalToClassicBloc and BlocSignalToClassicCubit with '
+      'autoClose=true',
+      () async {
+        final previousBlocObserver = bloc_lib.Bloc.observer;
+        final countingObserver = _CountingClassicBlocObserver();
+        bloc_lib.Bloc.observer = countingObserver;
+        addTearDown(() => bloc_lib.Bloc.observer = previousBlocObserver);
+
+        final modernBloc = ModernCounterBloc();
+        final classicBloc = modernBloc.toClassicBloc(autoClose: true);
+        await classicBloc.close();
+        await Future<void>.delayed(Duration.zero);
+        expect(countingObserver.closedBlocs[classicBloc], equals(1));
+
+        final modernCubit = ModernCounterCubit();
+        final classicCubit = modernCubit.toClassicCubit(autoClose: true);
+        await classicCubit.close();
+        await Future<void>.delayed(Duration.zero);
+        expect(countingObserver.closedBlocs[classicCubit], equals(1));
+      },
+    );
+  });
+}
+
+class _CountingClassicBlocObserver extends bloc_lib.BlocObserver {
+  final Map<bloc_lib.BlocBase<dynamic>, int> closedBlocs = {};
+
+  @override
+  void onClose(bloc_lib.BlocBase<dynamic> bloc) {
+    super.onClose(bloc);
+    closedBlocs[bloc] = (closedBlocs[bloc] ?? 0) + 1;
+  }
+}
+
+class _ReentrantOnCloseObserver extends bloc_lib.BlocObserver {
+  final Map<bloc_lib.BlocBase<dynamic>, Future<void>> reentrantFutures = {};
+
+  @override
+  void onClose(bloc_lib.BlocBase<dynamic> bloc) {
+    super.onClose(bloc);
+    if (!reentrantFutures.containsKey(bloc)) {
+      reentrantFutures[bloc] = bloc.close();
+    }
+  }
+}
+
+class _ThrowingExceptionAddClassicBloc
+    extends bloc_lib.Bloc<CounterEvent, int> {
+  _ThrowingExceptionAddClassicBloc() : super(0);
+
+  @override
+  void add(CounterEvent event) {
+    throw const FormatException('classic bloc add exception');
+  }
+}
+
+class _ThrowingAddClassicBloc extends bloc_lib.Bloc<CounterEvent, int> {
+  _ThrowingAddClassicBloc() : super(0);
+
+  @override
+  void add(CounterEvent event) {
+    throw StateError('classic bloc add failed');
+  }
 }

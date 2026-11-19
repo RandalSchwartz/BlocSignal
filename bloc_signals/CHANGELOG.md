@@ -1,3 +1,8 @@
+## Unreleased
+
+- **Fix (core)**: Dispose owned `StreamSignal` and `FutureSignal` instances in `toAsyncBlocSignal()` on `close()` with a `Completer` late-settlement guard preventing post-dispose `SignalsWriteAfterDisposeError` (#470).
+- **Fix (core)**: Snapshot `CompositeBlocSignalObserver` listener lists across all 8 hooks to tolerate reentrant `addObserver`/`removeObserver` calls, and isolate `DevToolsBlocSignalObserver.previousObserver` exceptions across all 8 hooks (#470).
+
 ## 1.7.2
 
 - **Fix (core)**: Evict `_history` entries via `Finalizer<int>` and `handleGetInstances` dead `WeakReference` pruning, scope typed `registerEventDeserializer<T>` registrations by container type while preserving unscoped `eventName` fallbacks, validate `handleDispatch` payloads (`kMaxDispatchPayloadLength = 65536`, non-empty `event`, `BlocSignalMixin` target), and enforce release-mode `isEnabled` guards without side-effecting `assert(...)` closures (#429).

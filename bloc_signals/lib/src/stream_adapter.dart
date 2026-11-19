@@ -107,13 +107,15 @@ extension StreamBlocSignalExtension<StateType> on Stream<StateType> {
     )? equals,
     SignalOptions<AsyncState<StateType>>? options,
   }) {
-    return toStreamSignal(
-      initialValue: initialValue,
-      cancelOnError: cancelOnError,
-      lazy: lazy,
-      dependencies: dependencies,
-      options: asyncSignalOptions,
-    ).toBlocSignal(
+    return SignalBlocSignal<AsyncState<StateType>>(
+      toStreamSignal(
+        initialValue: initialValue,
+        cancelOnError: cancelOnError,
+        lazy: lazy,
+        dependencies: dependencies,
+        options: asyncSignalOptions,
+      ),
+      disposeSignalOnClose: true,
       equals: equals,
       options: options,
     );

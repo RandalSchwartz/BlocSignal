@@ -159,6 +159,20 @@ void main() {
 
         await bloc.close();
       });
+
+      test(
+        '(Issue #470) close() does NOT dispose caller-owned signal',
+        () async {
+          final sig = signal<int>(1);
+          final bloc = sig.toBlocSignal();
+
+          await bloc.close();
+
+          expect(sig.disposed, isFalse);
+          sig.value = 99;
+          expect(sig.value, equals(99));
+        },
+      );
     },
   );
 
@@ -316,5 +330,301 @@ void main() {
       // State remains AsyncLoading because bloc was closed before resolution
       expect(bloc.stateValue, isA<AsyncLoading<int>>());
     });
+
+    test(
+      '(Issue #470) close() disposes owned FutureSignal and unsubscribes '
+      'dependencies',
+      () async {
+        var depWatchedCount = 0;
+        final base = signal<int>(1);
+        final dep = computed<int>(
+          () => base.value * 2,
+          options: ComputedOptions<int>(
+            watched: () => depWatchedCount++,
+            unwatched: () => depWatchedCount--,
+          ),
+        );
+        final completer = Completer<int>();
+        final bloc = completer.future.toAsyncBlocSignal(
+          lazy: false,
+          dependencies: [dep],
+        );
+
+        expect(bloc.signal.disposed, isFalse);
+        expect(depWatchedCount, equals(1));
+
+        await bloc.close();
+
+        expect(bloc.signal.disposed, isTrue);
+        expect(depWatchedCount, equals(0));
+      },
+    );
+
+    test(
+      '(Issue #470) pending Future settling with value after close() does not '
+      'throw SignalsWriteAfterDisposeError or unhandled async error',
+      () async {
+        final uncaughtErrors = <Object>[];
+        await runZonedGuarded(
+          () async {
+            final completer = Completer<int>();
+            final bloc = completer.future.toAsyncBlocSignal();
+
+            await bloc.close();
+            expect(bloc.signal.disposed, isTrue);
+
+            completer.complete(42);
+            await Future<void>.delayed(Duration.zero);
+
+            expect(bloc.stateValue, isA<AsyncLoading<int>>());
+          },
+          (error, stackTrace) {
+            uncaughtErrors.add(error);
+          },
+        );
+
+        expect(uncaughtErrors, isEmpty);
+      },
+    );
+
+    test(
+      '(Issue #470) pending Future settling with error after close() does not '
+      'throw SignalsWriteAfterDisposeError or unhandled async error',
+      () async {
+        final uncaughtErrors = <Object>[];
+        await runZonedGuarded(
+          () async {
+            final completer = Completer<int>();
+            final bloc = completer.future.toAsyncBlocSignal();
+
+            await bloc.close();
+            expect(bloc.signal.disposed, isTrue);
+
+            completer.completeError(Exception('late error'));
+            await Future<void>.delayed(Duration.zero);
+
+            expect(bloc.stateValue, isA<AsyncLoading<int>>());
+          },
+          (error, stackTrace) {
+            uncaughtErrors.add(error);
+          },
+        );
+
+        expect(uncaughtErrors, isEmpty);
+      },
+    );
+
+    test(
+      '(Issue #470) closing Future.toAsyncBlocSignal(timeout: ...) before '
+      'timeout elapses produces zero uncaught zone errors',
+      () async {
+        final uncaughtErrors = <Object>[];
+        await runZonedGuarded(
+          () async {
+            final completer = Completer<int>();
+            final bloc = completer.future.toAsyncBlocSignal(
+              timeout: const Duration(milliseconds: 20),
+            );
+
+            await bloc.close();
+            await Future<void>.delayed(const Duration(milliseconds: 50));
+            expect(bloc.stateValue, isA<AsyncLoading<int>>());
+          },
+          (error, stackTrace) {
+            uncaughtErrors.add(error);
+          },
+        );
+
+        expect(uncaughtErrors, isEmpty);
+      },
+    );
+
+    test(
+      '(Issue #470) synchronous Future.then invocation does not throw '
+      'LateInitializationError',
+      () async {
+        final syncFuture = _SynchronousFuture<int>(42);
+        final bloc = syncFuture.toAsyncBlocSignal();
+        await Future<void>.microtask(() {});
+
+        expect(bloc.stateValue, isA<AsyncData<int>>());
+        expect((bloc.stateValue as AsyncData<int>).value, equals(42));
+
+        await bloc.close();
+        // Calling close() a second time is idempotent
+        await bloc.close();
+      },
+    );
+
+    test(
+      '(Issue #470) concurrent close() calls await shared _closeFuture and '
+      'dispose owned signal',
+      () async {
+        final completer = Completer<int>();
+        final bloc = completer.future.toAsyncBlocSignal();
+
+        final f1 = bloc.close();
+        final f2 = bloc.close();
+        await f2;
+        expect(bloc.signal.disposed, isTrue);
+        await f1;
+      },
+    );
+
+    test(
+      '(Issue #470) synchronous re-entrant close() inside onClose returns '
+      'identical shared close future and awaits signal disposal',
+      () async {
+        final previousObserver = BlocSignalObserver.observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final completer = Completer<int>();
+        final bloc = completer.future.toAsyncBlocSignal();
+
+        Future<void>? outerFuture;
+        Future<void>? reentrantFuture;
+        var disposedWhenReentrantCompleted = false;
+
+        BlocSignalObserver.observer = _OnCloseCallbackObserver((closed) {
+          if (identical(closed, bloc) && reentrantFuture == null) {
+            reentrantFuture = bloc.close();
+            unawaited(
+              reentrantFuture!.whenComplete(() {
+                disposedWhenReentrantCompleted = bloc.signal.disposed;
+              }),
+            );
+          }
+        });
+
+        outerFuture = bloc.close();
+        await outerFuture;
+
+        expect(reentrantFuture, isNotNull);
+        expect(identical(reentrantFuture, outerFuture), isTrue);
+        await reentrantFuture;
+        expect(disposedWhenReentrantCompleted, isTrue);
+      },
+    );
+
+    test(
+      '(Issue #470) early close() cancels pending timeout Timer immediately',
+      () async {
+        Timer? createdTimer;
+        await runZoned(
+          () async {
+            final completer = Completer<int>();
+            final bloc = completer.future.toAsyncBlocSignal(
+              timeout: const Duration(seconds: 30),
+            );
+            expect(createdTimer, isNotNull);
+            expect(createdTimer!.isActive, isTrue);
+
+            await bloc.close();
+            expect(createdTimer!.isActive, isFalse);
+          },
+          zoneSpecification: ZoneSpecification(
+            createTimer: (self, parent, zone, duration, f) {
+              return createdTimer = parent.createTimer(zone, duration, f);
+            },
+          ),
+        );
+      },
+    );
+
+    test(
+      '(Issue #470) settling with value or error before timeout cancels '
+      'pending timeout Timer',
+      () async {
+        Timer? timer1;
+        await runZoned(
+          () async {
+            final c1 = Completer<int>();
+            final b1 = c1.future.toAsyncBlocSignal(
+              timeout: const Duration(seconds: 30),
+            );
+            expect(timer1!.isActive, isTrue);
+            c1.complete(7);
+            await Future<void>.delayed(Duration.zero);
+            expect(timer1!.isActive, isFalse);
+            expect((b1.stateValue as AsyncData<int>).value, equals(7));
+            await b1.close();
+          },
+          zoneSpecification: ZoneSpecification(
+            createTimer: (self, parent, zone, duration, f) {
+              return timer1 = parent.createTimer(zone, duration, f);
+            },
+          ),
+        );
+
+        Timer? timer2;
+        await runZoned(
+          () async {
+            final c2 = Completer<int>();
+            final b2 = c2.future.toAsyncBlocSignal(
+              timeout: const Duration(seconds: 30),
+            );
+            expect(timer2!.isActive, isTrue);
+            c2.completeError(Exception('boom before timeout'));
+            await Future<void>.delayed(Duration.zero);
+            expect(timer2!.isActive, isFalse);
+            expect(b2.stateValue, isA<AsyncError<int>>());
+            await b2.close();
+          },
+          zoneSpecification: ZoneSpecification(
+            createTimer: (self, parent, zone, duration, f) {
+              return timer2 = parent.createTimer(zone, duration, f);
+            },
+          ),
+        );
+      },
+    );
   });
+}
+
+class _SynchronousFuture<T> implements Future<T> {
+  _SynchronousFuture(this._value);
+
+  final T _value;
+
+  @override
+  Stream<T> asStream() => Stream<T>.value(_value);
+
+  @override
+  Future<T> catchError(
+    Function onError, {
+    bool Function(Object error)? test,
+  }) =>
+      this;
+
+  @override
+  Future<R> then<R>(
+    FutureOr<R> Function(T value) onValue, {
+    Function? onError,
+  }) {
+    final result = onValue(_value);
+    if (result is Future<R>) return result;
+    return _SynchronousFuture<R>(result);
+  }
+
+  @override
+  Future<T> timeout(Duration timeLimit, {FutureOr<T> Function()? onTimeout}) =>
+      this;
+
+  @override
+  Future<T> whenComplete(FutureOr<void> Function() action) {
+    final result = action();
+    if (result is Future<void>) {
+      unawaited(result);
+    }
+    return this;
+  }
+}
+
+class _OnCloseCallbackObserver extends BlocSignalObserver {
+  _OnCloseCallbackObserver(this._onClose);
+
+  final void Function(BlocSignalBase<dynamic> bloc) _onClose;
+
+  @override
+  void onClose(BlocSignalBase<dynamic> bloc) => _onClose(bloc);
 }

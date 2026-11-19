@@ -176,5 +176,27 @@ void main() {
       await storage.clear();
       expect(prefs.getString('foreign_counter'), equals('42'));
     });
+
+    test(
+        '(Issue #469: read() throws sanitized FormatException with '
+        'source == null and no secret substring)', () async {
+      const secretPayload = 'super-secret-jwt-token-xyz-not-json';
+      await prefs.setString(
+        '${kDefaultHydratedStoragePrefix}secret_key',
+        secretPayload,
+      );
+
+      Object? caught;
+      try {
+        storage.read('secret_key');
+      } on FormatException catch (e) {
+        caught = e;
+      }
+
+      expect(caught, isA<FormatException>());
+      final formatException = caught! as FormatException;
+      expect(formatException.source, isNull);
+      expect(formatException.toString(), isNot(contains(secretPayload)));
+    });
   });
 }

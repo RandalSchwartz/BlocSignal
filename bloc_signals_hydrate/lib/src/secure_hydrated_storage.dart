@@ -31,12 +31,15 @@ import 'package:bloc_signals_hydrate/src/hydrated_storage.dart';
 class SecureHydratedStorage implements HydratedStorage {
   SecureHydratedStorage._(
     this._secureStorage,
-    Map<String, dynamic> initialCache, {
+    Map<String, dynamic> initialCache,
+    Map<String, FormatException> corruptKeys, {
     this.prefix = kDefaultHydratedStoragePrefix,
-  }) : _cache = initialCache;
+  })  : _cache = initialCache,
+        _corruptKeys = corruptKeys;
 
   final dynamic _secureStorage;
   final Map<String, dynamic> _cache;
+  final Map<String, FormatException> _corruptKeys;
   final Mutex _mutex = Mutex();
 
   /// The prefix applied to all keys stored in secure storage.
@@ -67,6 +70,7 @@ class SecureHydratedStorage implements HydratedStorage {
       (rawAll as Map).map((k, v) => MapEntry(k.toString(), v.toString())),
     );
     final cache = <String, dynamic>{};
+    final corruptKeys = <String, FormatException>{};
     for (final entry in all.entries) {
       if (prefix.isEmpty || entry.key.startsWith(prefix)) {
         final rawKey = prefix.isNotEmpty && entry.key.startsWith(prefix)
@@ -74,16 +78,33 @@ class SecureHydratedStorage implements HydratedStorage {
             : entry.key;
         try {
           cache[rawKey] = jsonDecode(entry.value);
-        } on FormatException {
-          cache[rawKey] = entry.value;
+        } on FormatException catch (error) {
+          // Record sanitized FormatException without caching raw unparsed
+          // string or leaking raw secret payload in `source` or `message`.
+          corruptKeys[rawKey] = FormatException(
+            'Invalid JSON in hydrated storage',
+            null,
+            error.offset,
+          );
         }
       }
     }
-    return SecureHydratedStorage._(secureStorage, cache, prefix: prefix);
+    return SecureHydratedStorage._(
+      secureStorage,
+      cache,
+      corruptKeys,
+      prefix: prefix,
+    );
   }
 
   @override
-  dynamic read(String key) => cloneHydratedJsonValue(_cache[key]);
+  dynamic read(String key) {
+    final corruptError = _corruptKeys[key];
+    if (corruptError != null) {
+      throw corruptError;
+    }
+    return cloneHydratedJsonValue(_cache[key]);
+  }
 
   @override
   FutureOr<void> write(String key, dynamic value) => _mutex.protect(() async {
@@ -91,6 +112,7 @@ class SecureHydratedStorage implements HydratedStorage {
         // Duck-typing support for flutter_secure_storage write.
         // ignore: avoid_dynamic_calls
         await _secureStorage.write(key: _prefixedKey(key), value: encoded);
+        _corruptKeys.remove(key);
         _cache[key] = jsonDecode(encoded);
       });
 
@@ -99,17 +121,19 @@ class SecureHydratedStorage implements HydratedStorage {
         // Duck-typing support for flutter_secure_storage delete.
         // ignore: avoid_dynamic_calls
         await _secureStorage.delete(key: _prefixedKey(key));
+        _corruptKeys.remove(key);
         _cache.remove(key);
       });
 
   @override
   FutureOr<void> clear() => _mutex.protect(() async {
-        final keys = _cache.keys.toList();
+        final keys = <String>{..._cache.keys, ..._corruptKeys.keys}.toList();
         for (final key in keys) {
           // Duck-typing support for flutter_secure_storage delete.
           // ignore: avoid_dynamic_calls
           await _secureStorage.delete(key: _prefixedKey(key));
           _cache.remove(key);
+          _corruptKeys.remove(key);
         }
       });
 }

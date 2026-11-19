@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (hydrate)**: Isolate recoverable deserialization `Error` subtypes (`TypeError`, `ArgumentError`, `RangeError`, `StateError`, `UnsupportedError`) and non-`Error` platform objects (such as Web `DOMException` / `QuotaExceededError`) via `onError`, strip `source` from `FormatException` in `SharedPreferencesHydratedStorage.read`, and reject corrupt non-JSON entries in `SecureHydratedStorage` with sanitized `FormatException` instead of caching raw strings (#469).
+
 ## 1.1.2
 
 - **Fix (hydrate)**: Isolate cached `Map` and `List` collections in `MemoryHydratedStorage` and `SecureHydratedStorage`, harden `HydratedMixin.storageToken` with `Uri.encodeComponent` framing, and document `storagePrefix` minification and `SharedPreferencesHydratedStorage` plaintext storage warnings (#427).

@@ -116,9 +116,13 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
   /// Initializes hydration by loading stored state during constructor
   /// execution.
   ///
-  /// Recoverable storage or deserialization [Exception] instances are caught
-  /// and forwarded to [onError], falling back to [initial]. Fatal Dart [Error]
-  /// subtypes fail fast.
+  /// Recoverable storage or deserialization [Exception] instances, non-[Error]
+  /// platform objects (such as Web `DOMException`), and recoverable
+  /// deserialization [Error] subtypes ([TypeError], [ArgumentError],
+  /// [RangeError], [StateError], [UnsupportedError]) are caught and forwarded
+  /// to [onError], falling back to [initial]. Fatal VM [Error] subtypes (such
+  /// as [AssertionError], [OutOfMemoryError], and [StackOverflowError]) fail
+  /// fast.
   @protected
   StateType initHydratedState(StateType initial) {
     final storage = activeStorage;
@@ -148,11 +152,27 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
           );
         }
       }
-    } on Exception catch (error, stackTrace) {
+      // SCAR-ERR-02: Justified `on Object catch` at untrusted storage/JSON
+      // deserialization boundary. Isolate recoverable exceptions, non-Error
+      // platform objects (such as Web `DOMException`), and deserialization
+      // Error subtypes (`TypeError`, `ArgumentError`/`RangeError`,
+      // `StateError`, `UnsupportedError`) while rethrowing fatal VM errors.
+    } on Object catch (error, stackTrace) {
+      if (!_isRecoverableHydrationFailure(error)) {
+        rethrow;
+      }
       onError(error, stackTrace);
     }
     return initial;
   }
+
+  static bool _isRecoverableHydrationFailure(Object error) =>
+      error is Exception ||
+      error is! Error ||
+      error is TypeError ||
+      error is ArgumentError ||
+      error is StateError ||
+      error is UnsupportedError;
 
   /// Persists [state] to [activeStorage].
   ///
@@ -162,8 +182,10 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
   /// generation has been superseded by a newer [persist] or [clear] call, or
   /// whose container has been closed, is skipped before touching storage.
   ///
-  /// Recoverable serialization and storage I/O [Exception] instances are
-  /// forwarded to [onError], whereas fatal Dart [Error] subtypes fail fast.
+  /// Recoverable serialization [Exception] instances in `toJson` and
+  /// recoverable storage I/O [Exception] or non-[Error] platform objects (such
+  /// as Web `QuotaExceededError` / `DOMException`) are forwarded to [onError],
+  /// whereas Dart [Error] subtypes fail fast.
   @protected
   void persist(StateType state) {
     final storage = activeStorage;
@@ -193,11 +215,16 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
         if (result is Future<void>) {
           unawaited(
             _storageMutex.protect(
-              () => result.catchError(onError, test: (e) => e is Exception),
+              () => result.catchError(onError, test: (e) => e is! Error),
             ),
           );
         }
-      } on Exception catch (error, stackTrace) {
+        // SCAR-ERR-02: Justified `on Object catch` at storage I/O boundary to
+        // isolate `Exception` and non-`Error` platform objects (such as Web
+        // `QuotaExceededError` / `DOMException`) while rethrowing Dart `Error`
+        // instances.
+      } on Object catch (error, stackTrace) {
+        if (error is Error) rethrow;
         onError(error, stackTrace);
       }
       return;
@@ -213,7 +240,12 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
           if (result is Future<void>) {
             await result;
           }
-        } on Exception catch (error, stackTrace) {
+          // SCAR-ERR-02: Justified `on Object catch` at storage I/O boundary to
+          // isolate `Exception` and non-`Error` platform objects (such as Web
+          // `QuotaExceededError` / `DOMException`) while rethrowing Dart `Error`
+          // instances.
+        } on Object catch (error, stackTrace) {
+          if (error is Error) rethrow;
           onError(error, stackTrace);
         }
       }),
@@ -227,8 +259,9 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
   /// queued [persist] operations, then waits on the storage [Mutex] so any
   /// in-flight write completes before deleting [storageToken].
   ///
-  /// Recoverable storage I/O [Exception] instances are caught and forwarded to
-  /// [onError], whereas fatal Dart [Error] subtypes fail fast.
+  /// Recoverable storage I/O [Exception] instances and non-[Error] platform
+  /// objects (such as Web `DOMException`) are caught and forwarded to
+  /// [onError], whereas Dart [Error] subtypes fail fast.
   Future<void> clear() async {
     ++_storageGeneration;
     final storage = activeStorage;
@@ -239,7 +272,11 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
           if (result is Future<void>) {
             await result;
           }
-        } on Exception catch (error, stackTrace) {
+          // SCAR-ERR-02: Justified `on Object catch` at storage I/O boundary
+          // to isolate `Exception` and non-`Error` platform objects (such as
+          // Web `DOMException`) while rethrowing Dart `Error` instances.
+        } on Object catch (error, stackTrace) {
+          if (error is Error) rethrow;
           onError(error, stackTrace);
         }
       });

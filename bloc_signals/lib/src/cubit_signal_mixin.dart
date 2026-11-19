@@ -39,6 +39,7 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   late final Signal<StateType> _state;
   final Set<void Function()> _effectsToDispose = <void Function()>{};
   int _effectCounter = 0;
+  int _historySuppressionDepth = 0;
 
   bool Function(StateType previous, StateType current)? _customEquals;
   SignalEquality<StateType>? _optionsEquality;
@@ -306,6 +307,26 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
     };
     _effectsToDispose.add(wrappedDispose);
     return wrappedDispose;
+  }
+
+  @override
+  @protected
+  @mustCallSuper
+  void onReset() {}
+
+  @override
+  @protected
+  bool get isHistorySuppressed => _historySuppressionDepth > 0;
+
+  @override
+  @protected
+  void runWithoutHistory(void Function() action) {
+    _historySuppressionDepth++;
+    try {
+      action();
+    } finally {
+      _historySuppressionDepth--;
+    }
   }
 
   @override

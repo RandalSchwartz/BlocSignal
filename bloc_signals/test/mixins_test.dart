@@ -604,4 +604,72 @@ void main() {
       expect(change1 == change2, isFalse);
     });
   });
+
+  group('(Issue #471: onReset and runWithoutHistory)', () {
+    test(
+      'runWithoutHistory supports nesting and restores suppression on throw',
+      () async {
+        final controller = _ResetAndHistoryController();
+        addTearDown(controller.close);
+
+        expect(controller.isHistorySuppressedForTest, isFalse);
+
+        var innerSawSuppressed = false;
+        var afterInnerStillSuppressed = false;
+        controller.runWithoutHistoryForTest(() {
+          expect(controller.isHistorySuppressedForTest, isTrue);
+          controller.runWithoutHistoryForTest(() {
+            innerSawSuppressed = controller.isHistorySuppressedForTest;
+          });
+          afterInnerStillSuppressed = controller.isHistorySuppressedForTest;
+        });
+
+        expect(innerSawSuppressed, isTrue);
+        expect(afterInnerStillSuppressed, isTrue);
+        expect(controller.isHistorySuppressedForTest, isFalse);
+
+        expect(
+          () => controller.runWithoutHistoryForTest(() {
+            expect(controller.isHistorySuppressedForTest, isTrue);
+            throw StateError('boom');
+          }),
+          throwsStateError,
+        );
+        expect(controller.isHistorySuppressedForTest, isFalse);
+
+        controller.triggerReset();
+        expect(controller.resetCount, equals(1));
+      },
+    );
+
+    test('BlocSignalBase default onReset is a safe no-op', () {
+      _MinimalBaseContainer().callBaseReset();
+    });
+  });
+}
+
+class _ResetAndHistoryController extends CubitSignal<int> {
+  _ResetAndHistoryController() : super(initialState: 0);
+
+  int resetCount = 0;
+
+  bool get isHistorySuppressedForTest => isHistorySuppressed;
+
+  void runWithoutHistoryForTest(void Function() action) =>
+      runWithoutHistory(action);
+
+  void triggerReset() => onReset();
+
+  @override
+  void onReset() {
+    resetCount++;
+    super.onReset();
+  }
+}
+
+class _MinimalBaseContainer extends BlocSignalBase<int> {
+  void callBaseReset() => onReset();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

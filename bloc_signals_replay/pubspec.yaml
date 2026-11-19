@@ -21,5 +21,6 @@ dependencies:
   signals_core: ^7.0.0
 
 dev_dependencies:
+  bloc_signals_hydrate: ^1.1.2
   test: ^1.25.6
   very_good_analysis: ">=10.3.0 <12.0.0"

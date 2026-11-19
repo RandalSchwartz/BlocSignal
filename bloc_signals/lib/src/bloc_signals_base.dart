@@ -416,4 +416,27 @@ abstract class BlocSignalBase<StateType> {
   /// Shuts down all internal effects registered via [createEffect].
   @mustCallSuper
   Future<void> close();
+
+  /// Hook invoked when container state is reset to its baseline (for example
+  /// during persistence clearing).
+  ///
+  /// Mixins that maintain auxiliary state or history stacks (such as
+  /// `ReplayMixin`) should override this method, clear their internal state,
+  /// and call `super.onReset()`.
+  @protected
+  @mustCallSuper
+  void onReset() {}
+
+  /// Whether auxiliary history recording (such as undo/redo stacks) is
+  /// currently suppressed on this container instance.
+  @protected
+  bool get isHistorySuppressed;
+
+  /// Executes [action] with auxiliary history recording suppressed on this
+  /// container instance.
+  ///
+  /// Calls may be nested safely; suppression remains active until the
+  /// outermost [runWithoutHistory] invocation returns.
+  @protected
+  void runWithoutHistory(void Function() action);
 }

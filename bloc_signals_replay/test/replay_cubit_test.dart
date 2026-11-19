@@ -1,4 +1,6 @@
+import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
 import 'package:bloc_signals_replay/bloc_signals_replay.dart';
+import 'package:signals_core/signals_core.dart';
 import 'package:test/test.dart';
 
 import 'cubits/counter_cubit.dart';
@@ -1108,6 +1110,179 @@ void main() {
       },
     );
   });
+
+  group('(Issue #471: HydratedMixin + ReplayMixin composition)', () {
+    late MemoryHydratedStorage storage;
+
+    setUp(() {
+      storage = MemoryHydratedStorage();
+      HydratedStorage.storage = storage;
+    });
+
+    tearDown(HydratedStorage.reset);
+
+    test(
+      'cold-boot hydration with persisted 42 does not pollute undo history in '
+      'either mixin order',
+      () async {
+        final orderA = _HydratedThenReplayCubit(storage: storage);
+        storage.write(orderA.storageToken, 42);
+        await orderA.close();
+
+        final orderB = _ReplayThenHydratedCubit(storage: storage);
+        storage.write(orderB.storageToken, 42);
+        await orderB.close();
+
+        final restoredA = _HydratedThenReplayCubit(storage: storage);
+        addTearDown(restoredA.close);
+        final restoredB = _ReplayThenHydratedCubit(storage: storage);
+        addTearDown(restoredB.close);
+
+        expect(restoredA.stateValue, equals(42));
+        expect(restoredA.canUndo, isFalse);
+        restoredA.undo();
+        expect(restoredA.stateValue, equals(42));
+        expect(storage.read(restoredA.storageToken), equals(42));
+
+        expect(restoredB.stateValue, equals(42));
+        expect(restoredB.canUndo, isFalse);
+        restoredB.undo();
+        expect(restoredB.stateValue, equals(42));
+        expect(storage.read(restoredB.storageToken), equals(42));
+      },
+    );
+
+    test(
+      'clear() after mutations wipes history and resets to initialState '
+      'without re-persisting or allowing undo resurrection in both orders',
+      () async {
+        final orderA = _HydratedThenReplayCubit(storage: storage);
+        final orderB = _ReplayThenHydratedCubit(storage: storage);
+        addTearDown(orderA.close);
+        addTearDown(orderB.close);
+
+        orderA
+          ..increment()
+          ..increment();
+        orderB
+          ..increment()
+          ..increment();
+
+        for (final cubit in <ReplayMixin<int>>[orderA, orderB]) {
+          final hydrated = cubit as HydratedMixin<int>;
+          expect(cubit.stateValue, equals(2));
+          expect(cubit.canUndo, isTrue);
+
+          await hydrated.clear();
+
+          expect(cubit.stateValue, equals(0));
+          expect(cubit.canUndo, isFalse);
+          expect(cubit.canRedo, isFalse);
+          expect(storage.read(hydrated.storageToken), isNull);
+
+          cubit.undo();
+          expect(cubit.stateValue, equals(0));
+          expect(storage.read(hydrated.storageToken), isNull);
+        }
+      },
+    );
+
+    test(
+      'clear() after undo() back to initialState clears redo stack so redo() '
+      'cannot resurrect sensitive state in both orders',
+      () async {
+        final orderA = _HydratedThenReplayCubit(storage: storage);
+        final orderB = _ReplayThenHydratedCubit(storage: storage);
+        addTearDown(orderA.close);
+        addTearDown(orderB.close);
+
+        orderA.increment();
+        orderB.increment();
+
+        for (final cubit in <ReplayMixin<int>>[orderA, orderB]) {
+          final hydrated = cubit as HydratedMixin<int>;
+          cubit.undo();
+          expect(cubit.stateValue, equals(0));
+          expect(cubit.canRedo, isTrue);
+
+          await hydrated.clear();
+
+          expect(cubit.stateValue, equals(0));
+          expect(cubit.canUndo, isFalse);
+          expect(cubit.canRedo, isFalse);
+          expect(storage.read(hydrated.storageToken), isNull);
+
+          cubit.redo();
+          expect(cubit.stateValue, equals(0));
+          expect(storage.read(hydrated.storageToken), isNull);
+        }
+      },
+    );
+  });
+
+  group('(Issue #471: reactive canUndo and canRedo)', () {
+    test(
+      'canUndo, canRedo, canUndoSignal, and canRedoSignal notify computed and '
+      'effect synchronously across emit, undo, redo, clearHistory, limit, and '
+      'remain safe to read after close()',
+      () async {
+        final cubit = CounterCubit();
+        final undoStates = <bool>[];
+        final redoStates = <bool>[];
+        final derived = computed(() => (cubit.canUndo, cubit.canRedo));
+
+        final disposeEffect = effect(() {
+          undoStates.add(cubit.canUndo);
+          redoStates.add(cubit.canRedo);
+        });
+        addTearDown(disposeEffect);
+        addTearDown(derived.dispose);
+
+        expect(derived.value, equals((false, false)));
+        expect(cubit.canUndoSignal.value, isFalse);
+        expect(cubit.canRedoSignal.value, isFalse);
+
+        cubit.increment();
+        expect(derived.value, equals((true, false)));
+        expect(cubit.canUndoSignal.value, isTrue);
+        expect(cubit.canRedoSignal.value, isFalse);
+
+        cubit.undo();
+        expect(derived.value, equals((false, true)));
+        expect(cubit.canUndoSignal.value, isFalse);
+        expect(cubit.canRedoSignal.value, isTrue);
+
+        cubit.redo();
+        expect(derived.value, equals((true, false)));
+
+        cubit.clearHistory();
+        expect(derived.value, equals((false, false)));
+
+        cubit
+          ..increment()
+          ..increment();
+        expect(derived.value, equals((true, false)));
+
+        cubit.limit = 0;
+        expect(derived.value, equals((false, false)));
+
+        expect(
+          undoStates,
+          equals([false, true, false, true, false, true, false]),
+        );
+        expect(
+          redoStates,
+          equals([false, false, true, false, false, false, false]),
+        );
+
+        await cubit.close();
+        expect(cubit.canUndo, isFalse);
+        expect(cubit.canRedo, isFalse);
+        expect(cubit.canUndoSignal.value, isFalse);
+        expect(cubit.canRedoSignal.value, isFalse);
+      },
+    );
+  });
 }
 
 mixin _PersistenceTrackingMixin<State> on BlocSignalBase<State> {
@@ -1162,6 +1337,32 @@ class _PositionalCounterCubit extends ReplayCubit<int> {
       // Testing backward-compatible positional constructor.
       // ignore: deprecated_member_use_from_same_package
       : super.positional();
+
+  void increment() => emit(stateValue + 1);
+}
+
+class _HydratedThenReplayCubit extends HydratedCubitSignal<int>
+    with ReplayMixin<int> {
+  _HydratedThenReplayCubit({super.storage}) : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
+}
+
+class _ReplayThenHydratedCubit extends ReplayCubit<int>
+    with HydratedMixin<int> {
+  _ReplayThenHydratedCubit({HydratedStorage? storage})
+      : _storage = storage,
+        super(initialState: 0) {
+    hydrate();
+  }
+
+  final HydratedStorage? _storage;
+
+  @override
+  int get initialState => 0;
+
+  @override
+  HydratedStorage? get storageOverride => _storage;
 
   void increment() => emit(stateValue + 1);
 }

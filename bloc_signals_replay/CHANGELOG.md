@@ -1,3 +1,8 @@
+## Unreleased
+
+- **Feat (replay)**: Back `canUndo` and `canRedo` with reactive `Computed<bool>` signals (`canUndoSignal` and `canRedoSignal`) and wrap `emit()`, `undo()`, `redo()`, and `clearHistory()` in `batch()` so `context.select`, `Watch`, `computed()`, and `effect()` track history availability atomically (#471).
+- **Fix (replay)**: Override `onReset()` in `ReplayMixin` to clear history on container reset and skip history recording when `isHistorySuppressed` is active (#471).
+
 ## 1.3.2
 
 - **Fix (replay)**: Clear change stack on `close()` to release retained states and reset `canUndo`/`canRedo` (#428).

@@ -3,6 +3,7 @@ import 'dart:collection';
 
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:meta/meta.dart';
+import 'package:signals_core/signals_core.dart';
 
 part 'change_stack.dart';
 part 'replay_bloc.dart';
@@ -102,23 +103,35 @@ mixin ReplayMixin<State> on BlocSignalBase<State> {
 
   bool _isReplaying = false;
 
+  late final Computed<bool> _canUndo = computed<bool>(() {
+    _changeStack.revision;
+    return _changeStack.canUndo;
+  });
+
+  late final Computed<bool> _canRedo = computed<bool>(() {
+    _changeStack.revision;
+    return _changeStack.canRedo;
+  });
+
   @override
   void emit(State newState) {
     if (isClosed) return;
     if (equals(stateValue, newState)) return;
 
     final oldState = stateValue;
-    if (!_isReplaying) {
-      _changeStack.add(
-        _Change<State>(
-          oldState,
-          newState,
-          () => onRedo(() => emit(newState)),
-          (val) => onUndo(() => emit(val)),
-        ),
-      );
-    }
-    super.emit(newState);
+    batch(() {
+      if (!_isReplaying && !isHistorySuppressed) {
+        _changeStack.add(
+          _Change<State>(
+            oldState,
+            newState,
+            () => onRedo(() => emit(newState)),
+            (val) => onUndo(() => emit(val)),
+          ),
+        );
+      }
+      super.emit(newState);
+    });
   }
 
   /// Executes a redo restoration [action].
@@ -140,7 +153,7 @@ mixin ReplayMixin<State> on BlocSignalBase<State> {
     if (isClosed) return;
     _isReplaying = true;
     try {
-      _changeStack.undo();
+      batch(_changeStack.undo);
     } finally {
       _isReplaying = false;
     }
@@ -151,17 +164,35 @@ mixin ReplayMixin<State> on BlocSignalBase<State> {
     if (isClosed) return;
     _isReplaying = true;
     try {
-      _changeStack.redo();
+      batch(_changeStack.redo);
     } finally {
       _isReplaying = false;
     }
   }
 
+  /// A reactive signal tracking whether [undo] can currently be performed.
+  ///
+  /// Useful for passing directly to signal builders or combining with other
+  /// `computed` signals without wrapping in a getter.
+  ReadonlySignal<bool> get canUndoSignal => _canUndo;
+
+  /// A reactive signal tracking whether [redo] can currently be performed.
+  ///
+  /// Useful for passing directly to signal builders or combining with other
+  /// `computed` signals without wrapping in a getter.
+  ReadonlySignal<bool> get canRedoSignal => _canRedo;
+
   /// Checks whether the undo/redo stack can perform an undo operation.
-  bool get canUndo => _changeStack.canUndo;
+  ///
+  /// Reading [canUndo] inside a `computed`, `effect`, `Watch`, or
+  /// `context.select` automatically subscribes to history changes.
+  bool get canUndo => _canUndo.value;
 
   /// Checks whether the undo/redo stack can perform a redo operation.
-  bool get canRedo => _changeStack.canRedo;
+  ///
+  /// Reading [canRedo] inside a `computed`, `effect`, `Watch`, or
+  /// `context.select` automatically subscribes to history changes.
+  bool get canRedo => _canRedo.value;
 
   /// Clears internal undo/redo history.
   ///
@@ -169,7 +200,15 @@ mixin ReplayMixin<State> on BlocSignalBase<State> {
   /// holds sensitive state (for example passwords, authentication tokens, or
   /// personally identifiable information) to release retained state
   /// references immediately.
-  void clearHistory() => _changeStack.clear();
+  void clearHistory() => batch(_changeStack.clear);
+
+  @override
+  @protected
+  @mustCallSuper
+  void onReset() {
+    clearHistory();
+    super.onReset();
+  }
 
   /// Closes the container and clears the internal undo/redo history.
   ///

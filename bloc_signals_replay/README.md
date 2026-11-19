@@ -120,5 +120,6 @@ class BoundedCubit extends ReplayCubit<int> {
 Because `ReplayMixin` retains historical state instances in memory to power `undo()` and `redo()`, take the following precautions when managing large or sensitive state:
 
 - **Bound History Depth (`limit`)**: Pass `limit:` (or `maxHistoryLength:`) in the constructor or assign `limit` at runtime to cap retained states. Set `limit = 0` during sensitive flows (for example password entry, authentication tokens, or personally identifiable information) to clear existing history and disable recording.
-- **Clear at Session Boundaries (`clearHistory()`)**: Call `clearHistory()` explicitly at logout or session boundaries to immediately release retained state references.
+- **Clear at Session Boundaries (`clearHistory()`)**: Call `clearHistory()` explicitly at logout or session boundaries to immediately release retained state references. When composed with `HydratedMixin`, calling `await clear()` automatically invokes `onReset()` and clears the replay stack in both mixin composition orders.
+- **Reactive `canUndo` & `canRedo`**: `canUndo`, `canRedo`, `canUndoSignal`, and `canRedoSignal` are backed by reactive `Computed<bool>` signals (`autoDispose: false`) and update atomically with `stateValue` inside `batch()`, so `context.select((c) => c.canUndo)`, `Watch`, `computed()`, and `effect()` rebuild automatically.
 - **Automatic Cleanup on Disposal (`close()`)**: Calling `close()` automatically invokes `clearHistory()`, releasing all retained state references and resetting `canUndo` and `canRedo` to `false`.

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
 import 'package:bloc_signals_replay/bloc_signals_replay.dart';
 import 'package:signals_core/signals_core.dart';
 import 'package:test/test.dart';
@@ -1178,6 +1179,111 @@ void main() {
       },
     );
   });
+
+  group('(Issue #471: HydratedMixin + ReplayBlocMixin composition)', () {
+    late MemoryHydratedStorage storage;
+
+    setUp(() {
+      storage = MemoryHydratedStorage();
+      HydratedStorage.storage = storage;
+    });
+
+    tearDown(HydratedStorage.reset);
+
+    test(
+      'cold-boot hydration with persisted 42 does not pollute undo history in '
+      'either mixin order',
+      () async {
+        final orderA = _HydratedThenReplayBloc(storage: storage);
+        storage.write(orderA.storageToken, 42);
+        await orderA.close();
+
+        final orderB = _ReplayThenHydratedBloc(storage: storage);
+        storage.write(orderB.storageToken, 42);
+        await orderB.close();
+
+        final restoredA = _HydratedThenReplayBloc(storage: storage);
+        addTearDown(restoredA.close);
+        final restoredB = _ReplayThenHydratedBloc(storage: storage);
+        addTearDown(restoredB.close);
+
+        expect(restoredA.stateValue, equals(42));
+        expect(restoredA.canUndo, isFalse);
+        restoredA.undo();
+        expect(restoredA.stateValue, equals(42));
+        expect(storage.read(restoredA.storageToken), equals(42));
+
+        expect(restoredB.stateValue, equals(42));
+        expect(restoredB.canUndo, isFalse);
+        restoredB.undo();
+        expect(restoredB.stateValue, equals(42));
+        expect(storage.read(restoredB.storageToken), equals(42));
+      },
+    );
+
+    test(
+      'clear() after mutations wipes history and resets to initialState '
+      'without re-persisting or allowing undo resurrection in both orders',
+      () async {
+        final orderA = _HydratedThenReplayBloc(storage: storage);
+        final orderB = _ReplayThenHydratedBloc(storage: storage);
+        addTearDown(orderA.close);
+        addTearDown(orderB.close);
+
+        for (final bloc in <BlocSignal<CounterEvent, int>>[orderA, orderB]) {
+          final replay = bloc as ReplayMixin<int>;
+          final hydrated = bloc as HydratedMixin<int>;
+          bloc
+            ..add(const CounterIncrementPressed())
+            ..add(const CounterIncrementPressed());
+          expect(bloc.stateValue, equals(2));
+          expect(replay.canUndo, isTrue);
+
+          await hydrated.clear();
+
+          expect(bloc.stateValue, equals(0));
+          expect(replay.canUndo, isFalse);
+          expect(replay.canRedo, isFalse);
+          expect(storage.read(hydrated.storageToken), isNull);
+
+          replay.undo();
+          expect(bloc.stateValue, equals(0));
+          expect(storage.read(hydrated.storageToken), isNull);
+        }
+      },
+    );
+
+    test(
+      'clear() after undo() back to initialState clears redo stack so redo() '
+      'cannot resurrect sensitive state in both orders',
+      () async {
+        final orderA = _HydratedThenReplayBloc(storage: storage);
+        final orderB = _ReplayThenHydratedBloc(storage: storage);
+        addTearDown(orderA.close);
+        addTearDown(orderB.close);
+
+        for (final bloc in <BlocSignal<CounterEvent, int>>[orderA, orderB]) {
+          final replay = bloc as ReplayMixin<int>;
+          final hydrated = bloc as HydratedMixin<int>;
+          bloc.add(const CounterIncrementPressed());
+          replay.undo();
+          expect(bloc.stateValue, equals(0));
+          expect(replay.canRedo, isTrue);
+
+          await hydrated.clear();
+
+          expect(bloc.stateValue, equals(0));
+          expect(replay.canUndo, isFalse);
+          expect(replay.canRedo, isFalse);
+          expect(storage.read(hydrated.storageToken), isNull);
+
+          replay.redo();
+          expect(bloc.stateValue, equals(0));
+          expect(storage.read(hydrated.storageToken), isNull);
+        }
+      },
+    );
+  });
 }
 
 mixin _BlocPersistenceTrackingMixin<State> on BlocSignalBase<State> {
@@ -1360,4 +1466,29 @@ class _DirectEmitCounterBloc extends CounterBloc {
   void emitDirect(int value) => emit(value);
 
   void Function() registerEffect(void Function() fn) => createEffect(fn);
+}
+
+class _HydratedThenReplayBloc extends HydratedBlocSignal<CounterEvent, int>
+    with ReplayMixin<int>, ReplayBlocMixin<CounterEvent, int> {
+  _HydratedThenReplayBloc({super.storage}) : super(initialState: 0) {
+    on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
+  }
+}
+
+class _ReplayThenHydratedBloc extends ReplayBloc<CounterEvent, int>
+    with HydratedMixin<int> {
+  _ReplayThenHydratedBloc({HydratedStorage? storage})
+      : _storage = storage,
+        super(initialState: 0) {
+    on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
+    hydrate();
+  }
+
+  final HydratedStorage? _storage;
+
+  @override
+  int get initialState => 0;
+
+  @override
+  HydratedStorage? get storageOverride => _storage;
 }

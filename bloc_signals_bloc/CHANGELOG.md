@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (bloc)**: Isolate `BlocSignalObserver.onEvent` exceptions and pair `onEventCompleted` in `finally` inside `ClassicBlocSignal.add`, and automatically close `BlocSignalToClassicBloc` and `BlocSignalToClassicCubit` when the wrapped `BlocSignalBase` closes (#470).
+- **Dependencies**: Tighten `bloc_signals` constraint to `^1.7.1` (#470).
+
 ## 1.0.3
 
 - **Dependencies**: Align intra-workspace `bloc_signals` dependency constraint to `^1.5.0` (#334).

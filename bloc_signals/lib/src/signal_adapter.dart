@@ -15,8 +15,12 @@ import 'package:signals_core/signals_core.dart';
 /// ```
 class SignalBlocSignal<StateType> extends CubitSignal<StateType> {
   /// Creates a [SignalBlocSignal] wrapping an underlying [signal].
+  ///
+  /// When [disposeSignalOnClose] is `true`, calling [close] also disposes
+  /// [signal]. Defaults to `false` so caller-owned signals remain active.
   SignalBlocSignal(
     this.signal, {
+    this.disposeSignalOnClose = false,
     super.equals,
     super.options,
   }) : super(initialState: signal.value) {
@@ -25,12 +29,29 @@ class SignalBlocSignal<StateType> extends CubitSignal<StateType> {
 
   /// The underlying reactive [ReadonlySignal].
   final ReadonlySignal<StateType> signal;
+
+  /// Whether [close] disposes [signal].
+  final bool disposeSignalOnClose;
   late final void Function() _cleanup;
+  bool _isClosing = false;
+  Future<void>? _closeFuture;
 
   @override
-  Future<void> close() async {
-    _cleanup();
-    await super.close();
+  Future<void> close() {
+    final existing = _closeFuture;
+    if (existing != null) return existing;
+    if (_isClosing) return Future<void>.value();
+    _isClosing = true;
+    return _closeFuture = () async {
+      _cleanup();
+      try {
+        await super.close();
+      } finally {
+        if (disposeSignalOnClose) {
+          signal.dispose();
+        }
+      }
+    }();
   }
 }
 
@@ -137,15 +158,51 @@ extension FutureBlocSignalExtension<T> on Future<T> {
     bool Function(AsyncState<T> previous, AsyncState<T> current)? equals,
     SignalOptions<AsyncState<T>>? options,
   }) {
-    return toFutureSignal(
-      timeout: timeout,
+    final guardedCompleter = Completer<T>();
+    final futureSignal = guardedCompleter.future.toFutureSignal(
       initialValue: initialValue,
       lazy: lazy,
       dependencies: dependencies,
       options: asyncSignalOptions,
-    ).toBlocSignal(
+    );
+    final bloc = SignalBlocSignal<AsyncState<T>>(
+      futureSignal,
+      disposeSignalOnClose: true,
       equals: equals,
       options: options,
     );
+    Timer? timeoutTimer;
+    if (timeout != null) {
+      timeoutTimer = Timer(timeout, () {
+        if (!bloc.isClosed && !guardedCompleter.isCompleted) {
+          guardedCompleter.completeError(
+            TimeoutException(
+              'Future did not complete within $timeout',
+              timeout,
+            ),
+          );
+        }
+      });
+      // Cancel pending timeout timer immediately if bloc is closed early.
+      // ignore: invalid_use_of_protected_member
+      bloc.createEffect(() {}, onDispose: () => timeoutTimer?.cancel());
+    }
+    unawaited(
+      then(
+        (value) {
+          timeoutTimer?.cancel();
+          if (!bloc.isClosed && !guardedCompleter.isCompleted) {
+            guardedCompleter.complete(value);
+          }
+        },
+        onError: (Object error, StackTrace stackTrace) {
+          timeoutTimer?.cancel();
+          if (!bloc.isClosed && !guardedCompleter.isCompleted) {
+            guardedCompleter.completeError(error, stackTrace);
+          }
+        },
+      ),
+    );
+    return bloc;
   }
 }

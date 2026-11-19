@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (flutter)**: Refactor `toValueListenable()` to implement `ValueListenable<T>` directly without extending `ValueNotifier<T>`, eliminating initial-state pinning and `FlutterMemoryAllocations` leak-tracker reports while preserving lazy subscription and idempotent `dispose()` (#470).
+
 ## 1.5.0
 
 - **Fix (flutter)**: Narrow `ListenableBlocSignal._onListenableChanged` from `on Object catch` to `on Exception catch` so programming defects in `readValue` propagate while runtime exceptions route to `onError`, and upgrade bare `catch` in `BlocSignalProvider` lazy factory caching to explicit `on Object catch` (#340).

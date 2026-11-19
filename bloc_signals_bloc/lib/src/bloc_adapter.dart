@@ -57,8 +57,31 @@ class ClassicBlocSignal<Event, State> extends BlocSignal<Event, State> {
   @override
   void add(Event event) {
     if (isClosed) return;
-    BlocSignalObserver.observer?.onEvent(this, event);
-    bloc.add(event);
+    final currentObserver = BlocSignalObserver.observer;
+    if (currentObserver != null) {
+      try {
+        currentObserver.onEvent(this, event);
+      } on Exception catch (e, stackTrace) {
+        onError(e, stackTrace);
+      }
+    }
+    try {
+      bloc.add(event);
+      // Intentional `on Object catch` (SCAR-ERR-02): route throwables to
+      // `onError` and rethrow fatal `Error` subtypes while isolating
+      // `Exception` instances.
+    } on Object catch (e, stackTrace) {
+      onError(e, stackTrace);
+      if (e is Error) rethrow;
+    } finally {
+      if (currentObserver != null) {
+        try {
+          currentObserver.onEventCompleted(this, event);
+        } on Exception catch (e, stackTrace) {
+          onError(e, stackTrace);
+        }
+      }
+    }
   }
 
   @override
@@ -157,16 +180,30 @@ class BlocSignalToClassicBloc<Event, State>
     this.blocSignal, {
     this.autoClose = false,
   }) : super(blocSignal.stateValue) {
-    _unsubscribe = blocSignal.state.subscribe((newState) {
-      if (!isClosed && state != newState) {
-        // package:bloc marks emit with @visibleForTesting in Bloc.
-        // ignore: invalid_use_of_visible_for_testing_member
-        emit(newState);
-      }
-    });
     on<Event>((event, emit) {
       blocSignal.add(event);
     });
+    if (blocSignal.isClosed) {
+      unawaited(close());
+    } else {
+      _unsubscribe = blocSignal.state.subscribe((newState) {
+        if (!isClosed && state != newState) {
+          // package:bloc marks emit with @visibleForTesting in Bloc.
+          // ignore: invalid_use_of_visible_for_testing_member
+          emit(newState);
+        }
+      });
+      // Subscribe to container disposal without expanding BlocSignalBase API.
+      // ignore: invalid_use_of_protected_member
+      _disposeCloseEffect = blocSignal.createEffect(
+        () {},
+        onDispose: () {
+          if (!_isClosing && !isClosed) {
+            unawaited(close());
+          }
+        },
+      );
+    }
   }
 
   /// The underlying modern [BlocSignal] instance.
@@ -178,15 +215,31 @@ class BlocSignalToClassicBloc<Event, State>
   /// Whether closing this classic bloc also closes the underlying [blocSignal].
   final bool autoClose;
 
-  late final void Function() _unsubscribe;
+  bool _isClosing = false;
+  Future<void>? _closeFuture;
+  void Function()? _unsubscribe;
+  void Function()? _disposeCloseEffect;
 
   @override
-  Future<void> close() async {
-    _unsubscribe();
-    if (autoClose) {
-      await blocSignal.close();
-    }
-    await super.close();
+  Future<void> close() {
+    final existing = _closeFuture;
+    if (existing != null) return existing;
+    if (_isClosing) return Future<void>.value();
+    _isClosing = true;
+    return _closeFuture = () async {
+      final disposeEffect = _disposeCloseEffect;
+      _disposeCloseEffect = null;
+      disposeEffect?.call();
+      _unsubscribe?.call();
+      _unsubscribe = null;
+      try {
+        if (autoClose) {
+          await blocSignal.close();
+        }
+      } finally {
+        await super.close();
+      }
+    }();
   }
 }
 
@@ -215,11 +268,25 @@ class BlocSignalToClassicCubit<B extends BlocSignalBase<State>, State>
     this.blocSignal, {
     this.autoClose = false,
   }) : super(blocSignal.stateValue) {
-    _unsubscribe = blocSignal.state.subscribe((newState) {
-      if (!isClosed && state != newState) {
-        emit(newState);
-      }
-    });
+    if (blocSignal.isClosed) {
+      unawaited(close());
+    } else {
+      _unsubscribe = blocSignal.state.subscribe((newState) {
+        if (!isClosed && state != newState) {
+          emit(newState);
+        }
+      });
+      // Subscribe to container disposal without expanding BlocSignalBase API.
+      // ignore: invalid_use_of_protected_member
+      _disposeCloseEffect = blocSignal.createEffect(
+        () {},
+        onDispose: () {
+          if (!_isClosing && !isClosed) {
+            unawaited(close());
+          }
+        },
+      );
+    }
   }
 
   /// The underlying modern [BlocSignalBase] instance.
@@ -235,15 +302,31 @@ class BlocSignalToClassicCubit<B extends BlocSignalBase<State>, State>
   /// [blocSignal].
   final bool autoClose;
 
-  late final void Function() _unsubscribe;
+  bool _isClosing = false;
+  Future<void>? _closeFuture;
+  void Function()? _unsubscribe;
+  void Function()? _disposeCloseEffect;
 
   @override
-  Future<void> close() async {
-    _unsubscribe();
-    if (autoClose) {
-      await blocSignal.close();
-    }
-    await super.close();
+  Future<void> close() {
+    final existing = _closeFuture;
+    if (existing != null) return existing;
+    if (_isClosing) return Future<void>.value();
+    _isClosing = true;
+    return _closeFuture = () async {
+      final disposeEffect = _disposeCloseEffect;
+      _disposeCloseEffect = null;
+      disposeEffect?.call();
+      _unsubscribe?.call();
+      _unsubscribe = null;
+      try {
+        if (autoClose) {
+          await blocSignal.close();
+        }
+      } finally {
+        await super.close();
+      }
+    }();
   }
 }
 

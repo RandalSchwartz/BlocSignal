@@ -29,11 +29,26 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     developer.postEvent(eventKind, eventData);
   }
 
+  void _forwardPrevious(
+    BlocSignalBase<dynamic> bloc,
+    void Function(BlocSignalObserver observer) action,
+  ) {
+    final previous = previousObserver;
+    if (previous == null) return;
+    try {
+      action(previous);
+    } on Exception catch (e, stackTrace) {
+      // Isolate previousObserver exceptions via the container's error handler.
+      // ignore: invalid_use_of_protected_member
+      bloc.onError(e, stackTrace);
+    }
+  }
+
   @override
   void onCreate(BlocSignalBase<dynamic> bloc) {
     super.onCreate(bloc);
     DevToolsService.instance.trackCreate(bloc);
-    previousObserver?.onCreate(bloc);
+    _forwardPrevious(bloc, (observer) => observer.onCreate(bloc));
 
     if (DevToolsService.instance.isEnabled) {
       _post('bloc_signal.onCreate', {
@@ -48,7 +63,7 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
   @override
   void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {
     super.onEvent(bloc, event);
-    previousObserver?.onEvent(bloc, event);
+    _forwardPrevious(bloc, (observer) => observer.onEvent(bloc, event));
 
     if (DevToolsService.instance.isEnabled) {
       _post('bloc_signal.onEvent', {
@@ -63,7 +78,10 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
   @override
   void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
     super.onEventCompleted(bloc, event);
-    previousObserver?.onEventCompleted(bloc, event);
+    _forwardPrevious(
+      bloc,
+      (observer) => observer.onEventCompleted(bloc, event),
+    );
   }
 
   @override
@@ -74,7 +92,10 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
   ) {
     super.onTransition(bloc, event, state);
     DevToolsService.instance.trackTransition(bloc, event, state);
-    previousObserver?.onTransition(bloc, event, state);
+    _forwardPrevious(
+      bloc,
+      (observer) => observer.onTransition(bloc, event, state),
+    );
 
     if (DevToolsService.instance.isEnabled) {
       _post('bloc_signal.onTransition', {
@@ -94,7 +115,7 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     Change<dynamic> change,
   ) {
     super.onChange(bloc, change);
-    previousObserver?.onChange(bloc, change);
+    _forwardPrevious(bloc, (observer) => observer.onChange(bloc, change));
 
     if (DevToolsService.instance.isEnabled) {
       _post('bloc_signal.onChange', {
@@ -115,7 +136,11 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
   ) {
     super.onError(bloc, error, stackTrace);
     DevToolsService.instance.trackError(bloc, error, stackTrace);
-    previousObserver?.onError(bloc, error, stackTrace);
+    try {
+      previousObserver?.onError(bloc, error, stackTrace);
+    } on Exception catch (_) {
+      // Prevent previousObserver exception in onError from causing recursion
+    }
 
     if (DevToolsService.instance.isEnabled) {
       _post('bloc_signal.onError', {
@@ -132,7 +157,7 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
   void onClose(BlocSignalBase<dynamic> bloc) {
     super.onClose(bloc);
     DevToolsService.instance.trackClose(bloc);
-    previousObserver?.onClose(bloc);
+    _forwardPrevious(bloc, (observer) => observer.onClose(bloc));
 
     if (DevToolsService.instance.isEnabled) {
       _post('bloc_signal.onClose', {
@@ -152,11 +177,14 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
   }) {
     super.onTelemetry(bloc, name, event: event, metadata: metadata);
     if (!DevToolsService.instance.isEnabled) {
-      previousObserver?.onTelemetry(
+      _forwardPrevious(
         bloc,
-        name,
-        event: event,
-        metadata: metadata,
+        (observer) => observer.onTelemetry(
+          bloc,
+          name,
+          event: event,
+          metadata: metadata,
+        ),
       );
       return;
     }
@@ -167,7 +195,15 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
       event: event,
       metadata: sanitizedMeta,
     );
-    previousObserver?.onTelemetry(bloc, name, event: event, metadata: metadata);
+    _forwardPrevious(
+      bloc,
+      (observer) => observer.onTelemetry(
+        bloc,
+        name,
+        event: event,
+        metadata: metadata,
+      ),
+    );
 
     _post('bloc_signal.onTelemetry', {
       'blocType': bloc.runtimeType.toString(),

@@ -126,43 +126,69 @@ extension BlocSignalValueListenableX<T> on BlocSignalBase<T> {
   }
 }
 
-class _BlocSignalValueListenable<T> extends ValueNotifier<T> {
-  _BlocSignalValueListenable(this.bloc) : super(bloc.stateValue);
+class _ListenerEntry {
+  _ListenerEntry(this.callback);
+
+  final VoidCallback callback;
+  bool active = true;
+}
+
+class _BlocSignalValueListenable<T> implements ValueListenable<T> {
+  _BlocSignalValueListenable(this.bloc);
 
   final BlocSignalBase<T> bloc;
+  final List<_ListenerEntry> _listeners = [];
   void Function()? _unsubscribe;
+  bool _isDisposed = false;
 
   @override
   T get value => bloc.stateValue;
 
   @override
   void addListener(VoidCallback listener) {
-    super.addListener(listener);
-    if (_unsubscribe == null && hasListeners) {
+    if (_isDisposed) return;
+    _listeners.add(_ListenerEntry(listener));
+    if (_unsubscribe == null) {
       var isInitial = true;
       _unsubscribe = bloc.state.subscribe((_) {
         if (isInitial) {
           isInitial = false;
           return;
         }
-        notifyListeners();
+        for (final entry in _listeners.toList(growable: false)) {
+          if (_isDisposed) break;
+          if (entry.active) {
+            entry.callback();
+          }
+        }
       });
     }
   }
 
   @override
   void removeListener(VoidCallback listener) {
-    super.removeListener(listener);
-    if (!hasListeners) {
+    if (_isDisposed) return;
+    for (var i = _listeners.length - 1; i >= 0; i--) {
+      if (_listeners[i].callback == listener) {
+        _listeners[i].active = false;
+        _listeners.removeAt(i);
+        break;
+      }
+    }
+    if (_listeners.isEmpty) {
       _unsubscribe?.call();
       _unsubscribe = null;
     }
   }
 
-  @override
   void dispose() {
+    if (_isDisposed) return;
+    _isDisposed = true;
+    for (final entry in _listeners) {
+      entry.active = false;
+    }
+    _listeners.clear();
     _unsubscribe?.call();
     _unsubscribe = null;
-    super.dispose();
   }
 }

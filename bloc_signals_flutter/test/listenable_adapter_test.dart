@@ -1,7 +1,12 @@
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+
+void _disposeListenable(ValueListenable<dynamic> listenable) {
+  (listenable as dynamic).dispose();
+}
 
 class TestChangeNotifier extends ChangeNotifier {
   int count = 0;
@@ -239,10 +244,9 @@ void main() {
       final valueListenable = testCubit.toValueListenable();
 
       expect(valueListenable.value, equals(100));
+      expect(valueListenable, isNot(isA<ValueNotifier<int>>()));
 
-      if (valueListenable is ValueNotifier<int>) {
-        valueListenable.dispose();
-      }
+      _disposeListenable(valueListenable);
 
       // Incrementing cubit post-dispose does not throw or crash
       testCubit.increment();
@@ -428,26 +432,148 @@ void main() {
         addTearDown(cubit.close);
 
         // Case 1: dispose() when no listeners were ever added
-        final untouchedListenable =
-            cubit.toValueListenable() as ValueNotifier<int>;
+        final untouchedListenable = cubit.toValueListenable();
+        expect(untouchedListenable, isNot(isA<ValueNotifier<int>>()));
         expect(cubit.activeListenableSubscriptions, equals(0));
-        expect(untouchedListenable.dispose, returnsNormally);
+        expect(
+          () => _disposeListenable(untouchedListenable),
+          returnsNormally,
+        );
         expect(cubit.activeListenableSubscriptions, equals(0));
 
         // Case 2: dispose() while listeners are actively attached
-        final activeListenable =
-            cubit.toValueListenable() as ValueNotifier<int>;
+        final activeListenable = cubit.toValueListenable();
+        expect(activeListenable, isNot(isA<ValueNotifier<int>>()));
         var callCount = 0;
         void listener() => callCount++;
 
         activeListenable.addListener(listener);
         expect(cubit.activeListenableSubscriptions, equals(1));
 
-        expect(activeListenable.dispose, returnsNormally);
+        expect(() => _disposeListenable(activeListenable), returnsNormally);
         expect(cubit.activeListenableSubscriptions, equals(0));
 
         cubit.setState(42);
         expect(callCount, equals(0));
+      },
+    );
+
+    testWidgets(
+      '(Issue #470) inline ValueListenableBuilder emits zero '
+      'FlutterMemoryAllocations ChangeNotifier events',
+      (tester) async {
+        final cubit = TestCubit();
+        addTearDown(cubit.close);
+
+        final allocationEvents = <ObjectEvent>[];
+        void onAllocation(ObjectEvent event) {
+          allocationEvents.add(event);
+        }
+
+        FlutterMemoryAllocations.instance.addListener(onAllocation);
+        addTearDown(
+          () => FlutterMemoryAllocations.instance.removeListener(onAllocation),
+        );
+
+        await tester.pumpWidget(
+          Directionality(
+            textDirection: TextDirection.ltr,
+            child: ValueListenableBuilder<int>(
+              valueListenable: cubit.toValueListenable(),
+              builder: (context, value, _) => Text('Count: $value'),
+            ),
+          ),
+        );
+
+        cubit.increment();
+        await tester.pump();
+        expect(find.text('Count: 1'), findsOneWidget);
+
+        await tester.pumpWidget(const SizedBox.shrink());
+
+        final createdNotifiers = allocationEvents
+            .whereType<ObjectCreated>()
+            .where((e) => e.object is ChangeNotifier)
+            .toList();
+        expect(createdNotifiers, isEmpty);
+      },
+    );
+
+    test(
+      '(Issue #470) idempotent dispose and reentrant addListener/removeListener',
+      () async {
+        final cubit = SubscriptionTrackingCubit<int>(initialState: 0);
+        addTearDown(cubit.close);
+
+        final listenable = cubit.toValueListenable();
+        var l1Calls = 0;
+        var l2Calls = 0;
+
+        void l2() => l2Calls++;
+        void l1() {
+          l1Calls++;
+          listenable
+            ..removeListener(l1)
+            ..addListener(l2);
+        }
+
+        listenable.addListener(l1);
+        cubit.setState(1);
+        expect(l1Calls, equals(1));
+        expect(l2Calls, equals(0));
+        expect(cubit.activeListenableSubscriptions, equals(1));
+
+        cubit.setState(2);
+        expect(l1Calls, equals(1));
+        expect(l2Calls, equals(1));
+
+        // Idempotent dispose
+        _disposeListenable(listenable);
+        _disposeListenable(listenable);
+        expect(cubit.activeListenableSubscriptions, equals(0));
+
+        // Post-dispose addListener/removeListener are safe no-ops
+        listenable
+          ..addListener(l2)
+          ..removeListener(l2);
+        expect(cubit.activeListenableSubscriptions, equals(0));
+
+        cubit.setState(3);
+        expect(l2Calls, equals(1));
+      },
+    );
+
+    test(
+      '(Issue #470) L1 calling dispose() or removeListener(L2) during '
+      'notification prevents L2 from being invoked',
+      () async {
+        final cubit = SubscriptionTrackingCubit<int>(initialState: 0);
+        addTearDown(cubit.close);
+
+        // Case A: L1 calls dispose() mid-notification
+        final listenableA = cubit.toValueListenable();
+        var l2CalledA = false;
+        void l2A() => l2CalledA = true;
+        void l1A() => _disposeListenable(listenableA);
+
+        listenableA
+          ..addListener(l1A)
+          ..addListener(l2A);
+        cubit.setState(1);
+        expect(l2CalledA, isFalse);
+
+        // Case B: L1 calls removeListener(L2) mid-notification
+        final listenableB = cubit.toValueListenable();
+        var l2CalledB = false;
+        void l2B() => l2CalledB = true;
+        void l1B() => listenableB.removeListener(l2B);
+
+        listenableB
+          ..addListener(l1B)
+          ..addListener(l2B);
+        cubit.setState(2);
+        expect(l2CalledB, isFalse);
+        _disposeListenable(listenableB);
       },
     );
   });

@@ -198,5 +198,44 @@ void main() {
       await blocSignal.close();
       await controller.close();
     });
+
+    test(
+      '(Issue #470) close() disposes owned StreamSignal, cancelling stream '
+      'subscription and dependency watches',
+      () async {
+        var isCancelled = false;
+        var depWatchedCount = 0;
+        final base = signal<int>(1);
+        final dep = computed<int>(
+          () => base.value * 2,
+          options: ComputedOptions<int>(
+            watched: () => depWatchedCount++,
+            unwatched: () => depWatchedCount--,
+          ),
+        );
+        final controller = StreamController<int>(
+          onCancel: () {
+            isCancelled = true;
+          },
+        );
+
+        final blocSignal = controller.stream.toAsyncBlocSignal(
+          lazy: false,
+          dependencies: [dep],
+        );
+
+        expect(isCancelled, isFalse);
+        expect(blocSignal.signal.disposed, isFalse);
+        expect(depWatchedCount, equals(1));
+
+        await blocSignal.close();
+
+        expect(blocSignal.signal.disposed, isTrue);
+        expect(isCancelled, isTrue);
+        expect(depWatchedCount, equals(0));
+
+        await controller.close();
+      },
+    );
   });
 }

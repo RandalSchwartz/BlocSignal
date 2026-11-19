@@ -152,7 +152,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
 
   @override
   void onCreate(BlocSignalBase<dynamic> bloc) {
-    for (final observer in _observers) {
+    for (final observer in _observers.toList(growable: false)) {
       try {
         observer.onCreate(bloc);
       } on Exception catch (e, stackTrace) {
@@ -163,7 +163,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
 
   @override
   void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {
-    for (final observer in _observers) {
+    for (final observer in _observers.toList(growable: false)) {
       try {
         observer.onEvent(bloc, event);
       } on Exception catch (e, stackTrace) {
@@ -174,7 +174,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
 
   @override
   void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
-    for (final observer in _observers) {
+    for (final observer in _observers.toList(growable: false)) {
       try {
         observer.onEventCompleted(bloc, event);
       } on Exception catch (e, stackTrace) {
@@ -189,7 +189,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
     Object? event,
     Object? state,
   ) {
-    for (final observer in _observers) {
+    for (final observer in _observers.toList(growable: false)) {
       try {
         observer.onTransition(bloc, event, state);
       } on Exception catch (e, stackTrace) {
@@ -200,7 +200,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
 
   @override
   void onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change) {
-    for (final observer in _observers) {
+    for (final observer in _observers.toList(growable: false)) {
       try {
         observer.onChange(bloc, change);
       } on Exception catch (e, stackTrace) {
@@ -215,7 +215,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
     Object error,
     StackTrace stackTrace,
   ) {
-    for (final observer in _observers) {
+    for (final observer in _observers.toList(growable: false)) {
       try {
         observer.onError(bloc, error, stackTrace);
       } on Exception catch (_) {
@@ -231,7 +231,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
     Object? event,
     Map<String, dynamic>? metadata,
   }) {
-    for (final observer in _observers) {
+    for (final observer in _observers.toList(growable: false)) {
       try {
         observer.onTelemetry(
           bloc,
@@ -247,7 +247,7 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
 
   @override
   void onClose(BlocSignalBase<dynamic> bloc) {
-    for (final observer in _observers) {
+    for (final observer in _observers.toList(growable: false)) {
       try {
         observer.onClose(bloc);
       } on Exception catch (e, stackTrace) {

@@ -198,7 +198,8 @@ class BlocSignalToClassicBloc<Event, State>
       _disposeCloseEffect = blocSignal.createEffect(
         () {},
         onDispose: () {
-          if (!_isClosing && !isClosed) {
+          _disposeCloseEffect = null;
+          if (_closeFuture == null && !isClosed) {
             unawaited(close());
           }
         },
@@ -215,7 +216,6 @@ class BlocSignalToClassicBloc<Event, State>
   /// Whether closing this classic bloc also closes the underlying [blocSignal].
   final bool autoClose;
 
-  bool _isClosing = false;
   Future<void>? _closeFuture;
   void Function()? _unsubscribe;
   void Function()? _disposeCloseEffect;
@@ -224,22 +224,25 @@ class BlocSignalToClassicBloc<Event, State>
   Future<void> close() {
     final existing = _closeFuture;
     if (existing != null) return existing;
-    if (_isClosing) return Future<void>.value();
-    _isClosing = true;
-    return _closeFuture = () async {
-      final disposeEffect = _disposeCloseEffect;
-      _disposeCloseEffect = null;
-      disposeEffect?.call();
-      _unsubscribe?.call();
-      _unsubscribe = null;
-      try {
-        if (autoClose) {
-          await blocSignal.close();
+    final completer = Completer<void>();
+    _closeFuture = completer.future;
+    completer.complete(
+      () async {
+        final disposeEffect = _disposeCloseEffect;
+        _disposeCloseEffect = null;
+        disposeEffect?.call();
+        _unsubscribe?.call();
+        _unsubscribe = null;
+        try {
+          if (autoClose) {
+            await blocSignal.close();
+          }
+        } finally {
+          await super.close();
         }
-      } finally {
-        await super.close();
-      }
-    }();
+      }(),
+    );
+    return completer.future;
   }
 }
 
@@ -281,7 +284,8 @@ class BlocSignalToClassicCubit<B extends BlocSignalBase<State>, State>
       _disposeCloseEffect = blocSignal.createEffect(
         () {},
         onDispose: () {
-          if (!_isClosing && !isClosed) {
+          _disposeCloseEffect = null;
+          if (_closeFuture == null && !isClosed) {
             unawaited(close());
           }
         },
@@ -302,7 +306,6 @@ class BlocSignalToClassicCubit<B extends BlocSignalBase<State>, State>
   /// [blocSignal].
   final bool autoClose;
 
-  bool _isClosing = false;
   Future<void>? _closeFuture;
   void Function()? _unsubscribe;
   void Function()? _disposeCloseEffect;
@@ -311,22 +314,25 @@ class BlocSignalToClassicCubit<B extends BlocSignalBase<State>, State>
   Future<void> close() {
     final existing = _closeFuture;
     if (existing != null) return existing;
-    if (_isClosing) return Future<void>.value();
-    _isClosing = true;
-    return _closeFuture = () async {
-      final disposeEffect = _disposeCloseEffect;
-      _disposeCloseEffect = null;
-      disposeEffect?.call();
-      _unsubscribe?.call();
-      _unsubscribe = null;
-      try {
-        if (autoClose) {
-          await blocSignal.close();
+    final completer = Completer<void>();
+    _closeFuture = completer.future;
+    completer.complete(
+      () async {
+        final disposeEffect = _disposeCloseEffect;
+        _disposeCloseEffect = null;
+        disposeEffect?.call();
+        _unsubscribe?.call();
+        _unsubscribe = null;
+        try {
+          if (autoClose) {
+            await blocSignal.close();
+          }
+        } finally {
+          await super.close();
         }
-      } finally {
-        await super.close();
-      }
-    }();
+      }(),
+    );
+    return completer.future;
   }
 }
 

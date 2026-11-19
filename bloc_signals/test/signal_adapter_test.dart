@@ -472,6 +472,41 @@ void main() {
     );
 
     test(
+      '(Issue #470) synchronous re-entrant close() inside onClose returns '
+      'identical shared close future and awaits signal disposal',
+      () async {
+        final previousObserver = BlocSignalObserver.observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final completer = Completer<int>();
+        final bloc = completer.future.toAsyncBlocSignal();
+
+        Future<void>? outerFuture;
+        Future<void>? reentrantFuture;
+        var disposedWhenReentrantCompleted = false;
+
+        BlocSignalObserver.observer = _OnCloseCallbackObserver((closed) {
+          if (identical(closed, bloc) && reentrantFuture == null) {
+            reentrantFuture = bloc.close();
+            unawaited(
+              reentrantFuture!.whenComplete(() {
+                disposedWhenReentrantCompleted = bloc.signal.disposed;
+              }),
+            );
+          }
+        });
+
+        outerFuture = bloc.close();
+        await outerFuture;
+
+        expect(reentrantFuture, isNotNull);
+        expect(identical(reentrantFuture, outerFuture), isTrue);
+        await reentrantFuture;
+        expect(disposedWhenReentrantCompleted, isTrue);
+      },
+    );
+
+    test(
       '(Issue #470) early close() cancels pending timeout Timer immediately',
       () async {
         Timer? createdTimer;
@@ -583,4 +618,13 @@ class _SynchronousFuture<T> implements Future<T> {
     }
     return this;
   }
+}
+
+class _OnCloseCallbackObserver extends BlocSignalObserver {
+  _OnCloseCallbackObserver(this._onClose);
+
+  final void Function(BlocSignalBase<dynamic> bloc) _onClose;
+
+  @override
+  void onClose(BlocSignalBase<dynamic> bloc) => _onClose(bloc);
 }

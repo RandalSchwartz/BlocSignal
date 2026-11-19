@@ -643,6 +643,8 @@ void main() {
 
         // Already closed before construction
         final preClosedClassic = modernBloc.toClassicBloc();
+        await Future<void>.delayed(Duration.zero);
+        expect(preClosedClassic.isClosed, isTrue);
         await preClosedClassic.close();
         expect(preClosedClassic.isClosed, isTrue);
 
@@ -665,11 +667,15 @@ void main() {
         expect(classicCubit.isClosed, isFalse);
 
         await modernCubit.close();
+        await Future<void>.delayed(Duration.zero);
+        expect(classicCubit.isClosed, isTrue);
         await classicCubit.close();
         expect(classicCubit.isClosed, isTrue);
 
         // Already closed before construction
         final preClosedClassic = modernCubit.toClassicCubit();
+        await Future<void>.delayed(Duration.zero);
+        expect(preClosedClassic.isClosed, isTrue);
         await preClosedClassic.close();
         expect(preClosedClassic.isClosed, isTrue);
 
@@ -681,6 +687,41 @@ void main() {
         await concurrentClassic.close();
         expect(concurrentClassic.isClosed, isTrue);
         expect(concurrentCubit.isClosed, isTrue);
+      },
+    );
+
+    test(
+      'synchronous re-entrant close() inside BlocObserver.onClose returns '
+      'identical shared close future',
+      () async {
+        final previousBlocObserver = bloc_lib.Bloc.observer;
+        final reentrantObserver = _ReentrantOnCloseObserver();
+        bloc_lib.Bloc.observer = reentrantObserver;
+        addTearDown(() => bloc_lib.Bloc.observer = previousBlocObserver);
+
+        final modernBloc = ModernCounterBloc();
+        final classicBloc = modernBloc.toClassicBloc(autoClose: true);
+        final outerBlocFuture = classicBloc.close();
+        await outerBlocFuture;
+        expect(
+          identical(
+            reentrantObserver.reentrantFutures[classicBloc],
+            outerBlocFuture,
+          ),
+          isTrue,
+        );
+
+        final modernCubit = ModernCounterCubit();
+        final classicCubit = modernCubit.toClassicCubit(autoClose: true);
+        final outerCubitFuture = classicCubit.close();
+        await outerCubitFuture;
+        expect(
+          identical(
+            reentrantObserver.reentrantFutures[classicCubit],
+            outerCubitFuture,
+          ),
+          isTrue,
+        );
       },
     );
 
@@ -717,6 +758,18 @@ class _CountingClassicBlocObserver extends bloc_lib.BlocObserver {
   void onClose(bloc_lib.BlocBase<dynamic> bloc) {
     super.onClose(bloc);
     closedBlocs[bloc] = (closedBlocs[bloc] ?? 0) + 1;
+  }
+}
+
+class _ReentrantOnCloseObserver extends bloc_lib.BlocObserver {
+  final Map<bloc_lib.BlocBase<dynamic>, Future<void>> reentrantFutures = {};
+
+  @override
+  void onClose(bloc_lib.BlocBase<dynamic> bloc) {
+    super.onClose(bloc);
+    if (!reentrantFutures.containsKey(bloc)) {
+      reentrantFutures[bloc] = bloc.close();
+    }
   }
 }
 

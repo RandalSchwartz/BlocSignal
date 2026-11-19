@@ -33,25 +33,27 @@ class SignalBlocSignal<StateType> extends CubitSignal<StateType> {
   /// Whether [close] disposes [signal].
   final bool disposeSignalOnClose;
   late final void Function() _cleanup;
-  bool _isClosing = false;
   Future<void>? _closeFuture;
 
   @override
   Future<void> close() {
     final existing = _closeFuture;
     if (existing != null) return existing;
-    if (_isClosing) return Future<void>.value();
-    _isClosing = true;
-    return _closeFuture = () async {
-      _cleanup();
-      try {
-        await super.close();
-      } finally {
-        if (disposeSignalOnClose) {
-          signal.dispose();
+    final completer = Completer<void>();
+    _closeFuture = completer.future;
+    completer.complete(
+      () async {
+        _cleanup();
+        try {
+          await super.close();
+        } finally {
+          if (disposeSignalOnClose) {
+            signal.dispose();
+          }
         }
-      }
-    }();
+      }(),
+    );
+    return completer.future;
   }
 }
 

@@ -10,6 +10,13 @@ class _ChangeStack<T> {
   final Queue<_Change<T>> _history = ListQueue();
   final Queue<_Change<T>> _redos = ListQueue();
   final _Predicate<T> _shouldReplay;
+  final Signal<int> _revision = signal<int>(0);
+
+  int get revision => _revision.value;
+
+  void _bumpRevision() {
+    _revision.value++;
+  }
 
   int? _limit;
 
@@ -26,8 +33,13 @@ class _ChangeStack<T> {
 
   void _trimHistory() {
     if (_limit == null) return;
+    var trimmed = false;
     while (_history.length > _limit!) {
       _history.removeFirst();
+      trimmed = true;
+    }
+    if (trimmed) {
+      _bumpRevision();
     }
   }
 
@@ -40,11 +52,14 @@ class _ChangeStack<T> {
     _history.addLast(change);
     _redos.clear();
     _trimHistory();
+    _bumpRevision();
   }
 
   void clear() {
+    if (_history.isEmpty && _redos.isEmpty) return;
     _history.clear();
     _redos.clear();
+    _bumpRevision();
   }
 
   void redo() {
@@ -55,6 +70,7 @@ class _ChangeStack<T> {
         skipped.forEach(_history.addLast);
         _history.addLast(change);
         _trimHistory();
+        _bumpRevision();
         change.execute();
         return;
       }
@@ -72,6 +88,7 @@ class _ChangeStack<T> {
       if (_shouldReplay(change._oldValue)) {
         skipped.forEach(_redos.addFirst);
         _redos.addFirst(change);
+        _bumpRevision();
         change.undo();
         return;
       }

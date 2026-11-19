@@ -6,7 +6,7 @@ The `bloc_signals_replay` package provides automatic undo and redo state trackin
 
 ## ⚡ Key Components
 
-- **`ReplayMixin<State>`**: Shared base mixin on `BlocSignalBase<State>` providing `undo()`, `redo()`, `canUndo`, `canRedo`, `clearHistory()`, `limit`, `shouldReplay(state)`, and `emit(newState)` history recording.
+- **`ReplayMixin<State>`**: Shared base mixin on `BlocSignalBase<State>` providing `undo()`, `redo()`, `canUndo`, `canRedo`, `canUndoSignal`, `canRedoSignal`, `clearHistory()`, `limit`, `shouldReplay(state)`, `onReset()`, and `emit(newState)` history recording. `canUndo` and `canRedo` are backed by reactive `Computed<bool>` signals (`autoDispose: false`) and all mutations execute inside `batch()` so `context.select`, `Watch`, `computed()`, and `effect()` update atomically with `stateValue`.
 - **`ReplayCubit<State>` & `ReplayCubitMixin<State>`**: Extends or mixes into `CubitSignal<State>` (with `ReplayCubitMixin<State>` aliased to `ReplayMixin<State>`) to provide undo/redo history tracking.
 - **`ReplayBloc<Event, State>` & `ReplayBlocMixin<Event, State>`**: Extends or mixes into `BlocSignal<Event, State>` alongside `ReplayMixin<State>` to provide undo/redo history tracking. Emits synthetic `_Undo` and `_Redo` events into `@protected onReplay(ReplayEvent)` and `onTransition` so observers track replay actions 1:1.
 - **`ReplayEvent`**: Base event class for `ReplayBloc` events.

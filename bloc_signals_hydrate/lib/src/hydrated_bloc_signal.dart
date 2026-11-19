@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_hydrate/src/hydrated_storage.dart';
 import 'package:meta/meta.dart';
+import 'package:signals_core/signals_core.dart';
 
 /// A mixin that provides state persistence and hydration capabilities for
 /// [BlocSignalBase] containers.
@@ -282,7 +283,10 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
       });
     }
     if (isClosed) return;
-    super.emit(initialState);
+    batch(() {
+      onReset();
+      runWithoutHistory(() => super.emit(initialState));
+    });
   }
 
   final Mutex _storageMutex = Mutex();
@@ -316,7 +320,7 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
     _isHydrated = true;
     final restored = initHydratedState(initialState);
     if (!equals(stateValue, restored)) {
-      super.emit(restored);
+      runWithoutHistory(() => super.emit(restored));
     }
   }
 

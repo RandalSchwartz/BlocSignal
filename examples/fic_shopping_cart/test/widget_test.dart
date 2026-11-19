@@ -1,4 +1,6 @@
+import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
 import 'package:bloc_signals_hydrate/bloc_signals_hydrate.dart';
+import 'package:bloc_signals_replay/bloc_signals_replay.dart';
 import 'package:fic_shopping_cart_example/main.dart';
 import 'package:fic_shopping_cart_example/src/views/cart_view.dart';
 import 'package:flutter/material.dart';
@@ -87,4 +89,43 @@ void main() {
     // Discount is removed because the promo code selection was undone!
     expect(find.text('Discount (SAVE10)'), findsNothing);
   });
+
+  testWidgets(
+      '(Issue #471) context.select tracks reactive ReplayMixin.canUndo across emit and undo',
+      (tester) async {
+    final cubit = _ReactiveSelectReplayCubit();
+    addTearDown(cubit.close);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: BlocSignalProvider<_ReactiveSelectReplayCubit>.value(
+          value: cubit,
+          child: Builder(
+            builder: (context) {
+              final canUndo = context.select(
+                (_ReactiveSelectReplayCubit c) => c.canUndo,
+              );
+              return Text('canUndo:$canUndo');
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('canUndo:false'), findsOneWidget);
+
+    cubit.increment();
+    await tester.pump();
+    expect(find.text('canUndo:true'), findsOneWidget);
+
+    cubit.undo();
+    await tester.pump();
+    expect(find.text('canUndo:false'), findsOneWidget);
+  });
+}
+
+class _ReactiveSelectReplayCubit extends ReplayCubit<int> {
+  _ReactiveSelectReplayCubit() : super(initialState: 0);
+
+  void increment() => emit(stateValue + 1);
 }

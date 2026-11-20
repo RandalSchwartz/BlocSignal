@@ -84,17 +84,19 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
   /// synchronously.
   void add(Event event) {
     if (isClosed) return;
-    final currentObserver = BlocSignalObserver.observer;
-    if (currentObserver != null) {
-      try {
-        currentObserver.onEvent(this, event);
-      } on Exception catch (e, stackTrace) {
-        onError(e, stackTrace);
-      }
-    }
+    final dispatchToken = Object();
 
     runZoned(
       () {
+        final currentObserver = BlocSignalObserver.observer;
+        if (currentObserver != null) {
+          try {
+            currentObserver.onEvent(this, event);
+          } on Exception catch (e, stackTrace) {
+            onError(e, stackTrace);
+          }
+        }
+
         try {
           final result = onEvent(event);
           if (result is Future) {
@@ -114,6 +116,7 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
       zoneValues: {
         zoneEventKey: event,
         zoneBlocKey: this,
+        BlocSignalBase.ambientZoneDispatchTokenKey: dispatchToken,
       },
     );
   }

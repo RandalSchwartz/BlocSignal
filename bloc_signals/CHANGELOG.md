@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Feat (core)**: Add `BlocSignalBase.ambientZoneDispatchTokenKey` and propagate a unique per-invocation dispatch token in `BlocSignalMixin.add` across `onEvent`, transformer/handler execution, `onError`, and `onEventCompleted` (#475).
+
 ## 1.8.0
 
 - **Feat (core)**: Add `@protected` coordination hooks (`onReset()`, `isHistorySuppressed`, and `runWithoutHistory()`) on `BlocSignalBase` and `CubitSignalMixin` so sibling persistence and replay mixins coordinate reset and unrecorded emissions without cross-package coupling (#471).

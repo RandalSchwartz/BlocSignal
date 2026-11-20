@@ -1,6 +1,23 @@
+import 'dart:async';
+import 'dart:collection';
+
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:dartastic_opentelemetry_api/dartastic_opentelemetry_api.dart'
     as otel;
+
+class _ActiveSpanEntry {
+  _ActiveSpanEntry({
+    required this.key,
+    required this.blocId,
+    required this.span,
+    this.dispatchToken,
+  });
+
+  final String key;
+  final int blocId;
+  final otel.APISpan span;
+  final Object? dispatchToken;
+}
 
 /// A [BlocSignalObserver] that instruments `BlocSignal` lifecycles
 /// with OpenTelemetry spans.
@@ -33,6 +50,14 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
   /// An optional [maxAttributeLength] caps the character length of recorded
   /// string attributes (`state.value`, `event.value`, error messages, and
   /// stringified metadata values). When provided, it must be greater than zero.
+  ///
+  /// An optional [stackTraceRedactor] callback can be provided to format or
+  /// redact stack traces before recording them under `exception.stacktrace`.
+  /// Returning an empty string omits `exception.stacktrace`.
+  ///
+  /// An optional [maxStackTraceLength] caps the character length of recorded
+  /// `exception.stacktrace` attributes. When omitted, [maxAttributeLength] is
+  /// used if provided. When provided, it must be greater than zero.
   OtelBlocSignalObserver({
     otel.APITracer? tracer,
     this.maxActiveSpans = 100,
@@ -40,10 +65,16 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
     this.eventRedactor,
     this.errorRedactor,
     this.maxAttributeLength,
+    this.stackTraceRedactor,
+    this.maxStackTraceLength,
   })  : assert(maxActiveSpans > 0, 'maxActiveSpans must be greater than zero.'),
         assert(
           maxAttributeLength == null || maxAttributeLength > 0,
           'maxAttributeLength must be greater than zero.',
+        ),
+        assert(
+          maxStackTraceLength == null || maxStackTraceLength > 0,
+          'maxStackTraceLength must be greater than zero.',
         ),
         _tracer = tracer ??
             otel.OTelAPI.tracerProvider().getTracer('bloc_signals_otel');
@@ -89,16 +120,89 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
   /// metadata).
   final int? maxAttributeLength;
 
-  // Track active spans for events mapped by a unique key per bloc/event.
-  // Uses a FIFO list to prevent collisions when repeated identical or const
-  // events are dispatched before prior spans close.
-  final Map<String, List<otel.APISpan>> _activeSpans = {};
+  /// Optional callback to redact or format stack traces before recording them
+  /// under the `exception.stacktrace` attribute.
+  ///
+  /// Returning an empty string omits `exception.stacktrace`.
+  final String Function(StackTrace stackTrace)? stackTraceRedactor;
 
-  int get _totalActiveSpans =>
-      _activeSpans.values.fold(0, (sum, list) => sum + list.length);
+  /// Optional maximum character length applied to recorded
+  /// `exception.stacktrace` attributes.
+  ///
+  /// Falls back to [maxAttributeLength] when `null`.
+  final int? maxStackTraceLength;
+
+  final Map<Object, _ActiveSpanEntry> _activeSpansByToken = {};
+  final Map<String, Queue<_ActiveSpanEntry>> _activeSpansByKey = {};
+  final Queue<_ActiveSpanEntry> _chronologicalSpans = Queue<_ActiveSpanEntry>();
 
   String _spanKey(BlocSignalBase<dynamic> bloc, Object? event) {
     return '${identityHashCode(bloc)}_${identityHashCode(event)}';
+  }
+
+  Object? _currentDispatchToken() =>
+      Zone.current[BlocSignalBase.ambientZoneDispatchTokenKey];
+
+  bool _isTokenOwnedByBloc(
+    Object? dispatchToken,
+    BlocSignalBase<dynamic> bloc,
+  ) {
+    if (dispatchToken == null) return false;
+    final Object? ambientBloc = Zone.current[BlocSignalBase.ambientZoneBlocKey];
+    return ambientBloc == null || identical(ambientBloc, bloc);
+  }
+
+  _ActiveSpanEntry? _entryForToken(
+    Object? dispatchToken,
+    BlocSignalBase<dynamic> bloc,
+  ) {
+    if (dispatchToken == null) return null;
+    final entry = _activeSpansByToken[dispatchToken];
+    if (entry == null || entry.blocId != identityHashCode(bloc)) {
+      return null;
+    }
+    return entry;
+  }
+
+  void _removeEntry(_ActiveSpanEntry entry) {
+    final token = entry.dispatchToken;
+    if (token != null) {
+      _activeSpansByToken.remove(token);
+    }
+    final queue = _activeSpansByKey[entry.key];
+    if (queue != null) {
+      queue.remove(entry);
+      if (queue.isEmpty) {
+        _activeSpansByKey.remove(entry.key);
+      }
+    }
+    _chronologicalSpans.remove(entry);
+  }
+
+  String? _formatStackTrace(StackTrace stackTrace) {
+    var formatted = stackTraceRedactor != null
+        ? stackTraceRedactor!(stackTrace)
+        : stackTrace.toString();
+    final maxLen = maxStackTraceLength ?? maxAttributeLength;
+    if (maxLen != null && formatted.length > maxLen) {
+      formatted = formatted.substring(0, maxLen);
+    }
+    return formatted.isEmpty ? null : formatted;
+  }
+
+  void _recordSpanError(
+    otel.APISpan span,
+    Object error,
+    String? errorMessage,
+    otel.Attributes exceptionAttributes,
+  ) {
+    span
+      ..recordException(
+        error,
+        attributes: exceptionAttributes,
+      )
+      ..setStatus(otel.SpanStatusCode.Error, errorMessage)
+      ..end();
   }
 
   String _cap(String value) {
@@ -169,11 +273,10 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
     super.onEvent(bloc, event);
     if (event == null) return;
 
-    if (_totalActiveSpans >= maxActiveSpans) {
-      final oldestKey = _activeSpans.keys.first;
-      final list = _activeSpans[oldestKey]!;
-      list.removeAt(0).end();
-      if (list.isEmpty) _activeSpans.remove(oldestKey);
+    if (_chronologicalSpans.length >= maxActiveSpans) {
+      final oldest = _chronologicalSpans.first;
+      _removeEntry(oldest);
+      oldest.span.end();
     }
 
     final span = _tracer.startSpan(
@@ -184,7 +287,25 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
       }),
     );
 
-    (_activeSpans[_spanKey(bloc, event)] ??= []).add(span);
+    final dispatchToken = _currentDispatchToken();
+    final scopedToken = (dispatchToken != null &&
+            _isTokenOwnedByBloc(dispatchToken, bloc) &&
+            !_activeSpansByToken.containsKey(dispatchToken))
+        ? dispatchToken
+        : null;
+    final key = _spanKey(bloc, event);
+    final entry = _ActiveSpanEntry(
+      key: key,
+      blocId: identityHashCode(bloc),
+      span: span,
+      dispatchToken: scopedToken,
+    );
+
+    _chronologicalSpans.addLast(entry);
+    (_activeSpansByKey[key] ??= Queue<_ActiveSpanEntry>()).addLast(entry);
+    if (scopedToken != null) {
+      _activeSpansByToken[scopedToken] = entry;
+    }
   }
 
   @override
@@ -195,11 +316,13 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
   ) {
     super.onTransition(bloc, event, state);
 
-    final key = _spanKey(bloc, event);
-    final spans = _activeSpans[key];
+    final dispatchToken = _currentDispatchToken();
+    final entry = _isTokenOwnedByBloc(dispatchToken, bloc)
+        ? _entryForToken(dispatchToken, bloc)
+        : _activeSpansByKey[_spanKey(bloc, event)]?.firstOrNull;
 
-    if (spans != null && spans.isNotEmpty) {
-      final span = spans.first;
+    if (entry != null) {
+      final span = entry.span;
       _applyStateAttribute(span, bloc, state);
       final stateStr = _formatState(bloc, state);
       final eventStr = _formatEvent(bloc, event);
@@ -217,15 +340,19 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
   void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
     super.onEventCompleted(bloc, event);
 
-    final key = _spanKey(bloc, event);
-    final spans = _activeSpans[key];
+    final dispatchToken = _currentDispatchToken();
+    final _ActiveSpanEntry? entry;
+    if (_isTokenOwnedByBloc(dispatchToken, bloc)) {
+      entry = _entryForToken(dispatchToken, bloc);
+    } else {
+      final queue = _activeSpansByKey[_spanKey(bloc, event)];
+      entry = (queue != null && queue.isNotEmpty) ? queue.first : null;
+    }
 
-    if (spans != null && spans.isNotEmpty) {
-      final span = spans.removeAt(0);
-      if (spans.isEmpty) _activeSpans.remove(key);
-
-      _applyStateAttribute(span, bloc, bloc.stateValue);
-      span
+    if (entry != null) {
+      _removeEntry(entry);
+      _applyStateAttribute(entry.span, bloc, bloc.stateValue);
+      entry.span
         ..setStatus(otel.SpanStatusCode.Ok)
         ..end();
     }
@@ -240,62 +367,59 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
     super.onError(bloc, error, stackTrace);
 
     final errorMessage = _formatError(bloc, error);
+    final sanitizedStackTrace = _formatStackTrace(stackTrace);
     final exceptionAttributes = otel.OTelAPI.attributesFromMap({
       'exception.message': errorMessage ?? '[REDACTED]',
+      if (sanitizedStackTrace != null)
+        'exception.stacktrace': sanitizedStackTrace,
     });
 
-    final blocId = identityHashCode(bloc).toString();
-    final keysToRemove =
-        _activeSpans.keys.where((key) => key.startsWith('${blocId}_')).toList();
-
-    if (keysToRemove.isNotEmpty) {
-      for (final key in keysToRemove) {
-        final spans = _activeSpans.remove(key);
-        if (spans != null) {
-          for (final span in spans) {
-            span
-              ..recordException(
-                error,
-                stackTrace: stackTrace,
-                attributes: exceptionAttributes,
-              )
-              ..setStatus(otel.SpanStatusCode.Error, errorMessage)
-              ..end();
-          }
-        }
+    final dispatchToken = _currentDispatchToken();
+    if (_isTokenOwnedByBloc(dispatchToken, bloc)) {
+      final entry = _entryForToken(dispatchToken, bloc);
+      if (entry != null) {
+        _removeEntry(entry);
+        _recordSpanError(entry.span, error, errorMessage, exceptionAttributes);
+        return;
       }
     } else {
-      _tracer.startSpan(
-        '${bloc.runtimeType}.error',
-        attributes: otel.OTelAPI.attributesFromMap({
-          'bloc.type': bloc.runtimeType.toString(),
-        }),
-      )
-        ..recordException(
-          error,
-          stackTrace: stackTrace,
-          attributes: exceptionAttributes,
-        )
-        ..setStatus(otel.SpanStatusCode.Error, errorMessage)
-        ..end();
+      final blocId = identityHashCode(bloc);
+      final matching =
+          _chronologicalSpans.where((e) => e.blocId == blocId).toList();
+      if (matching.isNotEmpty) {
+        for (final entry in matching) {
+          _removeEntry(entry);
+          _recordSpanError(
+            entry.span,
+            error,
+            errorMessage,
+            exceptionAttributes,
+          );
+        }
+        return;
+      }
     }
+
+    final fallbackSpan = _tracer.startSpan(
+      '${bloc.runtimeType}.error',
+      attributes: otel.OTelAPI.attributesFromMap({
+        'bloc.type': bloc.runtimeType.toString(),
+      }),
+    );
+    _recordSpanError(fallbackSpan, error, errorMessage, exceptionAttributes);
   }
 
   @override
   void onClose(BlocSignalBase<dynamic> bloc) {
     super.onClose(bloc);
 
-    final blocId = identityHashCode(bloc).toString();
-    final keysToRemove =
-        _activeSpans.keys.where((key) => key.startsWith('${blocId}_')).toList();
+    final blocId = identityHashCode(bloc);
+    final entries =
+        _chronologicalSpans.where((e) => e.blocId == blocId).toList();
 
-    for (final key in keysToRemove) {
-      final spans = _activeSpans.remove(key);
-      if (spans != null) {
-        for (final span in spans) {
-          span.end();
-        }
-      }
+    for (final entry in entries) {
+      _removeEntry(entry);
+      entry.span.end();
     }
   }
 
@@ -308,12 +432,34 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
   }) {
     super.onTelemetry(bloc, name, event: event, metadata: metadata);
 
+    final dispatchToken = _currentDispatchToken();
+    final ownToken =
+        _isTokenOwnedByBloc(dispatchToken, bloc) ? dispatchToken : null;
     final key = _spanKey(bloc, event);
-    final spans = _activeSpans[key];
-    final activeSpan = (spans != null && spans.isNotEmpty) ? spans.first : null;
 
-    if (activeSpan != null) {
-      activeSpan.addEventNow(
+    final _ActiveSpanEntry? targetEntry;
+    if (name == BlocTelemetryKeys.eventDropped) {
+      targetEntry = ownToken != null
+          ? _entryForToken(ownToken, bloc)
+          : _activeSpansByKey[key]?.lastOrNull;
+    } else if (name == BlocTelemetryKeys.taskPreempted) {
+      final queue = _activeSpansByKey[key];
+      if (queue == null || queue.isEmpty) {
+        targetEntry = null;
+      } else if (ownToken != null) {
+        targetEntry =
+            queue.where((e) => e.dispatchToken != ownToken).firstOrNull;
+      } else {
+        targetEntry = queue.first;
+      }
+    } else {
+      targetEntry = ownToken != null
+          ? _entryForToken(ownToken, bloc)
+          : _activeSpansByKey[key]?.firstOrNull;
+    }
+
+    if (targetEntry != null) {
+      targetEntry.span.addEventNow(
         name,
         otel.OTelAPI.attributesFromMap(
           metadata != null ? _normalizeMetadata(metadata) : const {},
@@ -321,12 +467,11 @@ class OtelBlocSignalObserver extends BlocSignalObserver {
       );
       if (name == BlocTelemetryKeys.eventDropped ||
           name == BlocTelemetryKeys.taskPreempted) {
-        activeSpan
+        _removeEntry(targetEntry);
+        targetEntry.span
           ..setBoolAttribute('bloc.contention', true)
           ..setStatus(otel.SpanStatusCode.Ok)
           ..end();
-        spans!.removeAt(0);
-        if (spans.isEmpty) _activeSpans.remove(key);
       }
     } else {
       _tracer

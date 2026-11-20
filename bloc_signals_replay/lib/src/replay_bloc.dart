@@ -174,17 +174,21 @@ mixin ReplayBlocMixin<Event extends ReplayEvent, State>
   void onUndo(void Function() action) => _runReplayEvent(_Undo(), action);
 
   void _runReplayEvent(ReplayEvent event, void Function() action) {
-    _notifyReplayEvent(event);
-    try {
-      runZoned(
-        action,
-        zoneValues: {
-          zoneEventKey: event,
-          zoneBlocKey: this,
-        },
-      );
-    } finally {
-      _notifyReplayEventCompleted(event);
-    }
+    final dispatchToken = Object();
+    runZoned(
+      () {
+        _notifyReplayEvent(event);
+        try {
+          action();
+        } finally {
+          _notifyReplayEventCompleted(event);
+        }
+      },
+      zoneValues: {
+        zoneEventKey: event,
+        zoneBlocKey: this,
+        BlocSignalBase.ambientZoneDispatchTokenKey: dispatchToken,
+      },
+    );
   }
 }

@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (replay)**: Mint a per-invocation `BlocSignalBase.ambientZoneDispatchTokenKey` in `ReplayBlocMixin._runReplayEvent` and wrap `_notifyReplayEvent`, `action`, and `_notifyReplayEventCompleted` inside `runZoned` so nested `undo()`/`redo()` calls isolate their telemetry and OpenTelemetry spans from enclosing `add()` handlers (#475).
+
 ## 1.4.0
 
 - **Feat (replay)**: Back `canUndo` and `canRedo` with reactive `Computed<bool>` signals (`canUndoSignal` and `canRedoSignal`) and wrap `emit()`, `undo()`, `redo()`, and `clearHistory()` in `batch()` so `context.select`, `Watch`, `computed()`, and `effect()` track history availability atomically (#471).

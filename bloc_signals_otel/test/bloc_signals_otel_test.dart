@@ -1,6 +1,8 @@
 // Cascade invocations are ignored to keep test assertions clean and readable.
 // ignore_for_file: cascade_invocations
 
+import 'dart:async';
+
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_otel/bloc_signals_otel.dart';
 import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart';
@@ -662,4 +664,477 @@ void main() {
       );
     });
   });
+
+  group('(Issue #475) OtelBlocSignalObserver Concurrency & Redaction', () {
+    late TestHarness harness;
+    late InMemorySpanExporter exporter;
+    late otel.APITracer tracer;
+    late OtelBlocSignalObserver observer;
+
+    setUpAll(() async {
+      harness = await maybeInitializeOtelForTest(
+        serviceName: 'bloc_signals_otel_test',
+      );
+      exporter = harness.spans;
+    });
+
+    setUp(() {
+      harness.clear();
+      tracer = OTel.tracerProvider().getTracer('test_tracer');
+      observer = OtelBlocSignalObserver(tracer: tracer);
+      BlocSignalObserver.observer = observer;
+    });
+
+    tearDown(() {
+      BlocSignalObserver.observer = null;
+    });
+
+    test(
+      '(Issue #475) droppable() drops duplicate const event without closing '
+      'in-flight handler span',
+      () async {
+        final gate = Completer<void>();
+        final bloc = _DroppableConstBloc(gate);
+
+        bloc
+          ..add(const Increment())
+          ..add(const Increment());
+
+        await Future<void>.microtask(() {});
+
+        // Only the dropped second event's span should be exported so far.
+        expect(exporter.spans, hasLength(1));
+        final droppedSpan = exporter.spans.first;
+        expect(droppedSpan.attributes.getBool('bloc.contention'), isTrue);
+
+        // Complete the first in-flight handler.
+        gate.complete();
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        await bloc.close();
+
+        expect(exporter.spans, hasLength(2));
+        final firstSpan = exporter.spans[1];
+        expect(firstSpan.status, equals(otel.SpanStatusCode.Ok));
+        expect(firstSpan.attributes.getBool('bloc.contention'), isNull);
+        expect(bloc.stateValue, equals(1));
+      },
+    );
+
+    test(
+      '(Issue #475) restartable() preemption does not close replacement span '
+      'early when superseded handler finishes first',
+      () async {
+        final gate1 = Completer<void>();
+        final gate2 = Completer<void>();
+        final bloc = _RestartableMapBloc({1: gate1, 2: gate2});
+
+        bloc.add(1);
+        await Future<void>.microtask(() {});
+        bloc.add(2);
+        await Future<void>.microtask(() {});
+
+        // Superseded span (1) should be closed with bloc.contention = true.
+        expect(exporter.spans, hasLength(1));
+        final preemptedSpan = exporter.spans.first;
+        expect(preemptedSpan.attributes.getBool('bloc.contention'), isTrue);
+
+        // Superseded handler completes first; replacement span (2) must stay
+        // open!
+        gate1.complete();
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        expect(exporter.spans, hasLength(1));
+
+        // Now replacement handler completes.
+        gate2.complete();
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        await bloc.close();
+
+        expect(exporter.spans, hasLength(2));
+        final replacementSpan = exporter.spans[1];
+        expect(replacementSpan.status, equals(otel.SpanStatusCode.Ok));
+        expect(replacementSpan.attributes.getBool('bloc.contention'), isNull);
+        expect(bloc.stateValue, equals(2));
+      },
+    );
+
+    test(
+      '(Issue #475) onError closes only the failing event span and preserves '
+      'unrelated concurrent spans',
+      () async {
+        final okGate = Completer<void>();
+        final bloc = _ConcurrentErrorBloc(okGate);
+
+        bloc
+          ..add('ok')
+          ..add('fail');
+
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+
+        // Only the failing event span should be closed with Error.
+        expect(exporter.spans, hasLength(1));
+        final errorSpan = exporter.spans.first;
+        expect(errorSpan.status, equals(otel.SpanStatusCode.Error));
+
+        // Complete the unrelated concurrent event; its span must close Ok.
+        okGate.complete();
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        await bloc.close();
+
+        expect(exporter.spans, hasLength(2));
+        final okSpan = exporter.spans[1];
+        expect(okSpan.status, equals(otel.SpanStatusCode.Ok));
+        expect(bloc.stateValue, equals('ok'));
+      },
+    );
+
+    test(
+      '(Issue #475) chronological oldest-first eviction respects '
+      'maxActiveSpans',
+      () async {
+        final cappedObserver = OtelBlocSignalObserver(
+          tracer: tracer,
+          maxActiveSpans: 2,
+        );
+        BlocSignalObserver.observer = cappedObserver;
+
+        final gateA1 = Completer<void>();
+        final gateB1 = Completer<void>();
+        final gateA2 = Completer<void>();
+        final bloc = _ConcurrentMapBloc({
+          'A1': gateA1,
+          'B1': gateB1,
+          'A2': gateA2,
+        });
+
+        bloc.add('A1');
+        await Future<void>.microtask(() {});
+        bloc.add('B1');
+        await Future<void>.microtask(() {});
+        // Dispatching A2 exceeds maxActiveSpans=2 -> must evict A1 (oldest),
+        // keeping B1 and A2 active.
+        bloc.add('A2');
+        await Future<void>.microtask(() {});
+
+        expect(exporter.spans, hasLength(1));
+        expect(
+          exporter.spans.first.name,
+          equals('_ConcurrentMapBloc.add(String)'),
+        );
+
+        // Completing B1 and A2 should close both with Ok.
+        gateB1.complete();
+        gateA2.complete();
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        gateA1.complete();
+        await Future<void>.microtask(() {});
+        await bloc.close();
+
+        expect(exporter.spans, hasLength(3));
+        expect(exporter.spans[1].status, equals(otel.SpanStatusCode.Ok));
+        expect(exporter.spans[2].status, equals(otel.SpanStatusCode.Ok));
+      },
+    );
+
+    test(
+      '(Issue #475) stackTraceRedactor and maxStackTraceLength sanitize '
+      'recorded stack traces',
+      () async {
+        expect(
+          () => OtelBlocSignalObserver(
+            tracer: tracer,
+            maxStackTraceLength: 0,
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+
+        final redactedObserver = OtelBlocSignalObserver(
+          tracer: tracer,
+          stackTraceRedactor: (st) => 'REDACTED_STACK_TRACE_LONG_TEXT',
+          maxStackTraceLength: 14,
+        );
+        BlocSignalObserver.observer = redactedObserver;
+
+        final cubit = TestCubit();
+        cubit.triggerError();
+
+        expect(exporter.spans, hasLength(1));
+        final exc = exporter.spans.first.spanEvents!
+            .firstWhere((e) => e.name == 'exception');
+        expect(
+          exc.attributes?.getString('exception.stacktrace'),
+          equals('REDACTED_STACK'),
+        );
+
+        // Empty redactor output omits exception.stacktrace.
+        harness.clear();
+        BlocSignalObserver.observer = OtelBlocSignalObserver(
+          tracer: tracer,
+          stackTraceRedactor: (st) => '',
+        );
+        cubit.triggerError();
+        final excEmpty = exporter.spans.first.spanEvents!
+            .firstWhere((e) => e.name == 'exception');
+        expect(excEmpty.attributes?.getString('exception.stacktrace'), isNull);
+
+        // maxStackTraceLength == null falls back to maxAttributeLength.
+        harness.clear();
+        BlocSignalObserver.observer = OtelBlocSignalObserver(
+          tracer: tracer,
+          stackTraceRedactor: (st) => 'FALLBACK_OBSERVER_STACK_TRACE',
+          maxAttributeLength: 10,
+        );
+        cubit.triggerError();
+        final excFallback = exporter.spans.first.spanEvents!
+            .firstWhere((e) => e.name == 'exception');
+        expect(
+          excFallback.attributes?.getString('exception.stacktrace'),
+          equals('FALLBACK_O'),
+        );
+
+        await cubit.close();
+      },
+    );
+
+    test(
+      '(Issue #475) un-zoned observer calls and zoned custom telemetry hit '
+      'fallback and token paths cleanly',
+      () async {
+        final bloc = TestBloc();
+        const event = Increment();
+
+        // Un-zoned onEvent + onEventCompleted.
+        observer.onEvent(bloc, event);
+        observer.onEventCompleted(bloc, event);
+        expect(exporter.spans, hasLength(1));
+        expect(exporter.spans.first.status, equals(otel.SpanStatusCode.Ok));
+
+        // Un-zoned onEvent + onError.
+        harness.clear();
+        observer.onEvent(bloc, event);
+        observer.onError(bloc, Exception('Direct error'), StackTrace.current);
+        expect(exporter.spans, hasLength(1));
+        expect(exporter.spans.first.status, equals(otel.SpanStatusCode.Error));
+
+        // Zoned custom telemetry inside active event span.
+        harness.clear();
+        final telemetryBloc = _CustomTelemetryBloc();
+        telemetryBloc.add(const Increment());
+        await Future<void>.microtask(() {});
+        await telemetryBloc.close();
+        await bloc.close();
+
+        expect(exporter.spans, hasLength(1));
+        expect(
+          exporter.spans.first.spanEvents
+              ?.any((e) => e.name == 'custom_metric'),
+          isTrue,
+        );
+      },
+    );
+
+    test(
+      '(Issue #475) restartable() preemption on const identical events '
+      'isolates replacement span in shared key queue',
+      () async {
+        final gate1 = Completer<void>();
+        final gate2 = Completer<void>();
+        final bloc = _RestartableConstQueueBloc([gate1, gate2]);
+
+        bloc.add(const Increment());
+        await Future<void>.microtask(() {});
+        bloc.add(const Increment());
+        await Future<void>.microtask(() {});
+
+        // First const event span preempted with bloc.contention = true.
+        expect(exporter.spans, hasLength(1));
+        expect(
+          exporter.spans.first.attributes.getBool('bloc.contention'),
+          isTrue,
+        );
+
+        // Superseded handler completes first; replacement must stay open.
+        gate1.complete();
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        expect(exporter.spans, hasLength(1));
+
+        // Replacement completes cleanly.
+        gate2.complete();
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        await bloc.close();
+
+        expect(exporter.spans, hasLength(2));
+        expect(exporter.spans[1].status, equals(otel.SpanStatusCode.Ok));
+        expect(exporter.spans[1].attributes.getBool('bloc.contention'), isNull);
+      },
+    );
+
+    test(
+      '(Issue #475) zoned onError with absent token entry preserves sibling '
+      'open span and isolates cross-container nested dispatches',
+      () async {
+        final siblingGate = Completer<void>();
+        final nestedCubit = TestCubit();
+        final outerBloc = _CrossContainerIsolationBloc(
+          siblingGate: siblingGate,
+          nestedCubit: nestedCubit,
+          onSecondErrorInZone: (bloc) {
+            // Invoke onError a second time inside the same dispatch zone after
+            // its own span was already closed: must emit fallback error span
+            // and MUST NOT close siblingGate's active span.
+            observer.onError(
+              bloc,
+              Exception('Post-close zoned error'),
+              StackTrace.current,
+            );
+          },
+        );
+
+        outerBloc
+          ..add('hold')
+          ..add('nested_and_double_error');
+
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+
+        // Expected closed spans so far:
+        // 1) nestedCubit's error span (isolated from outerBloc's token)
+        // 2) outerBloc's 'nested_and_double_error' span (from first error)
+        // 3) outerBloc's fallback '.error' span (from second zoned error)
+        // Meanwhile, outerBloc's 'hold' span MUST still be open!
+        expect(exporter.spans, hasLength(3));
+        expect(
+          exporter.spans
+              .any((s) => s.name == '_CrossContainerIsolationBloc.error'),
+          isTrue,
+        );
+
+        // Complete the sibling 'hold' span and verify it closes Ok.
+        siblingGate.complete();
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        await outerBloc.close();
+        await nestedCubit.close();
+
+        expect(exporter.spans, hasLength(4));
+        expect(exporter.spans[3].status, equals(otel.SpanStatusCode.Ok));
+        expect(outerBloc.stateValue, equals('hold'));
+      },
+    );
+  });
+}
+
+class _RestartableConstQueueBloc extends BlocSignal<Increment, int> {
+  _RestartableConstQueueBloc(this.gates) : super(initialState: 0) {
+    var index = 0;
+    on<Increment>(
+      (event, emit) async {
+        final current = index++;
+        await gates[current].future;
+        emit(stateValue + 1);
+      },
+      transformer: restartable(),
+    );
+  }
+
+  final List<Completer<void>> gates;
+}
+
+class _CrossContainerIsolationBloc extends BlocSignal<String, String> {
+  _CrossContainerIsolationBloc({
+    required this.siblingGate,
+    required this.nestedCubit,
+    required this.onSecondErrorInZone,
+  }) : super(initialState: 'init') {
+    on<String>((event, emit) async {
+      if (event == 'hold') {
+        await siblingGate.future;
+        emit('hold');
+        return;
+      }
+      // Trigger an error on an un-tokenized nested CubitSignal inside add().
+      nestedCubit.triggerError();
+      // Trigger first error on outerBloc (closes its dispatchToken span).
+      emitError(Exception('First outer error'));
+      // Trigger second error in the same dispatch zone (entry == null).
+      onSecondErrorInZone(this);
+    });
+  }
+
+  final Completer<void> siblingGate;
+  final TestCubit nestedCubit;
+  final void Function(BlocSignalBase<dynamic> bloc) onSecondErrorInZone;
+}
+
+class _CustomTelemetryBloc extends BlocSignal<Increment, int> {
+  _CustomTelemetryBloc() : super(initialState: 0) {
+    on<Increment>((event, emit) {
+      emitTelemetry('custom_metric', event: event, metadata: {'k': 'v'});
+      emit(stateValue + 1);
+    });
+  }
+}
+
+class _DroppableConstBloc extends BlocSignal<Increment, int> {
+  _DroppableConstBloc(this.gate) : super(initialState: 0) {
+    on<Increment>(
+      (event, emit) async {
+        await gate.future;
+        emit(stateValue + 1);
+      },
+      transformer: droppable(),
+    );
+  }
+
+  final Completer<void> gate;
+}
+
+class _RestartableMapBloc extends BlocSignal<int, int> {
+  _RestartableMapBloc(this.gates) : super(initialState: 0) {
+    on<int>(
+      (event, emit) async {
+        await gates[event]!.future;
+        emit(event);
+      },
+      transformer: restartable(),
+    );
+  }
+
+  final Map<int, Completer<void>> gates;
+}
+
+class _ConcurrentErrorBloc extends BlocSignal<String, String> {
+  _ConcurrentErrorBloc(this.okGate) : super(initialState: 'init') {
+    on<String>(
+      (event, emit) async {
+        if (event == 'fail') {
+          throw Exception('Boom');
+        }
+        await okGate.future;
+        emit(event);
+      },
+    );
+  }
+
+  final Completer<void> okGate;
+}
+
+class _ConcurrentMapBloc extends BlocSignal<String, String> {
+  _ConcurrentMapBloc(this.gates) : super(initialState: 'init') {
+    on<String>(
+      (event, emit) async {
+        await gates[event]!.future;
+        emit(event);
+      },
+    );
+  }
+
+  final Map<String, Completer<void>> gates;
 }

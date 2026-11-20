@@ -125,8 +125,8 @@ Future<void> main() async {
         p([
           Component.text(
             'When an asynchronous operational exception occurs during event handling, OtelBlocSignalObserver '
-            'uses identity hash matching to attach the error and stack trace directly to the currently active event span, '
-            'rather than emitting disconnected, orphaned error traces.',
+            'uses per-invocation zone dispatch token correlation to attach the error and sanitized stack trace '
+            'strictly to the failing event span without closing unrelated concurrent spans.',
           ),
         ]),
         const DocsCallout(
@@ -159,10 +159,12 @@ Future<void> main() async {
         h2([Component.text('Data Safety & Metadata Normalization')]),
         p([
           Component.text(
-            'Configure stateRedactor, eventRedactor, errorRedactor, and maxAttributeLength on OtelBlocSignalObserver '
-            '(and errorRedactor / maxAttributeLength on traced / tracedBloc) to scrub PII or secrets and bound attribute '
-            'string lengths. Returning null from stateRedactor or eventRedactor omits the attribute, while returning null '
-            'from errorRedactor omits the span status description and records [REDACTED] for exception.message. '
+            'Configure stateRedactor, eventRedactor, errorRedactor, stackTraceRedactor, maxAttributeLength, and '
+            'maxStackTraceLength on OtelBlocSignalObserver (and errorRedactor, stackTraceRedactor, maxAttributeLength, '
+            'and maxStackTraceLength on traced / tracedBloc) to scrub PII or secrets and bound attribute '
+            'string lengths. Returning null from stateRedactor or eventRedactor omits the attribute, returning null '
+            'from errorRedactor omits the span status description and records [REDACTED] for exception.message, and '
+            'returning an empty string from stackTraceRedactor omits exception.stacktrace. '
             'onTelemetry also normalizes metadata values (preserving primitives and homogeneous primitive lists, converting '
             'mixed numeric lists to List<double>, stringifying other iterables and objects, and applying maxAttributeLength).',
           ),

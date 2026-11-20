@@ -33,18 +33,18 @@ reporting, and OpenTelemetry must all receive the same events.
 `onEvent` starts a span named `<BlocType>.add(<EventType>)` with `bloc.type` and `event.type` string
 attributes.
 
-`onTransition` finds the span by bloc and event identity, writes `state.value` using
+`onTransition` finds the active span by per-invocation `BlocSignalBase.ambientZoneDispatchTokenKey` (falling back to `(bloc, event)` identity when un-zoned), writes `state.value` using
 `state.toString()` (or `stateRedactor`), and records a `'transition'` span event via `addEventNow`.
 
-`onEventCompleted` finds the span by bloc and event identity, applies `state.value`, marks the span `SpanStatusCode.Ok`, and ends it.
+`onEventCompleted` finds the active span by `ambientZoneDispatchTokenKey` (returning as a no-op if already removed by drop/preemption/error, or falling back to FIFO `(bloc, event)` identity when un-zoned), applies `state.value`, marks the span `SpanStatusCode.Ok`, and ends it.
 
 `onTelemetry` handles operational telemetry. When emitted within an active span:
 - It records a Span Event via `addEventNow` with sanitized attributes (converting primitive types and lists via `OTelAPI.attributesFromMap`).
-- If the telemetry indicates concurrency contention (`BlocTelemetryKeys.eventDropped` or `BlocTelemetryKeys.taskPreempted`), it tags `'bloc.contention': true`, marks the span `SpanStatusCode.Ok`, and immediately ends and removes the span from `_activeSpans`.
+- If the telemetry indicates concurrency contention (`BlocTelemetryKeys.eventDropped` targets the current `dispatchToken`; `BlocTelemetryKeys.taskPreempted` targets the oldest `(bloc, event)` entry whose `dispatchToken != currentToken`), it tags `'bloc.contention': true`, marks the span `SpanStatusCode.Ok`, and immediately ends and removes only that targeted span from active tracking.
 When emitted outside an active span (for example, discrete cubit operations), it produces an independent span `<BlocType>.telemetry.<name>`.
 
-`onError` ends every active span for the failing bloc with `SpanStatusCode.Error` and a recorded exception.
-When that bloc has no active span, it creates and immediately ends `<BlocType>.error`.
+`onError` closes only the failing invocation's span when `ambientZoneDispatchTokenKey` is present (preserving unrelated concurrent spans), falling back to ending active spans for the failing bloc only when un-zoned.
+When no matching active span exists, it creates and immediately ends `<BlocType>.error`.
 
 Observer hooks accept `BlocSignalBase<dynamic>`, so the same observer receives `BlocSignal` and
 `CubitSignal` transitions, telemetry, and errors. A cubit has no event dispatch span. Its ordinary transitions
@@ -77,10 +77,11 @@ BlocSignalObserver.observer = OtelBlocSignalObserver(
 
 - Returning `null` from `stateRedactor` or `eventRedactor` omits `state.value` or `event.value` respectively.
 - Returning `null` from `errorRedactor` omits the span status description and records `'[REDACTED]'` for `exception.message` (in both `OtelBlocSignalObserver.onError` and `traced` / `tracedBloc`).
+- `stackTraceRedactor` and `maxStackTraceLength` (falling back to `maxAttributeLength` when `maxStackTraceLength` is omitted) sanitize and bound `exception.stacktrace`; returning `''` omits `exception.stacktrace`.
 - `maxAttributeLength` (must be `> 0`) truncates `state.value`, `event.value`, error messages, and stringified `onTelemetry` metadata values.
 - `onTelemetry` normalizes `metadata` before passing to `OTelAPI.attributesFromMap`: `null` becomes `'null'`, `bool`/`int`/`double` are preserved, `String` is capped, homogeneous `List<bool>`/`List<int>`/`List<double>` are preserved, mixed numeric `int`/`double` lists are converted to `List<double>`, `List<String>` / mixed / object `Iterable`s (`List`, `Set`) are converted to `List<String>` with each item capped, and `Map` or custom objects are stringified and capped.
 
-Spans are disambiguated using a FIFO queue per event key (`Map<String, List<APISpan>>`), preventing span collisions when identical events are dispatched back-to-back. Spans are also concluded on `onEventCompleted` for zero-emit handlers, and in `tracedBloc` when events are dropped under concurrency.
+Spans are disambiguated using per-invocation zone dispatch tokens (`BlocSignalBase.ambientZoneDispatchTokenKey`) with a FIFO queue fallback per event key when un-zoned, and a chronological oldest-first eviction queue (`maxActiveSpans`). Spans are also concluded on `onEventCompleted` for zero-emit handlers, and in `tracedBloc` (`otel.Context.current.withSpan(span)`) with `bloc.contention = true` when events are dropped or bypassed under concurrency.
 
 
 ## Test expectations
@@ -117,5 +118,5 @@ class OrderBloc extends BlocSignal<OrderEvent, OrderState> {
 }
 ```
 
-- **`traced(transformer, {tracer, spanName, errorRedactor, maxAttributeLength})`**: Wraps a standard 3-parameter `EventTransformer` in a `BlocEventTransformer` that automatically creates an OpenTelemetry span (`APISpan`) tagged with `bloc.type` and `event.type`. If `tracer` (`APITracer?`) is omitted, `OTelAPI.tracerProvider().getTracer('bloc_signals_otel')` is used. Unhandled exceptions are recorded on the span with `SpanStatusCode.Error` (and optional `errorRedactor` / `maxAttributeLength` sanitization) before rethrowing.
-- **`tracedBloc(transformer, {tracer, spanName, errorRedactor, maxAttributeLength})`**: Decorates an existing contextual 4-parameter `BlocEventTransformer` with the same OpenTelemetry span instrumentation and error sanitization options.
+- **`traced(transformer, {tracer, spanName, errorRedactor, maxAttributeLength, stackTraceRedactor, maxStackTraceLength})`**: Wraps a standard 3-parameter `EventTransformer` in a `BlocEventTransformer` that automatically creates an OpenTelemetry span (`APISpan`), activates `otel.Context.current.withSpan(span)` across synchronous and asynchronous handler execution, and tags `bloc.type` and `event.type` (plus `bloc.contention: true` when the inner handler is dropped or bypassed). If `tracer` (`APITracer?`) is omitted, `OTelAPI.tracerProvider().getTracer('bloc_signals_otel')` is used. Unhandled exceptions are recorded on the span with `SpanStatusCode.Error` (and optional `errorRedactor`, `stackTraceRedactor`, `maxStackTraceLength`, and `maxAttributeLength` sanitization) before rethrowing.
+- **`tracedBloc(transformer, {tracer, spanName, errorRedactor, maxAttributeLength, stackTraceRedactor, maxStackTraceLength})`**: Decorates an existing contextual 4-parameter `BlocEventTransformer` with the same OpenTelemetry span instrumentation, `Context.current` activation, contention tagging, and error/stacktrace sanitization options.

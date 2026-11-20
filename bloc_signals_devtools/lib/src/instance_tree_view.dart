@@ -1,3 +1,5 @@
+// Preserves sdk: ^3.5.0 compatibility on Flutter <3.47.
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 
 /// A widget that renders a searchable list of active container instances.

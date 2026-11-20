@@ -1,4 +1,6 @@
 import 'package:bloc_signals_genui_flutter/src/a2ui_flutter_catalog.dart';
+// Preserves sdk: ^3.5.0 compatibility on Flutter <3.47.
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 
 /// Design tokens for styling Cupertino components in [A2uiFlutterCatalog].

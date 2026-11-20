@@ -1,5 +1,7 @@
 import 'package:bloc_signals_genui_flutter/src/a2ui_component_context.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
+// Preserves sdk: ^3.5.0 compatibility on Flutter <3.47.
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 
 /// Renders an A2UI `Divider` component using Cupertino hairline separator

@@ -89,7 +89,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_devtools',
-    version: '1.0.3',
+    version: '1.0.4',
     desc: 'Custom Flutter DevTools extension for timeline tracing, state diffing, and memory leak detection.',
     icon: '🛠️',
     category: 'DevTools & Tooling',
@@ -107,7 +107,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui_flutter',
-    version: '2.1.0',
+    version: '2.1.1',
     desc: 'Declarative Flutter surface containers and A2UI catalog widget adapters for generative user interfaces.',
     icon: '🎨',
     category: 'Generative UI',

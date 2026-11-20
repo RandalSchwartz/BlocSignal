@@ -2,6 +2,8 @@ import 'package:bloc_signals_devtools/src/instance_tree_view.dart';
 import 'package:bloc_signals_devtools/src/leak_detector_badge.dart';
 import 'package:bloc_signals_devtools/src/state_diff_inspector.dart';
 import 'package:bloc_signals_devtools/src/timeline_trace_panel.dart';
+// Preserves sdk: ^3.5.0 compatibility on Flutter <3.47.
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 
 export 'src/devtools_controller.dart';

@@ -93,7 +93,7 @@ Add `bloc_signals_devtools` to your application's `dev_dependencies`:
 
 ```yaml
 dev_dependencies:
-  bloc_signals_devtools: ^1.0.3
+  bloc_signals_devtools: ^1.0.4
 ```
 
 ### 2. Automatic Discovery

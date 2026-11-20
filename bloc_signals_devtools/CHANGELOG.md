@@ -1,3 +1,7 @@
+## 1.0.4
+
+- **Fix (devtools)**: Silence Flutter 3.47+/3.50 `deprecated_member_use` lints on `package:flutter/material.dart` imports to preserve `sdk: ^3.5.0` and Flutter `>=3.22.2` compatibility while maintaining 160/160 pub points.
+
 ## 1.0.3
 
 - **Fix (devtools)**: Narrow `BlocSignalsDevToolsController.fetchInstances` and `fetchHistoryForInstance` from `on Object` to `on Exception` so programming defects (`Error` subtypes such as `StateError` and `TypeError`) surface immediately while VM Service RPC exceptions are handled gracefully (#340).

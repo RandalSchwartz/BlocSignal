@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
+## 2.1.1
+
+- **Fix (genui_flutter)**: Silence Flutter 3.47+/3.50 `deprecated_member_use` lints on `package:flutter/material.dart` and `package:flutter/cupertino.dart` imports to preserve `sdk: ^3.5.0` and Flutter `>=3.24.0` compatibility while maintaining 160/160 pub points.
+
 ## 2.1.0
 
 - **Feat (genui_flutter)**: Enforce `Image.network` URL scheme/host policy via `A2uiImageUrlPolicy` and bound decode `cacheWidth`/`cacheHeight` (#423).

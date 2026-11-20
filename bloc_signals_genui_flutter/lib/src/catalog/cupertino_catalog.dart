@@ -17,6 +17,8 @@ import 'package:bloc_signals_genui_flutter/src/catalog/widgets/cupertino/cuperti
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/cupertino/cupertino_tabs.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/cupertino/cupertino_text.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/cupertino/cupertino_text_field.dart';
+// Preserves sdk: ^3.5.0 compatibility on Flutter <3.47.
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
 
 /// Registers the 16 dedicated Cupertino A2UI component builders into the

@@ -257,7 +257,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_devtools')],
                   ),
                 ]),
-                td([Component.text('^1.0.3')]),
+                td([Component.text('^1.0.4')]),
                 td([
                   Component.text(
                     'Custom Flutter DevTools extension for timeline visualization and memory leak detection.',
@@ -291,7 +291,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                     [Component.text('bloc_signals_genui_flutter')],
                   ),
                 ]),
-                td([Component.text('^2.1.0')]),
+                td([Component.text('^2.1.1')]),
                 td([
                   Component.text(
                     'Declarative Flutter surface views and Material 3 catalog widgets for A2UI.',

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:bloc_signals_genui_flutter/src/a2ui_component_context.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
+// Preserves sdk: ^3.5.0 compatibility on Flutter <3.47.
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 
 /// Renders an A2UI `DateTimeInput` component supporting ISO 8601 date and time

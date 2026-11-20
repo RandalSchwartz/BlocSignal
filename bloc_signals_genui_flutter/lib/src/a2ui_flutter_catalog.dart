@@ -4,7 +4,11 @@ import 'package:bloc_signals_genui_flutter/src/catalog/adaptive_catalog.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/cupertino_catalog.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/cupertino_tokens.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/standard_catalog.dart';
+// Preserves sdk: ^3.5.0 compatibility on Flutter <3.47.
+// ignore: deprecated_member_use
 import 'package:flutter/cupertino.dart';
+// Preserves sdk: ^3.5.0 compatibility on Flutter <3.47.
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 
 /// Builder signature for mapping an A2UI component model to a Flutter widget.

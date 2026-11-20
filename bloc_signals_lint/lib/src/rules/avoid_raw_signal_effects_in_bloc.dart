@@ -1,13 +1,13 @@
 // Ignore deprecated_member_use due to custom_lint_builder parameter signature.
 // ignore_for_file: deprecated_member_use
 
-import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/error/listener.dart';
 import 'package:bloc_signals_lint/src/fixes/avoid_raw_signal_effects_in_bloc_fix.dart';
+import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that flags calls to top-level `effect()` inside `BlocSignalBase`
-/// classes instead of the lifecycle-managed `createEffect()`.
+/// classes and mixins instead of the lifecycle-managed `createEffect()`.
 class AvoidRawSignalEffectsInBloc extends DartLintRule {
   /// Creates an [AvoidRawSignalEffectsInBloc] lint rule.
   const AvoidRawSignalEffectsInBloc() : super(code: _code);
@@ -20,11 +20,6 @@ class AvoidRawSignalEffectsInBloc extends DartLintRule {
     correctionMessage:
         'Use "createEffect()" to ensure the effect is automatically disposed '
         'when close() is invoked.',
-  );
-
-  static const _blocSignalBaseChecker = TypeChecker.fromName(
-    'BlocSignalBase',
-    packageName: 'bloc_signals',
   );
 
   @override
@@ -40,31 +35,10 @@ class AvoidRawSignalEffectsInBloc extends DartLintRule {
       if (node.methodName.name != 'effect') return;
       if (node.target != null) return; // Top-level effect() has no target
 
-      final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
-      if (classNode == null) return;
+      final container = BlocContainerUtils.nearestContainerDeclaration(node);
+      if (container == null) return;
 
-      final classElement = classNode.declaredFragment?.element;
-      final extendsClause = classNode.extendsClause?.superclass.toSource();
-      final withClause = classNode.withClause?.toSource();
-
-      final isBlocContainer = (classElement != null &&
-              _blocSignalBaseChecker.isSuperOf(classElement)) ||
-          (extendsClause != null &&
-              (extendsClause.contains('BlocSignal') ||
-                  extendsClause.contains('CubitSignal') ||
-                  extendsClause.contains('ReplayCubit') ||
-                  extendsClause.contains('ReplayBloc') ||
-                  extendsClause.contains('HydratedCubit') ||
-                  extendsClause.contains('HydratedBloc'))) ||
-          (withClause != null &&
-              (withClause.contains('CubitSignalMixin') ||
-                  withClause.contains('BlocSignalMixin') ||
-                  withClause.contains('ReplayMixin') ||
-                  withClause.contains('ReplayCubitMixin') ||
-                  withClause.contains('ReplayBlocMixin') ||
-                  withClause.contains('HydratedMixin')));
-
-      if (isBlocContainer) {
+      if (BlocContainerUtils.isBlocContainerDeclaration(container)) {
         reporter.atNode(
           node.methodName,
           code,

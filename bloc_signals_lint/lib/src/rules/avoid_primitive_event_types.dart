@@ -3,6 +3,7 @@
 
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/error/listener.dart';
+import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that flags `BlocSignal` and `BlocSignalMixin` declarations
@@ -19,16 +20,6 @@ class AvoidPrimitiveEventTypes extends DartLintRule {
         'events. Events should be dedicated sealed classes or records.',
     correctionMessage: 'Define a dedicated event class or record (for example, '
         '"sealed class MyEvent {}") to model state transitions cleanly.',
-  );
-
-  static const _blocSignalChecker = TypeChecker.fromName(
-    'BlocSignal',
-    packageName: 'bloc_signals',
-  );
-
-  static const _blocSignalMixinChecker = TypeChecker.fromName(
-    'BlocSignalMixin',
-    packageName: 'bloc_signals',
   );
 
   static const _primitiveTypeNames = <String>{
@@ -53,59 +44,60 @@ class AvoidPrimitiveEventTypes extends DartLintRule {
   static List<AstNode> findViolations(ClassDeclaration node) {
     final violations = <AstNode>[];
 
-    // Check extends clause
     final extendsClause = node.extendsClause;
     if (extendsClause != null) {
-      final superclass = extendsClause.superclass;
-      final superclassName = superclass.toSource().split('<').first.trim();
-      final staticType = superclass.type;
-      final isBlocSuperclass = _isBlocClassName(superclassName) ||
-          (staticType != null &&
-              _blocSignalChecker.isAssignableFromType(staticType));
-
-      if (isBlocSuperclass) {
-        final typeArgs = superclass.typeArguments?.arguments;
-        if (typeArgs == null || typeArgs.isEmpty) {
-          if (_isBlocClassName(superclassName)) {
-            violations.add(superclass);
-          }
-        } else {
-          final eventTypeNode = typeArgs.first;
-          if (isPrimitiveType(eventTypeNode.toSource())) {
-            violations.add(eventTypeNode);
-          }
-        }
-      }
+      _checkNamedType(extendsClause.superclass, violations);
     }
 
-    // Check with clause
     final withClause = node.withClause;
     if (withClause != null) {
       for (final mixinType in withClause.mixinTypes) {
-        final mixinName = mixinType.toSource().split('<').first.trim();
-        final staticType = mixinType.type;
-        final isBlocMixin = _isBlocClassName(mixinName) ||
-            (staticType != null &&
-                (_blocSignalMixinChecker.isAssignableFromType(staticType) ||
-                    _blocSignalChecker.isAssignableFromType(staticType)));
-
-        if (isBlocMixin) {
-          final typeArgs = mixinType.typeArguments?.arguments;
-          if (typeArgs == null || typeArgs.isEmpty) {
-            if (_isBlocClassName(mixinName)) {
-              violations.add(mixinType);
-            }
-          } else {
-            final eventTypeNode = typeArgs.first;
-            if (isPrimitiveType(eventTypeNode.toSource())) {
-              violations.add(eventTypeNode);
-            }
-          }
-        }
+        _checkNamedType(mixinType, violations);
       }
     }
 
     return violations;
+  }
+
+  /// Finds all AST nodes violating this rule within a mixin declaration's
+  /// `on` constraints.
+  static List<AstNode> findMixinViolations(MixinDeclaration node) {
+    final violations = <AstNode>[];
+    final onClause = node.onClause;
+    if (onClause != null) {
+      for (final constraint in onClause.superclassConstraints) {
+        _checkNamedType(constraint, violations);
+      }
+    }
+    return violations;
+  }
+
+  static void _checkNamedType(
+    NamedType namedType,
+    List<AstNode> violations,
+  ) {
+    final typeName = namedType.toSource().split('<').first.trim();
+    final staticType = namedType.type;
+    final isBlocType = _isBlocClassName(typeName) ||
+        (staticType != null &&
+            (BlocContainerUtils.blocSignalChecker
+                    .isAssignableFromType(staticType) ||
+                BlocContainerUtils.blocSignalMixinChecker
+                    .isAssignableFromType(staticType)));
+
+    if (!isBlocType) return;
+
+    final typeArgs = namedType.typeArguments?.arguments;
+    if (typeArgs == null || typeArgs.isEmpty) {
+      if (_isBlocClassName(typeName)) {
+        violations.add(namedType);
+      }
+    } else {
+      final eventTypeNode = typeArgs.first;
+      if (isPrimitiveType(eventTypeNode.toSource())) {
+        violations.add(eventTypeNode);
+      }
+    }
   }
 
   static bool _isBlocClassName(String name) {
@@ -124,8 +116,16 @@ class AvoidPrimitiveEventTypes extends DartLintRule {
     CustomLintContext context,
   ) {
     context.registry.addClassDeclaration((node) {
-      final violations = findViolations(node);
-      for (final violation in violations) {
+      for (final violation in findViolations(node)) {
+        reporter.atNode(
+          violation,
+          code,
+          arguments: [violation.toSource()],
+        );
+      }
+    });
+    context.registry.addMixinDeclaration((node) {
+      for (final violation in findMixinViolations(node)) {
         reporter.atNode(
           violation,
           code,

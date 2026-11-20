@@ -83,7 +83,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                 ]),
                 td([
                   Component.text(
-                    'Flags duplicate on<E>() registrations for the exact same event type within a single BlocSignal constructor.',
+                    'Flags duplicate on<E>() registrations for the exact same event type within a BlocSignal or BlocSignalMixin class or mixin declaration.',
                   ),
                 ]),
               ]),
@@ -307,7 +307,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                 ]),
                 td([
                   Component.text(
-                    'Flags unmanaged effect() calls created inside Flutter Widget or State methods without explicit lifecycle cleanup.',
+                    'Flags unmanaged effect() calls inside Flutter Widget/HookWidget/State or Jaspr Component/State methods without lifecycle cleanup, and direct effect()/computed() allocations inside build().',
                   ),
                 ]),
               ]),

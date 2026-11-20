@@ -102,6 +102,30 @@ AnalysisContextCollection _getOrCreateCollection() {
       "languageVersion": "3.5"
     },
     {
+      "name": "bloc_signals_hydrate",
+      "rootUri": "../bloc_signals_hydrate",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "bloc_signals_jaspr",
+      "rootUri": "../bloc_signals_jaspr",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "jaspr",
+      "rootUri": "../jaspr",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "flutter_hooks",
+      "rootUri": "../flutter_hooks",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
       "name": "flutter",
       "rootUri": "../flutter",
       "packageUri": "lib/",
@@ -156,13 +180,19 @@ mixin CubitSignalMixin<State> {
   void emitTelemetry(String name, {Map<String, Object?>? metadata}) {}
 }
 
-mixin BlocSignalMixin<Event, State> {
-  State get stateValue => throw UnimplementedError();
-  State get value => throw UnimplementedError();
+mixin BlocSignalMixin<Event, State> on BlocSignalBase<State> {
   void initCubitSignal({required State initialState}) {}
-  void initBlocSignal({required State initialState}) {}
-  void emit(State state) {}
+  void on<E extends Event>(
+    void Function(E event, void Function(State) emit) handler, {
+    Function? transformer,
+  }) {}
   void add(Event event) {}
+  void onEvent(Event event) {}
+}
+
+abstract class BlocSignalObserver {
+  const BlocSignalObserver();
+  void onEvent(BlocSignalBase<Object?> bloc, Object? event) {}
 }
 
 class ReplayCubit<State> extends CubitSignal<State> {
@@ -176,9 +206,81 @@ class ReplayBloc<Event, State> extends BlocSignal<Event, State> {
 }
 
 void Function() effect(void Function() cb) => () {};
+T Function() computed<T>(T Function() cb) => cb;
 T signal<T>(T initial) => initial;
 ''',
   );
+
+  final hydrateLibDir =
+      Directory(_joinPath([rootPath, 'bloc_signals_hydrate', 'lib']))
+        ..createSync(recursive: true);
+  File(_joinPath([hydrateLibDir.path, 'bloc_signals_hydrate.dart']))
+      .writeAsStringSync(
+    '''
+import 'package:bloc_signals/bloc_signals.dart';
+
+mixin HydratedMixin<State> on BlocSignalBase<State> {}
+
+class HydratedCubitSignal<State> extends CubitSignal<State>
+    with HydratedMixin<State> {
+  HydratedCubitSignal({super.initialState});
+}
+
+class HydratedBlocSignal<Event, State> extends BlocSignal<Event, State>
+    with HydratedMixin<State> {
+  HydratedBlocSignal({super.initialState});
+}
+''',
+  );
+
+  final jasprLibDir = Directory(_joinPath([rootPath, 'jaspr', 'lib']))
+    ..createSync(recursive: true);
+  File(_joinPath([jasprLibDir.path, 'jaspr.dart'])).writeAsStringSync('''
+class Component {}
+
+class BuildContext {
+  T read<T>() => throw UnimplementedError();
+  T watch<T>() => throw UnimplementedError();
+  R select<B, R>(R Function(B bloc) selector) => throw UnimplementedError();
+}
+
+abstract class StatelessComponent extends Component {
+  Component build(BuildContext context);
+}
+
+abstract class StatefulComponent extends Component {
+  State<StatefulComponent> createState();
+}
+
+abstract class State<T extends StatefulComponent> {
+  void initState() {}
+  void dispose() {}
+  Component build(BuildContext context);
+}
+''');
+
+  final blocJasprLibDir =
+      Directory(_joinPath([rootPath, 'bloc_signals_jaspr', 'lib']))
+        ..createSync(recursive: true);
+  File(_joinPath([blocJasprLibDir.path, 'bloc_signals_jaspr.dart']))
+      .writeAsStringSync('''
+export 'package:bloc_signals/bloc_signals.dart';
+export 'package:jaspr/jaspr.dart';
+''');
+
+  final flutterHooksLibDir =
+      Directory(_joinPath([rootPath, 'flutter_hooks', 'lib']))
+        ..createSync(recursive: true);
+  File(_joinPath([flutterHooksLibDir.path, 'flutter_hooks.dart']))
+      .writeAsStringSync('''
+import 'package:flutter/widgets.dart';
+
+abstract class HookWidget extends StatelessWidget {
+  Widget build(BuildContext context);
+}
+
+void useEffect(void Function()? Function() effect, [List<Object?>? keys]) {}
+''');
 
   final replayLibDir =
       Directory(_joinPath([rootPath, 'bloc_signals_replay', 'lib']))

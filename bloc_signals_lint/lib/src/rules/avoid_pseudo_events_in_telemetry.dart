@@ -4,11 +4,12 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/listener.dart';
+import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that flags `emitTelemetry('...')` calls inside `CubitSignal`
-/// where the telemetry name matches UI event action patterns (such as
-/// `Pressed`, `Clicked`, `Submitted`, `Requested`, `Tapped`, `Swiped`,
+/// classes and mixins where the telemetry name matches UI event action patterns
+/// (such as `Pressed`, `Clicked`, `Submitted`, `Requested`, `Tapped`, `Swiped`,
 /// or `Event`).
 ///
 /// In BlocSignal, state updates originate from method calls on Cubits or
@@ -29,21 +30,6 @@ class AvoidPseudoEventsInTelemetry extends DartLintRule {
         'If event modeling is needed, migrate to BlocSignal.',
   );
 
-  static const _cubitSignalChecker = TypeChecker.fromName(
-    'CubitSignal',
-    packageName: 'bloc_signals',
-  );
-
-  static const _cubitSignalMixinChecker = TypeChecker.fromName(
-    'CubitSignalMixin',
-    packageName: 'bloc_signals',
-  );
-
-  static const _blocSignalChecker = TypeChecker.fromName(
-    'BlocSignal',
-    packageName: 'bloc_signals',
-  );
-
   static final _pseudoEventPattern = RegExp(
     r'(?:[_\-.]|^)(?:pressed|clicked|submitted|requested|tapped|swiped|event)$'
     r'|[a-z0-9](?:Pressed|Clicked|Submitted|Requested|Tapped|Swiped|Event)$',
@@ -56,44 +42,23 @@ class AvoidPseudoEventsInTelemetry extends DartLintRule {
 
   /// Finds all AST nodes violating this rule within a class declaration.
   static List<AstNode> findViolations(ClassDeclaration node) {
-    final classElement = node.declaredFragment?.element;
-    final extendsClause = node.extendsClause?.superclass.toSource();
-    final withClause = node.withClause?.toSource();
+    return _findViolationsInDeclaration(node);
+  }
 
-    final isExplicitBloc =
-        (classElement != null && _blocSignalChecker.isSuperOf(classElement)) ||
-            (extendsClause != null &&
-                (extendsClause.contains('BlocSignal') ||
-                    extendsClause.contains('ReplayBloc') ||
-                    extendsClause.contains('HydratedBloc'))) ||
-            (withClause != null &&
-                (withClause.contains('BlocSignalMixin') ||
-                    withClause.contains('ReplayBlocMixin')));
+  /// Finds all AST nodes violating this rule within a mixin declaration.
+  static List<AstNode> findMixinViolations(MixinDeclaration node) {
+    return _findViolationsInDeclaration(node);
+  }
 
-    if (isExplicitBloc) return const [];
-
-    final isCubit = (classElement != null &&
-            (_cubitSignalChecker.isSuperOf(classElement) ||
-                _cubitSignalMixinChecker.isSuperOf(classElement)) &&
-            !_blocSignalChecker.isSuperOf(classElement)) ||
-        (extendsClause != null &&
-            (extendsClause.contains('CubitSignal') ||
-                extendsClause.contains('ReplayCubit') ||
-                extendsClause.contains('HydratedCubit'))) ||
-        (withClause != null &&
-            !withClause.contains('BlocSignalMixin') &&
-            !withClause.contains('ReplayBlocMixin') &&
-            (withClause.contains('CubitSignalMixin') ||
-                withClause.contains('ReplayCubitMixin') ||
-                withClause.contains('ReplayMixin') ||
-                withClause.contains('HydratedMixin')));
-
-    if (!isCubit) return const [];
+  static List<AstNode> _findViolationsInDeclaration(AstNode declaration) {
+    if (!BlocContainerUtils.isCubitOnlyContainer(declaration)) {
+      return const [];
+    }
 
     final violations = <AstNode>[];
 
-    node.visitChildren(
-      _TelemetryInvocationVisitor((invocation, stringLiteral) {
+    declaration.visitChildren(
+      _TelemetryInvocationVisitor(declaration, (invocation, stringLiteral) {
         if (isPseudoEventName(stringLiteral.stringValue ?? '')) {
           violations.add(stringLiteral);
         }
@@ -110,8 +75,18 @@ class AvoidPseudoEventsInTelemetry extends DartLintRule {
     CustomLintContext context,
   ) {
     context.registry.addClassDeclaration((node) {
-      final violations = findViolations(node);
-      for (final violation in violations) {
+      for (final violation in findViolations(node)) {
+        reporter.atNode(
+          violation,
+          code,
+          arguments: [
+            violation.toSource().replaceAll("'", '').replaceAll('"', ''),
+          ],
+        );
+      }
+    });
+    context.registry.addMixinDeclaration((node) {
+      for (final violation in findMixinViolations(node)) {
         reporter.atNode(
           violation,
           code,
@@ -125,20 +100,23 @@ class AvoidPseudoEventsInTelemetry extends DartLintRule {
 }
 
 class _TelemetryInvocationVisitor extends RecursiveAstVisitor<void> {
-  _TelemetryInvocationVisitor(this.onTelemetryCall);
+  _TelemetryInvocationVisitor(this.hostDeclaration, this.onTelemetryCall);
 
+  final AstNode hostDeclaration;
   final void Function(MethodInvocation invocation, SimpleStringLiteral literal)
       onTelemetryCall;
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    if (node.methodName.name == 'emitTelemetry') {
-      final target = node.target;
-      if (target == null || target is ThisExpression) {
-        final args = node.argumentList.arguments;
-        if (args.isNotEmpty && args.first is SimpleStringLiteral) {
-          onTelemetryCall(node, args.first as SimpleStringLiteral);
-        }
+    if (node.methodName.name == 'emitTelemetry' &&
+        BlocContainerUtils.isSelfOrUnqualifiedTarget(node.realTarget) &&
+        identical(
+          BlocContainerUtils.nearestContainerDeclaration(node),
+          hostDeclaration,
+        )) {
+      final args = node.argumentList.arguments;
+      if (args.isNotEmpty && args.first is SimpleStringLiteral) {
+        onTelemetryCall(node, args.first as SimpleStringLiteral);
       }
     }
     super.visitMethodInvocation(node);

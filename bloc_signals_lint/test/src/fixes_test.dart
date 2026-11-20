@@ -566,6 +566,82 @@ class CounterCubit extends CubitSignal<int> {
       expect(transformed, contains('this._pruneAndEmit();'));
       expect(transformed, isNot(contains('void _prune()')));
     });
+
+    test(
+      '(Issue #477: Area 1) RequireEmitInHelperNameFix renames helper '
+      'declaration and cascade call sites inside MixinDeclaration',
+      () {
+        const sourceCode = '''
+mixin CounterMixin on CubitSignal<int> {
+  void update() {
+    _prune();
+    this._prune();
+    this.._prune();
+  }
+
+  void _prune() {
+    emit(stateValue + 1);
+  }
+}
+''';
+        final parseResult = parseString(content: sourceCode);
+        final helperOffset =
+            sourceCode.indexOf('_prune()', sourceCode.indexOf('void _prune()'));
+
+        final fix = RequireEmitInHelperNameFix();
+        final transformed = _runFix(
+          fix: fix,
+          source: sourceCode,
+          unit: parseResult.unit,
+          targetRange: SourceRange(helperOffset, 6),
+        );
+
+        expect(transformed, contains('void _pruneAndEmit()'));
+        expect(transformed, contains('_pruneAndEmit();'));
+        expect(transformed, contains('this._pruneAndEmit();'));
+        expect(transformed, contains('this.._pruneAndEmit();'));
+        expect(transformed, isNot(contains('void _prune()')));
+      },
+    );
+
+    test(
+      '(Issue #477: NBO-1) RequireEmitInHelperNameFix ignores foreign cascade '
+      'calls and supports computeRename(mixinDeclaration: ...)',
+      () {
+        const sourceCode = '''
+class Other {
+  void _prune() {}
+}
+
+mixin CounterMixin on CubitSignal<int> {
+  void update(Other other) {
+    other.._prune();
+    _prune();
+  }
+
+  void _prune() {
+    emit(stateValue + 1);
+  }
+}
+''';
+        final parseResult = parseString(content: sourceCode);
+        final mixinDecl =
+            parseResult.unit.declarations.whereType<MixinDeclaration>().first;
+        final methodDecl = mixinDecl.members
+            .whereType<MethodDeclaration>()
+            .firstWhere((m) => m.name.lexeme == '_prune');
+
+        final computed = RequireEmitInHelperNameFix.computeRename(
+          source: sourceCode,
+          mixinDeclaration: mixinDecl,
+          methodToRename: methodDecl,
+        );
+
+        expect(computed, contains('other.._prune();'));
+        expect(computed, contains('_pruneAndEmit();'));
+        expect(computed, contains('void _pruneAndEmit()'));
+      },
+    );
   });
 }
 

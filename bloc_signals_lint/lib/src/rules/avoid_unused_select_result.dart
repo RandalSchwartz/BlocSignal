@@ -3,6 +3,7 @@
 
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/error/listener.dart';
+import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that flags calling `context.select()` as an unused expression
@@ -31,8 +32,7 @@ class AvoidUnusedSelectResult extends DartLintRule {
     context.registry.addExpressionStatement((node) {
       final expr = node.expression;
       if (expr is MethodInvocation && expr.methodName.name == 'select') {
-        final target = expr.target;
-        if (target != null && target.toSource().contains('context')) {
+        if (BlocContainerUtils.isBuildContextReceiver(expr.target)) {
           reporter.atNode(
             expr.methodName,
             code,

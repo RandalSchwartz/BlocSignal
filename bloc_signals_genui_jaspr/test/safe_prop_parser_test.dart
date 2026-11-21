@@ -156,5 +156,74 @@ void main() {
         );
       });
     });
+
+    group('(Issue #472) parseSliderRange', () {
+      test(
+          '(Issue #472) clamps bounds, falls back on invalid spans, and caps '
+          'steps/divisions', () {
+        expect(
+          parseSliderRange(const {'min': 0, 'max': 10, 'steps': 0}),
+          equals((min: 0.0, max: 10.0, value: 0.0, divisions: null)),
+        );
+        expect(
+          parseSliderRange(const {'min': 0, 'max': 10, 'steps': -1}),
+          equals((min: 0.0, max: 10.0, value: 0.0, divisions: null)),
+        );
+        expect(
+          parseSliderRange(const {'min': 0, 'max': 10, 'steps': 500}),
+          equals((min: 0.0, max: 10.0, value: 0.0, divisions: 500)),
+        );
+        expect(
+          parseSliderRange(const {'min': 0, 'max': 10, 'steps': 1000}),
+          equals((min: 0.0, max: 10.0, value: 0.0, divisions: 1000)),
+        );
+        expect(
+          parseSliderRange(const {'min': 0, 'max': 10, 'steps': 1001}),
+          equals((min: 0.0, max: 10.0, value: 0.0, divisions: 1000)),
+        );
+        expect(
+          parseSliderRange(const {'min': 0, 'max': 10, 'divisions': 25}),
+          equals((min: 0.0, max: 10.0, value: 0.0, divisions: 25)),
+        );
+        expect(
+          parseSliderRange(
+            const {
+              'min': -1e308,
+              'max': 1e308,
+              'value': 50,
+              'steps': 1000000000,
+            },
+          ),
+          equals(
+            (
+              min: -kMaxSliderBound,
+              max: kMaxSliderBound,
+              value: 50.0,
+              divisions: kMaxSliderDivisions,
+            ),
+          ),
+        );
+        expect(
+          parseSliderRange(
+            const {'min': 1e20, 'max': 1e20, 'value': 1e20, 'steps': 10},
+          ),
+          equals((min: 0.0, max: 100.0, value: 100.0, divisions: 10)),
+        );
+        expect(
+          parseSliderRange(const {'min': 50, 'max': 10, 'value': 25}),
+          equals((min: 0.0, max: 100.0, value: 25.0, divisions: null)),
+        );
+        expect(
+          parseSliderRange(
+            const {
+              'min': double.nan,
+              'max': double.infinity,
+              'value': double.negativeInfinity,
+            },
+          ),
+          equals((min: 0.0, max: 100.0, value: 0.0, divisions: null)),
+        );
+      });
+    });
   });
 }

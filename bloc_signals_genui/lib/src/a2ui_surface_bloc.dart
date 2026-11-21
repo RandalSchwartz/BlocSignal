@@ -40,13 +40,21 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// [defaultRpcTimeout] (defaults to `const Duration(seconds: 30)`) sets the
   /// default timeout for outbound [callAgentFunction] requests.
   /// [validationConfig] configures optional graph-level checks enforced by the
-  /// underlying [MessageProcessor].
+  /// underlying [MessageProcessor] and defaults to [ValidationConfig.relaxed].
+  /// Pass `validationConfig: null` to disable graph-level validation.
   /// When [reportErrorsOnly] is `true`, [MessageProcessor.processMessages] emits
   /// mapped [ErrorMessage]s instead of throwing [A2uiError]s.
   /// When [unifiedOutbound] is `true`, outbound actions are also forwarded to
   /// [outboundMessages] as [ActionMessage] envelopes.
   /// [maxAgentCallCacheEntries] (defaults to `256`) bounds settled agent
   /// function call responses retained per surface.
+  /// [maxChunkLength] (defaults to `1048576` characters, must be greater than
+  /// `0`) bounds the maximum character length of a single incoming stream chunk.
+  /// [maxMessagesPerBatch] (defaults to `256`, must be greater than `0`) bounds
+  /// the maximum number of messages processed in a single batch or JSON array
+  /// chunk.
+  /// [maxComponentsPerSurface] (defaults to `2000`, must be greater than `0`)
+  /// bounds the maximum number of components retained on a single surface.
   /// [patternValidator] optionally overrides the built-in ReDoS safety check
   /// for component validation `pattern` and `validationRegexp` strings.
   ///
@@ -62,10 +70,13 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     this.maxResponseHistory = 100,
     OutboundMessageListener? outboundListener,
     this.defaultRpcTimeout = const Duration(seconds: 30),
-    this.validationConfig,
+    this.validationConfig = ValidationConfig.relaxed,
     this.reportErrorsOnly = false,
     this.unifiedOutbound = false,
     this.maxAgentCallCacheEntries = 256,
+    this.maxChunkLength = 1048576,
+    this.maxMessagesPerBatch = 256,
+    this.maxComponentsPerSurface = 2000,
     this.patternValidator,
   })  : assert(
           maxSurfaces == null || maxSurfaces > 0,
@@ -74,6 +85,18 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         assert(
           maxResponseHistory >= 0,
           'maxResponseHistory must be greater than or equal to 0.',
+        ),
+        assert(
+          maxChunkLength > 0,
+          'maxChunkLength must be greater than 0.',
+        ),
+        assert(
+          maxMessagesPerBatch > 0,
+          'maxMessagesPerBatch must be greater than 0.',
+        ),
+        assert(
+          maxComponentsPerSurface > 0,
+          'maxComponentsPerSurface must be greater than 0.',
         ),
         _userOutboundListener = outboundListener,
         catalogs = catalogs ??
@@ -156,6 +179,8 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   /// Optional graph-level validation rules applied by the underlying
   /// [MessageProcessor].
+  ///
+  /// Defaults to [ValidationConfig.relaxed]. Pass `null` to opt out.
   final ValidationConfig? validationConfig;
 
   /// Whether [MessageProcessor.processMessages] emits mapped [ErrorMessage]s
@@ -168,6 +193,23 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
   /// Maximum number of settled agent function call responses cached per surface.
   final int maxAgentCallCacheEntries;
+
+  /// Maximum character length permitted for a single raw string chunk in
+  /// [IngestStream].
+  ///
+  /// Defaults to `1048576` (1 MiB of UTF-16 code units).
+  final int maxChunkLength;
+
+  /// Maximum number of messages permitted in a single [ProcessMessages] batch
+  /// or decoded JSON array chunk.
+  ///
+  /// Defaults to `256`.
+  final int maxMessagesPerBatch;
+
+  /// Maximum number of components permitted on a single surface.
+  ///
+  /// Defaults to `2000`.
+  final int maxComponentsPerSurface;
 
   /// Optional callback that overrides the built-in ReDoS safety heuristic for
   /// form validation `pattern` and `validationRegexp` strings.
@@ -508,6 +550,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           try {
             final messages = _parseChunkToMessages(chunk);
             if (messages.isNotEmpty) {
+              _enforceIngestionBudgets(messages);
               _preProcessMessages(messages);
               _processor.processMessages(messages);
               _enforceMaxSurfacesBound();
@@ -600,6 +643,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   ) {
     try {
       final message = _normalizeMessage(event.message);
+      _enforceIngestionBudgets([message]);
       _preProcessMessages([message]);
       _processor.processMessages([message]);
       _enforceMaxSurfacesBound();
@@ -627,6 +671,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   ) {
     try {
       final message = A2uiMessage.fromJson(_normalizeJson(event.json));
+      _enforceIngestionBudgets([message]);
       _preProcessMessages([message]);
       _processor.processMessages([message]);
       _enforceMaxSurfacesBound();
@@ -653,7 +698,14 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     void Function(A2uiSurfaceState) emit,
   ) {
     try {
+      if (event.messages.length > maxMessagesPerBatch) {
+        throw FormatException(
+          'Message batch length ${event.messages.length} exceeds '
+          'maxMessagesPerBatch ($maxMessagesPerBatch).',
+        );
+      }
       final normalizedMessages = event.messages.map(_normalizeMessage).toList();
+      _enforceIngestionBudgets(normalizedMessages);
       _preProcessMessages(normalizedMessages);
       _processor.processMessages(normalizedMessages);
       _enforceMaxSurfacesBound();
@@ -1018,6 +1070,50 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     return result;
   }
 
+  void _enforceIngestionBudgets(List<A2uiMessage> messages) {
+    final pendingComponentIds = <String, Set<String>>{};
+    for (final msg in messages) {
+      if (msg is CreateSurfaceMessage) {
+        final comps = msg.components;
+        if (comps == null) {
+          pendingComponentIds[msg.surfaceId] = <String>{};
+          continue;
+        }
+        final ids = <String>{};
+        for (final comp in comps) {
+          final id = comp['id']?.toString();
+          if (id != null && id.isNotEmpty) {
+            ids.add(id);
+          }
+        }
+        pendingComponentIds[msg.surfaceId] = ids;
+      } else if (msg is UpdateComponentsMessage) {
+        final ids = pendingComponentIds.putIfAbsent(msg.surfaceId, () {
+          final existingSurface = _processor.model.getSurface(msg.surfaceId);
+          return existingSurface?.componentsModel.all
+                  .map((c) => c.id)
+                  .toSet() ??
+              <String>{};
+        });
+        for (final comp in msg.components) {
+          final id = comp['id']?.toString();
+          if (id != null && id.isNotEmpty) {
+            ids.add(id);
+          }
+        }
+        if (ids.length > maxComponentsPerSurface) {
+          throw FormatException(
+            'Total component count ${ids.length} for surface '
+            '"${msg.surfaceId}" exceeds maxComponentsPerSurface '
+            '($maxComponentsPerSurface).',
+          );
+        }
+      } else if (msg is DeleteSurfaceMessage) {
+        pendingComponentIds[msg.surfaceId] = <String>{};
+      }
+    }
+  }
+
   List<A2uiMessage> _parseChunkToMessages(dynamic chunk) {
     if (chunk is A2uiMessage) {
       return [_normalizeMessage(chunk)];
@@ -1028,10 +1124,22 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       ];
     }
     if (chunk is String) {
+      if (chunk.length > maxChunkLength) {
+        throw FormatException(
+          'Chunk length ${chunk.length} exceeds maxChunkLength '
+          '($maxChunkLength).',
+        );
+      }
       final trimmed = chunk.trim();
       if (trimmed.isEmpty) return const [];
       final decoded = jsonDecode(trimmed);
       if (decoded is List) {
+        if (decoded.length > maxMessagesPerBatch) {
+          throw FormatException(
+            'Message batch length ${decoded.length} exceeds '
+            'maxMessagesPerBatch ($maxMessagesPerBatch).',
+          );
+        }
         final messages = <A2uiMessage>[];
         for (final item in decoded) {
           if (item is! Map) {
@@ -1062,6 +1170,13 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         ? A2uiProtocolVersion.v1_0.jsonValue
         : msg.version;
     if (msg is UpdateComponentsMessage) {
+      if (msg.components.length > maxComponentsPerSurface) {
+        throw FormatException(
+          'Component count ${msg.components.length} for surface '
+          '"${msg.surfaceId}" exceeds maxComponentsPerSurface '
+          '($maxComponentsPerSurface).',
+        );
+      }
       final normalizedComps =
           msg.components.map(_normalizeComponentMap).toList();
       return UpdateComponentsMessage(
@@ -1071,9 +1186,16 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       );
     }
     if (msg is CreateSurfaceMessage) {
-      if (msg.components != null || version != msg.version) {
-        final normalizedComps =
-            msg.components?.map(_normalizeComponentMap).toList();
+      final comps = msg.components;
+      if (comps != null && comps.length > maxComponentsPerSurface) {
+        throw FormatException(
+          'Component count ${comps.length} for surface '
+          '"${msg.surfaceId}" exceeds maxComponentsPerSurface '
+          '($maxComponentsPerSurface).',
+        );
+      }
+      if (comps != null || version != msg.version) {
+        final normalizedComps = comps?.map(_normalizeComponentMap).toList();
         return CreateSurfaceMessage(
           version: version,
           surfaceId: msg.surfaceId,
@@ -1122,6 +1244,12 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   }
 
   List<dynamic> _normalizeComponentList(List<dynamic> comps) {
+    if (comps.length > maxComponentsPerSurface) {
+      throw FormatException(
+        'Component count ${comps.length} exceeds maxComponentsPerSurface '
+        '($maxComponentsPerSurface).',
+      );
+    }
     return comps.map((c) {
       if (c is! Map) {
         throw FormatException(
@@ -1384,33 +1512,120 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     _regexCacheTotalChars = 0;
   }
 
-  static int? _quantifierEndIndex(String pattern, int index) {
+  static const int _ccDigit = 1 << 0;
+  static const int _ccUpper = 1 << 1;
+  static const int _ccLower = 1 << 2;
+  static const int _ccUnderscore = 1 << 3;
+  static const int _ccSpace = 1 << 4;
+  static const int _ccPunct = 1 << 5;
+  static const int _ccWord = _ccDigit | _ccUpper | _ccLower | _ccUnderscore;
+  static const int _ccAll = _ccWord | _ccSpace | _ccPunct;
+
+  static int _maskForCodeUnit(int code) {
+    if (code >= 48 && code <= 57) return _ccDigit;
+    if (code >= 65 && code <= 90) return _ccUpper;
+    if (code >= 97 && code <= 122) return _ccLower;
+    if (code == 95) return _ccUnderscore;
+    if (code == 32 ||
+        (code >= 9 && code <= 13) ||
+        code == 0x00A0 ||
+        code == 0x1680 ||
+        (code >= 0x2000 && code <= 0x200A) ||
+        code == 0x2028 ||
+        code == 0x2029 ||
+        code == 0x202F ||
+        code == 0x205F ||
+        code == 0x3000 ||
+        code == 0xFEFF) {
+      return _ccSpace;
+    }
+    return _ccPunct;
+  }
+
+  static int _maskForRange(int start, int end) {
+    if (start > end) return _ccAll;
+    var mask = 0;
+    if (start <= 57 && end >= 48) mask |= _ccDigit;
+    if (start <= 90 && end >= 65) mask |= _ccUpper;
+    if (start <= 122 && end >= 97) mask |= _ccLower;
+    if (start <= 95 && end >= 95) mask |= _ccUnderscore;
+    if ((start <= 13 && end >= 9) ||
+        (start <= 32 && end >= 32) ||
+        (start <= 0x00A0 && end >= 0x00A0) ||
+        (start <= 0x1680 && end >= 0x1680) ||
+        (start <= 0x200A && end >= 0x2000) ||
+        (start <= 0x2029 && end >= 0x2028) ||
+        (start <= 0x202F && end >= 0x202F) ||
+        (start <= 0x205F && end >= 0x205F) ||
+        (start <= 0x3000 && end >= 0x3000) ||
+        (start <= 0xFEFF && end >= 0xFEFF)) {
+      mask |= _ccSpace;
+    }
+    if (start < 9 ||
+        (start <= 31 && end >= 14) ||
+        (start <= 47 && end >= 33) ||
+        (start <= 64 && end >= 58) ||
+        (start <= 94 && end >= 91) ||
+        (start <= 96 && end >= 96) ||
+        (start <= 126 && end >= 123) ||
+        end > 126) {
+      mask |= _ccPunct;
+    }
+    return mask;
+  }
+
+  static ({int end, bool isUnbounded, bool isNullable, int maxVal})?
+      _quantifierInfo(
+    String pattern,
+    int index,
+  ) {
     if (index >= pattern.length) return null;
     final code = pattern.codeUnitAt(index);
-    // '*', '+', '?'
+    // '*' (42), '+' (43), '?' (63)
     if (code == 42 || code == 43 || code == 63) {
       var end = index + 1;
       if (end < pattern.length && pattern.codeUnitAt(end) == 63) {
         end++;
       }
-      return end;
+      return (
+        end: end,
+        isUnbounded: code == 42 || code == 43,
+        isNullable: code == 42 || code == 63,
+        maxVal: code == 63 ? 1 : 2,
+      );
     }
     // '{n}', '{n,}', '{n,m}'
     if (code == 123) {
       var cursor = index + 1;
-      final digitsStart = cursor;
+      final minStart = cursor;
       while (cursor < pattern.length &&
           pattern.codeUnitAt(cursor) >= 48 &&
           pattern.codeUnitAt(cursor) <= 57) {
         cursor++;
       }
-      if (cursor == digitsStart) return null;
+      if (cursor == minStart) return null;
+      const maxQuantifierSentinel = 1 << 30;
+      final parsedMin = int.tryParse(pattern.substring(minStart, cursor));
+      final minOverflow = parsedMin == null;
+      final minVal = parsedMin ?? maxQuantifierSentinel;
+      var hasComma = false;
+      var hasMax = false;
+      var maxOverflow = false;
+      var maxVal = minVal;
       if (cursor < pattern.length && pattern.codeUnitAt(cursor) == 44) {
+        hasComma = true;
         cursor++;
+        final maxStart = cursor;
         while (cursor < pattern.length &&
             pattern.codeUnitAt(cursor) >= 48 &&
             pattern.codeUnitAt(cursor) <= 57) {
           cursor++;
+        }
+        if (cursor > maxStart) {
+          hasMax = true;
+          final parsedMax = int.tryParse(pattern.substring(maxStart, cursor));
+          maxOverflow = parsedMax == null;
+          maxVal = parsedMax ?? maxQuantifierSentinel;
         }
       }
       if (cursor < pattern.length && pattern.codeUnitAt(cursor) == 125) {
@@ -1418,130 +1633,1075 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
         if (end < pattern.length && pattern.codeUnitAt(end) == 63) {
           end++;
         }
-        return end;
+        return (
+          end: end,
+          isUnbounded: minOverflow ||
+              maxOverflow ||
+              (hasComma && (!hasMax || maxVal > minVal)),
+          isNullable: minVal == 0,
+          maxVal: hasComma && !hasMax
+              ? (minVal >= maxQuantifierSentinel - 2
+                  ? maxQuantifierSentinel
+                  : minVal + 2)
+              : maxVal,
+        );
       }
     }
     return null;
   }
 
-  static bool _hasOverlappingBranches(List<String> branches) {
-    if (branches.length < 2) return false;
-    final seenFirstChars = <int>{};
-    for (final branch in branches) {
-      if (branch.isEmpty) return true;
-      final first = branch.codeUnitAt(0);
-      // Wildcards, character classes, nested groups, or escapes can overlap.
-      // 46='.', 91='[', 40='(', 92='\'
-      if (first == 46 || first == 91 || first == 40 || first == 92) {
-        return true;
+  static ({int bodyStart, bool isLookaround}) _parseGroupHeader(
+    String pattern,
+    int openParenIndex,
+  ) {
+    if (openParenIndex + 1 >= pattern.length ||
+        pattern.codeUnitAt(openParenIndex + 1) != 63) {
+      return (bodyStart: openParenIndex + 1, isLookaround: false);
+    }
+    if (openParenIndex + 2 >= pattern.length) {
+      return (bodyStart: openParenIndex + 1, isLookaround: false);
+    }
+    final next = pattern.codeUnitAt(openParenIndex + 2);
+    // '(?:'
+    if (next == 58) {
+      return (bodyStart: openParenIndex + 3, isLookaround: false);
+    }
+    // '(?=' or '(?!'
+    if (next == 61 || next == 33) {
+      return (bodyStart: openParenIndex + 3, isLookaround: true);
+    }
+    if (next == 60 && openParenIndex + 3 < pattern.length) {
+      final after = pattern.codeUnitAt(openParenIndex + 3);
+      // '(?<=' or '(?<!'
+      if (after == 61 || after == 33) {
+        return (bodyStart: openParenIndex + 4, isLookaround: true);
       }
-      if (!seenFirstChars.add(first)) {
-        return true;
+      // Named group '(?<name>'
+      final gtIndex = pattern.indexOf('>', openParenIndex + 3);
+      if (gtIndex != -1) {
+        return (bodyStart: gtIndex + 1, isLookaround: false);
+      }
+    }
+    return (bodyStart: openParenIndex + 1, isLookaround: false);
+  }
+
+  static ({int end, int mask, bool isZeroWidth, int? codeUnit})?
+      _parseEscapeAtom(
+    String pattern,
+    int backslashIndex, {
+    bool inCharClass = false,
+  }) {
+    if (backslashIndex + 1 >= pattern.length) return null;
+    final next = pattern.codeUnitAt(backslashIndex + 1);
+    // Reject numeric backreferences \1-\9 and named backreferences \k<...>
+    if (next >= 49 && next <= 57) return null;
+    if (next == 107 &&
+        backslashIndex + 2 < pattern.length &&
+        pattern.codeUnitAt(backslashIndex + 2) == 60) {
+      return null;
+    }
+    // '\b', '\B'
+    if (next == 98 || next == 66) {
+      if (inCharClass) {
+        return next == 98
+            ? (
+                end: backslashIndex + 2,
+                mask: _ccPunct,
+                isZeroWidth: false,
+                codeUnit: 8,
+              )
+            : (
+                end: backslashIndex + 2,
+                mask: _ccUpper,
+                isZeroWidth: false,
+                codeUnit: 66,
+              );
+      }
+      return (
+        end: backslashIndex + 2,
+        mask: 0,
+        isZeroWidth: true,
+        codeUnit: null,
+      );
+    }
+    // Whitespace escapes \t (116->9), \n (110->10), \v (118->11),
+    // \f (102->12), \r (114->13)
+    if (next == 116) {
+      return (
+        end: backslashIndex + 2,
+        mask: _ccSpace,
+        isZeroWidth: false,
+        codeUnit: 9,
+      );
+    }
+    if (next == 110) {
+      return (
+        end: backslashIndex + 2,
+        mask: _ccSpace,
+        isZeroWidth: false,
+        codeUnit: 10,
+      );
+    }
+    if (next == 118) {
+      return (
+        end: backslashIndex + 2,
+        mask: _ccSpace,
+        isZeroWidth: false,
+        codeUnit: 11,
+      );
+    }
+    if (next == 102) {
+      return (
+        end: backslashIndex + 2,
+        mask: _ccSpace,
+        isZeroWidth: false,
+        codeUnit: 12,
+      );
+    }
+    if (next == 114) {
+      return (
+        end: backslashIndex + 2,
+        mask: _ccSpace,
+        isZeroWidth: false,
+        codeUnit: 13,
+      );
+    }
+    // Null byte / legacy octal escape \0 or \0[0-7]{1,2}
+    if (next == 48) {
+      var cursor = backslashIndex + 2;
+      var octalVal = 0;
+      var digits = 0;
+      while (cursor < pattern.length && digits < 2) {
+        final d = pattern.codeUnitAt(cursor);
+        if (d < 48 || d > 55) break;
+        octalVal = (octalVal << 3) | (d - 48);
+        cursor++;
+        digits++;
+      }
+      return (
+        end: cursor,
+        mask: _maskForCodeUnit(octalVal),
+        isZeroWidth: false,
+        codeUnit: octalVal,
+      );
+    }
+    // Control escape \c[A-Za-z] (and Annex B \c[0-9_] inside char classes)
+    if (next == 99) {
+      if (backslashIndex + 2 < pattern.length) {
+        final ctrl = pattern.codeUnitAt(backslashIndex + 2);
+        if ((ctrl >= 65 && ctrl <= 90) ||
+            (ctrl >= 97 && ctrl <= 122) ||
+            (inCharClass && ((ctrl >= 48 && ctrl <= 57) || ctrl == 95))) {
+          final codeUnit = ctrl & 0x1F;
+          return (
+            end: backslashIndex + 3,
+            mask: _maskForCodeUnit(codeUnit),
+            isZeroWidth: false,
+            codeUnit: codeUnit,
+          );
+        }
+      }
+      return (
+        end: backslashIndex + 1,
+        mask: _ccPunct,
+        isZeroWidth: false,
+        codeUnit: 92,
+      );
+    }
+    // \d, \D, \w, \W, \s, \S
+    if (next == 100) {
+      return (
+        end: backslashIndex + 2,
+        mask: _ccDigit,
+        isZeroWidth: false,
+        codeUnit: null,
+      );
+    }
+    if (next == 68) {
+      return (
+        end: backslashIndex + 2,
+        mask: _ccAll & ~_ccDigit,
+        isZeroWidth: false,
+        codeUnit: null,
+      );
+    }
+    if (next == 119) {
+      return (
+        end: backslashIndex + 2,
+        mask: _ccWord,
+        isZeroWidth: false,
+        codeUnit: null,
+      );
+    }
+    if (next == 87) {
+      return (
+        end: backslashIndex + 2,
+        mask: _ccAll & ~_ccWord,
+        isZeroWidth: false,
+        codeUnit: null,
+      );
+    }
+    if (next == 115) {
+      return (
+        end: backslashIndex + 2,
+        mask: _ccSpace,
+        isZeroWidth: false,
+        codeUnit: null,
+      );
+    }
+    if (next == 83) {
+      return (
+        end: backslashIndex + 2,
+        mask: _ccAll & ~_ccSpace,
+        isZeroWidth: false,
+        codeUnit: null,
+      );
+    }
+    // \xHH
+    if (next == 120) {
+      final hex = _parseExactHex(pattern, backslashIndex + 2, 2);
+      if (hex != null) {
+        return (
+          end: backslashIndex + 4,
+          mask: _maskForCodeUnit(hex),
+          isZeroWidth: false,
+          codeUnit: hex,
+        );
+      }
+    }
+    // \uHHHH (4-digit Unicode escape; in non-unicode RegExp, \u{...}, \p{...},
+    // and \P{...} are IdentityEscapes for 'u', 'p', 'P' followed by '{...}').
+    if (next == 117) {
+      final hex = _parseExactHex(pattern, backslashIndex + 2, 4);
+      if (hex != null) {
+        return (
+          end: backslashIndex + 6,
+          mask: _maskForCodeUnit(hex),
+          isZeroWidth: false,
+          codeUnit: hex,
+        );
+      }
+    }
+    return (
+      end: backslashIndex + 2,
+      mask: _maskForCodeUnit(next),
+      isZeroWidth: false,
+      codeUnit: next,
+    );
+  }
+
+  static int? _parseExactHex(String pattern, int start, int length) {
+    if (start + length > pattern.length) return null;
+    var value = 0;
+    for (var i = 0; i < length; i++) {
+      final c = pattern.codeUnitAt(start + i);
+      int digit;
+      if (c >= 48 && c <= 57) {
+        digit = c - 48;
+      } else if (c >= 65 && c <= 70) {
+        digit = c - 55;
+      } else if (c >= 97 && c <= 102) {
+        digit = c - 87;
+      } else {
+        return null;
+      }
+      value = (value << 4) | digit;
+    }
+    return value;
+  }
+
+  static ({int end, int mask, Set<int>? punctChars}) _parseCharClass(
+    String pattern,
+    int openIndex,
+  ) {
+    var cursor = openIndex + 1;
+    var negated = false;
+    if (cursor < pattern.length && pattern.codeUnitAt(cursor) == 94) {
+      negated = true;
+      cursor++;
+    }
+    var mask = 0;
+    Set<int>? punctChars = <int>{};
+    var prevCode = -1;
+    while (cursor < pattern.length) {
+      final c = pattern.codeUnitAt(cursor);
+      if (c == 93) {
+        cursor++;
+        break;
+      }
+      if (c == 92) {
+        final esc = _parseEscapeAtom(pattern, cursor, inCharClass: true);
+        if (esc != null) {
+          mask |= esc.mask;
+          if ((esc.mask & _ccPunct) != 0) {
+            if (esc.codeUnit != null) {
+              punctChars?.add(esc.codeUnit!);
+            } else {
+              punctChars = null;
+            }
+          }
+          cursor = esc.end;
+          prevCode = esc.codeUnit ?? -1;
+          continue;
+        }
+        mask |= _ccAll;
+        punctChars = null;
+        cursor++;
+        prevCode = -1;
+        continue;
+      }
+      if (c == 45 &&
+          prevCode != -1 &&
+          cursor + 1 < pattern.length &&
+          pattern.codeUnitAt(cursor + 1) != 93) {
+        final nextChar = pattern.codeUnitAt(cursor + 1);
+        if (nextChar == 92) {
+          final esc = _parseEscapeAtom(pattern, cursor + 1, inCharClass: true);
+          if (esc != null) {
+            if (esc.codeUnit != null) {
+              final rangeMask = _maskForRange(prevCode, esc.codeUnit!);
+              mask |= rangeMask;
+              if ((rangeMask & _ccPunct) != 0) punctChars = null;
+            } else {
+              mask |= _ccPunct | esc.mask;
+              if ((esc.mask & _ccPunct) != 0) {
+                punctChars = null;
+              } else {
+                punctChars?.add(45);
+              }
+            }
+            cursor = esc.end;
+          } else {
+            mask |= _ccAll;
+            punctChars = null;
+            cursor += 2;
+          }
+        } else {
+          final rangeMask = _maskForRange(prevCode, nextChar);
+          mask |= rangeMask;
+          if ((rangeMask & _ccPunct) != 0) punctChars = null;
+          cursor += 2;
+        }
+        prevCode = -1;
+        continue;
+      }
+      final charMask = _maskForCodeUnit(c);
+      mask |= charMask;
+      if ((charMask & _ccPunct) != 0) {
+        punctChars?.add(c);
+      }
+      prevCode = c;
+      cursor++;
+    }
+    return (
+      end: cursor,
+      mask: negated || mask == 0 ? _ccAll : mask,
+      punctChars: negated || mask == 0 ? null : punctChars,
+    );
+  }
+
+  static bool _hasOverlappingBranches(List<_BranchFirstMatch> branches) {
+    if (branches.length < 2) return false;
+    for (var i = 0; i < branches.length; i++) {
+      final a = branches[i];
+      if (a.mask == 0) return true;
+      for (var j = i + 1; j < branches.length; j++) {
+        final b = branches[j];
+        if (b.mask == 0) return true;
+        if (!a.hasNonLiteral && !b.hasNonLiteral) {
+          if (a.exactCodeUnits.any(b.exactCodeUnits.contains)) {
+            return true;
+          }
+        } else if (_masksOverlap(a.mask, a.punctChars, b.mask, b.punctChars)) {
+          return true;
+        }
       }
     }
     return false;
   }
 
-  /// Performs a linear-time $O(M)$ static check rejecting nested quantifiers
-  /// and overlapping quantified alternations that can cause catastrophic
-  /// backtracking (ReDoS).
+  static bool _masksOverlap(
+    int maskA,
+    Set<int>? punctA,
+    int maskB,
+    Set<int>? punctB,
+  ) {
+    final common = maskA & maskB;
+    if (common == 0) return false;
+    if (common != _ccPunct) return true;
+    if (punctA == null || punctB == null) return true;
+    return punctA.any(punctB.contains);
+  }
+
+  static Set<int>? _unionPunctChars(
+    int maskA,
+    Set<int>? punctA,
+    int maskB,
+    Set<int>? punctB,
+  ) {
+    if ((maskA & _ccPunct) == 0) return punctB;
+    if ((maskB & _ccPunct) == 0) return punctA;
+    if (punctA == null || punctB == null) return null;
+    return <int>{...punctA, ...punctB};
+  }
+
+  /// Performs a linear-time $O(M)$ static check rejecting nested quantifiers,
+  /// overlapping quantified alternations, backreferences, quantifiers inside
+  /// or on lookarounds, and overlapping adjacent unbounded quantifiers (even
+  /// across unquantified/nullable groups, overlapping separators, `?`-chains,
+  /// or zero-width assertions).
   static bool _isSafeValidationPattern(String pattern) {
-    final stack = <_RegexGroupFrame>[];
-    var inCharClass = false;
-    var escaped = false;
+    final stack = <_RegexGroupFrame>[_RegexGroupFrame()];
+    var lookaroundDepth = 0;
     var i = 0;
+
+    bool applyQuantifierOrAtom({
+      required int atomMask,
+      required Set<int>? atomPunctChars,
+      required int leadingMask,
+      required Set<int>? leadingPunctChars,
+      required int trailingMask,
+      required Set<int>? trailingPunctChars,
+      required bool atomCanBeEmpty,
+      required bool isZeroWidth,
+      required ({
+        int end,
+        bool isUnbounded,
+        bool isNullable,
+        int maxVal
+      })? quant,
+      required int nextIndex,
+      int groupTrailingNullableMask = 0,
+      Set<int>? groupTrailingNullablePunctChars,
+      int groupTrailingNullableChain = 0,
+    }) {
+      final scope = stack.last;
+      if (quant != null) {
+        if (lookaroundDepth > 0) return false;
+        if (stack.length > 1) {
+          scope.hasQuantifier = true;
+        }
+        final effectiveLeading = leadingMask | atomMask;
+        final effectiveLeadingPunct = _unionPunctChars(
+          leadingMask,
+          leadingPunctChars,
+          atomMask,
+          atomPunctChars,
+        );
+        final effectiveTrailing = trailingMask | atomMask;
+        final effectiveTrailingPunct = _unionPunctChars(
+          trailingMask,
+          trailingPunctChars,
+          atomMask,
+          atomPunctChars,
+        );
+
+        if (quant.isUnbounded) {
+          if (_masksOverlap(
+            scope.trailingUnboundedMask,
+            scope.trailingUnboundedPunctChars,
+            effectiveLeading,
+            effectiveLeadingPunct,
+          )) {
+            if (scope.trailingUnboundedAbsorbed == 0) {
+              return false;
+            }
+            scope.trailingUnboundedOverlapChain++;
+            if (scope.trailingUnboundedOverlapChain >= 2) {
+              return false;
+            }
+          }
+          scope.trailingUnboundedAbsorbed = 0;
+          if (scope.branchCanBeEmpty) {
+            scope.leadingUnboundedPunctChars = _unionPunctChars(
+              scope.leadingUnboundedMask,
+              scope.leadingUnboundedPunctChars,
+              effectiveLeading,
+              effectiveLeadingPunct,
+            );
+            scope.leadingUnboundedMask |= effectiveLeading;
+          }
+          if (scope.trailingNullableChain >= 1 &&
+              _masksOverlap(
+                scope.trailingNullableMask,
+                scope.trailingNullablePunctChars,
+                effectiveLeading,
+                effectiveLeadingPunct,
+              )) {
+            scope.nullableAmbiguityCount++;
+            if (scope.nullableAmbiguityCount >= 3) {
+              return false;
+            }
+          }
+          if (quant.isNullable || atomCanBeEmpty) {
+            scope.trailingUnboundedPunctChars = _unionPunctChars(
+              scope.trailingUnboundedMask,
+              scope.trailingUnboundedPunctChars,
+              effectiveTrailing,
+              effectiveTrailingPunct,
+            );
+            scope.trailingUnboundedMask |= effectiveTrailing;
+          } else {
+            scope.trailingUnboundedMask = effectiveTrailing;
+            scope.trailingUnboundedPunctChars = effectiveTrailingPunct;
+            scope.branchCanBeEmpty = false;
+            scope.trailingNullableChain = 0;
+            scope.trailingNullableMask = 0;
+            scope.trailingNullablePunctChars = <int>{};
+          }
+        } else if (quant.isNullable || atomCanBeEmpty) {
+          final stepCount = quant.maxVal > 1 ? quant.maxVal : 1;
+          if (_masksOverlap(
+            scope.trailingNullableMask,
+            scope.trailingNullablePunctChars,
+            effectiveLeading,
+            effectiveLeadingPunct,
+          )) {
+            scope.trailingNullableChain += stepCount;
+            if (scope.trailingNullableChain >= 2) {
+              scope.nullableAmbiguityCount++;
+              if (scope.nullableAmbiguityCount >= 3) {
+                return false;
+              }
+            }
+          } else if (scope.trailingNullableChain == 0) {
+            scope.trailingNullableChain = stepCount;
+          }
+          if (groupTrailingNullableChain > scope.trailingNullableChain) {
+            scope.trailingNullableChain = groupTrailingNullableChain;
+          }
+          if (scope.trailingNullableChain >= 3) {
+            return false;
+          }
+          final nullableBaseMask = effectiveLeading | effectiveTrailing;
+          final nullableBasePunct = _unionPunctChars(
+            effectiveLeading,
+            effectiveLeadingPunct,
+            effectiveTrailing,
+            effectiveTrailingPunct,
+          );
+          final nullableUnionMask =
+              nullableBaseMask | groupTrailingNullableMask;
+          final nullableUnionPunct = _unionPunctChars(
+            nullableBaseMask,
+            nullableBasePunct,
+            groupTrailingNullableMask,
+            groupTrailingNullablePunctChars,
+          );
+          scope.trailingNullablePunctChars = _unionPunctChars(
+            scope.trailingNullableMask,
+            scope.trailingNullablePunctChars,
+            nullableUnionMask,
+            nullableUnionPunct,
+          );
+          scope.trailingNullableMask |= nullableUnionMask;
+
+          if (_masksOverlap(
+            scope.trailingUnboundedMask,
+            scope.trailingUnboundedPunctChars,
+            effectiveLeading,
+            effectiveLeadingPunct,
+          )) {
+            scope.nullableAmbiguityCount++;
+            if (scope.nullableAmbiguityCount >= 3) {
+              return false;
+            }
+            if (trailingMask != 0) {
+              if (leadingMask != 0 || scope.trailingUnboundedAbsorbed == 0) {
+                return false;
+              }
+              scope.trailingUnboundedOverlapChain++;
+              if (scope.trailingUnboundedOverlapChain >= 2) {
+                return false;
+              }
+              scope.trailingUnboundedAbsorbed = 0;
+            }
+            scope.trailingUnboundedPunctChars = _unionPunctChars(
+              scope.trailingUnboundedMask,
+              scope.trailingUnboundedPunctChars,
+              effectiveTrailing,
+              effectiveTrailingPunct,
+            );
+            scope.trailingUnboundedMask |= effectiveTrailing;
+            if (scope.trailingNullableChain >= 2) {
+              return false;
+            }
+          } else if (trailingMask != 0) {
+            scope.trailingUnboundedPunctChars = _unionPunctChars(
+              scope.trailingUnboundedMask,
+              scope.trailingUnboundedPunctChars,
+              trailingMask,
+              trailingPunctChars,
+            );
+            scope.trailingUnboundedMask |= trailingMask;
+            scope.trailingUnboundedAbsorbed = 0;
+          }
+          if (scope.branchCanBeEmpty && leadingMask != 0) {
+            scope.leadingUnboundedPunctChars = _unionPunctChars(
+              scope.leadingUnboundedMask,
+              scope.leadingUnboundedPunctChars,
+              leadingMask,
+              leadingPunctChars,
+            );
+            scope.leadingUnboundedMask |= leadingMask;
+          }
+        } else {
+          if (leadingMask != 0 &&
+              _masksOverlap(
+                scope.trailingUnboundedMask,
+                scope.trailingUnboundedPunctChars,
+                leadingMask,
+                leadingPunctChars,
+              )) {
+            return false;
+          }
+          if (scope.branchCanBeEmpty && leadingMask != 0) {
+            scope.leadingUnboundedPunctChars = _unionPunctChars(
+              scope.leadingUnboundedMask,
+              scope.leadingUnboundedPunctChars,
+              leadingMask,
+              leadingPunctChars,
+            );
+            scope.leadingUnboundedMask |= leadingMask;
+          }
+          if (scope.trailingNullableChain >= 1 &&
+              _masksOverlap(
+                scope.trailingNullableMask,
+                scope.trailingNullablePunctChars,
+                effectiveLeading,
+                effectiveLeadingPunct,
+              )) {
+            scope.nullableAmbiguityCount++;
+            if (scope.nullableAmbiguityCount >= 3) {
+              return false;
+            }
+          }
+          if (groupTrailingNullableChain > 0) {
+            scope.trailingNullableChain = groupTrailingNullableChain;
+            scope.trailingNullableMask = groupTrailingNullableMask;
+            scope.trailingNullablePunctChars =
+                groupTrailingNullablePunctChars ?? <int>{};
+          } else {
+            scope.trailingNullableChain = 0;
+            scope.trailingNullableMask = 0;
+            scope.trailingNullablePunctChars = <int>{};
+          }
+          if (_masksOverlap(
+            scope.trailingUnboundedMask,
+            scope.trailingUnboundedPunctChars,
+            effectiveLeading,
+            effectiveLeadingPunct,
+          )) {
+            scope.nullableAmbiguityCount++;
+            if (scope.nullableAmbiguityCount >= 3) {
+              return false;
+            }
+            if (trailingMask != 0) {
+              if (scope.trailingUnboundedAbsorbed == 0) {
+                return false;
+              }
+              scope.trailingUnboundedOverlapChain++;
+              if (scope.trailingUnboundedOverlapChain >= 2) {
+                return false;
+              }
+              scope.trailingUnboundedAbsorbed = 0;
+              scope.trailingUnboundedPunctChars = _unionPunctChars(
+                scope.trailingUnboundedMask,
+                scope.trailingUnboundedPunctChars,
+                trailingMask,
+                trailingPunctChars,
+              );
+              scope.trailingUnboundedMask |= trailingMask;
+            } else {
+              scope.trailingUnboundedAbsorbed++;
+            }
+          } else {
+            scope.trailingUnboundedMask = trailingMask;
+            scope.trailingUnboundedPunctChars = trailingPunctChars;
+            scope.trailingUnboundedAbsorbed = 0;
+          }
+          scope.branchCanBeEmpty = false;
+        }
+        i = quant.end;
+        return true;
+      }
+
+      if (isZeroWidth) {
+        i = nextIndex;
+        return true;
+      }
+
+      // Unquantified atom/group
+      final effLeading = leadingMask | atomMask;
+      final effLeadingPunct = _unionPunctChars(
+        leadingMask,
+        leadingPunctChars,
+        atomMask,
+        atomPunctChars,
+      );
+      final effTrailing = trailingMask | atomMask;
+      final effTrailingPunct = _unionPunctChars(
+        trailingMask,
+        trailingPunctChars,
+        atomMask,
+        atomPunctChars,
+      );
+      if (atomCanBeEmpty) {
+        if (_masksOverlap(
+          scope.trailingNullableMask,
+          scope.trailingNullablePunctChars,
+          effLeading,
+          effLeadingPunct,
+        )) {
+          scope.trailingNullableChain++;
+          if (scope.trailingNullableChain >= 2) {
+            scope.nullableAmbiguityCount++;
+            if (scope.nullableAmbiguityCount >= 3) {
+              return false;
+            }
+          }
+        } else if (scope.trailingNullableChain == 0) {
+          scope.trailingNullableChain = 1;
+        }
+        if (groupTrailingNullableChain > scope.trailingNullableChain) {
+          scope.trailingNullableChain = groupTrailingNullableChain;
+        }
+        if (scope.trailingNullableChain >= 3) {
+          return false;
+        }
+        final nullableBaseMask = effLeading | effTrailing;
+        final nullableBasePunct = _unionPunctChars(
+          effLeading,
+          effLeadingPunct,
+          effTrailing,
+          effTrailingPunct,
+        );
+        final nullableUnionMask = nullableBaseMask | groupTrailingNullableMask;
+        final nullableUnionPunct = _unionPunctChars(
+          nullableBaseMask,
+          nullableBasePunct,
+          groupTrailingNullableMask,
+          groupTrailingNullablePunctChars,
+        );
+        scope.trailingNullablePunctChars = _unionPunctChars(
+          scope.trailingNullableMask,
+          scope.trailingNullablePunctChars,
+          nullableUnionMask,
+          nullableUnionPunct,
+        );
+        scope.trailingNullableMask |= nullableUnionMask;
+        if (_masksOverlap(
+          scope.trailingUnboundedMask,
+          scope.trailingUnboundedPunctChars,
+          effLeading,
+          effLeadingPunct,
+        )) {
+          scope.nullableAmbiguityCount++;
+          if (scope.nullableAmbiguityCount >= 3) {
+            return false;
+          }
+          if (leadingMask != 0 || scope.trailingNullableChain >= 2) {
+            return false;
+          }
+        }
+        scope.trailingUnboundedPunctChars = _unionPunctChars(
+          scope.trailingUnboundedMask,
+          scope.trailingUnboundedPunctChars,
+          trailingMask,
+          trailingPunctChars,
+        );
+        scope.trailingUnboundedMask |= trailingMask;
+        if (scope.branchCanBeEmpty && leadingMask != 0) {
+          scope.leadingUnboundedPunctChars = _unionPunctChars(
+            scope.leadingUnboundedMask,
+            scope.leadingUnboundedPunctChars,
+            leadingMask,
+            leadingPunctChars,
+          );
+          scope.leadingUnboundedMask |= leadingMask;
+        }
+      } else {
+        if (leadingMask != 0 &&
+            _masksOverlap(
+              scope.trailingUnboundedMask,
+              scope.trailingUnboundedPunctChars,
+              leadingMask,
+              leadingPunctChars,
+            )) {
+          return false;
+        }
+        if (scope.branchCanBeEmpty && leadingMask != 0) {
+          scope.leadingUnboundedPunctChars = _unionPunctChars(
+            scope.leadingUnboundedMask,
+            scope.leadingUnboundedPunctChars,
+            leadingMask,
+            leadingPunctChars,
+          );
+          scope.leadingUnboundedMask |= leadingMask;
+        }
+        if (scope.trailingNullableChain >= 1 &&
+            _masksOverlap(
+              scope.trailingNullableMask,
+              scope.trailingNullablePunctChars,
+              effLeading,
+              effLeadingPunct,
+            )) {
+          scope.nullableAmbiguityCount++;
+          if (scope.nullableAmbiguityCount >= 3) {
+            return false;
+          }
+        }
+        if (groupTrailingNullableChain > 0) {
+          scope.trailingNullableChain = groupTrailingNullableChain;
+          scope.trailingNullableMask = groupTrailingNullableMask;
+          scope.trailingNullablePunctChars =
+              groupTrailingNullablePunctChars ?? <int>{};
+        } else {
+          scope.trailingNullableChain = 0;
+          scope.trailingNullableMask = 0;
+          scope.trailingNullablePunctChars = <int>{};
+        }
+        if (_masksOverlap(
+          scope.trailingUnboundedMask,
+          scope.trailingUnboundedPunctChars,
+          effLeading,
+          effLeadingPunct,
+        )) {
+          if (trailingMask != 0) return false;
+          scope.trailingUnboundedAbsorbed++;
+        } else {
+          scope.trailingUnboundedMask = trailingMask;
+          scope.trailingUnboundedPunctChars = trailingPunctChars;
+          scope.trailingUnboundedAbsorbed = 0;
+        }
+        scope.branchCanBeEmpty = false;
+      }
+      i = nextIndex;
+      return true;
+    }
 
     while (i < pattern.length) {
       final code = pattern.codeUnitAt(i);
-      if (escaped) {
-        if (stack.isNotEmpty && !inCharClass) {
-          stack.last.appendBranchChar(pattern[i]);
-        }
-        escaped = false;
-        i++;
-        continue;
-      }
       if (code == 92) {
-        // '\'
-        if (stack.isNotEmpty && !inCharClass) {
-          stack.last.appendBranchChar(r'\');
+        // '\' escape, backreference, or zero-width assertion
+        final esc = _parseEscapeAtom(pattern, i);
+        if (esc == null) return false;
+        final escPunct = !esc.isZeroWidth && (esc.mask & _ccPunct) != 0
+            ? (esc.codeUnit != null ? <int>{esc.codeUnit!} : null)
+            : <int>{};
+        final wasBranchEmpty = stack.length > 1 && stack.last.branchCanBeEmpty;
+        final quant = _quantifierInfo(pattern, esc.end);
+        if (!applyQuantifierOrAtom(
+          atomMask: esc.mask,
+          atomPunctChars: escPunct,
+          leadingMask: 0,
+          leadingPunctChars: <int>{},
+          trailingMask: 0,
+          trailingPunctChars: <int>{},
+          atomCanBeEmpty: esc.isZeroWidth,
+          isZeroWidth: esc.isZeroWidth,
+          quant: quant,
+          nextIndex: esc.end,
+        )) {
+          return false;
         }
-        escaped = true;
-        i++;
-        continue;
-      }
-      if (inCharClass) {
-        if (code == 93) {
-          // ']'
-          inCharClass = false;
+        if (!esc.isZeroWidth && stack.length > 1) {
+          stack.last.recordAtom(
+            esc.mask,
+            escPunct,
+            wasBranchEmpty: wasBranchEmpty,
+            codeUnit: esc.codeUnit,
+          );
         }
-        i++;
         continue;
       }
       if (code == 91) {
-        // '['
-        inCharClass = true;
-        if (stack.isNotEmpty) {
-          stack.last.appendBranchChar('[');
+        // '[' character class
+        final cc = _parseCharClass(pattern, i);
+        final wasBranchEmpty = stack.length > 1 && stack.last.branchCanBeEmpty;
+        final quant = _quantifierInfo(pattern, cc.end);
+        if (!applyQuantifierOrAtom(
+          atomMask: cc.mask,
+          atomPunctChars: cc.punctChars,
+          leadingMask: 0,
+          leadingPunctChars: <int>{},
+          trailingMask: 0,
+          trailingPunctChars: <int>{},
+          atomCanBeEmpty: false,
+          isZeroWidth: false,
+          quant: quant,
+          nextIndex: cc.end,
+        )) {
+          return false;
         }
-        i++;
+        if (stack.length > 1) {
+          stack.last.recordAtom(
+            cc.mask,
+            cc.punctChars,
+            wasBranchEmpty: wasBranchEmpty,
+          );
+        }
         continue;
       }
       if (code == 40) {
-        // '('
-        if (stack.isNotEmpty) {
-          stack.last.appendBranchChar('(');
-        }
-        stack.add(_RegexGroupFrame());
-        i++;
+        // '(' group open
+        final header = _parseGroupHeader(pattern, i);
+        if (header.isLookaround) lookaroundDepth++;
+        stack.add(_RegexGroupFrame(isLookaround: header.isLookaround));
+        i = header.bodyStart;
         continue;
       }
       if (code == 41) {
-        // ')'
-        if (stack.isEmpty) {
+        // ')' group close
+        if (stack.length <= 1) {
           i++;
           continue;
         }
         final frame = stack.removeLast();
-        final quantEnd = _quantifierEndIndex(pattern, i + 1);
-        if (quantEnd != null) {
-          if (frame.hasQuantifier ||
-              (frame.branches.length > 1 &&
-                  _hasOverlappingBranches(frame.branches))) {
+        frame.finishBranch();
+        var groupAmbCount = frame.groupMaxAmbiguousAlternationCount;
+        if (frame.branches.length > 1 &&
+            _hasOverlappingBranches(frame.branches)) {
+          frame.hasAmbiguousAlternation = true;
+          groupAmbCount++;
+        }
+        stack.last.ambiguousAlternationCount += groupAmbCount;
+        if (stack.last.ambiguousAlternationCount >= 3) {
+          return false;
+        }
+        stack.last.nullableAmbiguityCount +=
+            frame.groupMaxNullableAmbiguityCount;
+        if (stack.last.nullableAmbiguityCount >= 3) {
+          return false;
+        }
+        stack.last.trailingUnboundedOverlapChain +=
+            frame.groupMaxUnboundedOverlapChain;
+        if (stack.last.trailingUnboundedOverlapChain >= 2) {
+          return false;
+        }
+        if (frame.isLookaround) lookaroundDepth--;
+        final wasBranchEmpty = stack.length > 1 && stack.last.branchCanBeEmpty;
+        final quant = _quantifierInfo(pattern, i + 1);
+        if (quant != null) {
+          if (lookaroundDepth > 0 || frame.isLookaround) return false;
+          if ((quant.isUnbounded || quant.maxVal > 1) &&
+              (frame.hasQuantifier || frame.hasAmbiguousAlternation)) {
             return false;
           }
-          if (stack.isNotEmpty) {
-            stack.last.hasQuantifier = true;
+          if (!applyQuantifierOrAtom(
+            atomMask: quant.isUnbounded
+                ? frame.allCharsMask
+                : frame.groupFirstAtomMask,
+            atomPunctChars: quant.isUnbounded
+                ? frame.allCharsPunctChars
+                : frame.groupFirstAtomPunctChars,
+            leadingMask: frame.groupLeadingUnboundedMask,
+            leadingPunctChars: frame.groupLeadingUnboundedPunctChars,
+            trailingMask: frame.groupTrailingUnboundedMask,
+            trailingPunctChars: frame.groupTrailingUnboundedPunctChars,
+            atomCanBeEmpty: frame.groupCanBeEmpty || quant.isNullable,
+            isZeroWidth: false,
+            quant: quant,
+            nextIndex: i + 1,
+            groupTrailingNullableMask: frame.groupTrailingNullableMask,
+            groupTrailingNullablePunctChars:
+                frame.groupTrailingNullablePunctChars,
+            groupTrailingNullableChain: frame.groupMaxTrailingNullableChain,
+          )) {
+            return false;
           }
-          i = quantEnd;
+          if (stack.length > 1) {
+            stack.last.recordAtom(
+              frame.allCharsMask,
+              frame.allCharsPunctChars,
+              wasBranchEmpty: wasBranchEmpty,
+            );
+          }
           continue;
         }
-        if (frame.hasQuantifier && stack.isNotEmpty) {
-          stack.last.hasQuantifier = true;
+        if (stack.length > 1) {
+          if (frame.hasQuantifier) {
+            stack.last.hasQuantifier = true;
+          }
+          if (frame.hasAmbiguousAlternation) {
+            stack.last.hasAmbiguousAlternation = true;
+          }
         }
-        i++;
+        if (!applyQuantifierOrAtom(
+          atomMask: frame.groupFirstAtomMask,
+          atomPunctChars: frame.groupFirstAtomPunctChars,
+          leadingMask: frame.groupLeadingUnboundedMask,
+          leadingPunctChars: frame.groupLeadingUnboundedPunctChars,
+          trailingMask: frame.groupTrailingUnboundedMask,
+          trailingPunctChars: frame.groupTrailingUnboundedPunctChars,
+          atomCanBeEmpty: frame.groupCanBeEmpty,
+          isZeroWidth: frame.isLookaround,
+          quant: null,
+          nextIndex: i + 1,
+          groupTrailingNullableMask: frame.groupTrailingNullableMask,
+          groupTrailingNullablePunctChars:
+              frame.groupTrailingNullablePunctChars,
+          groupTrailingNullableChain: frame.groupMaxTrailingNullableChain,
+        )) {
+          return false;
+        }
+        if (!frame.isLookaround && stack.length > 1) {
+          stack.last.recordAtom(
+            frame.allCharsMask,
+            frame.allCharsPunctChars,
+            wasBranchEmpty: wasBranchEmpty,
+          );
+        }
         continue;
       }
-      if (code == 124 && stack.isNotEmpty) {
-        // '|'
+      if (code == 124) {
+        // '|' alternation
         stack.last.startNewBranch();
         i++;
         continue;
       }
 
-      final quantEnd = _quantifierEndIndex(pattern, i);
-      if (quantEnd != null) {
-        if (stack.isNotEmpty) {
+      // Stray quantifier at start of group/pattern
+      final strayQuant = _quantifierInfo(pattern, i);
+      if (strayQuant != null) {
+        if (lookaroundDepth > 0) return false;
+        if (stack.length > 1) {
           stack.last.hasQuantifier = true;
         }
-        i = quantEnd;
+        i = strayQuant.end;
         continue;
       }
 
-      if (stack.isNotEmpty) {
-        stack.last.appendBranchChar(pattern[i]);
+      final isAnchor = code == 94 || code == 36; // '^' or '$'
+      final atomMask =
+          isAnchor ? 0 : (code == 46 ? _ccAll : _maskForCodeUnit(code));
+      final atomPunct = !isAnchor && (atomMask & _ccPunct) != 0
+          ? (code == 46 ? null : <int>{code})
+          : <int>{};
+      final wasBranchEmpty = stack.length > 1 && stack.last.branchCanBeEmpty;
+      final quant = _quantifierInfo(pattern, i + 1);
+      if (!applyQuantifierOrAtom(
+        atomMask: atomMask,
+        atomPunctChars: atomPunct,
+        leadingMask: 0,
+        leadingPunctChars: <int>{},
+        trailingMask: 0,
+        trailingPunctChars: <int>{},
+        atomCanBeEmpty: isAnchor,
+        isZeroWidth: isAnchor,
+        quant: quant,
+        nextIndex: i + 1,
+      )) {
+        return false;
       }
-      i++;
+      if (!isAnchor && stack.length > 1) {
+        stack.last.recordAtom(
+          atomMask,
+          atomPunct,
+          wasBranchEmpty: wasBranchEmpty,
+          codeUnit: code == 46 ? null : code,
+        );
+      }
     }
     return true;
   }
@@ -1721,16 +2881,157 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 }
 
 class _RegexGroupFrame {
-  bool hasQuantifier = false;
-  final List<String> branches = <String>[''];
+  _RegexGroupFrame({this.isLookaround = false});
 
-  void appendBranchChar(String ch) {
-    if (branches.last.isEmpty) {
-      branches[branches.length - 1] = ch;
+  final bool isLookaround;
+  bool hasQuantifier = false;
+  bool hasAmbiguousAlternation = false;
+  int ambiguousAlternationCount = 0;
+  int groupMaxAmbiguousAlternationCount = 0;
+  int nullableAmbiguityCount = 0;
+  int groupMaxNullableAmbiguityCount = 0;
+  int groupMaxUnboundedOverlapChain = 0;
+  int leadingUnboundedMask = 0;
+  Set<int>? leadingUnboundedPunctChars = <int>{};
+  int trailingUnboundedMask = 0;
+  Set<int>? trailingUnboundedPunctChars = <int>{};
+  int trailingUnboundedAbsorbed = 0;
+  int trailingUnboundedOverlapChain = 0;
+  int trailingNullableMask = 0;
+  Set<int>? trailingNullablePunctChars = <int>{};
+  int trailingNullableChain = 0;
+  bool branchCanBeEmpty = true;
+  int firstAtomMask = 0;
+  Set<int>? firstAtomPunctChars = <int>{};
+  int allCharsMask = 0;
+  Set<int>? allCharsPunctChars = <int>{};
+
+  int groupLeadingUnboundedMask = 0;
+  Set<int>? groupLeadingUnboundedPunctChars = <int>{};
+  int groupTrailingUnboundedMask = 0;
+  Set<int>? groupTrailingUnboundedPunctChars = <int>{};
+  int groupTrailingNullableMask = 0;
+  Set<int>? groupTrailingNullablePunctChars = <int>{};
+  int groupMaxTrailingNullableChain = 0;
+  int groupFirstAtomMask = 0;
+  Set<int>? groupFirstAtomPunctChars = <int>{};
+  bool groupCanBeEmpty = false;
+
+  final List<_BranchFirstMatch> branches = <_BranchFirstMatch>[
+    _BranchFirstMatch(),
+  ];
+
+  void finishBranch() {
+    groupLeadingUnboundedPunctChars = A2uiSurfaceBloc._unionPunctChars(
+      groupLeadingUnboundedMask,
+      groupLeadingUnboundedPunctChars,
+      leadingUnboundedMask,
+      leadingUnboundedPunctChars,
+    );
+    groupLeadingUnboundedMask |= leadingUnboundedMask;
+
+    groupTrailingUnboundedPunctChars = A2uiSurfaceBloc._unionPunctChars(
+      groupTrailingUnboundedMask,
+      groupTrailingUnboundedPunctChars,
+      trailingUnboundedMask,
+      trailingUnboundedPunctChars,
+    );
+    groupTrailingUnboundedMask |= trailingUnboundedMask;
+
+    groupFirstAtomPunctChars = A2uiSurfaceBloc._unionPunctChars(
+      groupFirstAtomMask,
+      groupFirstAtomPunctChars,
+      firstAtomMask,
+      firstAtomPunctChars,
+    );
+    groupFirstAtomMask |= firstAtomMask;
+    groupCanBeEmpty = groupCanBeEmpty || branchCanBeEmpty;
+    if (ambiguousAlternationCount > groupMaxAmbiguousAlternationCount) {
+      groupMaxAmbiguousAlternationCount = ambiguousAlternationCount;
+    }
+    if (nullableAmbiguityCount > groupMaxNullableAmbiguityCount) {
+      groupMaxNullableAmbiguityCount = nullableAmbiguityCount;
+    }
+    if (trailingUnboundedOverlapChain > groupMaxUnboundedOverlapChain) {
+      groupMaxUnboundedOverlapChain = trailingUnboundedOverlapChain;
+    }
+    groupTrailingNullablePunctChars = A2uiSurfaceBloc._unionPunctChars(
+      groupTrailingNullableMask,
+      groupTrailingNullablePunctChars,
+      trailingNullableMask,
+      trailingNullablePunctChars,
+    );
+    groupTrailingNullableMask |= trailingNullableMask;
+    if (trailingNullableChain > groupMaxTrailingNullableChain) {
+      groupMaxTrailingNullableChain = trailingNullableChain;
     }
   }
 
+  void recordAtom(
+    int mask,
+    Set<int>? punctChars, {
+    required bool wasBranchEmpty,
+    int? codeUnit,
+  }) {
+    if (wasBranchEmpty) {
+      branches.last.record(mask, punctChars, codeUnit: codeUnit);
+    }
+    if (wasBranchEmpty || firstAtomMask == 0) {
+      firstAtomPunctChars = A2uiSurfaceBloc._unionPunctChars(
+        firstAtomMask,
+        firstAtomPunctChars,
+        mask,
+        punctChars,
+      );
+      firstAtomMask |= mask;
+    }
+    allCharsPunctChars = A2uiSurfaceBloc._unionPunctChars(
+      allCharsMask,
+      allCharsPunctChars,
+      mask,
+      punctChars,
+    );
+    allCharsMask |= mask;
+  }
+
   void startNewBranch() {
-    branches.add('');
+    finishBranch();
+    branches.add(_BranchFirstMatch());
+    leadingUnboundedMask = 0;
+    leadingUnboundedPunctChars = <int>{};
+    trailingUnboundedMask = 0;
+    trailingUnboundedPunctChars = <int>{};
+    trailingUnboundedAbsorbed = 0;
+    trailingUnboundedOverlapChain = 0;
+    trailingNullableMask = 0;
+    trailingNullablePunctChars = <int>{};
+    trailingNullableChain = 0;
+    ambiguousAlternationCount = 0;
+    nullableAmbiguityCount = 0;
+    firstAtomMask = 0;
+    firstAtomPunctChars = <int>{};
+    branchCanBeEmpty = true;
+  }
+}
+
+class _BranchFirstMatch {
+  int mask = 0;
+  Set<int>? punctChars = <int>{};
+  final Set<int> exactCodeUnits = <int>{};
+  bool hasNonLiteral = false;
+
+  void record(int atomMask, Set<int>? atomPunctChars, {int? codeUnit}) {
+    punctChars = A2uiSurfaceBloc._unionPunctChars(
+      mask,
+      punctChars,
+      atomMask,
+      atomPunctChars,
+    );
+    mask |= atomMask;
+    if (codeUnit != null) {
+      exactCodeUnits.add(codeUnit);
+    } else {
+      hasNonLiteral = true;
+    }
   }
 }

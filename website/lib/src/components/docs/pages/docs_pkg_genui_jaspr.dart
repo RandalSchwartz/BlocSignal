@@ -172,7 +172,7 @@ Component buildSurface(A2uiSurfaceBloc bloc) {
               ),
             ]),
             Component.text(
-              'Two-way bound selection controls, filterable choice pickers, stepped range sliders, and ISO 8601 date/time inputs.',
+              'Two-way bound selection controls, filterable choice pickers, stepped range sliders (clamping min/max to [-1e12, 1e12] and steps to [1, 1000]), and ISO 8601 date/time inputs.',
             ),
           ]),
           li([

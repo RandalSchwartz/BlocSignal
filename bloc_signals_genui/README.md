@@ -119,6 +119,7 @@ void main() async {
 - **Zero-Rebuild Tab Switching**: Dispatch `SelectSurface(surfaceId: '...')` to switch the primary active surface without artificially incrementing any surface's `version` counter.
 - **Explicit Surface Closure**: Dispatch `CloseSurface(surfaceId: '...')` (or ingest wire-level `DeleteSurfaceMessage`) to evict a surface, prune its action history and revision metadata, and automatically promote the most-recently-accessed surviving surface.
 - **Bounded LRU Retention**: Configure `A2uiSurfaceBloc(maxSurfaces: 10)` to automatically evict the least-recently-used non-active surface when the active session exceeds the configured cap.
+- **Default Graph Validation & Ingestion Budgets**: `validationConfig` defaults to `ValidationConfig.relaxed` (pass `validationConfig: null` to opt out for incremental/partial component streaming), alongside `maxChunkLength` (`1048576`), `maxMessagesPerBatch` (`256`), and `maxComponentsPerSurface` (`2000`).
 
 ---
 

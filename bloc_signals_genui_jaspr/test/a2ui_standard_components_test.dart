@@ -596,5 +596,86 @@ void main() {
         findsOneComponent,
       );
     });
+
+    testComponents(
+        '(Issue #472) buildA2uiSlider clamps extreme steps and non-finite or '
+        'huge ranges', (tester) async {
+      final cases = <Map<String, Object?>>[
+        {
+          'min': -1e308,
+          'max': 1e308,
+          'value': 0,
+          'steps': 1000000000,
+        },
+        {
+          'min': 1e20,
+          'max': 1e20,
+          'value': 1e20,
+          'steps': 5000,
+        },
+        {
+          'min': double.nan,
+          'max': double.infinity,
+          'value': double.negativeInfinity,
+          'steps': 2000,
+        },
+      ];
+
+      for (var i = 0; i < cases.length; i++) {
+        final ctx = makeContext('slider_extreme_$i', 'Slider', cases[i]);
+        tester.pumpComponent(
+          Builder(
+            builder: (context) => buildA2uiSlider(context, ctx),
+          ),
+        );
+        final sliderFinder = find.byComponentPredicate(
+          (c) => c is input && c.type == InputType.range,
+        );
+        expect(sliderFinder, findsOneComponent);
+        final el = sliderFinder.evaluate().single.component as input<String>;
+        final attrs = el.attributes!;
+        final minVal = double.parse(attrs['min']!);
+        final maxVal = double.parse(attrs['max']!);
+        final stepVal = double.parse(attrs['step']!);
+        final valueVal = double.parse(el.value!);
+        expect(minVal.isFinite, isTrue);
+        expect(maxVal.isFinite, isTrue);
+        expect(minVal, greaterThanOrEqualTo(-1e12));
+        expect(maxVal, lessThanOrEqualTo(1e12));
+        expect((maxVal - minVal).isFinite, isTrue);
+        expect(maxVal, greaterThan(minVal));
+        expect(valueVal, greaterThanOrEqualTo(minVal));
+        expect(valueVal, lessThanOrEqualTo(maxVal));
+        expect(stepVal, closeTo((maxVal - minVal) / 1000, 1e-6));
+      }
+
+      // Subnormal step underflowing to 0.0 omits the step attribute.
+      final subnormalCtx = makeContext('slider_subnormal', 'Slider', const {
+        'min': 0.0,
+        'max': double.minPositive,
+        'value': 0.0,
+        'steps': 1000,
+      });
+      tester.pumpComponent(
+        Builder(
+          builder: (context) => buildA2uiSlider(context, subnormalCtx),
+        ),
+      );
+      final subnormalFinder = find.byComponentPredicate(
+        (c) => c is input && c.type == InputType.range,
+      );
+      expect(subnormalFinder, findsOneComponent);
+      final subEl =
+          subnormalFinder.evaluate().single.component as input<String>;
+      expect(subEl.attributes!.containsKey('step'), isFalse);
+
+      // Non-finite onInput values ('NaN', 'Infinity') are ignored safely.
+      subEl.onInput?.call('NaN');
+      subEl.onInput?.call('Infinity');
+      expect(
+        bloc.getSurfaceReady('s1')!.surface.dataModel.get('/slider_subnormal'),
+        isNull,
+      );
+    });
   });
 }

@@ -16,15 +16,13 @@ Component buildA2uiSlider(
 ) {
   final props = componentContext.props;
   final labelText = unwrapBinding(props['label'])?.toString();
-  final rawMin = asDouble(props['min']);
-  final rawMax = asDouble(props['max'], 100);
-  final min = rawMin <= rawMax ? rawMin : 0.0;
-  final max = rawMax >= min ? (rawMax > min ? rawMax : min + 100.0) : 100.0;
-  final currentValue = asDouble(props['value'], min).clamp(min, max);
-
-  final rawSteps = props['steps'] ?? props['divisions'];
-  final parsedSteps = rawSteps != null ? asInt(rawSteps) : 0;
-  final step = parsedSteps >= 1 ? (max - min) / parsedSteps : null;
+  final range = parseSliderRange(props);
+  final min = range.min;
+  final max = range.max;
+  final currentValue = range.value;
+  final computedStep =
+      range.divisions != null ? (max - min) / range.divisions! : null;
+  final step = computedStep != null && computedStep > 0 ? computedStep : null;
 
   final checkErrors = componentContext.validationErrors;
   final errorText = !componentContext.isValid && checkErrors.isNotEmpty
@@ -61,7 +59,7 @@ Component buildA2uiSlider(
         },
         onInput: (rawNext) {
           final parsed = double.tryParse(rawNext);
-          if (parsed != null) {
+          if (parsed != null && parsed.isFinite) {
             componentContext.updateBoundValue('value', parsed.clamp(min, max));
           }
         },

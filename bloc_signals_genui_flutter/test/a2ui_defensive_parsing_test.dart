@@ -2,6 +2,9 @@ import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_flutter/bloc_signals_genui_flutter.dart';
 // Preserves sdk: ^3.5.0 compatibility on Flutter <3.47.
 // ignore: deprecated_member_use
+import 'package:flutter/cupertino.dart';
+// Preserves sdk: ^3.5.0 compatibility on Flutter <3.47.
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:json_schema_builder/json_schema_builder.dart';
@@ -256,6 +259,118 @@ void main() {
         expect(find.byIcon(Icons.help_outline), findsOneWidget);
         expect(find.byType(CheckboxListTile), findsOneWidget);
         expect(find.byType(Slider), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '(Issue #472) Material and Cupertino sliders clamp extreme steps and '
+      'non-finite or huge ranges',
+      (tester) async {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+        final cupertinoCatalog = A2uiFlutterCatalog();
+        registerCupertinoComponents(cupertinoCatalog);
+
+        final extremeSliders = <Map<String, Object?>>[
+          {
+            'label': 'Huge Steps',
+            'min': -1e308,
+            'max': 1e308,
+            'value': 0,
+            'steps': 1000000000,
+          },
+          {
+            'label': 'Equal Huge',
+            'min': 1e20,
+            'max': 1e20,
+            'value': 1e20,
+            'steps': 5000,
+          },
+          {
+            'label': 'Non-finite',
+            'min': double.nan,
+            'max': double.infinity,
+            'value': double.negativeInfinity,
+            'steps': 2000,
+          },
+        ];
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: Builder(
+                  builder: (context) => Column(
+                    children: [
+                      for (var i = 0; i < extremeSliders.length; i++) ...[
+                        buildA2uiSlider(
+                          context,
+                          A2uiComponentContext(
+                            component: ComponentModel(
+                              'mat-slider-$i',
+                              'Slider',
+                              extremeSliders[i],
+                            ),
+                            props: extremeSliders[i],
+                            surfaceBloc: bloc,
+                            buildChildCallback: (_) => const SizedBox.shrink(),
+                            buildChildrenCallback: (_) => const <Widget>[],
+                            surfaceId: 'surf-slider-clamp',
+                          ),
+                        ),
+                        cupertinoCatalog.build(
+                          context,
+                          A2uiComponentContext(
+                            component: ComponentModel(
+                              'cup-slider-$i',
+                              'Slider',
+                              extremeSliders[i],
+                            ),
+                            props: extremeSliders[i],
+                            surfaceBloc: bloc,
+                            buildChildCallback: (_) => const SizedBox.shrink(),
+                            buildChildrenCallback: (_) => const <Widget>[],
+                            surfaceId: 'surf-slider-clamp',
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+
+        final matSliders = tester.widgetList<Slider>(find.byType(Slider));
+        expect(matSliders, hasLength(3));
+        for (final slider in matSliders) {
+          expect(slider.min.isFinite, isTrue);
+          expect(slider.max.isFinite, isTrue);
+          expect(slider.min, greaterThanOrEqualTo(-1e12));
+          expect(slider.max, lessThanOrEqualTo(1e12));
+          expect((slider.max - slider.min).isFinite, isTrue);
+          expect(slider.max, greaterThan(slider.min));
+          expect(slider.divisions, isNotNull);
+          expect(slider.divisions, lessThanOrEqualTo(1000));
+        }
+
+        final cupSliders =
+            tester.widgetList<CupertinoSlider>(find.byType(CupertinoSlider));
+        expect(cupSliders, hasLength(3));
+        for (final slider in cupSliders) {
+          expect(slider.min.isFinite, isTrue);
+          expect(slider.max.isFinite, isTrue);
+          expect(slider.min, greaterThanOrEqualTo(-1e12));
+          expect(slider.max, lessThanOrEqualTo(1e12));
+          expect((slider.max - slider.min).isFinite, isTrue);
+          expect(slider.max, greaterThan(slider.min));
+          expect(slider.divisions, isNotNull);
+          expect(slider.divisions, lessThanOrEqualTo(1000));
+        }
       },
     );
   });

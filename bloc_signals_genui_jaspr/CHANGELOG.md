@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (genui_jaspr)**: Clamp `buildA2uiSlider` `min`/`max` bounds to `[-1e12, 1e12]` with finite-span fallback `[0.0, 100.0]` and cap `steps` to `[1, 1000]` via `parseSliderRange` (#472).
+
 ## 2.0.2
 
 - **Fix (genui_jaspr)**: Guard `asDouble` and `asInt` in `safe_prop_parser.dart` against non-finite numeric and string inputs (`NaN`, `Infinity`, `-Infinity`), falling back to `defaultValue` (#424).

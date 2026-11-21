@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
+## Unreleased
+
+- **Fix (genui)**: Harden `_isSafeValidationPattern` against adjacent unbounded quantifiers, backreferences (`\1`–`\9`, `\k<...>`), and quantifiers inside lookarounds; enforce `maxChunkLength` (`1048576`), `maxMessagesPerBatch` (`256`), and `maxComponentsPerSurface` (`2000`) ingestion budgets on `A2uiSurfaceBloc`; and default `validationConfig` to `ValidationConfig.relaxed` (#472).
+
 ## 2.0.2
 
 - **Fix (genui)**: Prevent nested `properties` entries from overwriting top-level component keys in `_normalizeComponentMap` and guard `_coerceInt` against non-finite `num` values (`NaN`, `Infinity`) (#424).

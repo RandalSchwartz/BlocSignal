@@ -19,15 +19,11 @@ Widget buildCupertinoSlider(
 }) {
   final props = componentContext.props;
   final label = unwrapBinding(props['label'])?.toString();
-  final rawMin = asDouble(props['min']);
-  final rawMax = asDouble(props['max'], 100);
-  final min = rawMin <= rawMax ? rawMin : 0.0;
-  final max = rawMax >= min ? (rawMax > min ? rawMax : min + 100.0) : 100.0;
-  final currentValue = asDouble(props['value'], min).clamp(min, max);
-
-  final rawSteps = props['steps'] ?? props['divisions'];
-  final parsedSteps = rawSteps != null ? asInt(rawSteps) : 0;
-  final divisions = parsedSteps >= 1 ? parsedSteps : null;
+  final range = parseSliderRange(props);
+  final min = range.min;
+  final max = range.max;
+  final currentValue = range.value;
+  final divisions = range.divisions;
 
   final checkErrors = componentContext.validationErrors;
   final errorText = !componentContext.isValid && checkErrors.isNotEmpty

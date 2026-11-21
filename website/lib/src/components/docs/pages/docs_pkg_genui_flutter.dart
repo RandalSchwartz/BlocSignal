@@ -196,7 +196,7 @@ class AgentSurfaceScreen extends StatelessWidget {
               ),
               apiLink(DocSymbol.a2uiImageUrlPolicy),
               Component.text(
-                ' (defaulting to https and blocking loopback/link-local hosts such as localhost or 169.254.0.0/16) and bound Image.network decode memory using DPR-scaled cacheWidth/cacheHeight.',
+                ' (shared from bloc_signals_genui and re-exported by bloc_signals_genui_flutter; defaulting to https and blocking http://, loopback, link-local, private/CGNAT/ULA/IPv4-compat/NAT64 networks with allowPrivateNetworks: false, and IPv4 SSRF parser differentials such as octal, hex, shorthand, and 32-bit integer hosts) and bound Image.network decode memory using DPR-scaled cacheWidth/cacheHeight.',
               ),
             ]),
           ],

@@ -323,7 +323,7 @@ void main() {
     });
 
     testComponents(
-        'Image validates http/https URLs, applies fit/variant classes, '
+        'Image validates https URLs, applies fit/variant classes, '
         'and falls back on invalid URL', (tester) async {
       final validCtx = makeContext('img_1', 'Image', const {
         'url': 'https://example.com/photo.png',

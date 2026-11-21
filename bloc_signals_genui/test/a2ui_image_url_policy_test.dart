@@ -24,14 +24,22 @@ void main() {
         defaultPolicy.isAllowed('https://v2.0x1.example.com/a.png'),
         isTrue,
       );
+      expect(
+        defaultPolicy.isAllowed('https://xn--mnchen-3ya.example/a.png'),
+        isTrue,
+      );
     });
 
-    test('rejects null, empty, whitespace-only, and malformed URLs', () {
+    test(
+        'rejects null, empty, whitespace-only, scheme-less, and malformed URLs',
+        () {
       expect(defaultPolicy.isAllowed(null), isFalse);
       expect(defaultPolicy.isAllowed(''), isFalse);
       expect(defaultPolicy.isAllowed('   \t\n  '), isFalse);
       expect(defaultPolicy.isAllowed('not a valid url'), isFalse);
       expect(defaultPolicy.isAllowed('://missing-scheme.com/a.png'), isFalse);
+      expect(defaultPolicy.isAllowed('//127.0.0.1/a.png'), isFalse);
+      expect(defaultPolicy.isAllowed('example.com/a.png'), isFalse);
       expect(defaultPolicy.isAllowed('https://'), isFalse);
       expect(defaultPolicy.isAllowed('https:///no-host.png'), isFalse);
     });
@@ -111,13 +119,42 @@ void main() {
       expect(defaultPolicy.isAllowed('https://0x7f000001/a.png'), isFalse);
       expect(defaultPolicy.isAllowed('https://0x7f.0.0.1/a.png'), isFalse);
       expect(defaultPolicy.isAllowed('https://127.0.0.0x1/a.png'), isFalse);
+      expect(defaultPolicy.isAllowed('https://256.0.0.1/a.png'), isFalse);
+      expect(defaultPolicy.isAllowed('https://1.2.3.999/a.png'), isFalse);
       expect(
         defaultPolicy.isAllowed('https://[::ffff:0177.0.0.1]/a.png'),
         isFalse,
       );
+      expect(
+        defaultPolicy.isAllowed('https://[::ffff:256.0.0.1]/a.png'),
+        isFalse,
+      );
+      expect(
+        defaultPolicy.isAllowed('https://[::ffff:010.0.0.1]/a.png'),
+        isFalse,
+      );
+      expect(
+        defaultPolicy.isAllowed('https://[::ffff:093.184.216.34]/a.png'),
+        isFalse,
+      );
+      expect(defaultPolicy.isAllowed('https://127.0.0.%31/a.png'), isFalse);
+      expect(defaultPolicy.isAllowed('https://127%2e0%2e0%2e1/a.png'), isFalse);
+      expect(
+        defaultPolicy
+            .isAllowed('https://169.254.169.%32%35%34/latest/meta-data'),
+        isFalse,
+      );
+      expect(
+        defaultPolicy.isAllowed('https://%6c%6f%63%61%6c%68%6f%73%74/a.png'),
+        isFalse,
+      );
+      expect(defaultPolicy.isAllowed('https://127。0。0。1/a.png'), isFalse);
+      expect(defaultPolicy.isAllowed('https://１２７．０．０．１/a.png'), isFalse);
     });
 
-    test('rejects private, CGNAT, ULA, and NAT64 networks by default', () {
+    test(
+        'rejects private, CGNAT, benchmarking, multicast/reserved, ULA, and transitional networks by default',
+        () {
       // Non-zero 0.0.0.0/8 ("this network")
       expect(defaultPolicy.isAllowed('https://0.0.0.1/a.png'), isFalse);
       expect(defaultPolicy.isAllowed('https://0.255.255.255/a.png'), isFalse);
@@ -149,13 +186,43 @@ void main() {
       );
       expect(defaultPolicy.isAllowed('https://[::10.0.0.1]/a.png'), isFalse);
 
-      // NAT64 64:ff9b::/96
+      // NAT64 64:ff9b::/96 and local-use NAT64 64:ff9b:1::/48
       expect(
         defaultPolicy.isAllowed('https://[64:ff9b::93.184.216.34]/a.png'),
         isFalse,
       );
       expect(
         defaultPolicy.isAllowed('https://[64:ff9b::10.0.0.1]/a.png'),
+        isFalse,
+      );
+      expect(
+        defaultPolicy.isAllowed('https://[64:ff9b:1::93.184.216.34]/a.png'),
+        isFalse,
+      );
+
+      // Benchmarking 198.18.0.0/15, multicast 224.0.0.0/4, reserved 240.0.0.0/4
+      expect(defaultPolicy.isAllowed('https://198.18.0.1/a.png'), isFalse);
+      expect(defaultPolicy.isAllowed('https://198.19.255.254/a.png'), isFalse);
+      expect(defaultPolicy.isAllowed('https://224.0.0.1/a.png'), isFalse);
+      expect(defaultPolicy.isAllowed('https://240.0.0.1/a.png'), isFalse);
+      expect(defaultPolicy.isAllowed('https://255.255.255.255/a.png'), isFalse);
+
+      // IPv4-translated ::ffff:0:0:0/96, 6to4 2002::/16, Teredo 2001::/32
+      expect(
+        defaultPolicy.isAllowed('https://[::ffff:0:0:93.184.216.34]/a.png'),
+        isFalse,
+      );
+      expect(
+        defaultPolicy.isAllowed('https://[::ffff:0:0:10.0.0.1]/a.png'),
+        isFalse,
+      );
+      expect(
+        defaultPolicy.isAllowed('https://[2002:5db8:d822::1]/a.png'),
+        isFalse,
+      );
+      expect(
+        defaultPolicy
+            .isAllowed('https://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/a.png'),
         isFalse,
       );
     });
@@ -168,6 +235,9 @@ void main() {
       expect(defaultPolicy.isAllowed('https://172.32.0.0/a.png'), isTrue);
       expect(defaultPolicy.isAllowed('https://192.167.255.255/a.png'), isTrue);
       expect(defaultPolicy.isAllowed('https://192.169.0.0/a.png'), isTrue);
+      expect(defaultPolicy.isAllowed('https://198.17.255.255/a.png'), isTrue);
+      expect(defaultPolicy.isAllowed('https://198.20.0.0/a.png'), isTrue);
+      expect(defaultPolicy.isAllowed('https://223.255.255.255/a.png'), isTrue);
       expect(
         defaultPolicy.isAllowed('https://[2606:4700:4700::1111]/a.png'),
         isTrue,
@@ -251,6 +321,23 @@ void main() {
         isTrue,
       );
       expect(policy.isAllowed('https://[64:ff9b::10.0.0.1]/a.png'), isTrue);
+      expect(
+        policy.isAllowed('https://[64:ff9b:1::93.184.216.34]/a.png'),
+        isTrue,
+      );
+      expect(policy.isAllowed('https://198.18.0.1/a.png'), isTrue);
+      expect(policy.isAllowed('https://224.0.0.1/a.png'), isTrue);
+      expect(policy.isAllowed('https://240.0.0.1/a.png'), isTrue);
+      expect(
+        policy.isAllowed('https://[::ffff:0:0:93.184.216.34]/a.png'),
+        isTrue,
+      );
+      expect(policy.isAllowed('https://[2002:5db8:d822::1]/a.png'), isTrue);
+      expect(
+        policy
+            .isAllowed('https://[2001:0:4136:e378:8000:63bf:3fff:fdd2]/a.png'),
+        isTrue,
+      );
 
       // Loopback and link-local remain blocked even when allowPrivateNetworks is true.
       expect(policy.isAllowed('https://127.0.0.1/a.png'), isFalse);
@@ -264,9 +351,19 @@ void main() {
         policy.isAllowed('https://[64:ff9b::127.0.0.1]/a.png'),
         isFalse,
       );
+      expect(
+        policy.isAllowed('https://[64:ff9b:1::127.0.0.1]/a.png'),
+        isFalse,
+      );
+      expect(
+        policy.isAllowed('https://[::ffff:0:0:127.0.0.1]/a.png'),
+        isFalse,
+      );
+      expect(policy.isAllowed('https://[2002:7f00:0001::1]/a.png'), isFalse);
       // Malformed SSRF differentials remain blocked even with allowPrivateNetworks.
       expect(policy.isAllowed('https://0177.0.0.1/a.png'), isFalse);
       expect(policy.isAllowed('https://[::ffff:0177.0.0.1]/a.png'), isFalse);
+      expect(policy.isAllowed('https://[::ffff:010.0.0.1]/a.png'), isFalse);
     });
 
     test('customValidator runs only after built-in checks pass', () {

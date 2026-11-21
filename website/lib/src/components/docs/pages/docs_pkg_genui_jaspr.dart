@@ -156,7 +156,11 @@ Component buildSurface(A2uiSurfaceBloc bloc) {
           li([
             strong([Component.text('Icon & Image: ')]),
             Component.text(
-              'Semantic icon glyphs and responsive images with alt descriptions and fit styling.',
+              'Semantic icon glyphs and responsive images enforcing ',
+            ),
+            apiLink(DocSymbol.a2uiImageUrlPolicy),
+            Component.text(
+              ' (shared from bloc_signals_genui and re-exported by bloc_signals_genui_jaspr) with alt descriptions and fit styling.',
             ),
           ]),
           li([
@@ -182,7 +186,8 @@ Component buildSurface(A2uiSurfaceBloc bloc) {
         ]),
         p([
           Component.text(
-            'Property parsing across all Jaspr BasicCatalog components uses safe_prop_parser.dart, guarding asDouble and asInt against non-finite NaN and Infinity numeric or string values.',
+            'Property parsing across all Jaspr BasicCatalog components uses safe_prop_parser.dart, guarding asDouble and asInt against non-finite NaN and Infinity numeric or string values. '
+            'Pass imagePolicy: to A2uiJasprCatalog.standard(imagePolicy: ...) to customize A2uiImageUrlPolicy (which by default allows only https:// public hosts and blocks http://, loopback, link-local, private/CGNAT/ULA/IPv4-compat/NAT64 networks with allowPrivateNetworks: false, and IPv4 SSRF parser differentials).',
           ),
         ]),
       ]),

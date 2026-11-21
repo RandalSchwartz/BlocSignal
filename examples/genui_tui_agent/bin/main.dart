@@ -37,9 +37,13 @@ Future<void> main(List<String> args) async {
     stdout.writeln(
       '\x1B[1;32m🚀 [Agent Tool Callback Response Received]\x1B[0m',
     );
-    stdout.writeln('   Action: ${response.actionName}');
-    stdout.writeln('   Surface: ${response.surfaceId}');
-    stdout.writeln('   Form Data: ${response.formData}');
+    stdout.writeln(
+      TuiRenderer.formatActionResponse(
+        actionName: response.actionName,
+        surfaceId: response.surfaceId,
+        formData: response.formData,
+      ),
+    );
     if (!responseCompleter.isCompleted) {
       responseCompleter.complete();
     }

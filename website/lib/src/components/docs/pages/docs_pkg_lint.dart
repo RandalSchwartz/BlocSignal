@@ -32,25 +32,20 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
         h2([Component.text('Overview & Installation')]),
         p([
           Component.text(
-            'The bloc_signals_lint package is an official custom_lint plugin providing 20 specialized analyzer rules. '
-            'It detects dangerous runtime pitfalls—such as emitting states during widget build cycles, omitting mixin initializers, or unmanaged signal effects—directly in VS Code and Android Studio with one-click automated quick-fixes.',
+            'The bloc_signals_lint package is an official Dart analyzer plugin (built on analysis_server_plugin) providing 20 specialized analyzer rules. '
+            'It detects dangerous runtime pitfalls—such as emitting states during widget build cycles, omitting mixin initializers, or unmanaged signal effects—directly in VS Code, Android Studio, and dart analyze with one-click automated quick-fixes.',
           ),
         ]),
 
-        const DocsCodeBlock(
-          title: 'terminal',
-          language: 'bash',
-          code: 'flutter pub add -d custom_lint bloc_signals_lint',
-        ),
         p([
           Component.text(
-            'Next, enable custom_lint in your root analysis_options.yaml file:',
+            'Enable bloc_signals_lint solely under plugins: in your root analysis_options.yaml file (no dev_dependencies entry is needed; use path: for local unreleased workspaces):',
           ),
         ]),
         const DocsCodeBlock(
           title: 'analysis_options.yaml',
           language: 'yaml',
-          code: 'analyzer:\n  plugins:\n    - custom_lint',
+          code: 'plugins:\n  bloc_signals_lint: ^2.0.0',
         ),
       ]),
 
@@ -421,23 +416,18 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
         h2([Component.text('Configuration & Severities')]),
         p([
           Component.text(
-            'You can customize rule severities or disable specific diagnostics in your analysis_options.yaml file:',
+            'You can enable or disable specific diagnostics under diagnostics: in your analysis_options.yaml file:',
           ),
         ]),
         const DocsCodeBlock(
           title: 'analysis_options.yaml',
           language: 'yaml',
-          code: '''custom_lint:
-  rules:
-    # Upgrade critical rules to compile-blocking errors in CI
-    - avoid_emit_in_build: error
-    - require_super_on_event: error
-
-    # Adjust suggestions to informational
-    - avoid_unused_select_result: info
-
-    # Disable a specific rule if needed
-    - avoid_duplicate_event_handlers: false''',
+          code: '''plugins:
+  bloc_signals_lint:
+    version: ^2.0.0
+    diagnostics:
+      # Disable a specific rule if needed
+      avoid_duplicate_event_handlers: false''',
         ),
         p([
           Component.text(
@@ -447,10 +437,10 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
         const DocsCodeBlock(
           title: 'lib/example.dart',
           language: 'dart',
-          code: '''// ignore_for_file: avoid_stream_transformers_on_bloc_signal
+          code: '''// ignore_for_file: bloc_signals_lint/avoid_stream_transformers_on_bloc_signal
 
 void example(BuildContext context, CounterBloc bloc) {
-  // ignore: avoid_emit_in_build
+  // ignore: bloc_signals_lint/avoid_emit_in_build
   bloc.add(const Increment());
 }''',
         ),

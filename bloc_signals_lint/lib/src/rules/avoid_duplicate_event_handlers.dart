@@ -1,44 +1,67 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/type.dart';
-import 'package:analyzer/error/listener.dart';
+import 'package:analyzer/error/error.dart';
 import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that flags duplicate `on<E>` event handler
 /// registrations for the same event type `E` across a `BlocSignal` or
 /// `BlocSignalMixin` class or mixin declaration (enforcing at most one handler
 /// per event type `E`).
-class AvoidDuplicateEventHandlers extends DartLintRule {
+class AvoidDuplicateEventHandlers extends AnalysisRule {
   /// Creates an [AvoidDuplicateEventHandlers] lint rule.
-  const AvoidDuplicateEventHandlers() : super(code: _code);
+  new()
+    : super(
+        name: 'avoid_duplicate_event_handlers',
+        description:
+            'Flag duplicate on<E> event handler registrations for the same '
+            'event type E in a BlocSignal class.',
+      );
 
-  static const _code = LintCode(
-    name: 'avoid_duplicate_event_handlers',
-    problemMessage: 'Duplicate event handler registered for event type. '
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'avoid_duplicate_event_handlers',
+    'Duplicate event handler registered for event type. '
         'Each event type should have at most one handler.',
-    correctionMessage: 'Remove the duplicate handler or consolidate logic into '
+    correctionMessage:
+        'Remove the duplicate handler or consolidate logic into '
         'a single handler.',
   );
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  LintCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addClassDeclaration((classNode) {
-      _checkDeclaration(classNode, reporter);
-    });
-    context.registry.addMixinDeclaration((mixinNode) {
-      _checkDeclaration(mixinNode, reporter);
-    });
+    final visitor = _Visitor(this);
+    registry
+      ..addClassDeclaration(this, visitor)
+      ..addMixinDeclaration(this, visitor);
+  }
+}
+
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
+
+  final AvoidDuplicateEventHandlers rule;
+
+  @override
+  void visitClassDeclaration(ClassDeclaration node) {
+    _checkDeclaration(node);
   }
 
-  void _checkDeclaration(AstNode declaration, ErrorReporter reporter) {
+  @override
+  void visitMixinDeclaration(MixinDeclaration node) {
+    _checkDeclaration(node);
+  }
+
+  void _checkDeclaration(AstNode declaration) {
     if (!BlocContainerUtils.isBlocSignalHost(declaration)) return;
 
     final registeredResolved = <DartType>{};
@@ -51,14 +74,14 @@ class AvoidDuplicateEventHandlers extends DartLintRule {
             resolvedType is! DynamicType &&
             resolvedType is! InvalidType) {
           if (!registeredResolved.add(resolvedType)) {
-            reporter.atNode(node, code);
+            rule.reportAtNode(node);
           }
           return;
         }
 
         final typeName = typeArg.toSource();
         if (!registeredUnresolved.add(typeName)) {
-          reporter.atNode(node, code);
+          rule.reportAtNode(node);
         }
       }),
     );
@@ -66,11 +89,11 @@ class AvoidDuplicateEventHandlers extends DartLintRule {
 }
 
 class _OnMethodVisitor extends RecursiveAstVisitor<void> {
-  _OnMethodVisitor(this.hostDeclaration, this.onCallFound);
+  new(this.hostDeclaration, this.onCallFound);
 
   final AstNode hostDeclaration;
   final void Function(MethodInvocation node, TypeAnnotation typeArg)
-      onCallFound;
+  onCallFound;
 
   @override
   void visitMethodInvocation(MethodInvocation node) {

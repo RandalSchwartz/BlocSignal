@@ -4,5 +4,5 @@ analyzer:
   exclude:
     - example/**
   errors:
-    # analyzer 8.0.0 marks declaredFragment / declaredElement as experimental
+    # analyzer ^14.7.0 marks experimental AST/plugin members as experimental
     experimental_member_use: ignore

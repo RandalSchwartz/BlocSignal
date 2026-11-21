@@ -1,20 +1,27 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/listener.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/error/error.dart';
+import 'package:bloc_signals_lint/src/utils/type_checker.dart';
 
 /// A lint rule that prevents external code from invoking protected state
 /// emissions (`emit()`) outside the owning state container class.
-class AvoidDirectSignalMutationOutsideBloc extends DartLintRule {
+class AvoidDirectSignalMutationOutsideBloc extends AnalysisRule {
   /// Creates an [AvoidDirectSignalMutationOutsideBloc] lint rule.
-  const AvoidDirectSignalMutationOutsideBloc() : super(code: _code);
+  new()
+    : super(
+        name: 'avoid_direct_signal_mutation_outside_bloc',
+        description:
+            'Prevent external code from invoking emit() outside the owning '
+            'state container class.',
+      );
 
-  static const _code = LintCode(
-    name: 'avoid_direct_signal_mutation_outside_bloc',
-    problemMessage:
-        "Protected state emission 'emit()' should not be invoked directly "
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'avoid_direct_signal_mutation_outside_bloc',
+    "Protected state emission 'emit()' should not be invoked directly "
         "outside class '{0}'.",
     correctionMessage:
         "Dispatch an event via '.add()' or invoke a public method on the "
@@ -89,44 +96,55 @@ class AvoidDirectSignalMutationOutsideBloc extends DartLintRule {
   }
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  LintCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addMethodInvocation((node) {
-      if (node.methodName.name != 'emit') return;
+    registry.addMethodInvocation(this, _Visitor(this));
+  }
+}
 
-      final target = node.target;
-      if (target == null) return;
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
 
-      final targetType = target.staticType;
-      if (targetType == null) return;
+  final AvoidDirectSignalMutationOutsideBloc rule;
 
-      if (_blocSignalBaseChecker.isAssignableFromType(targetType)) {
-        final enclosingDeclaration = node.thisOrAncestorMatching(
-          (n) => n is ClassDeclaration || n is MixinDeclaration,
-        );
-        final enclosingClass = enclosingDeclaration is ClassDeclaration
-            ? enclosingDeclaration
-            : null;
-        final enclosingMixin = enclosingDeclaration is MixinDeclaration
-            ? enclosingDeclaration
-            : null;
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    if (node.methodName.name != 'emit') return;
 
-        if (isAllowedEmission(
-          enclosingClass: enclosingClass,
-          enclosingMixin: enclosingMixin,
-        )) {
-          return;
-        }
+    final target = node.target;
+    if (target == null) return;
 
-        reporter.atNode(
-          node.methodName,
-          code,
-          arguments: [targetType.getDisplayString()],
-        );
+    final targetType = target.staticType;
+    if (targetType == null) return;
+
+    if (AvoidDirectSignalMutationOutsideBloc._blocSignalBaseChecker
+        .isAssignableFromType(targetType)) {
+      final enclosingDeclaration = node.thisOrAncestorMatching(
+        (n) => n is ClassDeclaration || n is MixinDeclaration,
+      );
+      final enclosingClass = enclosingDeclaration is ClassDeclaration
+          ? enclosingDeclaration
+          : null;
+      final enclosingMixin = enclosingDeclaration is MixinDeclaration
+          ? enclosingDeclaration
+          : null;
+
+      if (AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+        enclosingClass: enclosingClass,
+        enclosingMixin: enclosingMixin,
+      )) {
+        return;
       }
-    });
+
+      rule.reportAtNode(
+        node.methodName,
+        arguments: [targetType.getDisplayString()],
+      );
+    }
   }
 }

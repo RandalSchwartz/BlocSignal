@@ -1,11 +1,10 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:analyzer/error/listener.dart';
+import 'package:analyzer/error/error.dart';
 import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that flags `emitTelemetry('...')` calls inside `CubitSignal`
 /// classes and mixins where the telemetry name matches UI event action patterns
@@ -15,14 +14,20 @@ import 'package:custom_lint_builder/custom_lint_builder.dart';
 /// In BlocSignal, state updates originate from method calls on Cubits or
 /// declarative events on Blocs. Cubits must not use telemetry as a backdoor
 /// pseudo-event bus.
-class AvoidPseudoEventsInTelemetry extends DartLintRule {
+class AvoidPseudoEventsInTelemetry extends AnalysisRule {
   /// Creates an [AvoidPseudoEventsInTelemetry] lint rule.
-  const AvoidPseudoEventsInTelemetry() : super(code: _code);
+  new()
+    : super(
+        name: 'avoid_pseudo_events_in_telemetry',
+        description:
+            'Flag emitTelemetry calls inside CubitSignal that use UI '
+            'pseudo-event action names.',
+      );
 
-  static const _code = LintCode(
-    name: 'avoid_pseudo_events_in_telemetry',
-    problemMessage:
-        'Avoid using pseudo-event action names ("{0}") in "emitTelemetry" '
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'avoid_pseudo_events_in_telemetry',
+    'Avoid using pseudo-event action names ("{0}") in "emitTelemetry" '
         'inside a CubitSignal.',
     correctionMessage:
         'Telemetry should record operational occurrences or domain '
@@ -69,42 +74,53 @@ class AvoidPseudoEventsInTelemetry extends DartLintRule {
   }
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  LintCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addClassDeclaration((node) {
-      for (final violation in findViolations(node)) {
-        reporter.atNode(
-          violation,
-          code,
-          arguments: [
-            violation.toSource().replaceAll("'", '').replaceAll('"', ''),
-          ],
-        );
-      }
-    });
-    context.registry.addMixinDeclaration((node) {
-      for (final violation in findMixinViolations(node)) {
-        reporter.atNode(
-          violation,
-          code,
-          arguments: [
-            violation.toSource().replaceAll("'", '').replaceAll('"', ''),
-          ],
-        );
-      }
-    });
+    final visitor = _Visitor(this);
+    registry
+      ..addClassDeclaration(this, visitor)
+      ..addMixinDeclaration(this, visitor);
+  }
+}
+
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
+
+  final AvoidPseudoEventsInTelemetry rule;
+
+  @override
+  void visitClassDeclaration(ClassDeclaration node) {
+    _reportViolations(AvoidPseudoEventsInTelemetry.findViolations(node));
+  }
+
+  @override
+  void visitMixinDeclaration(MixinDeclaration node) {
+    _reportViolations(AvoidPseudoEventsInTelemetry.findMixinViolations(node));
+  }
+
+  void _reportViolations(List<AstNode> violations) {
+    for (final violation in violations) {
+      rule.reportAtNode(
+        violation,
+        arguments: [
+          violation.toSource().replaceAll("'", '').replaceAll('"', ''),
+        ],
+      );
+    }
   }
 }
 
 class _TelemetryInvocationVisitor extends RecursiveAstVisitor<void> {
-  _TelemetryInvocationVisitor(this.hostDeclaration, this.onTelemetryCall);
+  new(this.hostDeclaration, this.onTelemetryCall);
 
   final AstNode hostDeclaration;
   final void Function(MethodInvocation invocation, SimpleStringLiteral literal)
-      onTelemetryCall;
+  onTelemetryCall;
 
   @override
   void visitMethodInvocation(MethodInvocation node) {

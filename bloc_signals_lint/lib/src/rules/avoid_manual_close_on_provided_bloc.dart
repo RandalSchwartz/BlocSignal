@@ -1,21 +1,27 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/dart/element/type.dart';
-import 'package:analyzer/error/listener.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analyzer/error/error.dart';
 
 /// A lint rule that flags manual calls to `.close()` on state containers
 /// retrieved via `context.read<T>()` or `BlocSignalProvider.of(context)`.
-class AvoidManualCloseOnProvidedBloc extends DartLintRule {
+class AvoidManualCloseOnProvidedBloc extends AnalysisRule {
   /// Creates an [AvoidManualCloseOnProvidedBloc] lint rule.
-  const AvoidManualCloseOnProvidedBloc() : super(code: _code);
+  new()
+    : super(
+        name: 'avoid_manual_close_on_provided_bloc',
+        description:
+            'Prevent manual close() calls on state containers managed by '
+            'BlocSignalProvider.',
+      );
 
-  static const _code = LintCode(
-    name: 'avoid_manual_close_on_provided_bloc',
-    problemMessage:
-        'Do not manually call close() on state containers managed by '
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'avoid_manual_close_on_provided_bloc',
+    'Do not manually call close() on state containers managed by '
         'BlocSignalProvider.',
     correctionMessage:
         'Let BlocSignalProvider manage container disposal automatically when '
@@ -23,21 +29,32 @@ class AvoidManualCloseOnProvidedBloc extends DartLintRule {
   );
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  LintCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addMethodInvocation((node) {
-      if (node.methodName.name != 'close') return;
+    registry.addMethodInvocation(this, _Visitor(this));
+  }
+}
 
-      final target = node.target;
-      if (target == null) return;
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
 
-      if (_isProviderLookup(target)) {
-        reporter.atNode(node.methodName, code);
-      }
-    });
+  final AvoidManualCloseOnProvidedBloc rule;
+
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    if (node.methodName.name != 'close') return;
+
+    final target = node.target;
+    if (target == null) return;
+
+    if (_isProviderLookup(target)) {
+      rule.reportAtNode(node.methodName);
+    }
   }
 
   bool _isProviderLookup(Expression target) {
@@ -61,9 +78,7 @@ class AvoidManualCloseOnProvidedBloc extends DartLintRule {
     if (targetType != null &&
         targetType is! DynamicType &&
         targetType is! InvalidType) {
-      return targetType
-          .getDisplayString(withNullability: false)
-          .contains('BuildContext');
+      return targetType.getDisplayString().contains('BuildContext');
     }
     final targetSource = target.toSource();
     return targetSource == 'context' ||
@@ -82,9 +97,7 @@ class AvoidManualCloseOnProvidedBloc extends DartLintRule {
     if (receiverType != null &&
         receiverType is! DynamicType &&
         receiverType is! InvalidType) {
-      return receiverType
-          .getDisplayString(withNullability: false)
-          .contains('BlocSignalProvider');
+      return receiverType.getDisplayString().contains('BlocSignalProvider');
     }
     return false;
   }

@@ -1,23 +1,27 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:analyzer/error/listener.dart';
-import 'package:bloc_signals_lint/src/fixes/add_super_on_event_fix.dart';
+import 'package:analyzer/error/error.dart';
 import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that requires `onEvent` overrides to invoke
 /// `super.onEvent(event)` to preserve Zone context and event tracing.
-class RequireSuperOnEvent extends DartLintRule {
+class RequireSuperOnEvent extends AnalysisRule {
   /// Creates a [RequireSuperOnEvent] lint rule.
-  const RequireSuperOnEvent() : super(code: _code);
+  new()
+    : super(
+        name: 'require_super_on_event',
+        description:
+            'Require onEvent overrides to invoke super.onEvent(event) to '
+            'preserve Zone context and event tracing.',
+      );
 
-  static const _code = LintCode(
-    name: 'require_super_on_event',
-    problemMessage:
-        "Overrides of 'onEvent' must call 'super.onEvent(event)' to preserve "
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'require_super_on_event',
+    "Overrides of 'onEvent' must call 'super.onEvent(event)' to preserve "
         'Zone context and transition tracing.',
     correctionMessage:
         "Add 'unawaited(Future.value(super.onEvent(event)));' or "
@@ -25,40 +29,45 @@ class RequireSuperOnEvent extends DartLintRule {
   );
 
   @override
-  List<Fix> getFixes() => [AddSuperOnEventFix()];
+  LintCode get diagnosticCode => code;
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addMethodDeclaration((node) {
-      if (node.name.lexeme != 'onEvent') return;
+    registry.addMethodDeclaration(this, _Visitor(this));
+  }
+}
 
-      final container = BlocContainerUtils.nearestContainerDeclaration(node);
-      if (container == null) return;
-      if (!BlocContainerUtils.isBlocSignalHost(container)) return;
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
 
-      var callsSuperOnEvent = false;
-      node.body.visitChildren(
-        _SuperOnEventVisitor(() {
-          callsSuperOnEvent = true;
-        }),
-      );
+  final RequireSuperOnEvent rule;
 
-      if (!callsSuperOnEvent) {
-        reporter.atToken(
-          node.name,
-          code,
-        );
-      }
-    });
+  @override
+  void visitMethodDeclaration(MethodDeclaration node) {
+    if (node.name.lexeme != 'onEvent') return;
+
+    final container = BlocContainerUtils.nearestContainerDeclaration(node);
+    if (container == null) return;
+    if (!BlocContainerUtils.isBlocSignalHost(container)) return;
+
+    var callsSuperOnEvent = false;
+    node.body.visitChildren(
+      _SuperOnEventVisitor(() {
+        callsSuperOnEvent = true;
+      }),
+    );
+
+    if (!callsSuperOnEvent) {
+      rule.reportAtToken(node.name);
+    }
   }
 }
 
 class _SuperOnEventVisitor extends RecursiveAstVisitor<void> {
-  _SuperOnEventVisitor(this.onSuperCallFound);
+  new(this.onSuperCallFound);
 
   final void Function() onSuperCallFound;
 

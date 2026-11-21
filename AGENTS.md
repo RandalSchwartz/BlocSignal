@@ -32,9 +32,10 @@ To satisfy pub.dev publishing requirements while maintaining local developer wor
 - **Monorepo Workspace, Tooling & Website (`/`, `tool/`, `website/`, `benchmarks/`)**:
   - Requires `sdk: ^3.13.0` for development, website tooling, CI orchestration, and benchmarks.
   - Allows full use of modern Dart 3.13 language ergonomics (primary constructors, parameter shorthands, newer core library APIs).
-- **Published Packages (`bloc_signals*`)**:
+- **Published Packages (`bloc_signals*`, excluding `bloc_signals_lint`)**:
   - Must specify and strictly conform to `sdk: ^3.5.0`.
   - Must NOT use Dart language features or APIs introduced after Dart 3.5 (for example primary constructors).
+  - `bloc_signals_lint` is a static analyzer plugin built on `analysis_server_plugin` (`^0.3.26`) and requires `sdk: ^3.13.0`.
 - **Examples, Demos & Documentation**:
   - Show both Dart 3.5 (traditional syntax) and Dart 3.13 (modern syntax) side-by-side whenever feasible to highlight modern developer ergonomics while preserving baseline reference patterns.
 

@@ -10,17 +10,20 @@ void main() {
 
   group('AvoidMultipleSynchronousEmits AST Detection', () {
     test('rule metadata is properly configured', () {
-      const rule = AvoidMultipleSynchronousEmits();
-      expect(rule.code.name, equals('avoid_multiple_synchronous_emits'));
+      final rule = AvoidMultipleSynchronousEmits();
       expect(
-        rule.code.problemMessage,
+        rule.diagnosticCode.lowerCaseName,
+        equals('avoid_multiple_synchronous_emits'),
+      );
+      expect(
+        rule.diagnosticCode.problemMessage,
         equals(
           'Multiple synchronous `emit()` calls detected along the '
           'same execution path.',
         ),
       );
       expect(
-        rule.code.correctionMessage,
+        rule.diagnosticCode.correctionMessage,
         equals(
           'Consolidate into a single atomic state transition to prevent '
           'intermediate state leakage.',
@@ -44,8 +47,9 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, hasLength(1));
@@ -71,8 +75,9 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, hasLength(1));
@@ -95,15 +100,15 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, hasLength(1));
     });
 
-    test(
-        'detects emit() in if branch and subsequent emit() '
+    test('detects emit() in if branch and subsequent emit() '
         'without early return', () {
       const badCode = '''
 class CounterCubit extends CubitSignal<int> {
@@ -122,8 +127,9 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, hasLength(1));
@@ -146,8 +152,9 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, isEmpty);
@@ -172,16 +179,18 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, isEmpty);
     });
 
-    test('accepts emit() in if branch with early return followed by emit()',
-        () {
-      const goodCode = '''
+    test(
+      'accepts emit() in if branch with early return followed by emit()',
+      () {
+        const goodCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -194,20 +203,21 @@ class CounterCubit extends CubitSignal<int> {
   }
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final flaggedNodes = <AstNode>[];
+        final parseResult = parseString(content: goodCode);
+        final flaggedNodes = <AstNode>[];
 
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
-      }
+        for (final declaration
+            in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+          flaggedNodes.addAll(
+            AvoidMultipleSynchronousEmits.findViolations(declaration),
+          );
+        }
 
-      expect(flaggedNodes, isEmpty);
-    });
+        expect(flaggedNodes, isEmpty);
+      },
+    );
 
-    test(
-        'accepts emit() inside nested closure callbacks '
+    test('accepts emit() inside nested closure callbacks '
         '(different execution contexts)', () {
       const goodCode = '''
 class CounterCubit extends CubitSignal<int> {
@@ -226,8 +236,9 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, isEmpty);
@@ -251,8 +262,9 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, hasLength(1));
@@ -279,8 +291,9 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, hasLength(1));
@@ -303,8 +316,9 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, hasLength(1));
@@ -330,8 +344,9 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, hasLength(1));
@@ -359,8 +374,9 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, hasLength(1));
@@ -391,16 +407,18 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, isEmpty);
     });
 
-    test('accepts mutually exclusive emit() in ternary ConditionalExpression',
-        () {
-      const goodCode = '''
+    test(
+      'accepts mutually exclusive emit() in ternary ConditionalExpression',
+      () {
+        const goodCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -409,17 +427,19 @@ class CounterCubit extends CubitSignal<int> {
   }
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final flaggedNodes = <AstNode>[];
+        final parseResult = parseString(content: goodCode);
+        final flaggedNodes = <AstNode>[];
 
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
-      }
+        for (final declaration
+            in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+          flaggedNodes.addAll(
+            AvoidMultipleSynchronousEmits.findViolations(declaration),
+          );
+        }
 
-      expect(flaggedNodes, isEmpty);
-    });
+        expect(flaggedNodes, isEmpty);
+      },
+    );
 
     test('accepts rethrow in catch block after error handling', () {
       const goodCode = '''
@@ -442,8 +462,9 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, isEmpty);
@@ -467,18 +488,17 @@ class CounterCubit extends CubitSignal<int> {
 
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidMultipleSynchronousEmits.findViolations(declaration));
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
       }
 
       expect(flaggedNodes, isEmpty);
     });
 
-    test(
-      '(Issue #329: R15) detects multiple synchronous emit() calls inside '
-      'MixinDeclaration via findMixinViolations',
-      () {
-        const badCode = '''
+    test('(Issue #329: R15) detects multiple synchronous emit() calls inside '
+        'MixinDeclaration via findMixinViolations', () {
+      const badCode = '''
 mixin PricingMixin on CubitSignal<int> {
   void applyDiscount() {
     emit(1);
@@ -488,25 +508,22 @@ mixin PricingMixin on CubitSignal<int> {
   void _helperEmit() => emit(2);
 }
 ''';
-        final parseResult = parseString(content: badCode);
-        final flaggedNodes = <AstNode>[];
+      final parseResult = parseString(content: badCode);
+      final flaggedNodes = <AstNode>[];
 
-        for (final declaration
-            in parseResult.unit.declarations.whereType<MixinDeclaration>()) {
-          flaggedNodes.addAll(
-            AvoidMultipleSynchronousEmits.findMixinViolations(declaration),
-          );
-        }
+      for (final declaration
+          in parseResult.unit.declarations.whereType<MixinDeclaration>()) {
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findMixinViolations(declaration),
+        );
+      }
 
-        expect(flaggedNodes, hasLength(1));
-      },
-    );
+      expect(flaggedNodes, hasLength(1));
+    });
 
-    test(
-      '(Issue #329: R15) detects cascade emit() calls in '
-      'ExpressionFunctionBody arrow method and closure',
-      () {
-        const badCode = '''
+    test('(Issue #329: R15) detects cascade emit() calls in '
+        'ExpressionFunctionBody arrow method and closure', () {
+      const badCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -524,25 +541,22 @@ class CounterCubit extends CubitSignal<int> {
   void safeForeignCascade(CubitSignal<int> other) => other..emit(1)..emit(2);
 }
 ''';
-        final parseResult = parseString(content: badCode);
-        final flaggedNodes = <AstNode>[];
+      final parseResult = parseString(content: badCode);
+      final flaggedNodes = <AstNode>[];
 
-        for (final declaration
-            in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-          flaggedNodes.addAll(
-            AvoidMultipleSynchronousEmits.findViolations(declaration),
-          );
-        }
+      for (final declaration
+          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
+      }
 
-        expect(flaggedNodes, hasLength(2));
-      },
-    );
+      expect(flaggedNodes, hasLength(2));
+    });
 
-    test(
-      '(Issue #329: R15) handles ContinueStatement without false-positive '
-      'same-iteration fallthrough while catching multi-iteration emits',
-      () {
-        const goodCode = '''
+    test('(Issue #329: R15) handles ContinueStatement without false-positive '
+        'same-iteration fallthrough while catching multi-iteration emits', () {
+      const goodCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -559,17 +573,17 @@ class CounterCubit extends CubitSignal<int> {
   }
 }
 ''';
-        final goodParse = parseString(content: goodCode);
-        final goodFlagged = <AstNode>[];
-        for (final declaration
-            in goodParse.unit.declarations.whereType<ClassDeclaration>()) {
-          goodFlagged.addAll(
-            AvoidMultipleSynchronousEmits.findViolations(declaration),
-          );
-        }
-        expect(goodFlagged, isEmpty);
+      final goodParse = parseString(content: goodCode);
+      final goodFlagged = <AstNode>[];
+      for (final declaration
+          in goodParse.unit.declarations.whereType<ClassDeclaration>()) {
+        goodFlagged.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
+      }
+      expect(goodFlagged, isEmpty);
 
-        const badCode = '''
+      const badCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -608,23 +622,20 @@ class CounterCubit extends CubitSignal<int> {
       await Future<void>.delayed(Duration.zero);
 }
 ''';
-        final badParse = parseString(content: badCode);
-        final badFlagged = <AstNode>[];
-        for (final declaration
-            in badParse.unit.declarations.whereType<ClassDeclaration>()) {
-          badFlagged.addAll(
-            AvoidMultipleSynchronousEmits.findViolations(declaration),
-          );
-        }
-        expect(badFlagged, hasLength(3));
-      },
-    );
+      final badParse = parseString(content: badCode);
+      final badFlagged = <AstNode>[];
+      for (final declaration
+          in badParse.unit.declarations.whereType<ClassDeclaration>()) {
+        badFlagged.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
+      }
+      expect(badFlagged, hasLength(3));
+    });
 
-    test(
-      '(Issue #329: R15) resolves intra-switch continue caseLabel jumps and '
-      'preserves unlabeled continue inside switch for enclosing loops',
-      () {
-        const goodCode = '''
+    test('(Issue #329: R15) resolves intra-switch continue caseLabel jumps and '
+        'preserves unlabeled continue inside switch for enclosing loops', () {
+      const goodCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -653,17 +664,17 @@ class CounterCubit extends CubitSignal<int> {
   }
 }
 ''';
-        final goodParse = parseString(content: goodCode);
-        final goodFlagged = <AstNode>[];
-        for (final declaration
-            in goodParse.unit.declarations.whereType<ClassDeclaration>()) {
-          goodFlagged.addAll(
-            AvoidMultipleSynchronousEmits.findViolations(declaration),
-          );
-        }
-        expect(goodFlagged, isEmpty);
+      final goodParse = parseString(content: goodCode);
+      final goodFlagged = <AstNode>[];
+      for (final declaration
+          in goodParse.unit.declarations.whereType<ClassDeclaration>()) {
+        goodFlagged.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
+      }
+      expect(goodFlagged, isEmpty);
 
-        const badCode = '''
+      const badCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -695,23 +706,20 @@ class CounterCubit extends CubitSignal<int> {
   }
 }
 ''';
-        final badParse = parseString(content: badCode);
-        final badFlagged = <AstNode>[];
-        for (final declaration
-            in badParse.unit.declarations.whereType<ClassDeclaration>()) {
-          badFlagged.addAll(
-            AvoidMultipleSynchronousEmits.findViolations(declaration),
-          );
-        }
-        expect(badFlagged, hasLength(2));
-      },
-    );
+      final badParse = parseString(content: badCode);
+      final badFlagged = <AstNode>[];
+      for (final declaration
+          in badParse.unit.declarations.whereType<ClassDeclaration>()) {
+        badFlagged.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
+        );
+      }
+      expect(badFlagged, hasLength(2));
+    });
 
-    test(
-      '(Issue #358) accepts compound expressions and arrow helpers where '
-      'await precedes sibling emit()',
-      () async {
-        const goodCode = '''
+    test('(Issue #358) accepts compound expressions and arrow helpers where '
+        'await precedes sibling emit()', () async {
+      const goodCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -738,23 +746,22 @@ class CounterCubit extends CubitSignal<int> {
       [await Future<void>.delayed(Duration.zero), emit(1)];
 }
 ''';
-        final parseResult = parseString(content: goodCode);
-        final flaggedNodes = <AstNode>[];
-        for (final declaration
-            in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-          flaggedNodes.addAll(
-            AvoidMultipleSynchronousEmits.findViolations(declaration),
-          );
-        }
-        expect(flaggedNodes, isEmpty);
-
-        final lints = await runLintRule(
-          const AvoidMultipleSynchronousEmits(),
-          goodCode,
+      final parseResult = parseString(content: goodCode);
+      final flaggedNodes = <AstNode>[];
+      for (final declaration
+          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+        flaggedNodes.addAll(
+          AvoidMultipleSynchronousEmits.findViolations(declaration),
         );
-        expect(lints, isEmpty);
-      },
-    );
+      }
+      expect(flaggedNodes, isEmpty);
+
+      final lints = await runLintRule(
+        AvoidMultipleSynchronousEmits(),
+        goodCode,
+      );
+      expect(lints, isEmpty);
+    });
 
     test(
       '(Issue #358) detects multiple synchronous emit() calls occurring after '
@@ -781,7 +788,7 @@ class CounterCubit extends CubitSignal<int> {
         expect(flaggedNodes.single.toSource(), equals('emit(2)'));
 
         final lints = await runLintRule(
-          const AvoidMultipleSynchronousEmits(),
+          AvoidMultipleSynchronousEmits(),
           badCode,
         );
         expect(lints, hasLength(1));
@@ -818,7 +825,7 @@ class WeatherCubit extends CubitSignal<int> {
       expect(flagged, isEmpty);
 
       final lints = await runLintRule(
-        const AvoidMultipleSynchronousEmits(),
+        AvoidMultipleSynchronousEmits(),
         goodCode,
       );
       expect(lints, isEmpty);

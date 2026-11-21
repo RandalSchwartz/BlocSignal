@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:bloc_signals_flutter/bloc_signals_flutter.dart';
+// Preserves sdk: ^3.5.0 compatibility on Flutter <3.47.
+// ignore: deprecated_member_use
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:signals_flutter/signals_flutter.dart';

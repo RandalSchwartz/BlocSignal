@@ -1,8 +1,8 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
-import 'package:analyzer/error/error.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analysis_server_plugin/edit/dart/correction_producer.dart';
+import 'package:analysis_server_plugin/edit/dart/dart_fix_kind_priority.dart';
+import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer_plugin/utilities/change_builder/change_builder_core.dart';
+import 'package:analyzer_plugin/utilities/fixes/fixes.dart';
 
 /// An automated IDE quick-fix for `AvoidRawSignalEffectsInBloc` that rewrites
 /// unmanaged `effect(...)` calls to `createEffect(...)`.
@@ -15,33 +15,33 @@ import 'package:custom_lint_builder/custom_lint_builder.dart';
 /// // After:
 /// createEffect(() { print(stateValue); });
 /// ```
-class AvoidRawSignalEffectsInBlocFix extends DartFix {
+class AvoidRawSignalEffectsInBlocFix extends ResolvedCorrectionProducer {
   /// Creates an [AvoidRawSignalEffectsInBlocFix] instance.
-  AvoidRawSignalEffectsInBlocFix();
+  new({required super.context});
+
+  static const _fixKind = FixKind(
+    'bloc_signals_lint.fix.avoidRawSignalEffectsInBloc',
+    DartFixKindPriority.standard,
+    "Replace 'effect' with 'createEffect'",
+  );
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ChangeReporter reporter,
-    CustomLintContext context,
-    AnalysisError analysisError,
-    List<AnalysisError> others,
-  ) {
-    context.registry.addMethodInvocation((node) {
-      if (!analysisError.sourceRange.intersects(node.sourceRange)) return;
-      if (node.methodName.name != 'effect') return;
+  CorrectionApplicability get applicability =>
+      CorrectionApplicability.singleLocation;
 
-      reporter
-          .createChangeBuilder(
-        message: "Replace 'effect' with 'createEffect'",
-        priority: 100,
-      )
-          .addDartFileEdit((builder) {
-        builder.addSimpleReplacement(
-          node.methodName.sourceRange,
-          'createEffect',
-        );
-      });
+  @override
+  FixKind get fixKind => _fixKind;
+
+  @override
+  Future<void> compute(ChangeBuilder builder) async {
+    final invocation = node.thisOrAncestorOfType<MethodInvocation>();
+    if (invocation == null || invocation.methodName.name != 'effect') return;
+
+    await builder.addDartFileEdit(file, (builder) {
+      builder.addSimpleReplacement(
+        invocation.methodName.sourceRange,
+        'createEffect',
+      );
     });
   }
 }

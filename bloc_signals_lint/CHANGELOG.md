@@ -2,8 +2,8 @@
 
 ## Unreleased
 
+- **BREAKING (lint)**: Migrated `bloc_signals_lint` from `custom_lint` / `custom_lint_builder` to Dart's native `analysis_server_plugin` (`^0.3.26`, `analyzer: ^14.7.0`, `analyzer_plugin: ^0.14.20`) and bumped minimum Dart SDK constraint to `^3.13.0` (#439).
 - **Fix (lint)**: Support `MixinDeclaration` and `BlocSignalMixin` hosts across `AvoidDuplicateEventHandlers`, `RequireEmitInHelperName` (+ `RequireEmitInHelperNameFix`), `AvoidRawSignalEffectsInBloc`, `RequireSuperOnEvent`, `AvoidPrimitiveEventTypes`, and `AvoidPseudoEventsInTelemetry`; support Jaspr components, `HookWidget`, and direct `build()` `effect()`/`computed()` allocations in `AvoidUnmanagedSignalEffects`; and flag omitted/invalid `context.select` generics and non-`context` `BuildContext` receivers across `AvoidInvalidContextSelectGenerics`, `PreferBlocSignalProviderReadInCallbacks`, and `AvoidUnusedSelectResult` (#477).
-
 ## 1.3.5
 
 - **Fix (lint)**: `AvoidMultipleSynchronousEmits` now treats a `catch` clause as starting after a suspension boundary when the `try` body contains an `await` (outside nested closures, including `await for`), so the canonical `Loading` to terminal async pattern is no longer reported while synchronous double emissions still are (#406).

@@ -14,7 +14,7 @@
   </tr>
 </table>
 
-Built on top of [`custom_lint`](https://pub.dev/packages/custom_lint), `bloc_signals_lint` catches common framework misuse, preserves Zone-context transition tracing, and enforces `BlocSignal` architectural invariants directly inside your IDE.
+Built on top of Dart's native [`analysis_server_plugin`](https://pub.dev/packages/analysis_server_plugin), `bloc_signals_lint` catches common framework misuse, preserves Zone-context transition tracing, and enforces `BlocSignal` architectural invariants directly inside your IDE and `dart analyze`.
 
 ---
 
@@ -78,39 +78,39 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 
 ## 🚀 Quick Setup
 
-1. Add `custom_lint` and `bloc_signals_lint` to your `pubspec.yaml`:
+Enable `bloc_signals_lint` solely under `plugins:` in your root `analysis_options.yaml` (no `dev_dependencies:` entry is needed, allowing `sdk: ^3.5.0` consumer packages to run the Dart 3.13+ analyzer plugin):
 
 ```yaml
-dev_dependencies:
-  custom_lint: ^0.7.0
-  bloc_signals_lint: ^1.0.0
+plugins:
+  bloc_signals_lint: ^2.0.0
 ```
 
-2. Enable `custom_lint` in your `analysis_options.yaml`:
+For local unreleased workspaces, reference the package by `path:` instead:
 
 ```yaml
-analyzer:
-  plugins:
-    - custom_lint
+plugins:
+  bloc_signals_lint:
+    path: ../bloc_signals_lint
 ```
 
 ---
 
 ## ⚙️ Customization & Inline Ignores
 
-Disable or customize severity in `analysis_options.yaml`:
+Disable or customize diagnostics in `analysis_options.yaml`:
 
 ```yaml
-custom_lint:
-  rules:
-    - avoid_duplicate_event_handlers: false
-    - require_super_on_event: error
+plugins:
+  bloc_signals_lint:
+    version: ^2.0.0
+    diagnostics:
+      avoid_duplicate_event_handlers: false
 ```
 
 Or ignore inline in code:
 
 ```dart
-// ignore: avoid_duplicate_event_handlers
+// ignore: bloc_signals_lint/avoid_duplicate_event_handlers
 on<Increment>((event, emit) => emit(stateValue + 1));
 ```
 

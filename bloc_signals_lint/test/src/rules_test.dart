@@ -1,9 +1,14 @@
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:bloc_signals_lint/src/fixes/replace_positional_replay_constructor_fix.dart';
+import 'package:bloc_signals_lint/src/fixes/require_cubit_signal_mixin_init_fix.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_context_watch_for_bloc_state.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_multiple_synchronous_emits.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_primitive_event_types.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_pseudo_events_in_telemetry.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
@@ -21,9 +26,10 @@ void main() {
   tearDownAll(disposeLintTestHarness);
 
   group('(Issue #315: R1) Rule AST Detection via rule.run()', () {
-    test('AvoidDuplicateEventHandlers detects duplicate on<E> handlers',
-        () async {
-      const badCode = '''
+    test(
+      'AvoidDuplicateEventHandlers detects duplicate on<E> handlers',
+      () async {
+        const badCode = '''
 sealed class CounterEvent {}
 class IncrementEvent extends CounterEvent {}
 
@@ -34,15 +40,16 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
   }
 }
 ''';
-      final lints =
-          await runLintRule(const AvoidDuplicateEventHandlers(), badCode);
-      expect(lints, hasLength(1));
-      expect(lints.first.lexeme, contains('on<IncrementEvent>'));
-    });
+        final lints = await runLintRule(AvoidDuplicateEventHandlers(), badCode);
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, contains('on<IncrementEvent>'));
+      },
+    );
 
-    test('AvoidDuplicateEventHandlers accepts distinct on<E> handlers',
-        () async {
-      const goodCode = '''
+    test(
+      'AvoidDuplicateEventHandlers accepts distinct on<E> handlers',
+      () async {
+        const goodCode = '''
 sealed class CounterEvent {}
 class IncrementEvent extends CounterEvent {}
 class DecrementEvent extends CounterEvent {}
@@ -54,14 +61,18 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
   }
 }
 ''';
-      final lints =
-          await runLintRule(const AvoidDuplicateEventHandlers(), goodCode);
-      expect(lints, isEmpty);
-    });
+        final lints = await runLintRule(
+          AvoidDuplicateEventHandlers(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
+      },
+    );
 
-    test('AvoidDuplicateEventHandlers ignores plain non-bloc classes',
-        () async {
-      const goodCode = '''
+    test(
+      'AvoidDuplicateEventHandlers ignores plain non-bloc classes',
+      () async {
+        const goodCode = '''
 class IncrementEvent {}
 
 class NotABloc {
@@ -72,14 +83,18 @@ class NotABloc {
   }
 }
 ''';
-      final lints =
-          await runLintRule(const AvoidDuplicateEventHandlers(), goodCode);
-      expect(lints, isEmpty);
-    });
+        final lints = await runLintRule(
+          AvoidDuplicateEventHandlers(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
+      },
+    );
 
-    test('RequireSuperOnEvent detects missing super.onEvent in bad code',
-        () async {
-      const badCode = '''
+    test(
+      'RequireSuperOnEvent detects missing super.onEvent in bad code',
+      () async {
+        const badCode = '''
 class MyEvent {}
 
 class MyBloc extends BlocSignal<MyEvent, int> {
@@ -88,14 +103,16 @@ class MyBloc extends BlocSignal<MyEvent, int> {
   }
 }
 ''';
-      final lints = await runLintRule(const RequireSuperOnEvent(), badCode);
-      expect(lints, hasLength(1));
-      expect(lints.first.lexeme, equals('onEvent'));
-    });
+        final lints = await runLintRule(RequireSuperOnEvent(), badCode);
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('onEvent'));
+      },
+    );
 
-    test('RequireSuperOnEvent accepts valid super.onEvent in good code',
-        () async {
-      const goodCode = '''
+    test(
+      'RequireSuperOnEvent accepts valid super.onEvent in good code',
+      () async {
+        const goodCode = '''
 class MyEvent {}
 
 class MyBloc extends BlocSignal<MyEvent, int> {
@@ -105,22 +122,25 @@ class MyBloc extends BlocSignal<MyEvent, int> {
   }
 }
 ''';
-      final lints = await runLintRule(const RequireSuperOnEvent(), goodCode);
-      expect(lints, isEmpty);
-    });
+        final lints = await runLintRule(RequireSuperOnEvent(), goodCode);
+        expect(lints, isEmpty);
+      },
+    );
 
-    test('RequireSuperOnEvent ignores plain non-bloc class with onEvent',
-        () async {
-      const goodCode = '''
+    test(
+      'RequireSuperOnEvent ignores plain non-bloc class with onEvent',
+      () async {
+        const goodCode = '''
 class NotABloc {
   void onEvent(dynamic event) {
     print(event);
   }
 }
 ''';
-      final lints = await runLintRule(const RequireSuperOnEvent(), goodCode);
-      expect(lints, isEmpty);
-    });
+        final lints = await runLintRule(RequireSuperOnEvent(), goodCode);
+        expect(lints, isEmpty);
+      },
+    );
 
     test(
       'AvoidStreamTransformersOnBlocSignal detects invalid transformer calls',
@@ -138,7 +158,7 @@ void test(CounterBloc bloc) {
 }
 ''';
         final lints = await runLintRule(
-          const AvoidStreamTransformersOnBlocSignal(),
+          AvoidStreamTransformersOnBlocSignal(),
           badCode,
         );
         expect(lints, hasLength(2));
@@ -149,11 +169,9 @@ void test(CounterBloc bloc) {
       },
     );
 
-    test(
-      'AvoidStreamTransformersOnBlocSignal ignores stream transformer calls '
-      'on non-bloc targets',
-      () async {
-        const goodCode = '''
+    test('AvoidStreamTransformersOnBlocSignal ignores stream transformer calls '
+        'on non-bloc targets', () async {
+      const goodCode = '''
 class MyStream {
   void debounce() {}
   void switchMap() {}
@@ -164,13 +182,12 @@ void test(MyStream myStream) {
   myStream.switchMap();
 }
 ''';
-        final lints = await runLintRule(
-          const AvoidStreamTransformersOnBlocSignal(),
-          goodCode,
-        );
-        expect(lints, isEmpty);
-      },
-    );
+      final lints = await runLintRule(
+        AvoidStreamTransformersOnBlocSignal(),
+        goodCode,
+      );
+      expect(lints, isEmpty);
+    });
 
     test(
       'AvoidDirectSignalMutationOutsideBloc detects external emit calls',
@@ -181,7 +198,7 @@ void externalFunction(CubitSignal<int> bloc) {
 }
 ''';
         final lints = await runLintRule(
-          const AvoidDirectSignalMutationOutsideBloc(),
+          AvoidDirectSignalMutationOutsideBloc(),
           badCode,
         );
         expect(lints, hasLength(1));
@@ -189,72 +206,65 @@ void externalFunction(CubitSignal<int> bloc) {
       },
     );
 
-    test(
-      '(Issue #302: F16) AvoidDirectSignalMutationOutsideBloc accepts '
-      'this.emit inside mixin on CubitSignal',
-      () async {
-        const goodCode = '''
+    test('(Issue #302: F16) AvoidDirectSignalMutationOutsideBloc accepts '
+        'this.emit inside mixin on CubitSignal', () async {
+      const goodCode = '''
 mixin CartPricing on CubitSignal<int> {
   void calculate() {
     this.emit(42);
   }
 }
 ''';
-        final lints = await runLintRule(
-          const AvoidDirectSignalMutationOutsideBloc(),
-          goodCode,
-        );
-        expect(lints, isEmpty);
-      },
-    );
+      final lints = await runLintRule(
+        AvoidDirectSignalMutationOutsideBloc(),
+        goodCode,
+      );
+      expect(lints, isEmpty);
+    });
 
-    test(
-      '(Issue #302: F16) AvoidDirectSignalMutationOutsideBloc rejects '
-      'non-bloc enclosingClass even if enclosingMixin is present',
-      () async {
-        const classCode = '''
+    test('(Issue #302: F16) AvoidDirectSignalMutationOutsideBloc rejects '
+        'non-bloc enclosingClass even if enclosingMixin is present', () async {
+      const classCode = '''
 class NonBlocService {
   void doEmit() {}
 }
 ''';
-        const mixinCode = '''
+      const mixinCode = '''
 mixin CartPricing on CubitSignal<int> {}
 ''';
-        final classUnit = parseString(content: classCode).unit;
-        final mixinUnit = parseString(content: mixinCode).unit;
-        final classNode =
-            classUnit.declarations.whereType<ClassDeclaration>().first;
-        final mixinNode =
-            mixinUnit.declarations.whereType<MixinDeclaration>().first;
+      final classUnit = parseString(content: classCode).unit;
+      final mixinUnit = parseString(content: mixinCode).unit;
+      final classNode = classUnit.declarations
+          .whereType<ClassDeclaration>()
+          .first;
+      final mixinNode = mixinUnit.declarations
+          .whereType<MixinDeclaration>()
+          .first;
 
-        final isAllowed =
-            AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
-          enclosingClass: classNode,
-          enclosingMixin: mixinNode,
-        );
+      final isAllowed = AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+        enclosingClass: classNode,
+        enclosingMixin: mixinNode,
+      );
 
-        expect(isAllowed, isFalse);
+      expect(isAllowed, isFalse);
 
-        const nestedBadCode = '''
+      const nestedBadCode = '''
 class OuterService {
   void run(CubitSignal<int> cubit) {
     cubit.emit(1);
   }
 }
 ''';
-        final lints = await runLintRule(
-          const AvoidDirectSignalMutationOutsideBloc(),
-          nestedBadCode,
-        );
-        expect(lints, hasLength(1));
-      },
-    );
+      final lints = await runLintRule(
+        AvoidDirectSignalMutationOutsideBloc(),
+        nestedBadCode,
+      );
+      expect(lints, hasLength(1));
+    });
 
-    test(
-      'AvoidTopLevelBlocSignalInstances detects global top-level bloc '
-      'declarations',
-      () async {
-        const badCode = '''
+    test('AvoidTopLevelBlocSignalInstances detects global top-level bloc '
+        'declarations', () async {
+      const badCode = '''
 class CounterBloc extends CubitSignal<int> {
   CounterBloc() : super(initialState: 0);
 }
@@ -267,17 +277,16 @@ class Service {
   static final authBloc = AuthBloc();
 }
 ''';
-        final lints = await runLintRule(
-          const AvoidTopLevelBlocSignalInstances(),
-          badCode,
-        );
-        expect(lints, hasLength(2));
-        expect(
-          lints.map((l) => l.arguments?.first),
-          containsAll(['counterBloc', 'authBloc']),
-        );
-      },
-    );
+      final lints = await runLintRule(
+        AvoidTopLevelBlocSignalInstances(),
+        badCode,
+      );
+      expect(lints, hasLength(2));
+      expect(
+        lints.map((l) => l.arguments?.first),
+        containsAll(['counterBloc', 'authBloc']),
+      );
+    });
 
     test(
       'AvoidTopLevelBlocSignalInstances accepts global primitive signals and '
@@ -294,15 +303,14 @@ class Service {
 }
 ''';
         final lints = await runLintRule(
-          const AvoidTopLevelBlocSignalInstances(),
+          AvoidTopLevelBlocSignalInstances(),
           goodCode,
         );
         expect(lints, isEmpty);
       },
     );
 
-    test(
-        '(Issue #302: F2) RequireCubitSignalMixinInit detects uninitialized '
+    test('(Issue #302: F2) RequireCubitSignalMixinInit detects uninitialized '
         'mixin constructors at constructor token', () async {
       const badCode = '''
 class BaseService {}
@@ -313,8 +321,7 @@ class CounterService extends BaseService with CubitSignalMixin<int> {
   }
 }
 ''';
-      final lints =
-          await runLintRule(const RequireCubitSignalMixinInit(), badCode);
+      final lints = await runLintRule(RequireCubitSignalMixinInit(), badCode);
       expect(lints, hasLength(1));
       expect(lints.first.lexeme, equals('CounterService'));
       expect(lints.first.offset, equals(badCode.indexOf('CounterService()')));
@@ -324,8 +331,7 @@ class CounterService extends BaseService with CubitSignalMixin<int> {
       );
     });
 
-    test(
-        '(Issue #302: F2, F8) RequireCubitSignalMixinInit flags class with '
+    test('(Issue #302: F2, F8) RequireCubitSignalMixinInit flags class with '
         'BlocSignalMixin calling initBlocSignal', () async {
       const badCode = '''
 class BaseService {}
@@ -337,8 +343,7 @@ class UserBloc extends BaseService with BlocSignalMixin<UserEvent, int> {
   }
 }
 ''';
-      final lints =
-          await runLintRule(const RequireCubitSignalMixinInit(), badCode);
+      final lints = await runLintRule(RequireCubitSignalMixinInit(), badCode);
       expect(lints, hasLength(1));
       expect(
         lints.first.arguments,
@@ -346,8 +351,7 @@ class UserBloc extends BaseService with BlocSignalMixin<UserEvent, int> {
       );
     });
 
-    test(
-        '(Issue #302: F2, F8) RequireCubitSignalMixinInit accepts class with '
+    test('(Issue #302: F2, F8) RequireCubitSignalMixinInit accepts class with '
         'BlocSignalMixin calling initCubitSignal', () async {
       const goodCode = '''
 class BaseService {}
@@ -359,14 +363,14 @@ class UserBloc extends BaseService with BlocSignalMixin<UserEvent, int> {
   }
 }
 ''';
-      final lints =
-          await runLintRule(const RequireCubitSignalMixinInit(), goodCode);
+      final lints = await runLintRule(RequireCubitSignalMixinInit(), goodCode);
       expect(lints, isEmpty);
     });
 
-    test('RequireCubitSignalMixinInit accepts initialized mixin constructors',
-        () async {
-      const goodCode = '''
+    test(
+      'RequireCubitSignalMixinInit accepts initialized mixin constructors',
+      () async {
+        const goodCode = '''
 class BaseService {}
 
 class CounterService extends BaseService with CubitSignalMixin<int> {
@@ -375,13 +379,15 @@ class CounterService extends BaseService with CubitSignalMixin<int> {
   }
 }
 ''';
-      final lints =
-          await runLintRule(const RequireCubitSignalMixinInit(), goodCode);
-      expect(lints, isEmpty);
-    });
+        final lints = await runLintRule(
+          RequireCubitSignalMixinInit(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
+      },
+    );
 
-    test(
-        '(Issue #302: F10) RequireCubitSignalMixinInit ignores factory '
+    test('(Issue #302: F10) RequireCubitSignalMixinInit ignores factory '
         'constructors and redirecting constructors', () async {
       const code = '''
 class BaseService {}
@@ -398,14 +404,14 @@ class CounterService extends BaseService with CubitSignalMixin<int> {
   }
 }
 ''';
-      final lints =
-          await runLintRule(const RequireCubitSignalMixinInit(), code);
+      final lints = await runLintRule(RequireCubitSignalMixinInit(), code);
       expect(lints, isEmpty);
     });
 
-    test('AvoidRawSignalEffectsInBloc detects top-level effect in bloc',
-        () async {
-      const badCode = '''
+    test(
+      'AvoidRawSignalEffectsInBloc detects top-level effect in bloc',
+      () async {
+        const badCode = '''
 class MyCubit extends CubitSignal<int> {
   MyCubit() : super(initialState: 0) {
     effect(() {
@@ -414,11 +420,11 @@ class MyCubit extends CubitSignal<int> {
   }
 }
 ''';
-      final lints =
-          await runLintRule(const AvoidRawSignalEffectsInBloc(), badCode);
-      expect(lints, hasLength(1));
-      expect(lints.first.lexeme, equals('effect'));
-    });
+        final lints = await runLintRule(AvoidRawSignalEffectsInBloc(), badCode);
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('effect'));
+      },
+    );
 
     test('AvoidRawSignalEffectsInBloc accepts createEffect in bloc', () async {
       const goodCode = '''
@@ -430,14 +436,14 @@ class MyCubit extends CubitSignal<int> {
   }
 }
 ''';
-      final lints =
-          await runLintRule(const AvoidRawSignalEffectsInBloc(), goodCode);
+      final lints = await runLintRule(AvoidRawSignalEffectsInBloc(), goodCode);
       expect(lints, isEmpty);
     });
 
-    test('AvoidUnusedSelectResult detects discarded context.select statements',
-        () async {
-      const badCode = '''
+    test(
+      'AvoidUnusedSelectResult detects discarded context.select statements',
+      () async {
+        const badCode = '''
 class MyBloc extends CubitSignal<int> {
   MyBloc() : super(initialState: 0);
 }
@@ -446,14 +452,16 @@ void build(BuildContext context) {
   context.select<MyBloc, int>((b) => b.stateValue);
 }
 ''';
-      final lints = await runLintRule(const AvoidUnusedSelectResult(), badCode);
-      expect(lints, hasLength(1));
-      expect(lints.first.lexeme, equals('select'));
-    });
+        final lints = await runLintRule(AvoidUnusedSelectResult(), badCode);
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('select'));
+      },
+    );
 
-    test('AvoidUnusedSelectResult accepts assigned context.select expressions',
-        () async {
-      const goodCode = '''
+    test(
+      'AvoidUnusedSelectResult accepts assigned context.select expressions',
+      () async {
+        const goodCode = '''
 class MyBloc extends CubitSignal<int> {
   MyBloc() : super(initialState: 0);
 }
@@ -463,10 +471,10 @@ void build(BuildContext context) {
   print(count);
 }
 ''';
-      final lints =
-          await runLintRule(const AvoidUnusedSelectResult(), goodCode);
-      expect(lints, isEmpty);
-    });
+        final lints = await runLintRule(AvoidUnusedSelectResult(), goodCode);
+        expect(lints, isEmpty);
+      },
+    );
 
     test(
       'PreferNamedReplayConstructor detects super.positional on ReplayCubit',
@@ -478,7 +486,7 @@ class CounterCubit extends ReplayCubit<int> {
 }
 ''';
         final lints = await runLintRule(
-          const PreferNamedReplayConstructor(),
+          PreferNamedReplayConstructor(),
           badCode,
         );
         expect(lints, hasLength(1));
@@ -500,7 +508,7 @@ class CounterBloc extends ReplayBloc<CounterEvent, int> {
 }
 ''';
         final lints = await runLintRule(
-          const PreferNamedReplayConstructor(),
+          PreferNamedReplayConstructor(),
           badCode,
         );
         expect(lints, hasLength(1));
@@ -523,7 +531,7 @@ class CounterBloc extends ReplayBloc<CounterEvent, int> {
 }
 ''';
         final lints = await runLintRule(
-          const PreferNamedReplayConstructor(),
+          PreferNamedReplayConstructor(),
           goodCode,
         );
         expect(lints, isEmpty);
@@ -540,41 +548,16 @@ class CounterCubit extends ReplayCubit<int> {
 }
 ''';
         final lints = await runLintRule(
-          const PreferNamedReplayConstructor(),
+          PreferNamedReplayConstructor(),
           sourceCode,
         );
         expect(lints, hasLength(1));
 
-        final parseResult = parseString(content: sourceCode);
-        final constructorNode = parseResult.unit.declarations
-            .whereType<ClassDeclaration>()
-            .first
-            .members
-            .whereType<ConstructorDeclaration>()
-            .first;
-        final node = constructorNode.initializers
-            .whereType<SuperConstructorInvocation>()
-            .first;
-
-        String? transformed;
-        if (node.constructorName?.name == 'positional') {
-          final period = node.period!;
-          final constructorName = node.constructorName!;
-          final positionalArg = node.argumentList.arguments
-              .where((arg) => arg is! NamedExpression)
-              .firstOrNull;
-
-          if (positionalArg != null) {
-            final beforePeriod = sourceCode.substring(0, period.offset);
-            final betweenPeriodAndArg = sourceCode.substring(
-              constructorName.end,
-              positionalArg.offset,
-            );
-            final afterArg = sourceCode.substring(positionalArg.offset);
-            transformed = '$beforePeriod$betweenPeriodAndArg'
-                'initialState: $afterArg';
-          }
-        }
+        final transformed = await runLintFix(
+          PreferNamedReplayConstructor(),
+          ReplacePositionalReplayConstructorFix.new,
+          sourceCode,
+        );
 
         expect(
           transformed,
@@ -594,41 +577,16 @@ class CounterCubit extends ReplayCubit<int> {
 }
 ''';
         final lints = await runLintRule(
-          const PreferNamedReplayConstructor(),
+          PreferNamedReplayConstructor(),
           sourceCode,
         );
         expect(lints, hasLength(1));
 
-        final parseResult = parseString(content: sourceCode);
-        final constructorNode = parseResult.unit.declarations
-            .whereType<ClassDeclaration>()
-            .first
-            .members
-            .whereType<ConstructorDeclaration>()
-            .first;
-        final node = constructorNode.initializers
-            .whereType<SuperConstructorInvocation>()
-            .first;
-
-        String? transformed;
-        if (node.constructorName?.name == 'positional') {
-          final period = node.period!;
-          final constructorName = node.constructorName!;
-          final positionalArg = node.argumentList.arguments
-              .where((arg) => arg is! NamedExpression)
-              .firstOrNull;
-
-          if (positionalArg != null) {
-            final beforePeriod = sourceCode.substring(0, period.offset);
-            final betweenConstructorAndArg = sourceCode.substring(
-              constructorName.end,
-              positionalArg.offset,
-            );
-            final afterArg = sourceCode.substring(positionalArg.offset);
-            transformed = '$beforePeriod$betweenConstructorAndArg'
-                'initialState: $afterArg';
-          }
-        }
+        final transformed = await runLintFix(
+          PreferNamedReplayConstructor(),
+          ReplacePositionalReplayConstructorFix.new,
+          sourceCode,
+        );
 
         expect(
           transformed,
@@ -638,45 +596,26 @@ class CounterCubit extends ReplayCubit<int> {
       },
     );
 
-    test(
-      'ReplacePositionalReplayConstructorFix safely skips '
-      'empty super parameters',
-      () async {
-        const sourceCode = '''
+    test('ReplacePositionalReplayConstructorFix safely skips '
+        'empty super parameters', () async {
+      const sourceCode = '''
 class CounterCubit extends ReplayCubit<int> {
   CounterCubit(super.initialState, {super.limit}) : super.positional();
 }
 ''';
-        final lints = await runLintRule(
-          const PreferNamedReplayConstructor(),
-          sourceCode,
-        );
-        expect(lints, hasLength(1));
+      final lints = await runLintRule(
+        PreferNamedReplayConstructor(),
+        sourceCode,
+      );
+      expect(lints, hasLength(1));
 
-        final parseResult = parseString(content: sourceCode);
-        final constructorNode = parseResult.unit.declarations
-            .whereType<ClassDeclaration>()
-            .first
-            .members
-            .whereType<ConstructorDeclaration>()
-            .first;
-        final node = constructorNode.initializers
-            .whereType<SuperConstructorInvocation>()
-            .first;
-
-        var skipped = false;
-        if (node.constructorName?.name == 'positional') {
-          final positionalArg = node.argumentList.arguments
-              .where((arg) => arg is! NamedExpression)
-              .firstOrNull;
-          if (positionalArg == null) {
-            skipped = true;
-          }
-        }
-
-        expect(skipped, isTrue);
-      },
-    );
+      final transformed = await runLintFix(
+        PreferNamedReplayConstructor(),
+        ReplacePositionalReplayConstructorFix.new,
+        sourceCode,
+      );
+      expect(transformed, equals(sourceCode));
+    });
 
     test(
       '(Issue #329: R15) AvoidMultipleSynchronousEmits detects multiple '
@@ -716,10 +655,7 @@ mixin ObjectMixin on Object {
 
 class PlainClass extends Object with PlainMixin {}
 ''';
-        final lints = await runLintRule(
-          const AvoidMultipleSynchronousEmits(),
-          code,
-        );
+        final lints = await runLintRule(AvoidMultipleSynchronousEmits(), code);
         expect(lints, hasLength(2));
         expect(lints.first.lexeme, equals('emit'));
       },
@@ -747,20 +683,15 @@ class CounterCubit extends CubitSignal<int> {
   void safeForeignCascade(CubitSignal<int> other) => other..emit(1)..emit(2);
 }
 ''';
-        final lints = await runLintRule(
-          const AvoidMultipleSynchronousEmits(),
-          code,
-        );
+        final lints = await runLintRule(AvoidMultipleSynchronousEmits(), code);
         expect(lints, hasLength(2));
       },
     );
 
-    test(
-      '(Issue #329: R15) AvoidMultipleSynchronousEmits handles '
-      'ContinueStatement without false-positive same-iteration fallthrough '
-      'while catching multi-iteration emits',
-      () async {
-        const goodCode = '''
+    test('(Issue #329: R15) AvoidMultipleSynchronousEmits handles '
+        'ContinueStatement without false-positive same-iteration fallthrough '
+        'while catching multi-iteration emits', () async {
+      const goodCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -787,13 +718,13 @@ class CounterCubit extends CubitSignal<int> {
   }
 }
 ''';
-        final goodLints = await runLintRule(
-          const AvoidMultipleSynchronousEmits(),
-          goodCode,
-        );
-        expect(goodLints, isEmpty);
+      final goodLints = await runLintRule(
+        AvoidMultipleSynchronousEmits(),
+        goodCode,
+      );
+      expect(goodLints, isEmpty);
 
-        const badCode = '''
+      const badCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -808,13 +739,12 @@ class CounterCubit extends CubitSignal<int> {
   }
 }
 ''';
-        final badLints = await runLintRule(
-          const AvoidMultipleSynchronousEmits(),
-          badCode,
-        );
-        expect(badLints, isNotEmpty);
-      },
-    );
+      final badLints = await runLintRule(
+        AvoidMultipleSynchronousEmits(),
+        badCode,
+      );
+      expect(badLints, isNotEmpty);
+    });
 
     test(
       '(Issue #329: R15) AvoidMultipleSynchronousEmits resolves intra-switch '
@@ -850,7 +780,7 @@ class CounterCubit extends CubitSignal<int> {
 }
 ''';
         final goodLints = await runLintRule(
-          const AvoidMultipleSynchronousEmits(),
+          AvoidMultipleSynchronousEmits(),
           goodCode,
         );
         expect(goodLints, isEmpty);
@@ -885,20 +815,18 @@ class CounterCubit extends CubitSignal<int> {
 }
 ''';
         final badLints = await runLintRule(
-          const AvoidMultipleSynchronousEmits(),
+          AvoidMultipleSynchronousEmits(),
           badCode,
         );
         expect(badLints, hasLength(2));
       },
     );
 
-    test(
-      '(Issue #333: R19) AvoidPseudoEventsInTelemetry, '
-      'RequireEmitInHelperName, AvoidMultipleSynchronousEmits, '
-      'AvoidRawSignalEffectsInBloc, and AvoidDirectSignalMutationOutsideBloc '
-      'handle ReplayMixin and HydratedMixin containers accurately',
-      () async {
-        const telemetryCode = '''
+    test('(Issue #333: R19) AvoidPseudoEventsInTelemetry, '
+        'RequireEmitInHelperName, AvoidMultipleSynchronousEmits, '
+        'AvoidRawSignalEffectsInBloc, and AvoidDirectSignalMutationOutsideBloc '
+        'handle ReplayMixin and HydratedMixin containers accurately', () async {
+      const telemetryCode = '''
 class ReplayMixinCubit extends BaseService with ReplayMixin<int> {
   void emitTelemetry(String name) {}
   void act() {
@@ -928,17 +856,13 @@ class HydratedBlocSub extends HydratedBloc<Object, int> {
   }
 }
 ''';
-        final parseResult = parseString(content: telemetryCode);
-        final telemetryViolations = <AstNode>[];
-        for (final decl
-            in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-          telemetryViolations.addAll(
-            AvoidPseudoEventsInTelemetry.findViolations(decl),
-          );
-        }
-        expect(telemetryViolations, hasLength(2));
+      final telemetryViolations = await runLintRule(
+        AvoidPseudoEventsInTelemetry(),
+        telemetryCode,
+      );
+      expect(telemetryViolations, hasLength(2));
 
-        const multiEmitCode = '''
+      const multiEmitCode = '''
 class HydratedOnlyClass extends HydratedCubit<int> {
   void emit(int s) {}
   void bad() {
@@ -971,13 +895,13 @@ mixin CustomOnHydratedMixin on HydratedMixin<int> {
   }
 }
 ''';
-        final multiEmitLints = await runLintRule(
-          const AvoidMultipleSynchronousEmits(),
-          multiEmitCode,
-        );
-        expect(multiEmitLints, hasLength(4));
+      final multiEmitLints = await runLintRule(
+        AvoidMultipleSynchronousEmits(),
+        multiEmitCode,
+      );
+      expect(multiEmitLints, hasLength(4));
 
-        const rawEffectCode = '''
+      const rawEffectCode = '''
 class ReplayCubitClass extends ReplayCubit<int> {
   ReplayCubitClass() : super(initialState: 0) {
     effect(() {});
@@ -990,13 +914,13 @@ class HydratedMixinClass extends Object with HydratedMixin<int> {
   }
 }
 ''';
-        final rawEffectLints = await runLintRule(
-          const AvoidRawSignalEffectsInBloc(),
-          rawEffectCode,
-        );
-        expect(rawEffectLints, hasLength(2));
+      final rawEffectLints = await runLintRule(
+        AvoidRawSignalEffectsInBloc(),
+        rawEffectCode,
+      );
+      expect(rawEffectLints, hasLength(2));
 
-        const helperEmitCode = '''
+      const helperEmitCode = '''
 class HydratedOnlyClass extends HydratedCubit<int> {
   void emit(int s) {}
   void _badHelper() {
@@ -1011,57 +935,56 @@ class ReplayMixinOnlyClass extends Object with ReplayMixin<int> {
   }
 }
 ''';
-        final helperEmitLints = await runLintRule(
-          const RequireEmitInHelperName(),
-          helperEmitCode,
-        );
-        expect(helperEmitLints, hasLength(2));
+      final helperEmitLints = await runLintRule(
+        RequireEmitInHelperName(),
+        helperEmitCode,
+      );
+      expect(helperEmitLints, hasLength(2));
 
-        const allowedClassCode = '''
+      const allowedClassCode = '''
 class ReplayClass extends ReplayCubit<int> {}
 class HydratedMixinClass extends Object with HydratedMixin<int> {}
 mixin OnReplayMixin on ReplayMixin<int> {}
 mixin OnHydratedMixin on HydratedMixin<int> {}
 ''';
-        final allowedUnit = parseString(content: allowedClassCode).unit;
-        final classes =
-            allowedUnit.declarations.whereType<ClassDeclaration>().toList();
-        final mixins =
-            allowedUnit.declarations.whereType<MixinDeclaration>().toList();
-        expect(
-          AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
-            enclosingClass: classes[0],
-          ),
-          isTrue,
-        );
-        expect(
-          AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
-            enclosingClass: classes[1],
-          ),
-          isTrue,
-        );
-        expect(
-          AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
-            enclosingMixin: mixins[0],
-          ),
-          isTrue,
-        );
-        expect(
-          AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
-            enclosingMixin: mixins[1],
-          ),
-          isTrue,
-        );
-      },
-    );
+      final allowedUnit = parseString(content: allowedClassCode).unit;
+      final classes = allowedUnit.declarations
+          .whereType<ClassDeclaration>()
+          .toList();
+      final mixins = allowedUnit.declarations
+          .whereType<MixinDeclaration>()
+          .toList();
+      expect(
+        AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+          enclosingClass: classes[0],
+        ),
+        isTrue,
+      );
+      expect(
+        AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+          enclosingClass: classes[1],
+        ),
+        isTrue,
+      );
+      expect(
+        AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+          enclosingMixin: mixins[0],
+        ),
+        isTrue,
+      );
+      expect(
+        AvoidDirectSignalMutationOutsideBloc.isAllowedEmission(
+          enclosingMixin: mixins[1],
+        ),
+        isTrue,
+      );
+    });
   });
 
   group('(Issue #407) AvoidDirectSignalMutationOutsideBloc MixinElement', () {
-    test(
-      '(Issue #407) accepts mixin on CubitSignal invoking .emit() with '
-      'populated declaredFragment',
-      () async {
-        const goodCode = '''
+    test('(Issue #407) accepts mixin on CubitSignal invoking .emit() with '
+        'populated declaredFragment', () async {
+      const goodCode = '''
 mixin CartPricing on CubitSignal<int> {
   void calculate() {
     emit(42);
@@ -1069,19 +992,16 @@ mixin CartPricing on CubitSignal<int> {
   }
 }
 ''';
-        final lints = await runLintRule(
-          const AvoidDirectSignalMutationOutsideBloc(),
-          goodCode,
-        );
-        expect(lints, isEmpty);
-      },
-    );
+      final lints = await runLintRule(
+        AvoidDirectSignalMutationOutsideBloc(),
+        goodCode,
+      );
+      expect(lints, isEmpty);
+    });
 
-    test(
-      '(Issue #407) accepts mixin on BlocSignal invoking .emit() with '
-      'populated declaredFragment',
-      () async {
-        const goodCode = '''
+    test('(Issue #407) accepts mixin on BlocSignal invoking .emit() with '
+        'populated declaredFragment', () async {
+      const goodCode = '''
 sealed class CounterEvent {}
 
 mixin CounterMixin on BlocSignal<CounterEvent, int> {
@@ -1091,19 +1011,16 @@ mixin CounterMixin on BlocSignal<CounterEvent, int> {
   }
 }
 ''';
-        final lints = await runLintRule(
-          const AvoidDirectSignalMutationOutsideBloc(),
-          goodCode,
-        );
-        expect(lints, isEmpty);
-      },
-    );
+      final lints = await runLintRule(
+        AvoidDirectSignalMutationOutsideBloc(),
+        goodCode,
+      );
+      expect(lints, isEmpty);
+    });
 
-    test(
-      '(Issue #407) flags mixin without container on constraint invoking '
-      '.emit() with populated declaredFragment',
-      () async {
-        const badCode = '''
+    test('(Issue #407) flags mixin without container on constraint invoking '
+        '.emit() with populated declaredFragment', () async {
+      const badCode = '''
 mixin UnconstrainedHelper {
   void mutate(CubitSignal<int> cubit) {
     cubit.emit(10);
@@ -1116,14 +1033,13 @@ mixin ObjectHelper on Object {
   }
 }
 ''';
-        final lints = await runLintRule(
-          const AvoidDirectSignalMutationOutsideBloc(),
-          badCode,
-        );
-        expect(lints, hasLength(2));
-        expect(lints.every((l) => l.lexeme == 'emit'), isTrue);
-      },
-    );
+      final lints = await runLintRule(
+        AvoidDirectSignalMutationOutsideBloc(),
+        badCode,
+      );
+      expect(lints, hasLength(2));
+      expect(lints.every((l) => l.lexeme == 'emit'), isTrue);
+    });
 
     test(
       '(Issue #407) still flags non-container class invoking .emit()',
@@ -1136,7 +1052,7 @@ class ExternalService {
 }
 ''';
         final lints = await runLintRule(
-          const AvoidDirectSignalMutationOutsideBloc(),
+          AvoidDirectSignalMutationOutsideBloc(),
           badCode,
         );
         expect(lints, hasLength(1));
@@ -1200,21 +1116,16 @@ class AliasedBloc extends BlocSignal<core.Object, int> {
   }
 }
 ''';
-        final lints = await runLintRule(
-          const AvoidDuplicateEventHandlers(),
-          code,
-        );
+        final lints = await runLintRule(AvoidDuplicateEventHandlers(), code);
         // 1 in CounterMixin, 1 in MixinHostBloc (cascade),
         // 1 in AliasedBloc
         expect(lints, hasLength(3));
       },
     );
 
-    test(
-      '(Issue #477: Area 1) RequireEmitInHelperName detects non-emitting '
-      'helper in MixinDeclaration and cascade this..emit()',
-      () async {
-        const badCode = '''
+    test('(Issue #477: Area 1) RequireEmitInHelperName detects non-emitting '
+        'helper in MixinDeclaration and cascade this..emit()', () async {
+      const badCode = '''
 mixin CounterCubitMixin on CubitSignal<int> {
   void _bump() {
     this..emit(value + 1);
@@ -1224,14 +1135,10 @@ mixin CounterCubitMixin on CubitSignal<int> {
   }
 }
 ''';
-        final lints = await runLintRule(
-          const RequireEmitInHelperName(),
-          badCode,
-        );
-        expect(lints, hasLength(1));
-        expect(lints.first.lexeme, equals('_bump'));
-      },
-    );
+      final lints = await runLintRule(RequireEmitInHelperName(), badCode);
+      expect(lints, hasLength(1));
+      expect(lints.first.lexeme, equals('_bump'));
+    });
 
     test(
       '(Issue #477: Area 1) AvoidRawSignalEffectsInBloc detects raw effect() '
@@ -1244,10 +1151,7 @@ mixin EffectMixin on CubitSignal<int> {
   }
 }
 ''';
-        final lints = await runLintRule(
-          const AvoidRawSignalEffectsInBloc(),
-          badCode,
-        );
+        final lints = await runLintRule(AvoidRawSignalEffectsInBloc(), badCode);
         expect(lints, hasLength(1));
         expect(lints.first.lexeme, equals('effect'));
       },
@@ -1272,10 +1176,7 @@ class MixinHost extends BlocSignalBase<int> with BlocSignalMixin<E, int> {
   void onEvent(E event) {}
 }
 ''';
-        final lints = await runLintRule(
-          const RequireSuperOnEvent(),
-          badCode,
-        );
+        final lints = await runLintRule(RequireSuperOnEvent(), badCode);
         expect(lints, hasLength(2));
         expect(lints.every((l) => l.lexeme == 'onEvent'), isTrue);
       },
@@ -1289,10 +1190,7 @@ class MixinHost extends BlocSignalBase<int> with BlocSignalMixin<E, int> {
 mixin BadBlocMixin on BlocSignal<int, String> {}
 mixin BadMixinConstraint on BlocSignalMixin<String, int> {}
 ''';
-        final lints = await runLintRule(
-          const AvoidPrimitiveEventTypes(),
-          badCode,
-        );
+        final lints = await runLintRule(AvoidPrimitiveEventTypes(), badCode);
         expect(lints, hasLength(2));
         expect(lints.map((l) => l.lexeme), containsAll(['int', 'String']));
       },
@@ -1316,18 +1214,16 @@ mixin TelemetryMixinConstraint on CubitSignalMixin<int> {
 }
 ''';
         final lints = await runLintRule(
-          const AvoidPseudoEventsInTelemetry(),
+          AvoidPseudoEventsInTelemetry(),
           badCode,
         );
         expect(lints, hasLength(2));
       },
     );
 
-    test(
-      '(Issue #477: BLOCKER-1) BlocSignalObserver subclasses are not '
-      'misclassified as BlocSignal containers',
-      () async {
-        const observerCode = '''
+    test('(Issue #477: BLOCKER-1) BlocSignalObserver subclasses are not '
+        'misclassified as BlocSignal containers', () async {
+      const observerCode = '''
 class MyObserver extends BlocSignalObserver {
   @override
   void onEvent(BlocSignalBase<Object?> bloc, Object? event) {}
@@ -1343,24 +1239,20 @@ class MyObserver extends BlocSignalObserver {
   }
 }
 ''';
-        expect(
-          await runLintRule(const RequireSuperOnEvent(), observerCode),
-          isEmpty,
-        );
-        expect(
-          await runLintRule(const AvoidDuplicateEventHandlers(), observerCode),
-          isEmpty,
-        );
-        expect(
-          await runLintRule(const AvoidRawSignalEffectsInBloc(), observerCode),
-          isEmpty,
-        );
-        expect(
-          await runLintRule(const RequireEmitInHelperName(), observerCode),
-          isEmpty,
-        );
-      },
-    );
+      expect(await runLintRule(RequireSuperOnEvent(), observerCode), isEmpty);
+      expect(
+        await runLintRule(AvoidDuplicateEventHandlers(), observerCode),
+        isEmpty,
+      );
+      expect(
+        await runLintRule(AvoidRawSignalEffectsInBloc(), observerCode),
+        isEmpty,
+      );
+      expect(
+        await runLintRule(RequireEmitInHelperName(), observerCode),
+        isEmpty,
+      );
+    });
 
     test(
       '(Issue #477: BLOCKER-1) BlocSignalBase with CubitSignalMixin and '
@@ -1384,27 +1276,22 @@ mixin BaseOnlyMixin on BlocSignalBase<int> {
   void onEvent(Object event) {}
 }
 ''';
+        expect(await runLintRule(RequireSuperOnEvent(), cubitCode), isEmpty);
         expect(
-          await runLintRule(const RequireSuperOnEvent(), cubitCode),
-          isEmpty,
-        );
-        expect(
-          await runLintRule(const AvoidDuplicateEventHandlers(), cubitCode),
+          await runLintRule(AvoidDuplicateEventHandlers(), cubitCode),
           isEmpty,
         );
         final telemetryLints = await runLintRule(
-          const AvoidPseudoEventsInTelemetry(),
+          AvoidPseudoEventsInTelemetry(),
           cubitCode,
         );
         expect(telemetryLints, hasLength(1));
       },
     );
 
-    test(
-      '(Issue #477: NBO-1) Negative and valid MixinDeclaration, unresolved '
-      'type, and foreign-cascade coverage',
-      () async {
-        const duplicateEdgeCode = '''
+    test('(Issue #477: NBO-1) Negative and valid MixinDeclaration, unresolved '
+        'type, and foreign-cascade coverage', () async {
+      const duplicateEdgeCode = '''
 mixin PlainMixin {
   void on<E>(void Function() cb) {}
   void setup() {
@@ -1420,13 +1307,13 @@ class UnresolvedEventBloc extends BlocSignal<Object, int> {
   }
 }
 ''';
-        final dupLints = await runLintRule(
-          const AvoidDuplicateEventHandlers(),
-          duplicateEdgeCode,
-        );
-        expect(dupLints, hasLength(1));
+      final dupLints = await runLintRule(
+        AvoidDuplicateEventHandlers(),
+        duplicateEdgeCode,
+      );
+      expect(dupLints, hasLength(1));
 
-        const validMixinSuperCode = '''
+      const validMixinSuperCode = '''
 sealed class E {}
 mixin ValidEventMixin on BlocSignal<E, int> {
   @override
@@ -1435,24 +1322,21 @@ mixin ValidEventMixin on BlocSignal<E, int> {
   }
 }
 ''';
-        expect(
-          await runLintRule(const RequireSuperOnEvent(), validMixinSuperCode),
-          isEmpty,
-        );
+      expect(
+        await runLintRule(RequireSuperOnEvent(), validMixinSuperCode),
+        isEmpty,
+      );
 
-        const validMixinPrimitiveCode = '''
+      const validMixinPrimitiveCode = '''
 sealed class MyEvent {}
 mixin GoodBlocMixin on BlocSignal<MyEvent, int> {}
 ''';
-        expect(
-          await runLintRule(
-            const AvoidPrimitiveEventTypes(),
-            validMixinPrimitiveCode,
-          ),
-          isEmpty,
-        );
+      expect(
+        await runLintRule(AvoidPrimitiveEventTypes(), validMixinPrimitiveCode),
+        isEmpty,
+      );
 
-        const nonCubitMixinCode = '''
+      const nonCubitMixinCode = '''
 sealed class E {}
 mixin BlocTelemetryMixin on BlocSignal<E, int> {
   void tap() {
@@ -1466,15 +1350,12 @@ mixin PlainTelemetryMixin {
   }
 }
 ''';
-        expect(
-          await runLintRule(
-            const AvoidPseudoEventsInTelemetry(),
-            nonCubitMixinCode,
-          ),
-          isEmpty,
-        );
+      expect(
+        await runLintRule(AvoidPseudoEventsInTelemetry(), nonCubitMixinCode),
+        isEmpty,
+      );
 
-        const foreignCascadeEmitCode = '''
+      const foreignCascadeEmitCode = '''
 class Other {
   void emit(int v) {}
 }
@@ -1486,14 +1367,336 @@ class MyCubit extends CubitSignal<int> {
   }
 }
 ''';
+      expect(
+        await runLintRule(RequireEmitInHelperName(), foreignCascadeEmitCode),
+        isEmpty,
+      );
+    });
+  });
+
+  group('(Issue #439) Dart 3.13 Primary Constructor Classes', () {
+    test('RequireCubitSignalMixinInit flags EmptyClassBody and primary '
+        'constructors without initCubitSignal, and accepts initialized '
+        'PrimaryConstructorBody', () async {
+      const emptyBodyPrimary = '''
+class S() with CubitSignalMixin<int>;
+''';
+      expect(
+        await runLintRule(RequireCubitSignalMixinInit(), emptyBodyPrimary),
+        hasLength(1),
+      );
+
+      const emptyBodyNoCtor = '''
+class S with CubitSignalMixin<int>;
+''';
+      expect(
+        await runLintRule(RequireCubitSignalMixinInit(), emptyBodyNoCtor),
+        hasLength(1),
+      );
+
+      const blockBodyPrimaryNoInit = '''
+class S() with CubitSignalMixin<int> {
+  void inc() => emit(stateValue + 1);
+}
+''';
+      expect(
+        await runLintRule(
+          RequireCubitSignalMixinInit(),
+          blockBodyPrimaryNoInit,
+        ),
+        hasLength(1),
+      );
+
+      const primaryBodyMissingInit = '''
+class S() with CubitSignalMixin<int> {
+  this {
+    final x = 1;
+  }
+}
+''';
+      expect(
+        await runLintRule(
+          RequireCubitSignalMixinInit(),
+          primaryBodyMissingInit,
+        ),
+        hasLength(1),
+      );
+
+      const primaryBodyWithInit = '''
+class S() with CubitSignalMixin<int> {
+  this {
+    initCubitSignal(initialState: 0);
+  }
+}
+''';
+      expect(
+        await runLintRule(RequireCubitSignalMixinInit(), primaryBodyWithInit),
+        isEmpty,
+      );
+    });
+
+    test('RequireCubitSignalMixinInitFix synthesizes this { ... } for primary '
+        'constructors without creating duplicate constructors', () async {
+      const emptyBodyPrimary = '''
+class S() with CubitSignalMixin<int>;
+''';
+      final fixedEmptyPrimary = await runLintFix(
+        RequireCubitSignalMixinInit(),
+        RequireCubitSignalMixinInitFix.new,
+        emptyBodyPrimary,
+      );
+      expect(
+        fixedEmptyPrimary,
+        contains(
+          'this {\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
+        ),
+      );
+      expect(fixedEmptyPrimary, isNot(contains('S() {')));
+
+      const blockBodyPrimary = '''
+class S() with CubitSignalMixin<int> {
+  void inc() => emit(stateValue + 1);
+}
+''';
+      final fixedBlockPrimary = await runLintFix(
+        RequireCubitSignalMixinInit(),
+        RequireCubitSignalMixinInitFix.new,
+        blockBodyPrimary,
+      );
+      expect(
+        fixedBlockPrimary,
+        contains(
+          'this {\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
+        ),
+      );
+      expect(fixedBlockPrimary, isNot(contains('S() {')));
+
+      const primaryBodyBlock = '''
+class S() with CubitSignalMixin<int> {
+  this {
+    final x = 1;
+  }
+}
+''';
+      final fixedPrimaryBody = await runLintFix(
+        RequireCubitSignalMixinInit(),
+        RequireCubitSignalMixinInitFix.new,
+        primaryBodyBlock,
+      );
+      expect(
+        fixedPrimaryBody,
+        contains('initCubitSignal(initialState: TODO_INITIAL_STATE);'),
+      );
+    });
+
+    test(
+      'AvoidMultipleSynchronousEmits flags multiple synchronous emits inside '
+      'PrimaryConstructorBody and safely ignores EmptyClassBody',
+      () async {
+        const emptyBody = '''
+class S() extends CubitSignal<int>;
+''';
+        expect(
+          await runLintRule(AvoidMultipleSynchronousEmits(), emptyBody),
+          isEmpty,
+        );
+
+        const primaryBodyDoubleEmit = '''
+class S() extends CubitSignal<int> {
+  this : super(initialState: 0) {
+    emit(1);
+    emit(2);
+  }
+}
+''';
         expect(
           await runLintRule(
-            const RequireEmitInHelperName(),
-            foreignCascadeEmitCode,
+            AvoidMultipleSynchronousEmits(),
+            primaryBodyDoubleEmit,
           ),
-          isEmpty,
+          hasLength(1),
         );
       },
     );
+  });
+
+  group('(Issue #439) Coverage Edge Cases', () {
+    test('RequireCubitSignalMixinInit handles typedef mixin aliases and '
+        'RequireCubitSignalMixinInitFix handles EmptyFunctionBody this; '
+        'and EmptyClassBody without primary constructor', () async {
+      const aliasCode = '''
+sealed class E {}
+typedef AliasCubit = CubitSignalMixin<int>;
+typedef AliasBloc = BlocSignalMixin<E, int>;
+
+class C with AliasCubit {}
+class B extends BlocSignalBase<int> with AliasBloc {
+  B() : super(initialState: 0);
+}
+''';
+      expect(
+        await runLintRule(RequireCubitSignalMixinInit(), aliasCode),
+        hasLength(2),
+      );
+
+      const emptyPrimaryBody = '''
+class S() with CubitSignalMixin<int> {
+  this;
+}
+''';
+      final fixedEmptyPrimaryBody = await runLintFix(
+        RequireCubitSignalMixinInit(),
+        RequireCubitSignalMixinInitFix.new,
+        emptyPrimaryBody,
+      );
+      expect(
+        fixedEmptyPrimaryBody,
+        contains('initCubitSignal(initialState: TODO_INITIAL_STATE);'),
+      );
+
+      const emptyClassBody = '''
+class S with CubitSignalMixin<int>;
+''';
+      final fixedEmptyClassBody = await runLintFix(
+        RequireCubitSignalMixinInit(),
+        RequireCubitSignalMixinInitFix.new,
+        emptyClassBody,
+      );
+      expect(
+        fixedEmptyClassBody,
+        contains(
+          'S() {\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
+        ),
+      );
+    });
+
+    test('UI and container rules cover unresolved fallback branches', () async {
+      const watchUnresolvedCode = '''
+class W {
+  Object build(BuildContext ctx) {
+    ctx.watch<UnresolvedBloc>();
+    ctx.watch<UnresolvedCubit>();
+    ctx.watch<UnresolvedBlocSignal>();
+    ctx.watch<UnresolvedCubitSignal>();
+    return Object();
+  }
+}
+''';
+      expect(
+        await runLintRule(AvoidContextWatchForBlocState(), watchUnresolvedCode),
+        hasLength(4),
+      );
+
+      const watchTypedContextCode = '''
+import 'package:flutter/widgets.dart';
+
+class W {
+  Object build(BuildContext myCtx) {
+    myCtx.watch<CounterBloc>();
+    return Object();
+  }
+}
+class CounterBloc {}
+''';
+      expect(
+        await runLintRule(
+          AvoidContextWatchForBlocState(),
+          watchTypedContextCode,
+        ),
+        hasLength(1),
+      );
+
+      const manualCloseUnresolvedCode = '''
+class W {
+  void dispose() {
+    ctx.read<CounterBloc>().close();
+    this.ctx.read<CounterBloc>().close();
+    final p = BlocSignalProvider();
+    p.of(context).close();
+  }
+}
+class BlocSignalProvider {
+  dynamic of(dynamic c) => null;
+}
+''';
+      expect(
+        await runLintRule(
+          AvoidManualCloseOnProvidedBloc(),
+          manualCloseUnresolvedCode,
+        ),
+        hasLength(3),
+      );
+
+      const providerValueCode = '''
+class B extends CubitSignal<int> { B() : super(initialState: 0); }
+Object BlocSignalProvider_value({Object? create}) => Object();
+void f(B b) {
+  BlocSignalProvider.value(value: b);
+}
+''';
+      expect(
+        await runLintRule(
+          AvoidProvidingExistingInstanceWithCreate(),
+          providerValueCode,
+        ),
+        isEmpty,
+      );
+
+      const topLevelUnresolvedCode = '''
+class UnresolvedBloc {}
+class UnresolvedCubit {}
+class UnresolvedBlocSignal {}
+final myBloc = UnresolvedBloc();
+final myCubit = UnresolvedCubit();
+final myBlocSignal = UnresolvedBlocSignal();
+''';
+      expect(
+        await runLintRule(
+          AvoidTopLevelBlocSignalInstances(),
+          topLevelUnresolvedCode,
+        ),
+        hasLength(3),
+      );
+
+      const unresolvedReplayCode = '''
+class ReplayCubit<T> {
+  ReplayCubit.positional(T s);
+}
+class ReplayBloc<E, S> {
+  ReplayBloc.positional(S s);
+}
+class UnresolvedReplay extends ReplayCubit<int> {
+  UnresolvedReplay() : super.positional(0);
+}
+class UnresolvedReplayBloc extends ReplayBloc<int, int> {
+  UnresolvedReplayBloc() : super.positional(0);
+}
+''';
+      expect(
+        await runLintRule(PreferNamedReplayConstructor(), unresolvedReplayCode),
+        hasLength(2),
+      );
+
+      const unresolvedSelectCode = '''
+void f() {
+  buildContext.select<CounterBloc, int>((b) => 0);
+  obj.buildContext.select<CounterBloc, int>((b) => 0);
+}
+''';
+      expect(
+        await runLintRule(AvoidUnusedSelectResult(), unresolvedSelectCode),
+        hasLength(2),
+      );
+
+      const implementsBlocCode = '''
+class FakeBloc implements HydratedBloc {
+  void _h() { emit(1); }
+}
+''';
+      expect(
+        await runLintRule(RequireEmitInHelperName(), implementsBlocCode),
+        hasLength(1),
+      );
+    });
   });
 }

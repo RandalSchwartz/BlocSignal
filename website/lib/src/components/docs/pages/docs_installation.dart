@@ -333,7 +333,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
           li([
             strong([Component.text('Published Packages: ')]),
             Component.text(
-              'Target sdk: ^3.5.0, making them fully compatible with all stable Flutter channels (3.22+).',
+              'Runtime bloc_signals* packages target sdk: ^3.5.0 (compatible with stable Flutter 3.22+), while bloc_signals_lint requires sdk: ^3.13.0 for native analysis_server_plugin support.',
             ),
           ]),
           li([
@@ -350,7 +350,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
         h2([Component.text('Linter & Static Analysis Setup')]),
         p([
           Component.text(
-            'Add bloc_signals_lint to your dev_dependencies for automatic IDE diagnostics and quick-fixes:',
+            'Enable bloc_signals_lint solely under plugins: in your root analysis_options.yaml for automatic IDE diagnostics and quick-fixes (no dev_dependencies entry is needed; use path: for local unreleased workspaces):',
           ),
         ]),
         const DocsCodeBlock(
@@ -358,16 +358,11 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
           language: 'yaml',
           code: '''
 plugins:
-  custom_lint:
-
-custom_lint:
-  rules:
-    - avoid_duplicate_event_handlers
-    - require_super_on_event
-    - avoid_stream_transformers_on_bloc_signal
-    - avoid_direct_signal_mutation_outside_bloc
-    - avoid_emit_in_build
-    - prefer_bloc_signal_provider_read_in_callbacks
+  bloc_signals_lint:
+    version: ^2.0.0
+    diagnostics:
+      avoid_duplicate_event_handlers: true
+      require_super_on_event: true
 ''',
         ),
       ]),

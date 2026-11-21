@@ -1,22 +1,27 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/listener.dart';
-import 'package:bloc_signals_lint/src/fixes/prefer_read_in_callbacks_fix.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/error/error.dart';
 import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that suggests using `context.read<T>()` instead of
 /// `context.watch<T>()` inside event callback closures.
-class PreferBlocSignalProviderReadInCallbacks extends DartLintRule {
+class PreferBlocSignalProviderReadInCallbacks extends AnalysisRule {
   /// Creates a [PreferBlocSignalProviderReadInCallbacks] lint rule.
-  const PreferBlocSignalProviderReadInCallbacks() : super(code: _code);
+  new()
+    : super(
+        name: 'prefer_bloc_signal_provider_read_in_callbacks',
+        description:
+            'Prefer context.read<T>() over context.watch<T>() inside event '
+            'callback closures.',
+      );
 
-  static const _code = LintCode(
-    name: 'prefer_bloc_signal_provider_read_in_callbacks',
-    problemMessage:
-        'Prefer using "context.read<T>()" inside event callbacks instead '
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'prefer_bloc_signal_provider_read_in_callbacks',
+    'Prefer using "context.read<T>()" inside event callbacks instead '
         'of "context.watch<T>()".',
     correctionMessage:
         'Change "context.watch<T>()" to "context.read<T>()" to prevent '
@@ -24,30 +29,36 @@ class PreferBlocSignalProviderReadInCallbacks extends DartLintRule {
   );
 
   @override
-  List<Fix> getFixes() => [PreferReadInCallbacksFix()];
+  LintCode get diagnosticCode => code;
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addMethodInvocation((node) {
-      if (node.methodName.name != 'watch') return;
+    registry.addMethodInvocation(this, _Visitor(this));
+  }
+}
 
-      if (!BlocContainerUtils.isBuildContextReceiver(node.target)) return;
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
 
-      final enclosingFunction = node.thisOrAncestorOfType<FunctionExpression>();
-      if (enclosingFunction == null) return;
+  final PreferBlocSignalProviderReadInCallbacks rule;
 
-      final parentArg =
-          enclosingFunction.thisOrAncestorOfType<NamedExpression>();
-      if (parentArg != null) {
-        final paramName = parentArg.name.label.name;
-        if (paramName.startsWith('on') || paramName.endsWith('Callback')) {
-          reporter.atNode(node.methodName, code);
-        }
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    if (node.methodName.name != 'watch') return;
+    if (!BlocContainerUtils.isBuildContextReceiver(node.target)) return;
+
+    final enclosingFunction = node.thisOrAncestorOfType<FunctionExpression>();
+    if (enclosingFunction == null) return;
+
+    final parentArg = enclosingFunction.thisOrAncestorOfType<NamedArgument>();
+    if (parentArg != null) {
+      final paramName = parentArg.name.lexeme;
+      if (paramName.startsWith('on') || paramName.endsWith('Callback')) {
+        rule.reportAtNode(node.methodName);
       }
-    });
+    }
   }
 }

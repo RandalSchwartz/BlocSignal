@@ -12,16 +12,15 @@ topics:
   - signals
 
 environment:
-  sdk: ^3.5.0
+  sdk: ^3.13.0
 
 dependencies:
-  analyzer: ">=6.8.0 <15.0.0"
+  analysis_server_plugin: ^0.3.26
+  analyzer: ^14.7.0
+  analyzer_plugin: ^0.14.20
   bloc_signals: ^1.5.0
-  custom_lint_builder: ">=0.8.0 <0.9.0"
   meta: ">=1.11.0 <2.0.0"
 
 dev_dependencies:
-  analyzer_plugin: ">=0.13.0 <1.0.0"
-  custom_lint: ^0.8.0
   test: ^1.25.6
   very_good_analysis: ">=10.3.0 <12.0.0"

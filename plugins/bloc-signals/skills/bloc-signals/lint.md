@@ -6,7 +6,7 @@
 
 ## 📋 Rules & Quick-Fixes
 
-All rules are **enabled by default** once `custom_lint` is configured in `analysis_options.yaml`.
+All rules are **enabled by default** once `bloc_signals_lint` is configured under `plugins:` in `analysis_options.yaml`.
 
 ### Core Framework Rules
 
@@ -45,20 +45,15 @@ All rules are **enabled by default** once `custom_lint` is configured in `analys
 
 ### Enabling/Disabling Rules in `analysis_options.yaml`
 
-To enable, disable, or customize severity for specific rules, add a `custom_lint` section in your project's `analysis_options.yaml`:
+To enable or disable specific rules, configure `diagnostics:` under `plugins.bloc_signals_lint` in your root `analysis_options.yaml` (no `dev_dependencies:` entry is needed; use `path:` for local unreleased workspaces):
 
 ```yaml
-analyzer:
-  plugins:
-    - custom_lint
-
-custom_lint:
-  rules:
-    # Disable a rule
-    - avoid_duplicate_event_handlers: false
-
-    # Change severity to error
-    - require_super_on_event: error
+plugins:
+  bloc_signals_lint:
+    version: ^2.0.0
+    diagnostics:
+      # Disable a rule
+      avoid_duplicate_event_handlers: false
 ```
 
 ### Disabling Rules in Code
@@ -67,19 +62,19 @@ To ignore a rule for a specific line or file:
 
 ```dart
 // Single line ignore
-// ignore: avoid_duplicate_event_handlers
+// ignore: bloc_signals_lint/avoid_duplicate_event_handlers
 on<Increment>((event, emit) => emit(stateValue + 1));
 
 // File-wide ignore
-// ignore_for_file: avoid_stream_transformers_on_bloc_signal
+// ignore_for_file: bloc_signals_lint/avoid_stream_transformers_on_bloc_signal
 ```
 
 ---
 
 ## 🧪 Testing Custom Lint Rules (`SCAR-TEST-23`)
 
-When authoring or modifying rules in `bloc_signals_lint`, never test rules using syntactic `parseString()` ASTs or test-local `RecursiveAstVisitor` stubs. Always execute the production `rule.run()` pipeline against a semantically resolved AST using `runLintRule` and `disposeLintTestHarness` in `bloc_signals_lint/test/src/lint_test_harness.dart`:
+When authoring or modifying rules in `bloc_signals_lint`, never test rules using syntactic `parseString()` ASTs or test-local `RecursiveAstVisitor` stubs. Always execute the production `AnalysisRule.registerNodeProcessors(...)` pipeline against a semantically resolved AST using `runLintRule` (and `runLintFix` for `ResolvedCorrectionProducer` quick-fixes) and `disposeLintTestHarness` in `bloc_signals_lint/test/src/lint_test_harness.dart`:
 
-- **End-to-End Semantic Resolution**: `runLintRule(const MyLintRule(), sourceCode)` provisions a temporary workspace with `.dart_tool/package_config.json` (`package:bloc_signals`, `package:bloc_signals_replay`, `package:flutter`), resolves full semantic types (`DartType`, `InterfaceElement`, `TypeChecker`) via `AnalysisContextCollection` and `getResolvedUnit`, and returns reported `ReportedLint` diagnostics.
+- **End-to-End Semantic Resolution**: `runLintRule(MyLintRule(), sourceCode)` and `runLintFix(MyLintRule(), MyLintFix.new, sourceCode)` provision a temporary workspace with `.dart_tool/package_config.json` (`package:bloc_signals`, `package:bloc_signals_replay`, `package:flutter`), resolve full semantic types (`DartType`, `InterfaceElement`, `TypeChecker`) via `AnalysisContextCollection` and `getResolvedUnit`, and return reported `ReportedLint` diagnostics or transformed source code.
 - **`flutter_tester` SDK Discovery**: `lint_test_harness.dart` automatically walks up from `Platform.resolvedExecutable` to locate `dart-sdk/lib/_internal/allowed_experiments.json` when invoked under `flutter test`.
 - **Lifecycle Cleanup**: Always register `tearDownAll(disposeLintTestHarness);` at the top of `main()` in lint test suites to delete the temporary workspace directory and reset the shared `AnalysisContextCollection`.

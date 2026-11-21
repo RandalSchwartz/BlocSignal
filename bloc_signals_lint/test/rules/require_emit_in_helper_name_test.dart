@@ -6,26 +6,30 @@ import 'package:test/test.dart';
 void main() {
   group('RequireEmitInHelperName AST Detection', () {
     test('rule metadata is properly configured', () {
-      const rule = RequireEmitInHelperName();
-      expect(rule.code.name, equals('require_emit_in_helper_name'));
+      final rule = RequireEmitInHelperName();
       expect(
-        rule.code.problemMessage,
+        rule.diagnosticCode.lowerCaseName,
+        equals('require_emit_in_helper_name'),
+      );
+      expect(
+        rule.diagnosticCode.problemMessage,
         equals(
           "Private helper method '{0}' calls `emit()`, but its name does "
           'not reflect state emission.',
         ),
       );
       expect(
-        rule.code.correctionMessage,
+        rule.diagnosticCode.correctionMessage,
         equals(
           "Rename to '{0}AndEmit' to declare state transition side-effects.",
         ),
       );
     });
 
-    test('flags private helper method calling emit() with non-emitting name',
-        () {
-      const badCode = '''
+    test(
+      'flags private helper method calling emit() with non-emitting name',
+      () {
+        const badCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -34,24 +38,25 @@ class CounterCubit extends CubitSignal<int> {
   }
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final flagged = <String>[];
+        final parseResult = parseString(content: badCode);
+        final flagged = <String>[];
 
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        for (final method
-            in declaration.members.whereType<MethodDeclaration>()) {
-          if (RequireEmitInHelperName.isFlaggedHelper(method)) {
-            flagged.add(method.name.lexeme);
+        for (final declaration
+            in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
+          for (final method
+              in (declaration.body as BlockClassBody).members
+                  .whereType<MethodDeclaration>()) {
+            if (RequireEmitInHelperName.isFlaggedHelper(method)) {
+              flagged.add(method.name.lexeme);
+            }
           }
         }
-      }
 
-      expect(flagged, contains('_prune'));
-    });
+        expect(flagged, contains('_prune'));
+      },
+    );
 
-    test(
-        'flags private helper method calling this.emit() '
+    test('flags private helper method calling this.emit() '
         'with non-emitting name', () {
       const badCode = '''
 class CounterCubit extends CubitSignal<int> {
@@ -68,7 +73,8 @@ class CounterCubit extends CubitSignal<int> {
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
         for (final method
-            in declaration.members.whereType<MethodDeclaration>()) {
+            in (declaration.body as BlockClassBody).members
+                .whereType<MethodDeclaration>()) {
           if (RequireEmitInHelperName.isFlaggedHelper(method)) {
             flagged.add(method.name.lexeme);
           }
@@ -98,7 +104,8 @@ class CounterCubit extends CubitSignal<int> {
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
         for (final method
-            in declaration.members.whereType<MethodDeclaration>()) {
+            in (declaration.body as BlockClassBody).members
+                .whereType<MethodDeclaration>()) {
           if (RequireEmitInHelperName.isFlaggedHelper(method)) {
             flagged.add(method.name.lexeme);
           }
@@ -128,7 +135,8 @@ class CounterCubit extends CubitSignal<int> {
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
         for (final method
-            in declaration.members.whereType<MethodDeclaration>()) {
+            in (declaration.body as BlockClassBody).members
+                .whereType<MethodDeclaration>()) {
           if (RequireEmitInHelperName.isFlaggedHelper(method)) {
             flagged.add(method.name.lexeme);
           }
@@ -158,7 +166,8 @@ class CounterCubit extends CubitSignal<int> {
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
         for (final method
-            in declaration.members.whereType<MethodDeclaration>()) {
+            in (declaration.body as BlockClassBody).members
+                .whereType<MethodDeclaration>()) {
           if (RequireEmitInHelperName.isFlaggedHelper(method)) {
             flagged.add(method.name.lexeme);
           }
@@ -184,7 +193,8 @@ class CounterCubit extends CubitSignal<int> {
       for (final declaration
           in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
         for (final method
-            in declaration.members.whereType<MethodDeclaration>()) {
+            in (declaration.body as BlockClassBody).members
+                .whereType<MethodDeclaration>()) {
           if (RequireEmitInHelperName.isFlaggedHelper(method)) {
             flagged.add(method.name.lexeme);
           }
@@ -194,26 +204,31 @@ class CounterCubit extends CubitSignal<int> {
       expect(flagged, isEmpty);
     });
 
-    test('does not flag words containing "emit" as substring like "semitone"',
-        () {
-      expect(RequireEmitInHelperName.isEmittingName('_transmit'), isFalse);
-      expect(RequireEmitInHelperName.isEmittingName('_permit'), isFalse);
-      expect(RequireEmitInHelperName.isEmittingName('_delimiter'), isFalse);
-      expect(RequireEmitInHelperName.isEmittingName('_prune'), isFalse);
-      expect(RequireEmitInHelperName.isEmittingName('_semitone'), isFalse);
-      expect(RequireEmitInHelperName.isEmittingName('_extremity'), isFalse);
-      expect(RequireEmitInHelperName.isEmittingName('_remittance'), isFalse);
-      expect(RequireEmitInHelperName.isEmittingName('_demit'), isFalse);
+    test(
+      'does not flag words containing "emit" as substring like "semitone"',
+      () {
+        expect(RequireEmitInHelperName.isEmittingName('_transmit'), isFalse);
+        expect(RequireEmitInHelperName.isEmittingName('_permit'), isFalse);
+        expect(RequireEmitInHelperName.isEmittingName('_delimiter'), isFalse);
+        expect(RequireEmitInHelperName.isEmittingName('_prune'), isFalse);
+        expect(RequireEmitInHelperName.isEmittingName('_semitone'), isFalse);
+        expect(RequireEmitInHelperName.isEmittingName('_extremity'), isFalse);
+        expect(RequireEmitInHelperName.isEmittingName('_remittance'), isFalse);
+        expect(RequireEmitInHelperName.isEmittingName('_demit'), isFalse);
 
-      expect(RequireEmitInHelperName.isEmittingName('_emit'), isTrue);
-      expect(RequireEmitInHelperName.isEmittingName('_emitData'), isTrue);
-      expect(RequireEmitInHelperName.isEmittingName('_pruneAndEmit'), isTrue);
-      expect(RequireEmitInHelperName.isEmittingName('_updateEmit'), isTrue);
-      expect(
-        RequireEmitInHelperName.isEmittingName('_recalculateAndEmitValue'),
-        isTrue,
-      );
-      expect(RequireEmitInHelperName.isEmittingName('_prune_and_emit'), isTrue);
-    });
+        expect(RequireEmitInHelperName.isEmittingName('_emit'), isTrue);
+        expect(RequireEmitInHelperName.isEmittingName('_emitData'), isTrue);
+        expect(RequireEmitInHelperName.isEmittingName('_pruneAndEmit'), isTrue);
+        expect(RequireEmitInHelperName.isEmittingName('_updateEmit'), isTrue);
+        expect(
+          RequireEmitInHelperName.isEmittingName('_recalculateAndEmitValue'),
+          isTrue,
+        );
+        expect(
+          RequireEmitInHelperName.isEmittingName('_prune_and_emit'),
+          isTrue,
+        );
+      },
+    );
   });
 }

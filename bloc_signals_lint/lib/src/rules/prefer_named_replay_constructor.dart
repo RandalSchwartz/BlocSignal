@@ -1,21 +1,28 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/listener.dart';
-import 'package:bloc_signals_lint/src/fixes/replace_positional_replay_constructor_fix.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/error/error.dart';
+import 'package:bloc_signals_lint/src/utils/type_checker.dart';
 
 /// A lint rule that flags `super.positional(...)` invocations in
 /// `ReplayCubit` and `ReplayBloc` subclasses, recommending the standard
 /// `super(initialState: ...)`.
-class PreferNamedReplayConstructor extends DartLintRule {
+class PreferNamedReplayConstructor extends AnalysisRule {
   /// Creates a [PreferNamedReplayConstructor] lint rule.
-  const PreferNamedReplayConstructor() : super(code: _code);
+  new()
+    : super(
+        name: 'prefer_named_replay_constructor',
+        description:
+            'Flag deprecated super.positional(...) calls in ReplayCubit and '
+            'ReplayBloc subclasses.',
+      );
 
-  static const _code = LintCode(
-    name: 'prefer_named_replay_constructor',
-    problemMessage: 'Super-constructor call uses deprecated positional syntax '
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'prefer_named_replay_constructor',
+    'Super-constructor call uses deprecated positional syntax '
         '"super.positional(...)".',
     correctionMessage:
         'Migrate to the standard named constructor "super(initialState: ...)".',
@@ -32,33 +39,46 @@ class PreferNamedReplayConstructor extends DartLintRule {
   );
 
   @override
-  List<Fix> getFixes() => [ReplacePositionalReplayConstructorFix()];
+  LintCode get diagnosticCode => code;
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addSuperConstructorInvocation((node) {
-      if (node.constructorName?.name != 'positional') return;
+    registry.addSuperConstructorInvocation(this, _Visitor(this));
+  }
+}
 
-      final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
-      if (classNode == null) return;
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
 
-      final classElement = classNode.declaredFragment?.element;
-      final extendsClause = classNode.extendsClause?.superclass.toSource();
+  final PreferNamedReplayConstructor rule;
 
-      final isReplayContainer = (classElement != null &&
-              (_replayCubitChecker.isSuperOf(classElement) ||
-                  _replayBlocChecker.isSuperOf(classElement))) ||
-          (extendsClause != null &&
-              (extendsClause.startsWith('ReplayCubit') ||
-                  extendsClause.startsWith('ReplayBloc')));
+  @override
+  void visitSuperConstructorInvocation(SuperConstructorInvocation node) {
+    if (node.constructorName?.name != 'positional') return;
 
-      if (isReplayContainer) {
-        reporter.atNode(node, code);
-      }
-    });
+    final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
+    if (classNode == null) return;
+
+    final classElement = classNode.declaredFragment?.element;
+    final extendsClause = classNode.extendsClause?.superclass.toSource();
+
+    final isReplayContainer =
+        (classElement != null &&
+            (PreferNamedReplayConstructor._replayCubitChecker.isSuperOf(
+                  classElement,
+                ) ||
+                PreferNamedReplayConstructor._replayBlocChecker.isSuperOf(
+                  classElement,
+                ))) ||
+        (extendsClause != null &&
+            (extendsClause.startsWith('ReplayCubit') ||
+                extendsClause.startsWith('ReplayBloc')));
+
+    if (isReplayContainer) {
+      rule.reportAtNode(node);
+    }
   }
 }

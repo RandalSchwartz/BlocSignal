@@ -1,22 +1,27 @@
-import 'package:analyzer/dart/analysis/utilities.dart';
-import 'package:analyzer/dart/ast/ast.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_primitive_event_types.dart';
 import 'package:test/test.dart';
 
+import '../src/lint_test_harness.dart';
+
 void main() {
-  group('AvoidPrimitiveEventTypes AST Detection', () {
+  tearDownAll(disposeLintTestHarness);
+
+  group('AvoidPrimitiveEventTypes Semantic Detection', () {
     test('rule metadata is properly configured', () {
-      const rule = AvoidPrimitiveEventTypes();
-      expect(rule.code.name, equals('avoid_primitive_event_types'));
+      final rule = AvoidPrimitiveEventTypes();
       expect(
-        rule.code.problemMessage,
+        rule.diagnosticCode.lowerCaseName,
+        equals('avoid_primitive_event_types'),
+      );
+      expect(
+        rule.diagnosticCode.problemMessage,
         equals(
           'Avoid using primitive or untyped types ("{0}") for BlocSignal '
           'events. Events should be dedicated sealed classes or records.',
         ),
       );
       expect(
-        rule.code.correctionMessage,
+        rule.diagnosticCode.correctionMessage,
         equals(
           'Define a dedicated event class or record (for example, '
           '"sealed class MyEvent {}") to model state transitions cleanly.',
@@ -24,44 +29,42 @@ void main() {
       );
     });
 
-    test('detects primitive int event type in BlocSignal', () {
+    test('detects primitive int event type in BlocSignal', () async {
       const badCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
 class CounterBloc extends BlocSignal<int, int> {
   CounterBloc() : super(initialState: 0);
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final flaggedNodes = <AstNode>[];
-
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, hasLength(1));
+      final diagnostics = await runLintRule(
+        AvoidPrimitiveEventTypes(),
+        badCode,
+      );
+      expect(diagnostics, hasLength(1));
     });
 
-    test('detects primitive String event type in BlocSignal', () {
+    test('detects primitive String event type in BlocSignal', () async {
       const badCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
 class TextBloc extends BlocSignal<String, String> {
   TextBloc() : super(initialState: '');
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final flaggedNodes = <AstNode>[];
-
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, hasLength(1));
+      final diagnostics = await runLintRule(
+        AvoidPrimitiveEventTypes(),
+        badCode,
+      );
+      expect(diagnostics, hasLength(1));
     });
 
-    test('detects primitive bool and double event types in BlocSignal', () {
-      const badCode = '''
+    test(
+      'detects primitive bool and double event types in BlocSignal',
+      () async {
+        const badCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
 class BoolBloc extends BlocSignal<bool, bool> {
   BoolBloc() : super(initialState: false);
 }
@@ -69,21 +72,20 @@ class DoubleBloc extends BlocSignal<double, double> {
   DoubleBloc() : super(initialState: 0.0);
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final flaggedNodes = <AstNode>[];
+        final diagnostics = await runLintRule(
+          AvoidPrimitiveEventTypes(),
+          badCode,
+        );
+        expect(diagnostics, hasLength(2));
+      },
+    );
 
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
+    test(
+      'detects num, dynamic, Object, and nullable primitive event types',
+      () async {
+        const badCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
 
-      expect(flaggedNodes, hasLength(2));
-    });
-
-    test('detects num, dynamic, Object, and nullable primitive event types',
-        () {
-      const badCode = '''
 class NumBloc extends BlocSignal<num, int> {
   NumBloc() : super(initialState: 0);
 }
@@ -97,76 +99,69 @@ class NullableIntBloc extends BlocSignal<int?, int> {
   NullableIntBloc() : super(initialState: 0);
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final flaggedNodes = <AstNode>[];
+        final diagnostics = await runLintRule(
+          AvoidPrimitiveEventTypes(),
+          badCode,
+        );
+        expect(diagnostics, hasLength(4));
+      },
+    );
 
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, hasLength(4));
-    });
-
-    test('detects primitive event type when using BlocSignalMixin', () {
+    test('detects primitive event type when using BlocSignalMixin', () async {
       const badCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
+class BaseService extends BlocSignalBase<int> {
+  BaseService() : super(initialState: 0);
+}
+
 class ServiceBloc extends BaseService with BlocSignalMixin<int, int> {
   ServiceBloc() {
     initCubitSignal(initialState: 0);
   }
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final flaggedNodes = <AstNode>[];
-
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, hasLength(1));
+      final diagnostics = await runLintRule(
+        AvoidPrimitiveEventTypes(),
+        badCode,
+      );
+      expect(diagnostics, hasLength(1));
     });
 
-    test('detects primitive event type when extending ReplayBloc', () {
+    test('detects primitive event type when extending ReplayBloc', () async {
       const badCode = '''
+import 'package:bloc_signals_replay/bloc_signals_replay.dart';
+
 class ReplayCounterBloc extends ReplayBloc<int, int> {
   ReplayCounterBloc() : super(initialState: 0);
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final flaggedNodes = <AstNode>[];
-
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, hasLength(1));
+      final diagnostics = await runLintRule(
+        AvoidPrimitiveEventTypes(),
+        badCode,
+      );
+      expect(diagnostics, hasLength(1));
     });
 
-    test('detects raw BlocSignal without type arguments', () {
+    test('detects raw BlocSignal without type arguments', () async {
       const badCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
 class RawBloc extends BlocSignal {
   RawBloc() : super(initialState: 0);
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final flaggedNodes = <AstNode>[];
-
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, hasLength(1));
+      final diagnostics = await runLintRule(
+        AvoidPrimitiveEventTypes(),
+        badCode,
+      );
+      expect(diagnostics, hasLength(1));
     });
 
-    test('accepts dedicated event class in BlocSignal', () {
+    test('accepts dedicated event class in BlocSignal', () async {
       const goodCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
 sealed class CounterEvent {}
 class Increment extends CounterEvent {}
 
@@ -174,74 +169,64 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
   CounterBloc() : super(initialState: 0);
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final flaggedNodes = <AstNode>[];
-
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, isEmpty);
+      final diagnostics = await runLintRule(
+        AvoidPrimitiveEventTypes(),
+        goodCode,
+      );
+      expect(diagnostics, isEmpty);
     });
 
-    test('accepts record event type in BlocSignal', () {
+    test('accepts record event type in BlocSignal', () async {
       const goodCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
 class CoordinateBloc extends BlocSignal<(int x, int y), int> {
   CoordinateBloc() : super(initialState: 0);
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final flaggedNodes = <AstNode>[];
-
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, isEmpty);
+      final diagnostics = await runLintRule(
+        AvoidPrimitiveEventTypes(),
+        goodCode,
+      );
+      expect(diagnostics, isEmpty);
     });
 
-    test('accepts CubitSignal with primitive state', () {
+    test('accepts CubitSignal with primitive state', () async {
       const goodCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final flaggedNodes = <AstNode>[];
-
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, isEmpty);
+      final diagnostics = await runLintRule(
+        AvoidPrimitiveEventTypes(),
+        goodCode,
+      );
+      expect(diagnostics, isEmpty);
     });
 
-    test('accepts unrelated non-bloc class with primitive generic', () {
+    test('accepts unrelated non-bloc class with primitive generic', () async {
       const goodCode = '''
 class GenericContainer<T> {}
 class IntContainer extends GenericContainer<int> {}
 ''';
-      final parseResult = parseString(content: goodCode);
-      final flaggedNodes = <AstNode>[];
-
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, isEmpty);
+      final diagnostics = await runLintRule(
+        AvoidPrimitiveEventTypes(),
+        goodCode,
+      );
+      expect(diagnostics, isEmpty);
     });
 
-    test('accepts non-bloc superclass with valid BlocSignalMixin', () {
+    test('accepts non-bloc superclass with valid BlocSignalMixin', () async {
       const goodCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
 sealed class UserEvent {}
+class BaseRepository extends BlocSignalBase<int> {
+  BaseRepository() : super(initialState: 0);
+}
+mixin DiagnosticableTreeMixin {}
 
 class UserBloc extends BaseRepository
     with DiagnosticableTreeMixin, BlocSignalMixin<UserEvent, int> {
@@ -250,21 +235,24 @@ class UserBloc extends BaseRepository
   }
 }
 ''';
-      final parseResult = parseString(content: goodCode);
-      final flaggedNodes = <AstNode>[];
-
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, isEmpty);
+      final diagnostics = await runLintRule(
+        AvoidPrimitiveEventTypes(),
+        goodCode,
+      );
+      expect(diagnostics, isEmpty);
     });
 
-    test('detects primitive event in BlocSignalMixin alongside other mixins',
-        () {
-      const badCode = '''
+    test(
+      'detects primitive event in BlocSignalMixin alongside other mixins',
+      () async {
+        const badCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
+class BaseRepository extends BlocSignalBase<int> {
+  BaseRepository() : super(initialState: 0);
+}
+mixin DiagnosticableTreeMixin {}
+
 class BadUserBloc extends BaseRepository
     with DiagnosticableTreeMixin, BlocSignalMixin<int, int> {
   BadUserBloc() {
@@ -272,16 +260,12 @@ class BadUserBloc extends BaseRepository
   }
 }
 ''';
-      final parseResult = parseString(content: badCode);
-      final flaggedNodes = <AstNode>[];
-
-      for (final declaration
-          in parseResult.unit.declarations.whereType<ClassDeclaration>()) {
-        flaggedNodes
-            .addAll(AvoidPrimitiveEventTypes.findViolations(declaration));
-      }
-
-      expect(flaggedNodes, hasLength(1));
-    });
+        final diagnostics = await runLintRule(
+          AvoidPrimitiveEventTypes(),
+          badCode,
+        );
+        expect(diagnostics, hasLength(1));
+      },
+    );
   });
 }

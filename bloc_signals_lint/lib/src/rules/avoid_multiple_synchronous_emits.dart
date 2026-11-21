@@ -1,24 +1,30 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:analyzer/error/listener.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analyzer/error/error.dart';
+import 'package:bloc_signals_lint/src/utils/type_checker.dart';
 
 /// A lint rule that flags multiple synchronous `emit()` calls occurring along
 /// the same linear control-flow path without an intervening `await`.
 ///
 /// In BlocSignal, state updates propagate synchronously in frame 0. Multiple
 /// synchronous emissions leak transient intermediate states.
-class AvoidMultipleSynchronousEmits extends DartLintRule {
+class AvoidMultipleSynchronousEmits extends AnalysisRule {
   /// Creates an [AvoidMultipleSynchronousEmits] lint rule.
-  const AvoidMultipleSynchronousEmits() : super(code: _code);
+  new()
+    : super(
+        name: 'avoid_multiple_synchronous_emits',
+        description:
+            'Flag multiple synchronous emit() calls along the same linear '
+            'execution path without an intervening await.',
+      );
 
-  static const _code = LintCode(
-    name: 'avoid_multiple_synchronous_emits',
-    problemMessage:
-        'Multiple synchronous `emit()` calls detected along the same '
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'avoid_multiple_synchronous_emits',
+    'Multiple synchronous `emit()` calls detected along the same '
         'execution path.',
     correctionMessage:
         'Consolidate into a single atomic state transition to prevent '
@@ -31,48 +37,23 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
   );
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  LintCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry
-      ..addClassDeclaration((node) {
-        final classElement = node.declaredFragment?.element;
-        final extendsClause = node.extendsClause?.superclass.toSource();
-        final withClause = node.withClause?.toSource();
-
-        final isBlocContainer = (classElement != null &&
-                _blocSignalBaseChecker.isSuperOf(classElement)) ||
-            (extendsClause != null &&
-                (extendsClause.contains('BlocSignal') ||
-                    extendsClause.contains('CubitSignal') ||
-                    extendsClause.contains('ReplayCubit') ||
-                    extendsClause.contains('ReplayBloc') ||
-                    extendsClause.contains('HydratedCubit') ||
-                    extendsClause.contains('HydratedBloc'))) ||
-            (withClause != null &&
-                (withClause.contains('CubitSignalMixin') ||
-                    withClause.contains('BlocSignalMixin') ||
-                    withClause.contains('ReplayMixin') ||
-                    withClause.contains('ReplayCubitMixin') ||
-                    withClause.contains('ReplayBlocMixin') ||
-                    withClause.contains('HydratedMixin')));
-
-        if (!isBlocContainer) return;
-
-        _reportViolations(findViolations(node), reporter);
-      })
-      ..addMixinDeclaration((node) {
-        if (!_isBlocContainerMixin(node)) return;
-        _reportViolations(findMixinViolations(node), reporter);
-      });
+    final visitor = _Visitor(this);
+    registry
+      ..addClassDeclaration(this, visitor)
+      ..addMixinDeclaration(this, visitor);
   }
 
-  void _reportViolations(List<AstNode> violations, ErrorReporter reporter) {
+  void _reportViolations(List<AstNode> violations) {
     for (final violation in violations) {
       if (violation is MethodInvocation) {
-        reporter.atNode(violation.methodName, code);
+        reportAtNode(violation.methodName);
       }
     }
   }
@@ -102,13 +83,19 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
 
   /// Identifies all AST nodes in [classNode] representing a secondary or
   /// subsequent synchronous state emission along the same linear path.
-  static List<AstNode> findViolations(ClassDeclaration classNode) =>
-      _findMemberViolations(classNode.members);
+  static List<AstNode> findViolations(ClassDeclaration classNode) {
+    final body = classNode.body;
+    if (body is! BlockClassBody) return const [];
+    return _findMemberViolations(body.members);
+  }
 
   /// Identifies all AST nodes in [mixinNode] representing a secondary or
   /// subsequent synchronous state emission along the same linear path.
-  static List<AstNode> findMixinViolations(MixinDeclaration mixinNode) =>
-      _findMemberViolations(mixinNode.members);
+  static List<AstNode> findMixinViolations(MixinDeclaration mixinNode) {
+    final body = mixinNode.body;
+    if (body is! BlockClassBody) return const [];
+    return _findMemberViolations(body.members);
+  }
 
   static List<AstNode> _findMemberViolations(NodeList<ClassMember> members) {
     final emittingMethods = _findSynchronousEmittingMethods(members);
@@ -123,27 +110,17 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
 
     for (final member in members) {
       if (member is MethodDeclaration) {
-        _analyzeFunctionBody(
-          member.body,
-          emittingMethods,
-          recordViolation,
-        );
+        _analyzeFunctionBody(member.body, emittingMethods, recordViolation);
       } else if (member is ConstructorDeclaration) {
-        _analyzeFunctionBody(
-          member.body,
-          emittingMethods,
-          recordViolation,
-        );
+        _analyzeFunctionBody(member.body, emittingMethods, recordViolation);
+      } else if (member is PrimaryConstructorBody) {
+        _analyzeFunctionBody(member.body, emittingMethods, recordViolation);
       }
     }
 
     // Also analyze any nested closures independently
     final visitor = _ClosureVisitor((closure) {
-      _analyzeFunctionBody(
-        closure.body,
-        emittingMethods,
-        recordViolation,
-      );
+      _analyzeFunctionBody(closure.body, emittingMethods, recordViolation);
     });
     for (final member in members) {
       member.accept(visitor);
@@ -397,7 +374,7 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
       final labeledMembers = <String, SwitchMember>{};
       for (final member in stmt.members) {
         for (final label in member.labels) {
-          labeledMembers[label.label.name] = member;
+          labeledMembers[label.name.lexeme] = member;
         }
       }
 
@@ -476,7 +453,7 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
     }
 
     if (stmt is ContinueStatement) {
-      final labelName = stmt.label?.name;
+      final labelName = stmt.label?.name.lexeme;
       for (final path in incomingPaths) {
         path
           ..isTerminated = true
@@ -516,8 +493,9 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
       // Simulate iteration 2 to catch loops repeating synchronous emits.
       // Only paths that neither terminated (for example return) nor broke
       // (break) will execute a second iteration.
-      final activeIter1 =
-          afterIter1.where((p) => !p.isTerminated && !p.isBroken).toList();
+      final activeIter1 = afterIter1
+          .where((p) => !p.isTerminated && !p.isBroken)
+          .toList();
       if (activeIter1.isNotEmpty) {
         _analyzeStatement(
           body,
@@ -552,23 +530,13 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
     if (stmt is ExpressionStatement) {
       final expr = stmt.expression;
       if (expr is ThrowExpression || expr is RethrowExpression) {
-        _evaluateExpression(
-          expr,
-          incomingPaths,
-          emittingMethods,
-          onViolation,
-        );
+        _evaluateExpression(expr, incomingPaths, emittingMethods, onViolation);
         for (final path in incomingPaths) {
           path.isTerminated = true;
         }
         return incomingPaths;
       }
-      _evaluateExpression(
-        expr,
-        incomingPaths,
-        emittingMethods,
-        onViolation,
-      );
+      _evaluateExpression(expr, incomingPaths, emittingMethods, onViolation);
       return incomingPaths;
     }
 
@@ -676,7 +644,7 @@ class AvoidMultipleSynchronousEmits extends DartLintRule {
 }
 
 class _PathState {
-  _PathState({
+  new({
     this.hasEmitted = false,
     this.isTerminated = false,
     this.isBroken = false,
@@ -691,18 +659,18 @@ class _PathState {
   String? continueLabel;
 
   _PathState clone() => _PathState(
-        hasEmitted: hasEmitted,
-        isTerminated: isTerminated,
-        isBroken: isBroken,
-        isContinued: isContinued,
-        continueLabel: continueLabel,
-      );
+    hasEmitted: hasEmitted,
+    isTerminated: isTerminated,
+    isBroken: isBroken,
+    isContinued: isContinued,
+    continueLabel: continueLabel,
+  );
 }
 
 /// Detects an `await` on the enclosing execution path, ignoring nested
 /// closures (their awaits do not suspend the path being analysed).
 class _AwaitDetector extends RecursiveAstVisitor<void> {
-  _AwaitDetector(this.onAwait);
+  new(this.onAwait);
 
   final void Function() onAwait;
 
@@ -728,7 +696,7 @@ class _AwaitDetector extends RecursiveAstVisitor<void> {
 }
 
 class _ClosureVisitor extends RecursiveAstVisitor<void> {
-  _ClosureVisitor(this.onClosure);
+  new(this.onClosure);
 
   final void Function(FunctionExpression closure) onClosure;
 
@@ -740,11 +708,7 @@ class _ClosureVisitor extends RecursiveAstVisitor<void> {
 }
 
 class _LinearAstVisitor extends RecursiveAstVisitor<void> {
-  _LinearAstVisitor({
-    required this.onAwait,
-    required this.onEmit,
-    this.onConditional,
-  });
+  new({required this.onAwait, required this.onEmit, this.onConditional});
 
   final void Function() onAwait;
   final void Function(MethodInvocation node) onEmit;
@@ -777,5 +741,50 @@ class _LinearAstVisitor extends RecursiveAstVisitor<void> {
     node.target?.accept(this);
     node.argumentList.accept(this);
     onEmit(node);
+  }
+}
+
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
+
+  final AvoidMultipleSynchronousEmits rule;
+
+  @override
+  void visitClassDeclaration(ClassDeclaration node) {
+    final classElement = node.declaredFragment?.element;
+    final extendsClause = node.extendsClause?.superclass.toSource();
+    final withClause = node.withClause?.toSource();
+
+    final isBlocContainer =
+        (classElement != null &&
+            AvoidMultipleSynchronousEmits._blocSignalBaseChecker.isSuperOf(
+              classElement,
+            )) ||
+        (extendsClause != null &&
+            (extendsClause.contains('BlocSignal') ||
+                extendsClause.contains('CubitSignal') ||
+                extendsClause.contains('ReplayCubit') ||
+                extendsClause.contains('ReplayBloc') ||
+                extendsClause.contains('HydratedCubit') ||
+                extendsClause.contains('HydratedBloc'))) ||
+        (withClause != null &&
+            (withClause.contains('CubitSignalMixin') ||
+                withClause.contains('BlocSignalMixin') ||
+                withClause.contains('ReplayMixin') ||
+                withClause.contains('ReplayCubitMixin') ||
+                withClause.contains('ReplayBlocMixin') ||
+                withClause.contains('HydratedMixin')));
+
+    if (!isBlocContainer) return;
+
+    rule._reportViolations(AvoidMultipleSynchronousEmits.findViolations(node));
+  }
+
+  @override
+  void visitMixinDeclaration(MixinDeclaration node) {
+    if (!AvoidMultipleSynchronousEmits._isBlocContainerMixin(node)) return;
+    rule._reportViolations(
+      AvoidMultipleSynchronousEmits.findMixinViolations(node),
+    );
   }
 }

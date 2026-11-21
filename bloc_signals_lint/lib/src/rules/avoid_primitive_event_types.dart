@@ -1,24 +1,31 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/listener.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/error/error.dart';
 import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that flags `BlocSignal` and `BlocSignalMixin` declarations
 /// that use primitive or untyped types (`int`, `String`, `bool`, `double`,
 /// `num`, `dynamic`, `Object`, etc.) for their `Event` generic type parameter.
-class AvoidPrimitiveEventTypes extends DartLintRule {
+class AvoidPrimitiveEventTypes extends AnalysisRule {
   /// Creates an [AvoidPrimitiveEventTypes] lint rule.
-  const AvoidPrimitiveEventTypes() : super(code: _code);
+  new()
+    : super(
+        name: 'avoid_primitive_event_types',
+        description:
+            'Flag BlocSignal and BlocSignalMixin declarations that use '
+            'primitive or untyped Event generic type parameters.',
+      );
 
-  static const _code = LintCode(
-    name: 'avoid_primitive_event_types',
-    problemMessage:
-        'Avoid using primitive or untyped types ("{0}") for BlocSignal '
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'avoid_primitive_event_types',
+    'Avoid using primitive or untyped types ("{0}") for BlocSignal '
         'events. Events should be dedicated sealed classes or records.',
-    correctionMessage: 'Define a dedicated event class or record (for example, '
+    correctionMessage:
+        'Define a dedicated event class or record (for example, '
         '"sealed class MyEvent {}") to model state transitions cleanly.',
   );
 
@@ -72,18 +79,18 @@ class AvoidPrimitiveEventTypes extends DartLintRule {
     return violations;
   }
 
-  static void _checkNamedType(
-    NamedType namedType,
-    List<AstNode> violations,
-  ) {
+  static void _checkNamedType(NamedType namedType, List<AstNode> violations) {
     final typeName = namedType.toSource().split('<').first.trim();
     final staticType = namedType.type;
-    final isBlocType = _isBlocClassName(typeName) ||
+    final isBlocType =
+        _isBlocClassName(typeName) ||
         (staticType != null &&
-            (BlocContainerUtils.blocSignalChecker
-                    .isAssignableFromType(staticType) ||
-                BlocContainerUtils.blocSignalMixinChecker
-                    .isAssignableFromType(staticType)));
+            (BlocContainerUtils.blocSignalChecker.isAssignableFromType(
+                  staticType,
+                ) ||
+                BlocContainerUtils.blocSignalMixinChecker.isAssignableFromType(
+                  staticType,
+                )));
 
     if (!isBlocType) return;
 
@@ -110,28 +117,38 @@ class AvoidPrimitiveEventTypes extends DartLintRule {
   }
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  LintCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addClassDeclaration((node) {
-      for (final violation in findViolations(node)) {
-        reporter.atNode(
-          violation,
-          code,
-          arguments: [violation.toSource()],
-        );
-      }
-    });
-    context.registry.addMixinDeclaration((node) {
-      for (final violation in findMixinViolations(node)) {
-        reporter.atNode(
-          violation,
-          code,
-          arguments: [violation.toSource()],
-        );
-      }
-    });
+    final visitor = _Visitor(this);
+    registry
+      ..addClassDeclaration(this, visitor)
+      ..addMixinDeclaration(this, visitor);
+  }
+}
+
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
+
+  final AvoidPrimitiveEventTypes rule;
+
+  @override
+  void visitClassDeclaration(ClassDeclaration node) {
+    for (final violation in AvoidPrimitiveEventTypes.findViolations(node)) {
+      rule.reportAtNode(violation, arguments: [violation.toSource()]);
+    }
+  }
+
+  @override
+  void visitMixinDeclaration(MixinDeclaration node) {
+    for (final violation in AvoidPrimitiveEventTypes.findMixinViolations(
+      node,
+    )) {
+      rule.reportAtNode(violation, arguments: [violation.toSource()]);
+    }
   }
 }

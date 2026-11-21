@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_test/bloc_signals_test.dart';
@@ -775,6 +776,7 @@ void main() {
 
         bloc.add(const CancelSubmission());
         expect(bloc.stateValue, isA<SurfaceReady>());
+        expect(bloc.stateValue, isA<SurfaceReady>());
         final ready = bloc.stateValue as SurfaceReady;
         expect(ready.surfaceId, equals('surf_cancel_no_err'));
         expect(ready.isValid, isTrue);
@@ -958,6 +960,7 @@ void main() {
           ]),
         );
 
+        expect(bloc.stateValue, isA<SurfaceReady>());
         final ready = bloc.stateValue as SurfaceReady;
         expect(
           () => ready.availableSurfaceIds.add('surf_illegal'),
@@ -2729,7 +2732,7 @@ void main() {
           '(Issue #434) forwards validationConfig, reportErrorsOnly, '
           'unifiedOutbound, and maxAgentCallCacheEntries to MessageProcessor',
           () async {
-        const config = ValidationConfig.relaxed;
+        const config = ValidationConfig.strict;
         final bloc = A2uiSurfaceBloc(
           validationConfig: config,
           reportErrorsOnly: true,
@@ -3480,6 +3483,7 @@ void main() {
           }),
         );
 
+        expect(bloc.stateValue, isA<SurfaceReady>());
         final ready = bloc.stateValue as SurfaceReady;
         final col = ready.surface.componentsModel.get('col_root');
         final txt = ready.surface.componentsModel.get('txt_safe');
@@ -3558,10 +3562,1473 @@ void main() {
           ),
         );
 
+        expect(bloc.stateValue, isA<SurfaceReady>());
         final ready = bloc.stateValue as SurfaceReady;
         expect(ready.isValid, isTrue);
         expect(ready.validationErrors, isEmpty);
         expect(errors, isEmpty);
+      });
+    });
+
+    group(
+        '(Issue #472) ReDoS gaps, ingestion budgets, and default '
+        'validationConfig', () {
+      test(
+          '(Issue #472) rejects adjacent quantifiers, backreferences, and '
+          'quantified lookaheads while allowing valid email regex', () {
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        final unsafePatterns = <String>[
+          r'\w+\w+\w+\w+\w+\w+$',
+          r'([a-z]+[a-z]+[a-z]+[a-z]+[a-z]+)$',
+          r'^(a+)\1+$',
+          r'(?<name>a)\k<name>',
+          '(?=.*a)b',
+          '(?=a+)b',
+        ];
+        final adversarialInput = '${'a' * 30}!';
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_redos_472',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_redos_472',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_unsafe_$i',
+                    'component': 'TextField',
+                    'label': 'Unsafe $i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+                {
+                  'id': 'tf_email',
+                  'component': 'TextField',
+                  'label': 'Email',
+                  'value': {'path': '/email'},
+                  'pattern':
+                      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        final stopwatch = Stopwatch()..start();
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_redos_472',
+              path: '/u_$i',
+              value: adversarialInput,
+            ),
+          );
+        }
+        stopwatch.stop();
+        expect(stopwatch.elapsedMilliseconds, lessThan(200));
+
+        // Valid email regex should reject invalid input and accept valid email.
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_redos_472',
+            path: '/email',
+            value: 'not-an-email',
+          ),
+        );
+        var ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(ready.validationErrors, hasLength(1));
+
+        bloc.add(
+          const UpdateFormField(
+            surfaceId: 'surf_redos_472',
+            path: '/email',
+            value: 'user@example.com',
+          ),
+        );
+        ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isTrue);
+        expect(ready.validationErrors, isEmpty);
+      });
+
+      test(
+          '(Issue #472) oversized chunk exceeding maxChunkLength transitions '
+          'to SurfaceError', () async {
+        final bloc = A2uiSurfaceBloc(maxChunkLength: 64);
+        addTearDown(bloc.close);
+
+        final oversizedChunk = '{"createSurface":{"surfaceId":"${'s' * 80}"}}';
+        bloc.add(IngestStream(Stream<dynamic>.value(oversizedChunk)));
+        await pumpEventQueue();
+
+        expect(bloc.stateValue, isA<SurfaceError>());
+      });
+
+      test(
+          '(Issue #472) batch exceeding maxMessagesPerBatch transitions to '
+          'SurfaceError', () {
+        final bloc = A2uiSurfaceBloc(maxMessagesPerBatch: 2);
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 's1',
+              catalogId: minimalCatalogId,
+            ),
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 's2',
+              catalogId: minimalCatalogId,
+            ),
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 's3',
+              catalogId: minimalCatalogId,
+            ),
+          ]),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceError>());
+      });
+
+      test(
+          '(Issue #472) surface exceeding maxComponentsPerSurface transitions '
+          'to SurfaceError', () {
+        final bloc = A2uiSurfaceBloc(maxComponentsPerSurface: 2);
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 's_comp_limit',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 's_comp_limit',
+              components: const [
+                {'id': 'c1', 'component': 'Text', 'text': '1'},
+                {'id': 'c2', 'component': 'Text', 'text': '2'},
+                {'id': 'c3', 'component': 'Text', 'text': '3'},
+              ],
+            ),
+          ]),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceError>());
+      });
+
+      test('(Issue #472) defaults validationConfig to ValidationConfig.relaxed',
+          () {
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        expect(bloc.validationConfig, equals(ValidationConfig.relaxed));
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 's_default_val',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateDataModelMessage(
+              version: 'v0.9',
+              surfaceId: 's_default_val',
+              path: 'relative_without_leading_slash',
+              value: 'bad',
+            ),
+          ]),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceError>());
+      });
+
+      test(
+          '(Issue #472) CreateSurfaceMessage.components budget, surface '
+          'recreation reset, cumulative updates, and JSON batch limits',
+          () async {
+        // 1. CreateSurfaceMessage.components exceeding maxComponentsPerSurface
+        final v1CatalogId = BasicCatalog.v1_0().id;
+        final bloc1 = A2uiSurfaceBloc(maxComponentsPerSurface: 2);
+        addTearDown(bloc1.close);
+        bloc1.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              version: 'v1.0',
+              surfaceId: 's_create_over',
+              catalogId: v1CatalogId,
+              components: const [
+                {'id': 'c1', 'component': 'Text', 'text': '1'},
+                {'id': 'c2', 'component': 'Text', 'text': '2'},
+                {'id': 'c3', 'component': 'Text', 'text': '3'},
+              ],
+            ),
+          ),
+        );
+        expect(bloc1.stateValue, isA<SurfaceError>());
+
+        // 2. Surface recreation resets component count; cumulative update
+        // exceeding maxComponentsPerSurface transitions to SurfaceError.
+        final bloc2 = A2uiSurfaceBloc(maxComponentsPerSurface: 2);
+        addTearDown(bloc2.close);
+        bloc2.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v1.0',
+              surfaceId: 's_recreate',
+              catalogId: v1CatalogId,
+              components: const [
+                {'id': 'root', 'component': 'Text', 'text': '1'},
+                {'id': 'c2', 'component': 'Text', 'text': '2'},
+              ],
+            ),
+          ]),
+        );
+        expect(bloc2.stateValue, isA<SurfaceReady>());
+
+        // Recreate with 1 component -> should succeed (count reset to 1)
+        bloc2.add(
+          ProcessMessage(
+            CreateSurfaceMessage(
+              version: 'v1.0',
+              surfaceId: 's_recreate',
+              catalogId: v1CatalogId,
+              components: const [
+                {'id': 'root', 'component': 'Text', 'text': 'fresh'},
+              ],
+            ),
+          ),
+        );
+        expect(bloc2.stateValue, isA<SurfaceReady>());
+
+        // Cumulative update adding 2 more (total 3 > 2) -> SurfaceError
+        bloc2.add(
+          ProcessMessage(
+            UpdateComponentsMessage(
+              version: 'v1.0',
+              surfaceId: 's_recreate',
+              components: const [
+                {'id': 'c_extra1', 'component': 'Text', 'text': 'e1'},
+                {'id': 'c_extra2', 'component': 'Text', 'text': 'e2'},
+              ],
+            ),
+          ),
+        );
+        expect(bloc2.stateValue, isA<SurfaceError>());
+
+        // 3. IngestStream JSON array chunk exceeding maxMessagesPerBatch
+        final bloc3 = A2uiSurfaceBloc(maxMessagesPerBatch: 2);
+        addTearDown(bloc3.close);
+        final jsonArrayChunk = jsonEncode([
+          {
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'a1',
+              'catalogId': minimalCatalogId,
+            },
+          },
+          {
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'a2',
+              'catalogId': minimalCatalogId,
+            },
+          },
+          {
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'a3',
+              'catalogId': minimalCatalogId,
+            },
+          },
+        ]);
+        bloc3.add(IngestStream(Stream<dynamic>.value(jsonArrayChunk)));
+        await pumpEventQueue();
+        expect(bloc3.stateValue, isA<SurfaceError>());
+
+        // 4. ProcessJsonMessage exceeding maxComponentsPerSurface
+        final bloc4 = A2uiSurfaceBloc(maxComponentsPerSurface: 1);
+        addTearDown(bloc4.close);
+        bloc4.add(
+          ProcessJsonMessage({
+            'version': 'v1.0',
+            'createSurface': {
+              'surfaceId': 's_json_over',
+              'catalogId': v1CatalogId,
+              'components': const [
+                {'id': 'c1', 'component': 'Text', 'text': '1'},
+                {'id': 'c2', 'component': 'Text', 'text': '2'},
+              ],
+            },
+          }),
+        );
+        expect(bloc4.stateValue, isA<SurfaceError>());
+      });
+
+      test(
+          '(Issue #472) rejects lookbehinds, quantified lookarounds, '
+          'unquantified/nullable group bypasses, overlapping multi-char '
+          r'escapes, and \B adjacency while accepting disjoint & grouped '
+          'safe patterns', () {
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        final unsafePatterns = <String>[
+          '(?<=a+)b',
+          '(?<!a+)b',
+          '(?=a)+b',
+          '(?!a)*b',
+          r'(a+)\1$',
+          r'([a-z]+)([a-z]+)$',
+          r'(?:a+)(?:a+)$',
+          r'a+(b?)a+$',
+          r'a+(b*)a+$',
+          r'a+()a+$',
+          r'\w+([a-z]+)$',
+          r'([a-z]+)\w+$',
+          r'\x61+\x61+$',
+          r'\u0061+\u0061+$',
+          r'a+\Ba+$',
+          r'(?<name>a)\k<name>',
+        ];
+
+        const safePatterns = <String>[
+          '(?:ab)+',
+          '(?<word>[a-z])+',
+          '((?:a))+',
+          r'^\s*\d+\s*$',
+          r'^[A-Z]+[a-z]+$',
+          r'^[a-z]+\d+$',
+          r'^\s*\S+\s*$',
+          r'^[a-z]+|[0-9]+$',
+          r'^(ab){2}$',
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_b2',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_b2',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_u_$i',
+                    'component': 'TextField',
+                    'label': 'U$i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+                for (var i = 0; i < safePatterns.length; i++)
+                  {
+                    'id': 'tf_s_$i',
+                    'component': 'TextField',
+                    'label': 'S$i',
+                    'value': {'path': '/s_$i'},
+                    'pattern': safePatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        // Unsafe patterns must be rejected (cached as null -> isValid == true
+        // even for non-matching input 'a' or 'zzz!').
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_b2',
+              path: '/u_$i',
+              value: i == unsafePatterns.length - 1 ? 'a' : 'zzz!',
+            ),
+          );
+        }
+        var ready = bloc.stateValue as SurfaceReady;
+        expect(ready.validationErrors, isEmpty);
+        expect(ready.isValid, isTrue);
+
+        // Safe patterns must compile and reject non-matching input.
+        for (var i = 0; i < safePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_b2',
+              path: '/s_$i',
+              value: i == 6 ? '   ' : '!!!',
+            ),
+          );
+        }
+        ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(ready.validationErrors, hasLength(safePatterns.length));
+      });
+
+      test(
+          '(Issue #472) Round 2: rejects adjacent quantified groups, '
+          r'whitespace escapes with \s+, mixed-range punctuation/space '
+          'overlaps, and variable-length {m,n} quantifiers while accepting '
+          r'disjoint \t/\n and separated {m,n}', () {
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        final unsafePatterns = <String>[
+          // BLOCKER-1: adjacent quantified groups
+          r'([a-z])+([a-z])+$',
+          r'(\w)+(\w)+$',
+          r'((?:a))+((?:a))+$',
+          r'(?<w>[a-z])+(?<x>[a-z])+$',
+          r'a+([a-z])+$',
+          r'([a-z])+a+$',
+          // BLOCKER-2: whitespace escapes overlapping \s+
+          r'\s+\t+$',
+          r'\s+\n+$',
+          // BLOCKER-3: mixed-range punctuation/space overlaps
+          r'[0-:]+[:-?]+$',
+          r'[A-z]+[\[]+$',
+          r'[a-~]+[{-~]+$',
+          r'\s+[\t-\r]+$',
+          // BLOCKER-4: variable-length {m,n} quantifiers
+          r'a+a{1,999}a+a{1,999}a+a{1,999}a+$',
+          r'a{0,999}a{0,999}a{0,999}$',
+        ];
+
+        const safePatterns = <String>[
+          // BLOCKER-2: disjoint \t / \n
+          r'^\t+[a-z]+$',
+          r'^\n+[a-z]+$',
+          // BLOCKER-4: exact or separated {m,n}
+          r'^(ab){2}$',
+          r'^\d{1,2}/\d{1,2}/\d{2,4}$',
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r2',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r2',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_u_$i',
+                    'component': 'TextField',
+                    'label': 'U$i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+                for (var i = 0; i < safePatterns.length; i++)
+                  {
+                    'id': 'tf_s_$i',
+                    'component': 'TextField',
+                    'label': 'S$i',
+                    'value': {'path': '/s_$i'},
+                    'pattern': safePatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r2',
+              path: '/u_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        var ready = bloc.stateValue as SurfaceReady;
+        expect(ready.validationErrors, isEmpty);
+        expect(ready.isValid, isTrue);
+
+        for (var i = 0; i < safePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r2',
+              path: '/s_$i',
+              value: '!!!',
+            ),
+          );
+        }
+        ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(ready.validationErrors, hasLength(safePatterns.length));
+      });
+
+      test(
+          '(Issue #472) DeleteSurfaceMessage in a batch resets pending '
+          'component budget for subsequent surface creation', () {
+        final bloc = A2uiSurfaceBloc(maxComponentsPerSurface: 2);
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 's_del',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 's_del',
+              components: const [
+                {'id': 'c1', 'component': 'Text', 'text': '1'},
+                {'id': 'c2', 'component': 'Text', 'text': '2'},
+              ],
+            ),
+            DeleteSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 's_del',
+            ),
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 's_del',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 's_del',
+              components: const [
+                {'id': 'c3', 'component': 'Text', 'text': '3'},
+              ],
+            ),
+          ]),
+        );
+
+        expect(bloc.stateValue, isA<SurfaceReady>());
+      });
+
+      test(
+          r'(Issue #472) Round 3: rejects escaped char-class range [A-\\], '
+          'overlapping separators, and ?-quantified chains while accepting '
+          'email, date, and protocol patterns and covering all parser branches',
+          () {
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        final unsafePatterns = <String>[
+          // BLOCKER-1: escaped range endpoint in char class
+          r'[A-\\](a+)+$',
+          // BLOCKER-2 Part A: overlapping non-empty separators
+          r'.*a.*a.*a.*a.*a.*a.*a.*a.*a.*$',
+          r'\w+_\w+_\w+_\w+_\w+_\w+_\w+_\w+_\w+$',
+          r'a+a{1}a+a{1}a+a{1}a+a{1}a+a{1}a+a{1}a+a+$',
+          r'a+(a)a+(a)a+(a)a+(a)a+(a)a+(a)a+(a)a+$',
+          r'\w+(?:_\w+)(?:_\w+)(?:_\w+)(?:_\w+)(?:_\w+)(?:_\w+)(?:_\w+)(?:_\w+)$',
+          // BLOCKER-2 Part B: ?-quantified chains
+          'a+${'a?' * 20}\$',
+          '${'a?' * 20}a+\$',
+          '${'a?' * 20}a{30}\$',
+        ];
+
+        const safePatterns = <String>[
+          r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+          r'^\d{1,2}/\d{1,2}/\d{2,4}$',
+          r'^https?://[a-z]+$',
+          r'^\+?\d+$',
+          r'^\d+(\.\d+)?$',
+          // BLOCKER-3 branch coverage: lazy quantifiers, negated/inverted
+          // classes, escapes (\0, \D, \W, \u{...}, \p{...}, \P{...})
+          r'^[a-z]+?$',
+          r'^[^0-9]{1,3}?$',
+          r'^\D+\d+$',
+          r'^\W+\w+$',
+          r'^\u{61}$',
+          r'^\p{L}+$',
+          r'^\P{N}+$',
+          r'^\0$',
+          r'^(?:abc)$',
+          r'^a??$',
+          r'^a*?$',
+        ];
+
+        // Also exercise invalid/edge-case parser branches that must return
+        // null (rejected or FormatException):
+        // [z-a], truncated (?', trailing \, unmatched ), stray *
+        const edgeCasePatterns = <String>[
+          r'[z-a]+$',
+          '(?',
+          'abc)',
+          '*abc',
+          r'[\',
+          r'abc\',
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r3',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r3',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_u_$i',
+                    'component': 'TextField',
+                    'label': 'U$i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+                for (var i = 0; i < safePatterns.length; i++)
+                  {
+                    'id': 'tf_s_$i',
+                    'component': 'TextField',
+                    'label': 'S$i',
+                    'value': {'path': '/s_$i'},
+                    'pattern': safePatterns[i],
+                  },
+                for (var i = 0; i < edgeCasePatterns.length; i++)
+                  {
+                    'id': 'tf_e_$i',
+                    'component': 'TextField',
+                    'label': 'E$i',
+                    'value': {'path': '/e_$i'},
+                    'pattern': edgeCasePatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r3',
+              path: '/u_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        for (var i = 0; i < edgeCasePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r3',
+              path: '/e_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        var ready = bloc.stateValue as SurfaceReady;
+        expect(ready.validationErrors, isEmpty);
+        expect(ready.isValid, isTrue);
+
+        for (var i = 0; i < safePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r3',
+              path: '/s_$i',
+              value: '!@#!',
+            ),
+          );
+        }
+        ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(ready.validationErrors, hasLength(safePatterns.length));
+      });
+
+      test(
+          '(Issue #472) Round 4: rejects escaped char-class ranges, nested '
+          'ambiguous alternations, bounded >1 nested/nullable groups, and '
+          'nullable-prefixed groups, and covers all branches & assertions', () {
+        // NBO-1: Constructor assertions
+        expect(
+          () => A2uiSurfaceBloc(maxChunkLength: 0),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(
+          () => A2uiSurfaceBloc(maxMessagesPerBatch: 0),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(
+          () => A2uiSurfaceBloc(maxComponentsPerSurface: 0),
+          throwsA(isA<AssertionError>()),
+        );
+
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        final unsafePatterns = <String>[
+          // BLOCKER-1: escaped range endpoints
+          r'^[\x20-\x7e]+[a-z]+[\x20-\x7e]+[a-z]+[\x20-\x7e]+[a-z]+[\x20-\x7e]+[a-z]+[\x20-\x7e]+$',
+          r'^[\x41-\x7a]+_+_+_+_+_+_+_+_+$',
+          // BLOCKER-2: nested ambiguous alternations
+          r'^((a|a))+$',
+          r'^(?:(a|ab))+$',
+          // BLOCKER-3: bounded >1 & nullable group bypasses
+          '^${'(?:a|)' * 25}a{25}\$',
+          '^a+${'(?:a+|)' * 8}\$',
+          r'^(a?){25}a{25}$',
+          r'^a+(a?){25}$',
+          r'^(a+){15}$',
+          // BLOCKER-4: nullable-prefixed groups
+          r'^a+(?:0?(a+))(?:0?(a+))(?:0?(a+))(?:0?(a+))(?:0?(a+))$',
+          r'^a+(?:0?a)a+(?:0?a)a+(?:0?a)a+(?:0?a)a+(?:0?a)$',
+          // BLOCKER-5: additional nested/overlap cases
+          r'^((a+))+$',
+          r'^a+(a+){1}$',
+        ];
+
+        const safePatterns = <String>[
+          // BLOCKER-5 branch coverage
+          r'^a?(a?)$',
+          r'^\v+$',
+          r'^\f+$',
+          r'^[\t- ]+$',
+          r'^[\x20-\x2f]+[\x30-\x39]+$',
+          r'^(?=a)a$',
+          r'^[a-\d]+$',
+          r'^(?1)$',
+          r'^(a){1}$',
+          r'^a+(b){1}$',
+          r'^(?:a|b)$',
+          r'^(?:a|)(?:b)$',
+          r'^((a+))?$',
+          r'^(a+){1}$',
+          r'^\.+(\.){1}$',
+          r'^(?:a+|)$',
+          r'^(?:(ab)+)$',
+          r'^[a-z.!]+$',
+        ];
+
+        const edgeCasePatterns = <String>[
+          r'^[a-\1]+$',
+          '(+)',
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r4',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r4',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_u_$i',
+                    'component': 'TextField',
+                    'label': 'U$i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+                for (var i = 0; i < safePatterns.length; i++)
+                  {
+                    'id': 'tf_s_$i',
+                    'component': 'TextField',
+                    'label': 'S$i',
+                    'value': {'path': '/s_$i'},
+                    'pattern': safePatterns[i],
+                  },
+                for (var i = 0; i < edgeCasePatterns.length; i++)
+                  {
+                    'id': 'tf_e_$i',
+                    'component': 'TextField',
+                    'label': 'E$i',
+                    'value': {'path': '/e_$i'},
+                    'pattern': edgeCasePatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r4',
+              path: '/u_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        for (var i = 0; i < edgeCasePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r4',
+              path: '/e_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        var ready = bloc.stateValue as SurfaceReady;
+        expect(ready.validationErrors, isEmpty);
+        expect(ready.isValid, isTrue);
+
+        for (var i = 0; i < safePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r4',
+              path: '/s_$i',
+              value: '???',
+            ),
+          );
+        }
+        ready = bloc.stateValue as SurfaceReady;
+        // All safePatterns except (?1) (invalid JS RegExp) must reject '???'.
+        expect(ready.isValid, isFalse);
+        expect(ready.validationErrors, hasLength(safePatterns.length - 1));
+      });
+
+      test(
+          r'(Issue #472) Round 5: quantifier overflow saturation, [a-\d] '
+          r'literal hyphen tracking, and [a\b] backspace in char class', () {
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        const unsafePatterns = <String>[
+          // BLOCKER-1: quantifier int overflow
+          r'^(a+){99999999999999999999}$',
+          r'^(a+){0,99999999999999999999}$',
+          r'^(a+){1,99999999999999999999}$',
+          r'^(a|aa){1,99999999999999999999}$',
+          r'^a{1,99999999999999999999}a{1,99999999999999999999}a{1,99999999999999999999}a{1,99999999999999999999}a{1,99999999999999999999}$',
+          // BLOCKER-2: [a-\d] literal '-' tracking
+          r'^[a-\d]+-+[a-\d]+-+[a-\d]+-+[a-\d]+-+[a-\d]+-+[a-\d]+-+$',
+        ];
+
+        const safePatterns = <String>[
+          // NBO-2: [a\b] backspace inside char class
+          r'^[a\b]+$',
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r5',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r5',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_u_$i',
+                    'component': 'TextField',
+                    'label': 'U$i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+                for (var i = 0; i < safePatterns.length; i++)
+                  {
+                    'id': 'tf_s_$i',
+                    'component': 'TextField',
+                    'label': 'S$i',
+                    'value': {'path': '/s_$i'},
+                    'pattern': safePatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r5',
+              path: '/u_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        var ready = bloc.stateValue as SurfaceReady;
+        expect(ready.validationErrors, isEmpty);
+        expect(ready.isValid, isTrue);
+
+        for (var i = 0; i < safePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r5',
+              path: '/s_$i',
+              value: '???',
+            ),
+          );
+        }
+        ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(ready.validationErrors, hasLength(safePatterns.length));
+      });
+
+      test(
+          r'(Issue #472) Round 6: interleaved nullable chains, \cX control '
+          r'escapes, legacy octal \012, [\x01-\b] range, and '
+          '{99999999999999999999,} overflow', () {
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        const unsafePatterns = <String>[
+          // BLOCKER-1: interleaved nullable elements
+          r"^a?!?a?@?a?#?a?%?a?&?a?=?a?,?a?;?a?:?a?/?a?-?a?~?a?`?a?<?a?>?a?'?a?¡?a?¢?a?£?a?¤?a?¥?a?¦?a?§?a+$",
+          // BLOCKER-2: \cJ control escape, \012 legacy octal, [\cI-\cM] range
+          r'^\s+\cJ+\s+\cJ+\s+\cJ+\s+\cJ+\s+\cJ+\s+\cJ+\s+\cJ+\s+\cJ+\s+$',
+          r'^\s+\012+\s+\012+\s+\012+\s+\012+\s+\012+\s+\012+\s+\012+\s+$',
+          r'^[\cI-\cM]+\s+[\cI-\cM]+\s+[\cI-\cM]+\s+[\cI-\cM]+\s+$',
+          // BLOCKER-3: [\x01-\b] range
+          r'^[\x01-\b]+\x05+[\x01-\b]+\x05+[\x01-\b]+\x05+[\x01-\b]+\x05+[\x01-\b]+\x05+$',
+          // NBO-2: {99999999999999999999,}
+          r'^(a+){99999999999999999999,}$',
+        ];
+
+        const safePatterns = <String>[
+          r'^\+?1?-?\(?\d{3}$',
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r6',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r6',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_u_$i',
+                    'component': 'TextField',
+                    'label': 'U$i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+                for (var i = 0; i < safePatterns.length; i++)
+                  {
+                    'id': 'tf_s_$i',
+                    'component': 'TextField',
+                    'label': 'S$i',
+                    'value': {'path': '/s_$i'},
+                    'pattern': safePatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r6',
+              path: '/u_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        var ready = bloc.stateValue as SurfaceReady;
+        expect(ready.validationErrors, isEmpty);
+        expect(ready.isValid, isTrue);
+
+        for (var i = 0; i < safePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r6',
+              path: '/s_$i',
+              value: '???',
+            ),
+          );
+        }
+        ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(ready.validationErrors, hasLength(safePatterns.length));
+      });
+
+      test(
+          r'(Issue #472) Round 7: rejects non-unicode \u/\p/\P quantifiers, '
+          'multi-literal absorbed separators, full ECMAScript '
+          r'\s, and ClassEscape \c[0-9_]', () {
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        const unsafePatterns = <String>[
+          // BLOCKER-1: non-unicode \u{...}, \p{...}, \P{...}
+          r'^(\u{1,3})+$',
+          r'^(\p{1,3})+$',
+          r'^(\P{1,3})+$',
+          r'^\u{1,3}\u{1,3}\u{1,3}\u{1,3}\u{1,3}$',
+          r'^[\u{61}]+6+[\u{61}]+6+[\u{61}]+6+[\u{61}]+6+$',
+          r'^[\u{61}]+\{+[\u{61}]+\{+[\u{61}]+\{+[\u{61}]+\{+$',
+          // BLOCKER-2: multi-literal absorbed separators
+          r'^.+a0.+a0.+a0.+a0.+a0.+a0.+a0.+a0.+a0.+a0.+a0.+a0.+a0.+a0.+a0.+$',
+          r'^\w+a0\w+a0\w+a0\w+a0\w+a0\w+a0\w+a0\w+a0\w+a0\w+a0\w+a0\w+a0\w+$',
+          r'^.+:-.+:-.+:-.+:-.+:-.+:-.+:-.+:-.+:-.+:-.+:-.+:-.+:-.+:-.+:-.+$',
+          // BLOCKER-3: full ECMAScript \s & ClassEscape \c[0-9_]
+          r'^\s+\u3000+\s+\u3000+\s+\u3000+\s+\u3000+$',
+          r'^[\u2000-\u2005]+\s+[\u2000-\u2005]+\s+[\u2000-\u2005]+\s+[\u2000-\u2005]+$',
+          r'^[\c0]+\x10+[\c0]+\x10+[\c0]+\x10+[\c0]+\x10+$',
+          r'^[\c_]+\x1f+[\c_]+\x1f+[\c_]+\x1f+[\c_]+\x1f+$',
+        ];
+
+        const safePatterns = <String>[
+          r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+          r'^\u0061+$',
+          r'^a+a(a\w+){1}$',
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r7',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r7',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_u_$i',
+                    'component': 'TextField',
+                    'label': 'U$i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+                for (var i = 0; i < safePatterns.length; i++)
+                  {
+                    'id': 'tf_s_$i',
+                    'component': 'TextField',
+                    'label': 'S$i',
+                    'value': {'path': '/s_$i'},
+                    'pattern': safePatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r7',
+              path: '/u_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        var ready = bloc.stateValue as SurfaceReady;
+        expect(ready.validationErrors, isEmpty);
+        expect(ready.isValid, isTrue);
+
+        for (var i = 0; i < safePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r7',
+              path: '/s_$i',
+              value: '???',
+            ),
+          );
+        }
+        ready = bloc.stateValue as SurfaceReady;
+        expect(ready.isValid, isFalse);
+        expect(ready.validationErrors, hasLength(safePatterns.length));
+      });
+
+      test(
+          r'(Issue #472) Round 8: strict hex \xHH/\uHHHH, \B in char class, '
+          'trailingMask in nullable/bounded groups, and multi-branch nullable '
+          'overlap propagation', () {
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        const multiBranch30 =
+            r"^(?:0|!+)?(?:0|@+)?(?:0|#+)?(?:0|%+)?(?:0|&+)?(?:0|=+)?(?:0|,+)?(?:0|;+)?(?:0|:+)?(?:0|/+)?(?:0|-+)?(?:0|~+)?(?:0|`+)?(?:0|<+)?(?:0|>+)?(?:0|\'+)?(?:0|"
+            r'"+)?(?:0|¡+)?(?:0|¢+)?(?:0|£+)?(?:0|¤+)?(?:0|¥+)?(?:0|¦+)?(?:0|§+)?(?:0|¨+)?(?:0|©+)?(?:0|ª+)?(?:0|«+)?(?:0|¬+)?(?:0|®+)?Z$';
+        final unsafePatterns = <String>[
+          // BLOCKER-1: non-hex \x+a and \u+123
+          r'^[\x+a]+x+[\x+a]+x+[\x+a]+x+[\x+a]+x+[\x+a]+x+[\x+a]+x+$',
+          r'^[\u+123]+u+[\u+123]+u+[\u+123]+u+[\u+123]+u+[\u+123]+u+[\u+123]+u+$',
+          // BLOCKER-2: \B in char class
+          r'^[a\B]+B+[a\B]+B+[a\B]+B+[a\B]+B+[a\B]+B+[a\B]+B+$',
+          // BLOCKER-3: Case 2 & Case 3 trailingMask overlap chain
+          r'^a+a(?:aa+)?a(?:aa+)?a(?:aa+)?a(?:aa+)?a(?:aa+)?a(?:aa+)?a(?:aa+)?a(?:aa+)?a(?:aa+)?a(?:aa+)?a(?:aa+)?a(?:aa+)?$',
+          r'^.+a(?:a.+)?a(?:a.+)?a(?:a.+)?a(?:a.+)?a(?:a.+)?a(?:a.+)?a(?:a.+)?a(?:a.+)?a(?:a.+)?a(?:a.+)?a(?:a.+)?a(?:a.+)?$',
+          r'^a+(?:aa+){1}(?:aa+){1}(?:aa+){1}(?:aa+){1}(?:aa+){1}(?:aa+){1}(?:aa+){1}(?:aa+){1}(?:aa+){1}(?:aa+){1}(?:aa+){1}(?:aa+){1}(?:aa+){1}$',
+          // BLOCKER-4: multi-branch bounded/unbounded alternatives & nullable
+          multiBranch30,
+          '^${'(?:0a*)?' * 30}Z\$',
+          '^${'(?:0a*|)' * 25}Z\$',
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r8',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r8',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_u_$i',
+                    'component': 'TextField',
+                    'label': 'U$i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r8',
+              path: '/u_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        final ready = bloc.stateValue as SurfaceReady;
+        expect(ready.validationErrors, isEmpty);
+        expect(ready.isValid, isTrue);
+      });
+
+      test(
+          '(Issue #472) Round 9: cumulative ambiguous alternation, nullable '
+          'ambiguity, unbounded overlap chain across branches/groups, and '
+          r'invalid \c fallback', () {
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        final unsafePatterns = <String>[
+          // BLOCKER-1: repeated ambiguous alternation groups
+          '^${'(a|a)' * 50}Z\$',
+          '^${'(?:a|aa)' * 30}Z\$',
+          '^${'(a|a){1}' * 30}Z\$',
+          // BLOCKER-2: repeated nullable ambiguity pairs separated by literals
+          '^${'a?a?0' * 35}Z\$',
+          '^${'a?0?a?1' * 20}Z\$',
+          '^${'(?:a?a?0|b)' * 5}Z\$',
+          // BLOCKER-3: repeated trailing unbounded overlap events
+          '^${r'\w+a\w+:' * 20}Z\$',
+          '^${r'(?::\w+a\w+)' * 18}Z\$',
+          // BLOCKER-4: invalid \c inside char class must emit '\' + 'c'
+          r'^[\c]+\\+[\c]+\\+[\c]+\\+[\c]+\\+[\c]+\\+[\c]+\\+[\c]+\\+[\c]+\\+[\c]+\\+$',
+        ];
+        final safePatterns = <String>[
+          r'^(?:a|ab)$',
+          r'^(?:a|b)$',
+          r'^a?(a?)$',
+          r'^\+?1?-?\(?\d{3}$',
+          r'^a+a(a\w+){1}$',
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r9',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r9',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_u_$i',
+                    'component': 'TextField',
+                    'label': 'U$i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+                for (var i = 0; i < safePatterns.length; i++)
+                  {
+                    'id': 'tf_s_$i',
+                    'component': 'TextField',
+                    'label': 'S$i',
+                    'value': {'path': '/s_$i'},
+                    'pattern': safePatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r9',
+              path: '/u_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        for (var i = 0; i < safePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r9',
+              path: '/s_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        final ready = bloc.stateValue as SurfaceReady;
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          expect(
+            ready.validationErrors.any((e) => e.contains('"U$i"')),
+            isFalse,
+            reason: 'Unsafe pattern U$i should be rejected: '
+                '${unsafePatterns[i]}',
+          );
+        }
+        for (var i = 0; i < safePatterns.length; i++) {
+          expect(
+            ready.validationErrors.any((e) => e.contains('"S$i"')),
+            isTrue,
+            reason: 'Safe pattern S$i should be accepted: '
+                '${safePatterns[i]}',
+          );
+        }
+      });
+
+      test(
+          '(Issue #472) Round 10: nullable-then-mandatory overlap, '
+          'unbounded-then-nullable cumulative ambiguity, and group trailing '
+          'nullable propagation', () {
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        final unsafePatterns = <String>[
+          // BLOCKER-1: nullable-then-mandatory overlap
+          '^${'a?a' * 40}Z\$',
+          '^${'a??a' * 40}Z\$',
+          '^${'a?a{2}' * 30}Z\$',
+          '^${'0a?a+' * 40}Z\$',
+          // BLOCKER-2: unbounded-then-nullable cumulative ambiguity
+          '^${'0a+a?' * 40}Z\$',
+          '^${'0a+(?:a?)' * 25}Z\$',
+          // BLOCKER-3: group trailing nullable propagation (kept <= 256 chars)
+          '^${'(?:0a?)a?' * 10}Z\$',
+          '^${'(?:0a?)a' * 10}Z\$',
+          '^${'(?:0a?)a+' * 10}Z\$',
+          '^${'(?:0a?){1}a' * 5}Z\$',
+        ];
+        final safePatterns = <String>[
+          r'^\+?1?-?\(?\d{3}$',
+          r'^a?(a?)$',
+          r'^\d+(\.\d+)?$',
+          r'^a+a(a\w+){1}$',
+          r'^a+a?$',
+          r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+          r'^\d{4}-\d{2}-\d{2}$',
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r10',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r10',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_u_$i',
+                    'component': 'TextField',
+                    'label': 'U$i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+                for (var i = 0; i < safePatterns.length; i++)
+                  {
+                    'id': 'tf_s_$i',
+                    'component': 'TextField',
+                    'label': 'S$i',
+                    'value': {'path': '/s_$i'},
+                    'pattern': safePatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r10',
+              path: '/u_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        for (var i = 0; i < safePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r10',
+              path: '/s_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        final ready = bloc.stateValue as SurfaceReady;
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          expect(
+            ready.validationErrors.any((e) => e.contains('"U$i"')),
+            isFalse,
+            reason: 'Unsafe pattern U$i should be rejected: '
+                '${unsafePatterns[i]}',
+          );
+        }
+        for (var i = 0; i < safePatterns.length; i++) {
+          expect(
+            ready.validationErrors.any((e) => e.contains('"S$i"')),
+            isTrue,
+            reason: 'Safe pattern S$i should be accepted: '
+                '${safePatterns[i]}',
+          );
+        }
+      });
+
+      test(
+          '(Issue #472) Round 11: nullable-before-nullable-unbounded, '
+          'nullable-group trailingNullable propagation, and semantic branch '
+          'first-matchable overlap', () {
+        A2uiSurfaceBloc.clearRegexCache();
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        final unsafePatterns = <String>[
+          // BLOCKER-1: nullable followed by nullable-unbounded (a?a*, etc.)
+          '^${'a?a*0' * 30}Z\$',
+          '^${'0?(?:0|a)*!' * 23}Z\$',
+          '^${'a?a*0?0*!?!*' * 10}Z\$',
+          // BLOCKER-2: nullable group propagating inner trailingNullableMask
+          '^${r'(?:!@?)?@+(?:#$?)?$+' * 10}Z\$',
+          '^${r'(?:!@?|)@+(?:#$?|)$+' * 10}Z\$',
+          '^${r'(?:!@?)?@?(?:#$?)?$?' * 10}Z\$',
+          '^${'(?:!@?@?)?' * 4}Z\$',
+          '^${'(?:!@?@?|)' * 4}Z\$',
+          // BLOCKER-3: semantic first-matchable overlap across branches
+          '^${'(0?a|a)' * 36}Z\$',
+          '^${'(?:0*a|a)' * 25}Z\$',
+          '^${'(?:0?a|1?a)' * 22}Z\$',
+        ];
+        final safePatterns = <String>[
+          r'^\s*\d+\s*$',
+          r'^\+?0*[a-z]+$',
+          r'^a?\d*$',
+          r'^(a|b)+$',
+          r'^(?:true|false)$',
+          r'^(?:\d|[a-z])$',
+        ];
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r11',
+              catalogId: minimalCatalogId,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_regex_472_r11',
+              components: [
+                for (var i = 0; i < unsafePatterns.length; i++)
+                  {
+                    'id': 'tf_u_$i',
+                    'component': 'TextField',
+                    'label': 'U$i',
+                    'value': {'path': '/u_$i'},
+                    'pattern': unsafePatterns[i],
+                  },
+                for (var i = 0; i < safePatterns.length; i++)
+                  {
+                    'id': 'tf_s_$i',
+                    'component': 'TextField',
+                    'label': 'S$i',
+                    'value': {'path': '/s_$i'},
+                    'pattern': safePatterns[i],
+                  },
+              ],
+            ),
+          ]),
+        );
+
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r11',
+              path: '/u_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        for (var i = 0; i < safePatterns.length; i++) {
+          bloc.add(
+            UpdateFormField(
+              surfaceId: 'surf_regex_472_r11',
+              path: '/s_$i',
+              value: 'zzz!',
+            ),
+          );
+        }
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        final ready = bloc.stateValue as SurfaceReady;
+        for (var i = 0; i < unsafePatterns.length; i++) {
+          expect(
+            ready.validationErrors.any((e) => e.contains('"U$i"')),
+            isFalse,
+            reason: 'Unsafe pattern U$i should be rejected: '
+                '${unsafePatterns[i]}',
+          );
+        }
+        for (var i = 0; i < safePatterns.length; i++) {
+          expect(
+            ready.validationErrors.any((e) => e.contains('"S$i"')),
+            isTrue,
+            reason: 'Safe pattern S$i should be accepted: '
+                '${safePatterns[i]}',
+          );
+        }
       });
     });
   });

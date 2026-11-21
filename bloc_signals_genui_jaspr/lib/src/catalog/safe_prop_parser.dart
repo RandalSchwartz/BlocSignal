@@ -140,3 +140,51 @@ List<String> extractChildIds(dynamic rawChildren) {
   }
   return childIds;
 }
+
+/// Maximum finite magnitude permitted for slider `min` and `max` bounds.
+///
+/// ```dart
+/// print(kMaxSliderBound); // 1000000000000.0
+/// ```
+const double kMaxSliderBound = 1000000000000;
+
+/// Maximum number of discrete steps (`divisions`) permitted on a slider.
+///
+/// ```dart
+/// print(kMaxSliderDivisions); // 1000
+/// ```
+const int kMaxSliderDivisions = 1000;
+
+/// Parses and clamps slider `min`, `max`, `value`, and `steps`/`divisions`
+/// properties into finite, paint-safe bounds.
+///
+/// Bounds `min` and `max` to `[-1e12, 1e12]`, falls back to `[0.0, 100.0]` when
+/// `(max - min)` is non-finite or `max <= min`, clamps `value` to `[min, max]`,
+/// and caps `divisions` to `[1, 1000]`.
+///
+/// ```dart
+/// final range = parseSliderRange(const {'min': 0, 'max': 10, 'steps': 5});
+/// print(range.divisions); // 5
+/// ```
+({double min, double max, double value, int? divisions}) parseSliderRange(
+  Map<String, dynamic> props,
+) {
+  final rawMin =
+      asDouble(props['min']).clamp(-kMaxSliderBound, kMaxSliderBound);
+  final rawMax =
+      asDouble(props['max'], 100).clamp(-kMaxSliderBound, kMaxSliderBound);
+  final hasValidRange = rawMin.isFinite &&
+      rawMax.isFinite &&
+      rawMax > rawMin &&
+      (rawMax - rawMin).isFinite;
+  final min = hasValidRange ? rawMin : 0.0;
+  final max = hasValidRange ? rawMax : 100.0;
+  final currentValue = asDouble(props['value'], min).clamp(min, max);
+
+  final rawSteps = props['steps'] ?? props['divisions'];
+  final parsedSteps = rawSteps != null ? asInt(rawSteps) : 0;
+  final divisions =
+      parsedSteps >= 1 ? parsedSteps.clamp(1, kMaxSliderDivisions) : null;
+
+  return (min: min, max: max, value: currentValue, divisions: divisions);
+}

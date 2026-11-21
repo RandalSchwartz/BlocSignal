@@ -582,7 +582,10 @@ void main() {
       await blocPending.close();
 
       // 2. Cyclic reference breaking recursion
-      final blocCyclic = A2uiSurfaceBloc(catalogs: [MinimalCatalog()])
+      final blocCyclic = A2uiSurfaceBloc(
+        catalogs: [MinimalCatalog()],
+        validationConfig: null,
+      )
         ..add(
           const ProcessJsonMessage({
             'version': 'v0.9',

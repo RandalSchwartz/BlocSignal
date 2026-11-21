@@ -55,7 +55,7 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 - ✅ **Reactive `CheckRule` Validation UI**: Automatically surfaces `GenericBinder` validation state (`isValid`, `validationErrors`, `validationResults`) across form inputs (`TextField`, `CheckBox`, `ChoicePicker`, `Slider`, `DateTimeInput`) and disables `Button` submissions (`onPressed: null`) when check rules fail.
 - ⚡ **Granular Signal Bindings & Two-Way Sync**: Each rendered component subscribes to its own `GenericBinder.resolvedProps` signal and writes two-way input mutations via `A2uiComponentContext.updateBoundValue`, updating leaf widgets and `A2uiSurfaceBloc` form data in 0ms on `DataModel` or `@path` mutations without rebuilding parent containers.
 - 🧭 **Multi-Surface & Split-Pane Support**: Pin `A2uiSurfaceView(bloc: bloc, surfaceId: '...')` to a specific surface or omit `surfaceId` to follow `bloc.activeSurfaceId` reactively across tabs and split views.
-- 🛡️ **Defensive LLM Property Coercion**: Built-in `safe_prop_parser.dart` utilities (`unwrapBinding`, `asString`, `asInt`, `asDouble`, `asBool`, `extractChildId`, `extractChildIds`) protect the widget tree from malformed or stringified LLM JSON properties.
+- 🛡️ **Defensive LLM Property Coercion**: Built-in `safe_prop_parser.dart` utilities (`unwrapBinding`, `asString`, `asInt`, `asDouble`, `asBool`, `extractChildId`, `extractChildIds`, `parseSliderRange`) protect the widget tree from malformed or stringified LLM JSON properties.
 
 ---
 

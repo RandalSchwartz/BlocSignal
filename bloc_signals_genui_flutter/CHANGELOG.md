@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
+## Unreleased
+
+- **Fix (genui_flutter)**: Clamp Material and Cupertino `Slider` `min`/`max` bounds to `[-1e12, 1e12]` with finite-span fallback `[0.0, 100.0]` and cap `divisions` to `[1, 1000]` via shared `parseSliderRange` helper (#472).
+
 ## 2.1.1
 
 - **Fix (genui_flutter)**: Silence Flutter 3.47+/3.50 `deprecated_member_use` lints on `package:flutter/material.dart` and `package:flutter/cupertino.dart` imports to preserve `sdk: ^3.5.0` and Flutter `>=3.24.0` compatibility while maintaining 160/160 pub points.

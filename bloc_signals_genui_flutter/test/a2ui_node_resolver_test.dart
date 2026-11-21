@@ -153,7 +153,7 @@ void main() {
             'ValueKey("missing_<componentId>") until definition arrives, '
             'then upgrades in-place',
             (tester) async {
-              final bloc = A2uiSurfaceBloc()
+              final bloc = A2uiSurfaceBloc(validationConfig: null)
                 ..add(
                   ProcessMessages([
                     CreateSurfaceMessage(
@@ -220,7 +220,7 @@ void main() {
             'Example 2: NodeState.cyclic renders SizedBox.shrink with '
             'ValueKey("circular_ref_<componentId>") breaking recursion',
             (tester) async {
-              final bloc = A2uiSurfaceBloc()
+              final bloc = A2uiSurfaceBloc(validationConfig: null)
                 ..add(
                   ProcessMessages([
                     CreateSurfaceMessage(
@@ -268,7 +268,7 @@ void main() {
             'Example 3: NodeState.unknownType renders localized component '
             'error fallback widget with ValueKey("a2ui_error_<componentId>")',
             (tester) async {
-              final bloc = A2uiSurfaceBloc()
+              final bloc = A2uiSurfaceBloc(validationConfig: null)
                 ..add(
                   ProcessMessages([
                     CreateSurfaceMessage(
@@ -321,7 +321,7 @@ void main() {
             '("root") is absent, then upgrades to NodeResolver when "root" '
             'arrives',
             (tester) async {
-              final bloc = A2uiSurfaceBloc()
+              final bloc = A2uiSurfaceBloc(validationConfig: null)
                 ..add(
                   ProcessMessages([
                     CreateSurfaceMessage(

@@ -155,7 +155,7 @@ class AgentSurfaceScreen extends StatelessWidget {
           li([
             strong([Component.text('Interactive Form Controls')]),
             Component.text(
-              ': TextField (with CheckRule errorText), CheckBox (CheckboxListTile), ChoicePicker (FilterChip, RadioListTile, and CheckboxListTile variants), Slider, DateTimeInput, and Button (ElevatedButton, OutlinedButton, and TextButton variants).',
+              ': TextField (with CheckRule errorText), CheckBox (CheckboxListTile), ChoicePicker (FilterChip, RadioListTile, and CheckboxListTile variants), Slider (both Material Slider and buildCupertinoSlider clamp min/max to [-1e12, 1e12] and divisions to [1, 1000]), DateTimeInput, and Button (ElevatedButton, OutlinedButton, and TextButton variants).',
             ),
           ]),
           li([

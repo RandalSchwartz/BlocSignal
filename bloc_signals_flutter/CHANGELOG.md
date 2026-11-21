@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (flutter)**: Track `_previousState` independently from rendered `_state` in `BlocSignalBuilder`, suppress initial-pass callbacks for non-reflexive `equals` and add `mounted` guards in `BlocSignalBuilder`, `BlocSignalListener`, and `BlocSignalSelector`, use `!identical()` for container swap checks, and handle `create:`/`.value` and `lazy` transitions in `BlocSignalProvider.didUpdateWidget` (#476).
+
 ## 1.5.1
 
 - **Fix (flutter)**: Refactor `toValueListenable()` to implement `ValueListenable<T>` directly without extending `ValueNotifier<T>`, eliminating initial-state pinning and `FlutterMemoryAllocations` leak-tracker reports while preserving lazy subscription and idempotent `dispose()` (#470).

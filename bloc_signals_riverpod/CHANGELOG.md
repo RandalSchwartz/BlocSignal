@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (riverpod)**: Resolve `RiverpodNotifierBlocSignal.notifier` dynamically from the container across invalidations, forward `onError` in `RiverpodBlocSignal` provider subscriptions, guard `BlocSignalNotifier.build()` against synchronous mid-build `state` assignment, and evict closed `autoClose: true` entries from `_providerCache` (#476).
+
 ## 1.1.3
 
 - **Fix (riverpod)**: Remove obsolete `invalid_use_of_protected_member` ignore comment following `BlocSignalBase.equals` visibility update (#320).

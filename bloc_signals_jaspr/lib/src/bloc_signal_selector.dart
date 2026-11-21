@@ -134,16 +134,20 @@ class _BlocSignalSelectorState<T extends BlocSignalBase<S>, S, V>
     );
     var currentSlot = _computed.value;
     _selectedValue = currentSlot.value;
+    var isInitial = true;
 
     _cleanup = effect(
       () {
         final nextSlot = _computed.value;
+        if (isInitial) {
+          isInitial = false;
+          return;
+        }
+        if (!mounted) return;
         if (currentSlot != nextSlot) {
           currentSlot = nextSlot;
           _selectedValue = nextSlot.value;
-          if (mounted) {
-            setState(() {});
-          }
+          setState(() {});
         }
       },
       options: EffectOptions(
@@ -157,7 +161,7 @@ class _BlocSignalSelectorState<T extends BlocSignalBase<S>, S, V>
     super.didChangeDependencies();
     final effectiveBloc =
         component.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
-    if (_bloc != effectiveBloc) {
+    if (!identical(_bloc, effectiveBloc)) {
       _bloc = effectiveBloc;
       _initComputed();
     }
@@ -168,7 +172,7 @@ class _BlocSignalSelectorState<T extends BlocSignalBase<S>, S, V>
     super.didUpdateComponent(oldComponent);
     final effectiveBloc =
         component.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
-    if (_bloc != effectiveBloc ||
+    if (!identical(_bloc, effectiveBloc) ||
         oldComponent.selector != component.selector ||
         oldComponent.options != component.options ||
         oldComponent.equals != component.equals) {

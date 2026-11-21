@@ -20,10 +20,12 @@ class RiverpodBlocSignal<T> extends CubitSignal<T> {
     ProviderListenable<T> listenable, {
     super.equals,
     super.options,
-  }) : super(initialState: container.read(listenable)) {
+  })  : _container = container,
+        super(initialState: container.read(listenable)) {
     _subscription = container.listen<T>(
       listenable,
       (previous, next) => emit(next),
+      onError: onError,
     );
   }
 
@@ -47,6 +49,7 @@ class RiverpodBlocSignal<T> extends CubitSignal<T> {
     return bloc;
   }
 
+  final ProviderContainer _container;
   late final ProviderSubscription<T> _subscription;
 
   @override
@@ -67,13 +70,19 @@ class RiverpodBlocSignal<T> extends CubitSignal<T> {
 class RiverpodNotifierBlocSignal<NotifierT, T> extends RiverpodBlocSignal<T> {
   /// Creates a [RiverpodNotifierBlocSignal] wrapping a Riverpod provider with
   /// its [notifier] and [container].
+  ///
+  /// When [notifierProvider] is supplied, [notifier] resolves the live notifier
+  /// dynamically from [container] so `container.invalidate` never leaves a
+  /// stale reference.
   RiverpodNotifierBlocSignal(
-    this.notifier,
+    NotifierT notifier,
     super.container,
     super.listenable, {
+    ProviderListenable<NotifierT>? notifierProvider,
     super.equals,
     super.options,
-  });
+  })  : _fallbackNotifier = notifier,
+        _notifierProvider = notifierProvider;
 
   /// Creates a [RiverpodNotifierBlocSignal] using a Riverpod [Ref].
   ///
@@ -83,6 +92,7 @@ class RiverpodNotifierBlocSignal<NotifierT, T> extends RiverpodBlocSignal<T> {
     NotifierT notifier,
     Ref ref,
     ProviderListenable<T> listenable, {
+    ProviderListenable<NotifierT>? notifierProvider,
     bool Function(T previous, T current)? equals,
     SignalOptions<T>? options,
   }) {
@@ -90,6 +100,7 @@ class RiverpodNotifierBlocSignal<NotifierT, T> extends RiverpodBlocSignal<T> {
       notifier,
       ref.container,
       listenable,
+      notifierProvider: notifierProvider,
       equals: equals,
       options: options,
     );
@@ -97,8 +108,13 @@ class RiverpodNotifierBlocSignal<NotifierT, T> extends RiverpodBlocSignal<T> {
     return bloc;
   }
 
+  final NotifierT _fallbackNotifier;
+  final ProviderListenable<NotifierT>? _notifierProvider;
+
   /// The underlying Riverpod notifier for dispatching mutations and actions.
-  final NotifierT notifier;
+  NotifierT get notifier => _notifierProvider != null
+      ? _container.read(_notifierProvider)
+      : _fallbackNotifier;
 }
 
 ProviderContainer _resolveContainer(Object refOrContainer) {
@@ -137,6 +153,7 @@ extension NotifierProviderBlocSignalX<NotifierT extends Notifier<T>, T>
       notifier,
       container,
       this,
+      notifierProvider: this.notifier,
       equals: equals,
       options: options,
     );
@@ -162,6 +179,7 @@ extension AsyncNotifierProviderBlocSignalX<NotifierT extends AsyncNotifier<T>,
       notifier,
       container,
       this,
+      notifierProvider: this.notifier,
       equals: equals,
       options: options,
     );
@@ -187,6 +205,7 @@ extension StateNotifierProviderBlocSignalX<NotifierT extends StateNotifier<T>,
       notifier,
       container,
       this,
+      notifierProvider: this.notifier,
       equals: equals,
       options: options,
     );
@@ -211,6 +230,7 @@ extension StateProviderBlocSignalX<T> on StateProvider<T> {
       notifier,
       container,
       this,
+      notifierProvider: this.notifier,
       equals: equals,
       options: options,
     );
@@ -236,6 +256,7 @@ extension StreamNotifierProviderBlocSignalX<NotifierT extends StreamNotifier<T>,
       notifier,
       container,
       this,
+      notifierProvider: this.notifier,
       equals: equals,
       options: options,
     );
@@ -293,12 +314,18 @@ class BlocSignalNotifier<B extends BlocSignalBase<T>, T> extends Notifier<T> {
 
   @override
   T build() {
+    var isInitial = true;
     final unsubscribe = bloc.state.subscribe((newValue) {
+      if (isInitial) {
+        isInitial = false;
+        return;
+      }
       state = newValue;
     });
     ref.onDispose(() {
       unsubscribe();
       if (autoClose) {
+        _providerCache[bloc]?.remove(true);
         unawaited(bloc.close());
       }
     });
@@ -335,7 +362,7 @@ extension BlocSignalRiverpodX<B extends BlocSignalBase<T>, T> on B {
     final cache =
         _providerCache[this] ??= <bool, NotifierProvider<dynamic, dynamic>>{};
     final existing = cache[autoClose];
-    if (existing != null) {
+    if (existing != null && !(autoClose && isClosed)) {
       return existing as NotifierProvider<BlocSignalNotifier<B, T>, T>;
     }
     final provider = NotifierProvider<BlocSignalNotifier<B, T>, T>(

@@ -25,7 +25,8 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 | `@protected onReset()` | Lifecycle hook invoked when container state resets to baseline (for example during persistence clearing), allowing sibling mixins to clear auxiliary state (`super.onReset()`). |
 | `@protected isHistorySuppressed` | Reports whether auxiliary history recording (such as undo/redo stacks) is currently suppressed on this container instance. |
 | `@protected runWithoutHistory(action)` | Executes `action` with auxiliary history recording suppressed via a per-instance nesting counter. |
-| `toString()` | Overridden by `BlocSignalBase` to output `'$runtimeType($stateValue)'`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses. |
+| `toString()` | Overridden by `CubitSignalMixin` / `BlocSignalBase` to output `'$runtimeType(<uninitialized>)'` before `initCubitSignal` runs, or `'$runtimeType(${describeState(stateValue)})'` once initialized. |
+| `@protected describeState(state)` | Formats `state` for `toString()` (defaults to `state.toString()`). Override to customize or redact state output without altering the `<uninitialized>` guard. |
 | `signal.toBlocSignal()` | Adapts any `ReadonlySignal<T>` (including `Signal`, `Computed`, `StreamSignal`, and `value.$`) into a `SignalBlocSignal<T>` (`disposeSignalOnClose: false` by default so caller-owned signals remain active). |
 | `future.toBlocSignal(required initialState:)` | Adapts any `Future<T>` into a `FutureBlocSignal<T>` holding raw values with an initial state. |
 | `future.toAsyncBlocSignal()` | Adapts any `Future<T>` into an owned `SignalBlocSignal<AsyncState<T>>` (`disposeSignalOnClose: true`) backed by a `FutureSignal` with a `Completer` late-settlement guard and early timeout cancellation on `close()`. |

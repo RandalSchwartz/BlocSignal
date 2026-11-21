@@ -55,7 +55,7 @@ Add `bloc_signals_devtools` to your application's `dev_dependencies`:
 
 ```yaml
 dev_dependencies:
-  bloc_signals_devtools: ^1.0.2
+  bloc_signals_devtools: ^1.0.4
 ```
 
 ### 2. Register DevTools Observer
@@ -63,7 +63,7 @@ In your application's debug initialization, register the `DevToolsBlocSignalObse
 
 ```dart
 void main() {
-  BlocSignalObserver.observer = const DevToolsBlocSignalObserver();
+  BlocSignalObserver.observer = DevToolsBlocSignalObserver();
   runApp(const MyApp());
 }
 ```

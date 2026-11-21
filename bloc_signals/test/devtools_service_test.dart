@@ -695,6 +695,200 @@ void main() {
           );
         },
       );
+
+      test(
+        '(Issue #474: F03) handleDispatch redacts and truncates error '
+        'messages when errorRedactor / maxPayloadLength are configured',
+        () async {
+          final observer = DevToolsBlocSignalObserver(
+            errorRedactor: (bloc, error) => 'REDACTED_RPC_ERR',
+            stateRedactor: (bloc, state) => 'REDACTED_STATE[$state]',
+          );
+          BlocSignalObserver.observer = observer;
+          addTearDown(() => BlocSignalObserver.observer = null);
+
+          final bloc = CounterBloc();
+          addTearDown(bloc.close);
+
+          DevToolsService.instance.registerEventDeserializer<CounterBloc>(
+            (raw) => throw const FormatException('secret-token-12345'),
+          );
+
+          final errRes = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {'hashCode': identityHashCode(bloc).toString(), 'event': 'inc'},
+          );
+          expect(errRes.errorCode, equals(-32602));
+          expect(errRes.errorDetail, contains('REDACTED_RPC_ERR'));
+          expect(errRes.errorDetail, isNot(contains('secret-token-12345')));
+
+          DevToolsService.instance.unregisterEventDeserializer<CounterBloc>();
+          final okRes = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {'hashCode': identityHashCode(bloc).toString(), 'event': 'inc'},
+          );
+          final json = jsonDecode(okRes.result!) as Map<String, dynamic>;
+          expect(json['stateValue'], equals('REDACTED_STATE[1]'));
+        },
+      );
+
+      test(
+        '(Issue #474: F05) trackTelemetry sanitizes NaN/Infinity, nested '
+        'collections, and cyclic structures into jsonEncode-safe payloads',
+        () async {
+          final cubit = CounterCubit();
+          addTearDown(cubit.close);
+
+          final cyclic = <String, dynamic>{'v': double.nan};
+          cyclic['self'] = cyclic;
+
+          DevToolsService.instance.trackTelemetry(
+            cubit,
+            'metric',
+            metadata: {
+              'nan': double.nan,
+              'inf': double.infinity,
+              'ninf': double.negativeInfinity,
+              'nested': [
+                {'x': double.infinity},
+              ],
+              'cyclic': cyclic,
+            },
+          );
+
+          final historyRes = await DevToolsService.instance.handleGetHistory(
+            'ext.bloc_signal.getHistory',
+            {'hashCode': identityHashCode(cubit).toString()},
+          );
+          expect(historyRes.result, isNotNull);
+          final decoded =
+              jsonDecode(historyRes.result!) as Map<String, dynamic>;
+          final entries = decoded['history'] as List<dynamic>;
+          final meta = (entries.last as Map<String, dynamic>)['data']
+              as Map<String, dynamic>;
+          final innerMeta = meta['metadata'] as Map<String, dynamic>;
+          expect(innerMeta['nan'], equals('NaN'));
+          expect(innerMeta['inf'], equals('Infinity'));
+          expect(innerMeta['ninf'], equals('-Infinity'));
+        },
+      );
+
+      test(
+        '(Issue #474: F06) isEnabled == false short-circuits '
+        'handleGetInstances, handleGetHistory, and handleDispatch',
+        () async {
+          final bloc = CounterBloc();
+          addTearDown(bloc.close);
+          final id = identityHashCode(bloc).toString();
+
+          DevToolsService.instance.isEnabled = false;
+          addTearDown(() => DevToolsService.instance.isEnabled = true);
+
+          final instancesRes =
+              await DevToolsService.instance.handleGetInstances(
+            'ext.bloc_signal.getInstances',
+            const {},
+          );
+          expect(
+            jsonDecode(instancesRes.result!),
+            equals({'instances': <dynamic>[]}),
+          );
+
+          final historyRes = await DevToolsService.instance.handleGetHistory(
+            'ext.bloc_signal.getHistory',
+            {'hashCode': id},
+          );
+          expect(historyRes.errorCode, equals(-32602));
+
+          final dispatchRes = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {'hashCode': id, 'event': 'inc'},
+          );
+          expect(dispatchRes.errorCode, equals(-32602));
+        },
+      );
+
+      test(
+        '(Issue #474: F03, F04) DevToolsService.trackTransition, trackError, '
+        'and format* helpers apply and isolate redactors directly',
+        () async {
+          final cubit = CounterCubit();
+          addTearDown(cubit.close);
+
+          // Direct trackTransition & trackError without pre-formatted args
+          // (default no-redactor path).
+          DevToolsService.instance.trackTransition(cubit, 'ev', 1);
+          DevToolsService.instance.trackError(
+            cubit,
+            const FormatException('err'),
+            StackTrace.current,
+          );
+
+          // Configured throwing redactors on DevToolsService directly.
+          DevToolsService.instance.configure(
+            stateRedactor: (b, s) => throw const FormatException('s'),
+            eventRedactor: (b, e) => throw const FormatException('e'),
+            errorRedactor: (b, err) => throw const FormatException('err'),
+            stackTraceRedactor: (st) => throw const FormatException('st'),
+          );
+
+          expect(
+            DevToolsService.instance.formatState(cubit, 1),
+            equals('<redaction_error>'),
+          );
+          expect(
+            DevToolsService.instance.formatEvent(cubit, 'ev'),
+            equals('<redaction_error>'),
+          );
+          expect(
+            DevToolsService.instance.formatError(cubit, StateError('x')),
+            equals('<redaction_error>'),
+          );
+          expect(
+            DevToolsService.instance.formatStackTrace(StackTrace.current),
+            equals('<redaction_error>'),
+          );
+        },
+      );
+
+      test(
+        '(Issue #474: NBO-4) handleDispatch redacts bloc.add errors and uses '
+        '[REDACTED] when errorRedactor returns null',
+        () async {
+          DevToolsService.instance.configure(
+            errorRedactor: (bloc, error) => null,
+          );
+
+          final cubit = CounterCubit();
+          addTearDown(cubit.close);
+
+          // Register a BlocSignal whose handler throws synchronously on add
+          final throwingBloc = _ThrowingAddBloc();
+          addTearDown(throwingBloc.close);
+
+          final res = await DevToolsService.instance.handleDispatch(
+            'ext.bloc_signal.dispatch',
+            {
+              'hashCode': identityHashCode(throwingBloc).toString(),
+              'event': 'boom',
+            },
+          );
+          expect(res.errorCode, equals(-32602));
+          expect(res.errorDetail, contains('[REDACTED]'));
+          expect(res.errorDetail, isNot(contains('null')));
+        },
+      );
     });
   });
+}
+
+class _ThrowingAddBloc extends BlocSignal<String, int> {
+  _ThrowingAddBloc() : super(initialState: 0) {
+    on<String>((event, emit) {});
+  }
+
+  @override
+  void add(String event) {
+    throw StateError('secret-add-failure');
+  }
 }

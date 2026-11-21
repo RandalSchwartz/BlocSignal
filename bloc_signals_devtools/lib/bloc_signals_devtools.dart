@@ -77,7 +77,9 @@ class _BlocSignalsDevToolsExtensionState
   @override
   Widget build(BuildContext context) {
     final instances = widget.instances;
-    final selectedHashCode = _selectedInstance?['hashCode'] as int?;
+    final rawSelectedHashCode = _selectedInstance?['hashCode'];
+    final selectedHashCode =
+        rawSelectedHashCode is int ? rawSelectedHashCode : null;
 
     // Filter history entries for selected container instance
     final filteredHistory = widget.history.where((entry) {
@@ -87,8 +89,10 @@ class _BlocSignalsDevToolsExtensionState
     }).toList();
 
     // Derive state diff values from selected history entry or selected instance
-    final historyData =
-        (_selectedHistoryEntry?['data'] as Map<String, dynamic>?) ?? {};
+    final rawHistoryData = _selectedHistoryEntry?['data'];
+    final historyData = rawHistoryData is Map<String, dynamic>
+        ? rawHistoryData
+        : const <String, dynamic>{};
     final currentState = historyData['currentState']?.toString() ??
         historyData['prevState']?.toString() ??
         historyData['event']?.toString() ??

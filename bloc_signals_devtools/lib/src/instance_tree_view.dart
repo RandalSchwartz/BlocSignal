@@ -73,12 +73,18 @@ class _InstanceTreeViewState extends State<InstanceTreeView> {
                   itemCount: filtered.length,
                   itemBuilder: (context, index) {
                     final item = filtered[index];
-                    final hashCode = item['hashCode'] as int?;
-                    final isSelected = hashCode == widget.selectedHashCode;
+                    final rawHashCode = item['hashCode'];
+                    final hashCode = rawHashCode is int ? rawHashCode : null;
+                    final isSelected =
+                        hashCode != null && hashCode == widget.selectedHashCode;
                     final isClosed = item['isClosed'] == true;
 
                     return ListTile(
-                      key: Key('instance_tile_$hashCode'),
+                      key: Key(
+                        hashCode != null
+                            ? 'instance_tile_$hashCode'
+                            : 'instance_tile_invalid_$index',
+                      ),
                       selected: isSelected,
                       selectedTileColor:
                           Theme.of(context).primaryColor.withAlpha(25),

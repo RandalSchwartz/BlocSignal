@@ -176,6 +176,194 @@ class DevToolsService {
 
   bool? _isEnabled;
 
+  String? Function(BlocSignalBase<dynamic> bloc, Object? state)? _stateRedactor;
+  String? Function(BlocSignalBase<dynamic> bloc, Object? event)? _eventRedactor;
+  String? Function(BlocSignalBase<dynamic> bloc, Object error)? _errorRedactor;
+  String Function(StackTrace stackTrace)? _stackTraceRedactor;
+  int? _maxPayloadLength = 4096;
+
+  /// Configures optional redactors and payload length limits used by
+  /// [DevToolsService] and `DevToolsBlocSignalObserver`.
+  ///
+  /// - [stateRedactor]: Formats or redacts container state values; returning
+  ///   `null` omits the state string.
+  /// - [eventRedactor]: Formats or redacts event values; returning `null` omits
+  ///   the event string.
+  /// - [errorRedactor]: Formats or redacts error descriptions; returning `null`
+  ///   omits the error string (falling back to `'[REDACTED]'` in RPC errors).
+  /// - [stackTraceRedactor]: Formats or redacts stack traces.
+  /// - [maxPayloadLength]: Maximum character length for recorded string
+  ///   payloads (defaults to `4096`; `null` or `<= 0` disables truncation).
+  void configure({
+    String? Function(BlocSignalBase<dynamic> bloc, Object? state)?
+        stateRedactor,
+    String? Function(BlocSignalBase<dynamic> bloc, Object? event)?
+        eventRedactor,
+    String? Function(BlocSignalBase<dynamic> bloc, Object error)? errorRedactor,
+    String Function(StackTrace stackTrace)? stackTraceRedactor,
+    int? maxPayloadLength = 4096,
+  }) {
+    _stateRedactor = stateRedactor;
+    _eventRedactor = eventRedactor;
+    _errorRedactor = errorRedactor;
+    _stackTraceRedactor = stackTraceRedactor;
+    _maxPayloadLength = maxPayloadLength;
+  }
+
+  /// Truncates [value] to [maxLength] UTF-16 code units without splitting
+  /// surrogate pairs, appending `'...[truncated]'` when exceeded.
+  ///
+  /// A `null` or non-positive [maxLength] disables truncation.
+  static String truncatePayload(String value, int? maxLength) {
+    if (maxLength == null || maxLength <= 0 || value.length <= maxLength) {
+      return value;
+    }
+    var end = maxLength;
+    final lastUnit = value.codeUnitAt(end - 1);
+    if (lastUnit >= 0xD800 && lastUnit <= 0xDBFF) {
+      end--;
+    }
+    return '${value.substring(0, end)}...[truncated]';
+  }
+
+  /// Formats and optionally redacts/truncates a container [state].
+  String? formatState(BlocSignalBase<dynamic> bloc, Object? state) {
+    final redactor = _stateRedactor;
+    String? raw;
+    if (redactor != null) {
+      try {
+        raw = redactor(bloc, state);
+      } on Exception catch (_) {
+        raw = '<redaction_error>';
+      }
+    } else {
+      raw = state?.toString();
+    }
+    return raw != null ? truncatePayload(raw, _maxPayloadLength) : null;
+  }
+
+  /// Formats and optionally redacts/truncates an [event].
+  String? formatEvent(BlocSignalBase<dynamic> bloc, Object? event) {
+    if (event == null) return null;
+    final redactor = _eventRedactor;
+    String? raw;
+    if (redactor != null) {
+      try {
+        raw = redactor(bloc, event);
+      } on Exception catch (_) {
+        raw = '<redaction_error>';
+      }
+    } else {
+      raw = event.toString();
+    }
+    return raw != null ? truncatePayload(raw, _maxPayloadLength) : null;
+  }
+
+  /// Formats and optionally redacts/truncates an [error].
+  String? formatError(BlocSignalBase<dynamic> bloc, Object error) {
+    final redactor = _errorRedactor;
+    String? raw;
+    if (redactor != null) {
+      try {
+        raw = redactor(bloc, error);
+      } on Exception catch (_) {
+        raw = '<redaction_error>';
+      }
+    } else {
+      raw = error.toString();
+    }
+    return raw != null ? truncatePayload(raw, _maxPayloadLength) : null;
+  }
+
+  /// Formats and optionally redacts/truncates a [stackTrace].
+  String formatStackTrace(StackTrace stackTrace) {
+    final redactor = _stackTraceRedactor;
+    String raw;
+    if (redactor != null) {
+      try {
+        raw = redactor(stackTrace);
+      } on Exception catch (_) {
+        raw = '<redaction_error>';
+      }
+    } else {
+      raw = stackTrace.toString();
+    }
+    return truncatePayload(raw, _maxPayloadLength);
+  }
+
+  /// Recursively sanitizes [metadata] into JSON-encodable values, converting
+  /// `double.nan`, `double.infinity`, and `double.negativeInfinity` to strings
+  /// and guarding against excessive nesting (`maxDepth = 8`) and cycles.
+  Map<String, dynamic> sanitizeMetadata(Map<String, dynamic> metadata) {
+    final visited = Set<Object>.identity();
+    return _sanitizeValue(
+      metadata,
+      depth: 0,
+      visited: visited,
+      maxPayloadLength: _maxPayloadLength,
+    ) as Map<String, dynamic>;
+  }
+
+  static dynamic _sanitizeValue(
+    Object? value, {
+    required int depth,
+    required Set<Object> visited,
+    required int? maxPayloadLength,
+  }) {
+    const maxDepth = 8;
+    if (value == null || value is bool || value is int) {
+      return value;
+    }
+    if (value is double) {
+      if (value.isNaN) return 'NaN';
+      if (value == double.infinity) return 'Infinity';
+      if (value == double.negativeInfinity) return '-Infinity';
+      return value;
+    }
+    if (value is String) {
+      return truncatePayload(value, maxPayloadLength);
+    }
+    if (value is Map) {
+      if (depth >= maxDepth || !visited.add(value)) {
+        return '<max_depth_or_cycle>';
+      }
+      try {
+        return <String, dynamic>{
+          for (final entry in value.entries)
+            truncatePayload(entry.key.toString(), maxPayloadLength):
+                _sanitizeValue(
+              entry.value,
+              depth: depth + 1,
+              visited: visited,
+              maxPayloadLength: maxPayloadLength,
+            ),
+        };
+      } finally {
+        visited.remove(value);
+      }
+    }
+    if (value is Iterable) {
+      if (depth >= maxDepth || !visited.add(value)) {
+        return '<max_depth_or_cycle>';
+      }
+      try {
+        return value
+            .map(
+              (e) => _sanitizeValue(
+                e,
+                depth: depth + 1,
+                visited: visited,
+                maxPayloadLength: maxPayloadLength,
+              ),
+            )
+            .toList();
+      } finally {
+        visited.remove(value);
+      }
+    }
+    return truncatePayload(value.toString(), maxPayloadLength);
+  }
+
   /// Whether DevTools history tracking and extension registration are enabled.
   ///
   /// Defaults to `true` in debug mode (asserts enabled) and is forced to
@@ -221,8 +409,14 @@ class DevToolsService {
   void trackTransition(
     BlocSignalBase<dynamic> bloc,
     Object? event,
-    Object? state,
-  ) {
+    Object? state, {
+    String? formattedEvent,
+    bool hasFormattedEvent = false,
+    String? formattedCurrentState,
+    bool hasFormattedCurrentState = false,
+    String? formattedNextState,
+    bool hasFormattedNextState = false,
+  }) {
     if (!isEnabled) return;
     final id = identityHashCode(bloc);
     _record(
@@ -232,9 +426,14 @@ class DevToolsService {
         timestamp: DateTime.now().toIso8601String(),
         instanceHashCode: id,
         data: {
-          'event': event?.toString(),
-          'currentState': bloc.stateValue.toString(),
-          'nextState': state?.toString(),
+          'event':
+              hasFormattedEvent ? formattedEvent : formatEvent(bloc, event),
+          'currentState': hasFormattedCurrentState
+              ? formattedCurrentState
+              : formatState(bloc, bloc.stateValue),
+          'nextState': hasFormattedNextState
+              ? formattedNextState
+              : formatState(bloc, state),
         },
       ),
     );
@@ -244,8 +443,12 @@ class DevToolsService {
   void trackError(
     BlocSignalBase<dynamic> bloc,
     Object error,
-    StackTrace stackTrace,
-  ) {
+    StackTrace stackTrace, {
+    String? formattedError,
+    bool hasFormattedError = false,
+    String? formattedStackTrace,
+    bool hasFormattedStackTrace = false,
+  }) {
     if (!isEnabled) return;
     final id = identityHashCode(bloc);
     _record(
@@ -255,8 +458,11 @@ class DevToolsService {
         timestamp: DateTime.now().toIso8601String(),
         instanceHashCode: id,
         data: {
-          'error': error.toString(),
-          'stackTrace': stackTrace.toString(),
+          'error':
+              hasFormattedError ? formattedError : formatError(bloc, error),
+          'stackTrace': hasFormattedStackTrace
+              ? formattedStackTrace
+              : formatStackTrace(stackTrace),
         },
       ),
     );
@@ -268,9 +474,15 @@ class DevToolsService {
     String name, {
     Object? event,
     Map<String, dynamic>? metadata,
+    String? formattedEvent,
+    bool hasFormattedEvent = false,
+    bool metadataSanitized = false,
   }) {
     if (!isEnabled) return;
     final id = identityHashCode(bloc);
+    final safeMeta = metadata == null
+        ? null
+        : (metadataSanitized ? metadata : sanitizeMetadata(metadata));
     _record(
       id,
       DevToolsHistoryEntry(
@@ -279,8 +491,9 @@ class DevToolsService {
         instanceHashCode: id,
         data: {
           'name': name,
-          'event': event?.toString(),
-          'metadata': metadata,
+          'event':
+              hasFormattedEvent ? formattedEvent : formatEvent(bloc, event),
+          'metadata': safeMeta,
         },
       ),
     );
@@ -309,6 +522,11 @@ class DevToolsService {
     _history.clear();
     clearEventDeserializers();
     _isEnabled = null;
+    _stateRedactor = null;
+    _eventRedactor = null;
+    _errorRedactor = null;
+    _stackTraceRedactor = null;
+    _maxPayloadLength = 4096;
   }
 
   /// Returns recorded history entries for [id] in unit tests.
@@ -328,6 +546,11 @@ class DevToolsService {
     String method,
     Map<String, String> parameters,
   ) async {
+    if (!isEnabled) {
+      return developer.ServiceExtensionResponse.result(
+        jsonEncode({'instances': <Map<String, dynamic>>[]}),
+      );
+    }
     final instances = <Map<String, dynamic>>[];
     _containers.removeWhere((id, ref) {
       final bloc = ref.target;
@@ -338,7 +561,7 @@ class DevToolsService {
       instances.add({
         'hashCode': id,
         'type': bloc.runtimeType.toString(),
-        'stateValue': bloc.stateValue.toString(),
+        'stateValue': formatState(bloc, bloc.stateValue),
         'isClosed': bloc.isClosed,
       });
       return false;
@@ -354,6 +577,12 @@ class DevToolsService {
     String method,
     Map<String, String> parameters,
   ) async {
+    if (!isEnabled) {
+      return developer.ServiceExtensionResponse.error(
+        developer.ServiceExtensionResponse.invalidParams,
+        'DevToolsService is disabled',
+      );
+    }
     final idStr = parameters['hashCode'];
     if (idStr == null) {
       return developer.ServiceExtensionResponse.error(
@@ -421,6 +650,12 @@ class DevToolsService {
     String method,
     Map<String, String> parameters,
   ) async {
+    if (!isEnabled) {
+      return developer.ServiceExtensionResponse.error(
+        developer.ServiceExtensionResponse.invalidParams,
+        'DevToolsService is disabled',
+      );
+    }
     final idStr = parameters['hashCode'];
     final eventStr = parameters['event'];
     if (idStr == null) {
@@ -483,9 +718,10 @@ class DevToolsService {
         // than crashing the target isolate if a custom deserializer throws
         // `TypeError` or `StateError`.
       } on Object catch (e) {
+        final redactedError = formatError(bloc, e) ?? '[REDACTED]';
         return developer.ServiceExtensionResponse.error(
           developer.ServiceExtensionResponse.invalidParams,
-          'Failed to deserialize event for ${bloc.runtimeType}: $e',
+          'Failed to deserialize event for ${bloc.runtimeType}: $redactedError',
         );
       }
     }
@@ -497,14 +733,18 @@ class DevToolsService {
       // than crashing the target isolate when dispatching an invalid or
       // unregistered event throws `TypeError` or `StateError`.
     } on Object catch (e) {
+      final redactedError = formatError(bloc, e) ?? '[REDACTED]';
       return developer.ServiceExtensionResponse.error(
         developer.ServiceExtensionResponse.invalidParams,
-        'Failed to dispatch event to ${bloc.runtimeType}: $e',
+        'Failed to dispatch event to ${bloc.runtimeType}: $redactedError',
       );
     }
 
     return developer.ServiceExtensionResponse.result(
-      jsonEncode({'success': true, 'stateValue': bloc.stateValue.toString()}),
+      jsonEncode({
+        'success': true,
+        'stateValue': formatState(bloc, bloc.stateValue),
+      }),
     );
   }
 }

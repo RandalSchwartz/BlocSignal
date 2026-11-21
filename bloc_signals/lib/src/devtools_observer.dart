@@ -18,11 +18,48 @@ import 'package:bloc_signals/src/devtools_service.dart';
 /// ```
 class DevToolsBlocSignalObserver extends BlocSignalObserver {
   /// Creates a [DevToolsBlocSignalObserver], optionally chaining calls to
-  /// [previousObserver].
-  DevToolsBlocSignalObserver({this.previousObserver});
+  /// [previousObserver] and configuring redaction and payload truncation.
+  DevToolsBlocSignalObserver({
+    this.previousObserver,
+    this.stateRedactor,
+    this.eventRedactor,
+    this.errorRedactor,
+    this.stackTraceRedactor,
+    this.maxPayloadLength = 4096,
+  }) {
+    DevToolsService.instance.configure(
+      stateRedactor: stateRedactor,
+      eventRedactor: eventRedactor,
+      errorRedactor: errorRedactor,
+      stackTraceRedactor: stackTraceRedactor,
+      maxPayloadLength: maxPayloadLength,
+    );
+  }
 
   /// An optional parent observer to delegate calls to.
   final BlocSignalObserver? previousObserver;
+
+  /// Optional callback to redact or format state values before recording them.
+  final String? Function(BlocSignalBase<dynamic> bloc, Object? state)?
+      stateRedactor;
+
+  /// Optional callback to redact or format event values before recording them.
+  final String? Function(BlocSignalBase<dynamic> bloc, Object? event)?
+      eventRedactor;
+
+  /// Optional callback to redact or format error descriptions before recording
+  /// them.
+  final String? Function(BlocSignalBase<dynamic> bloc, Object error)?
+      errorRedactor;
+
+  /// Optional callback to redact or format stack traces before recording them.
+  final String Function(StackTrace stackTrace)? stackTraceRedactor;
+
+  /// Maximum character length for recorded string payloads.
+  ///
+  /// Defaults to `4096`. Setting to `null` or a non-positive value disables
+  /// truncation.
+  final int? maxPayloadLength;
 
   void _post(String eventKind, Map<String, dynamic> eventData) {
     if (!DevToolsService.instance.isEnabled) return;
@@ -54,7 +91,10 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
       _post('bloc_signal.onCreate', {
         'blocType': bloc.runtimeType.toString(),
         'hashCode': identityHashCode(bloc),
-        'initialState': bloc.stateValue.toString(),
+        'initialState': DevToolsService.instance.formatState(
+          bloc,
+          bloc.stateValue,
+        ),
         'timestamp': DateTime.now().microsecondsSinceEpoch,
       });
     }
@@ -69,7 +109,7 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
       _post('bloc_signal.onEvent', {
         'blocType': bloc.runtimeType.toString(),
         'hashCode': identityHashCode(bloc),
-        'event': event.toString(),
+        'event': DevToolsService.instance.formatEvent(bloc, event),
         'timestamp': DateTime.now().microsecondsSinceEpoch,
       });
     }
@@ -91,19 +131,40 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     Object? state,
   ) {
     super.onTransition(bloc, event, state);
-    DevToolsService.instance.trackTransition(bloc, event, state);
+    final enabled = DevToolsService.instance.isEnabled;
+    final eventStr =
+        enabled ? DevToolsService.instance.formatEvent(bloc, event) : null;
+    final currentStateStr = enabled
+        ? DevToolsService.instance.formatState(bloc, bloc.stateValue)
+        : null;
+    final nextStateStr =
+        enabled ? DevToolsService.instance.formatState(bloc, state) : null;
+
+    if (enabled) {
+      DevToolsService.instance.trackTransition(
+        bloc,
+        event,
+        state,
+        formattedEvent: eventStr,
+        hasFormattedEvent: true,
+        formattedCurrentState: currentStateStr,
+        hasFormattedCurrentState: true,
+        formattedNextState: nextStateStr,
+        hasFormattedNextState: true,
+      );
+    }
     _forwardPrevious(
       bloc,
       (observer) => observer.onTransition(bloc, event, state),
     );
 
-    if (DevToolsService.instance.isEnabled) {
+    if (enabled) {
       _post('bloc_signal.onTransition', {
         'blocType': bloc.runtimeType.toString(),
         'hashCode': identityHashCode(bloc),
-        'event': event?.toString(),
-        'currentState': bloc.stateValue.toString(),
-        'nextState': state.toString(),
+        'event': eventStr,
+        'currentState': currentStateStr,
+        'nextState': nextStateStr,
         'timestamp': DateTime.now().microsecondsSinceEpoch,
       });
     }
@@ -121,8 +182,14 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
       _post('bloc_signal.onChange', {
         'blocType': bloc.runtimeType.toString(),
         'hashCode': identityHashCode(bloc),
-        'currentState': change.currentState.toString(),
-        'nextState': change.nextState.toString(),
+        'currentState': DevToolsService.instance.formatState(
+          bloc,
+          change.currentState,
+        ),
+        'nextState': DevToolsService.instance.formatState(
+          bloc,
+          change.nextState,
+        ),
         'timestamp': DateTime.now().microsecondsSinceEpoch,
       });
     }
@@ -135,19 +202,35 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
     StackTrace stackTrace,
   ) {
     super.onError(bloc, error, stackTrace);
-    DevToolsService.instance.trackError(bloc, error, stackTrace);
+    final enabled = DevToolsService.instance.isEnabled;
+    final errorStr =
+        enabled ? DevToolsService.instance.formatError(bloc, error) : null;
+    final stackTraceStr =
+        enabled ? DevToolsService.instance.formatStackTrace(stackTrace) : null;
+
+    if (enabled) {
+      DevToolsService.instance.trackError(
+        bloc,
+        error,
+        stackTrace,
+        formattedError: errorStr,
+        hasFormattedError: true,
+        formattedStackTrace: stackTraceStr,
+        hasFormattedStackTrace: true,
+      );
+    }
     try {
       previousObserver?.onError(bloc, error, stackTrace);
     } on Exception catch (_) {
       // Prevent previousObserver exception in onError from causing recursion
     }
 
-    if (DevToolsService.instance.isEnabled) {
+    if (enabled) {
       _post('bloc_signal.onError', {
         'blocType': bloc.runtimeType.toString(),
         'hashCode': identityHashCode(bloc),
-        'error': error.toString(),
-        'stackTrace': stackTrace.toString(),
+        'error': errorStr,
+        'stackTrace': stackTraceStr,
         'timestamp': DateTime.now().microsecondsSinceEpoch,
       });
     }
@@ -188,12 +271,18 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
       );
       return;
     }
-    final sanitizedMeta = metadata != null ? _sanitizeMetadata(metadata) : null;
+    final sanitizedMeta = metadata != null
+        ? DevToolsService.instance.sanitizeMetadata(metadata)
+        : null;
+    final eventStr = DevToolsService.instance.formatEvent(bloc, event);
     DevToolsService.instance.trackTelemetry(
       bloc,
       name,
       event: event,
       metadata: sanitizedMeta,
+      formattedEvent: eventStr,
+      hasFormattedEvent: true,
+      metadataSanitized: true,
     );
     _forwardPrevious(
       bloc,
@@ -209,28 +298,9 @@ class DevToolsBlocSignalObserver extends BlocSignalObserver {
       'blocType': bloc.runtimeType.toString(),
       'hashCode': identityHashCode(bloc),
       'name': name,
-      'event': event?.toString(),
+      'event': eventStr,
       'metadata': sanitizedMeta,
       'timestamp': DateTime.now().microsecondsSinceEpoch,
     });
-  }
-
-  static Map<String, dynamic> _sanitizeMetadata(Map<String, dynamic> metadata) {
-    final sanitized = <String, dynamic>{};
-    for (final entry in metadata.entries) {
-      final value = entry.value;
-      if (value == null || value is num || value is bool || value is String) {
-        sanitized[entry.key] = value;
-      } else if (value is Map) {
-        sanitized[entry.key] = value.map(
-          (k, v) => MapEntry(k.toString(), v?.toString()),
-        );
-      } else if (value is Iterable) {
-        sanitized[entry.key] = value.map((e) => e?.toString()).toList();
-      } else {
-        sanitized[entry.key] = value.toString();
-      }
-    }
-    return sanitized;
   }
 }

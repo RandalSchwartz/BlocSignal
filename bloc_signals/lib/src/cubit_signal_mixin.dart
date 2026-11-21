@@ -346,8 +346,18 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
     }
   }
 
+  /// Formats [state] for [toString] output.
+  ///
+  /// Subclasses can override this method to customize or redact state
+  /// descriptions without altering [toString]'s `<uninitialized>` guard.
+  @protected
+  String describeState(StateType state) => state.toString();
+
   @override
-  String toString() => '$runtimeType($stateValue)';
+  String toString() {
+    if (!_isInitialized) return '$runtimeType(<uninitialized>)';
+    return '$runtimeType(${describeState(stateValue)})';
+  }
 }
 
 /// A clean base class for method-driven state management.

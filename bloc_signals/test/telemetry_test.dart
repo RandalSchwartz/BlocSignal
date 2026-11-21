@@ -459,6 +459,115 @@ void main() {
       },
     );
   });
+
+  group('(Issue #475) Per-Invocation Zone Dispatch Token Correlation', () {
+    tearDown(() {
+      BlocSignalObserver.observer = null;
+    });
+
+    test(
+      '(Issue #475) ambientZoneDispatchTokenKey is unique per add() and '
+      'present in onEvent, handler, and onEventCompleted',
+      () async {
+        final tokenLogs = <({
+          String phase,
+          Object? event,
+          Object? token,
+        })>[];
+
+        final observer = _DispatchTokenRecordingObserver(tokenLogs);
+        BlocSignalObserver.observer = observer;
+
+        final bloc = _TokenTestBloc(
+          onHandle: (event) {
+            tokenLogs.add(
+              (
+                phase: 'handler',
+                event: event,
+                token: Zone.current[BlocSignalBase.ambientZoneDispatchTokenKey],
+              ),
+            );
+          },
+        );
+
+        final event1 = Increment();
+        final event2 = Increment();
+
+        bloc
+          ..add(event1)
+          ..add(event2);
+
+        await Future<void>.microtask(() {});
+        await bloc.close();
+
+        final onEventTokens = tokenLogs
+            .where((l) => l.phase == 'onEvent')
+            .map((l) => l.token)
+            .toList();
+        final handlerTokens = tokenLogs
+            .where((l) => l.phase == 'handler')
+            .map((l) => l.token)
+            .toList();
+        final completedTokens = tokenLogs
+            .where((l) => l.phase == 'onEventCompleted')
+            .map((l) => l.token)
+            .toList();
+
+        expect(onEventTokens, hasLength(2));
+        expect(handlerTokens, hasLength(2));
+        expect(completedTokens, hasLength(2));
+
+        expect(onEventTokens[0], isNotNull);
+        expect(onEventTokens[1], isNotNull);
+        expect(identical(onEventTokens[0], onEventTokens[1]), isFalse);
+
+        expect(identical(handlerTokens[0], onEventTokens[0]), isTrue);
+        expect(identical(completedTokens[0], onEventTokens[0]), isTrue);
+        expect(identical(handlerTokens[1], onEventTokens[1]), isTrue);
+        expect(identical(completedTokens[1], onEventTokens[1]), isTrue);
+      },
+    );
+  });
+}
+
+class _DispatchTokenRecordingObserver extends BlocSignalObserver {
+  _DispatchTokenRecordingObserver(this.logs);
+
+  final List<({String phase, Object? event, Object? token})> logs;
+
+  @override
+  void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {
+    super.onEvent(bloc, event);
+    logs.add(
+      (
+        phase: 'onEvent',
+        event: event,
+        token: Zone.current[BlocSignalBase.ambientZoneDispatchTokenKey],
+      ),
+    );
+  }
+
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+    super.onEventCompleted(bloc, event);
+    logs.add(
+      (
+        phase: 'onEventCompleted',
+        event: event,
+        token: Zone.current[BlocSignalBase.ambientZoneDispatchTokenKey],
+      ),
+    );
+  }
+}
+
+class _TokenTestBloc extends BlocSignal<CounterEvent, int> {
+  _TokenTestBloc({required void Function(CounterEvent event) onHandle})
+      : super(initialState: 0) {
+    on<Increment>((event, emit) {
+      onHandle(event);
+      emit(stateValue + 1);
+    });
+  }
 }
 
 class _MixedRestartableTelemetryBloc extends BlocSignal<CounterEvent, int> {

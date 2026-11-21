@@ -1284,6 +1284,122 @@ void main() {
       },
     );
   });
+
+  group('(Issue #475) Replay Dispatch Token Isolation', () {
+    tearDown(() {
+      BlocSignalObserver.observer = null;
+    });
+
+    test(
+      '(Issue #475) calling replayBloc.undo() inside an outer bloc.add() '
+      'handler isolates both dispatch tokens and lifecycle hooks',
+      () async {
+        final records = <({
+          String hook,
+          BlocSignalBase<dynamic> bloc,
+          Object? event,
+          Object? state,
+          Object? token,
+          Object? ambientBloc,
+        })>[];
+        final observer = _TokenTraceObserver(records);
+        BlocSignalObserver.observer = observer;
+
+        final replayBloc = CounterBloc()..add(const CounterIncrementPressed());
+        await Future<void>.microtask(() {});
+        records.clear();
+
+        final outerBloc = _OuterTriggeringBloc(
+          onHandle: (emit) {
+            replayBloc.undo();
+            emit(10);
+          },
+        )..add(const CounterIncrementPressed());
+        await Future<void>.microtask(() {});
+        await outerBloc.close();
+        await replayBloc.close();
+
+        final outerEvents =
+            records.where((r) => identical(r.bloc, outerBloc)).toList();
+        final replayEvents =
+            records.where((r) => identical(r.bloc, replayBloc)).toList();
+
+        expect(outerEvents.map((r) => r.hook), [
+          'onEvent',
+          'onTransition',
+          'onEventCompleted',
+        ]);
+        expect(replayEvents.map((r) => r.hook), [
+          'onEvent',
+          'onTransition',
+          'onEventCompleted',
+        ]);
+
+        final outerToken = outerEvents.first.token;
+        final replayToken = replayEvents.first.token;
+        expect(outerToken, isNotNull);
+        expect(replayToken, isNotNull);
+        expect(identical(outerToken, replayToken), isFalse);
+
+        for (final r in outerEvents) {
+          expect(identical(r.token, outerToken), isTrue);
+          expect(identical(r.ambientBloc, outerBloc), isTrue);
+        }
+        for (final r in replayEvents) {
+          expect(identical(r.token, replayToken), isTrue);
+          expect(identical(r.ambientBloc, replayBloc), isTrue);
+        }
+        expect(replayEvents[1].state, equals(0));
+        expect(outerEvents[1].state, equals(10));
+      },
+    );
+
+    test(
+      '(Issue #475) calling this.undo() inside replayBloc.add() isolates the '
+      'undo token from the enclosing add() token',
+      () async {
+        final records = <({
+          String hook,
+          BlocSignalBase<dynamic> bloc,
+          Object? event,
+          Object? state,
+          Object? token,
+          Object? ambientBloc,
+        })>[];
+        final observer = _TokenTraceObserver(records);
+        BlocSignalObserver.observer = observer;
+
+        final bloc = _SelfUndoBloc()..add(const CounterIncrementPressed());
+        await Future<void>.microtask(() {});
+        expect(bloc.stateValue, equals(1));
+        records.clear();
+
+        bloc.add(const CounterDecrementPressed());
+        await Future<void>.microtask(() {});
+        await bloc.close();
+
+        final onEventRecords =
+            records.where((r) => r.hook == 'onEvent').toList();
+        expect(onEventRecords, hasLength(2));
+        final addToken = onEventRecords[0].token;
+        final undoToken = onEventRecords[1].token;
+        expect(addToken, isNotNull);
+        expect(undoToken, isNotNull);
+        expect(identical(addToken, undoToken), isFalse);
+
+        final addHooks =
+            records.where((r) => identical(r.token, addToken)).toList();
+        final undoHooks =
+            records.where((r) => identical(r.token, undoToken)).toList();
+        expect(addHooks.map((r) => r.hook), ['onEvent', 'onEventCompleted']);
+        expect(
+          undoHooks.map((r) => r.hook),
+          ['onEvent', 'onTransition', 'onEventCompleted'],
+        );
+        expect(undoHooks[1].state, equals(0));
+      },
+    );
+  });
 }
 
 mixin _BlocPersistenceTrackingMixin<State> on BlocSignalBase<State> {
@@ -1491,4 +1607,73 @@ class _ReplayThenHydratedBloc extends ReplayBloc<CounterEvent, int>
 
   @override
   HydratedStorage? get storageOverride => _storage;
+}
+
+class _TokenTraceObserver extends BlocSignalObserver {
+  _TokenTraceObserver(this.records);
+
+  final List<
+      ({
+        String hook,
+        BlocSignalBase<dynamic> bloc,
+        Object? event,
+        Object? state,
+        Object? token,
+        Object? ambientBloc,
+      })> records;
+
+  void _record(
+    String hook,
+    BlocSignalBase<dynamic> bloc,
+    Object? event, [
+    Object? state,
+  ]) {
+    records.add(
+      (
+        hook: hook,
+        bloc: bloc,
+        event: event,
+        state: state,
+        token: Zone.current[BlocSignalBase.ambientZoneDispatchTokenKey],
+        ambientBloc: Zone.current[BlocSignalBase.ambientZoneBlocKey],
+      ),
+    );
+  }
+
+  @override
+  void onEvent(BlocSignalBase<dynamic> bloc, Object? event) {
+    super.onEvent(bloc, event);
+    _record('onEvent', bloc, event);
+  }
+
+  @override
+  void onTransition(
+    BlocSignalBase<dynamic> bloc,
+    Object? event,
+    Object? state,
+  ) {
+    super.onTransition(bloc, event, state);
+    _record('onTransition', bloc, event, state);
+  }
+
+  @override
+  void onEventCompleted(BlocSignalBase<dynamic> bloc, Object? event) {
+    super.onEventCompleted(bloc, event);
+    _record('onEventCompleted', bloc, event);
+  }
+}
+
+class _OuterTriggeringBloc extends BlocSignal<CounterEvent, int> {
+  _OuterTriggeringBloc({
+    required void Function(void Function(int value) emit) onHandle,
+  }) : super(initialState: 0) {
+    on<CounterIncrementPressed>((event, emit) => onHandle(emit));
+  }
+}
+
+class _SelfUndoBloc extends ReplayBloc<CounterEvent, int> {
+  _SelfUndoBloc() : super(initialState: 0) {
+    on<CounterIncrementPressed>((event, emit) => emit(stateValue + 1));
+    on<CounterDecrementPressed>((event, emit) => undo());
+  }
 }

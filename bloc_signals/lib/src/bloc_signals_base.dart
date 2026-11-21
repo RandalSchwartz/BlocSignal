@@ -317,6 +317,11 @@ abstract class BlocSignalBase<StateType> {
   /// instance.
   static final Object ambientZoneBlocKey = Object();
 
+  /// Canonical zone key used to correlate an individual `add()` dispatch
+  /// invocation across `onEvent`, handler execution, `onError`, `onTelemetry`,
+  /// and `onEventCompleted`.
+  static final Object ambientZoneDispatchTokenKey = Object();
+
   /// Internal zone key used to track the causing event of a transition.
   @protected
   Object get zoneEventKey;

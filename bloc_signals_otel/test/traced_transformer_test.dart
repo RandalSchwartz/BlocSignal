@@ -508,4 +508,261 @@ void main() {
       );
     });
   });
+
+  group('(Issue #475) tracedBloc Context.current, Contention, & StackTrace',
+      () {
+    late TestHarness harness;
+    late InMemorySpanExporter exporter;
+    late otel.APITracer tracer;
+
+    setUpAll(() async {
+      harness = await maybeInitializeOtelForTest(
+        serviceName: 'traced_transformer_test',
+      );
+      exporter = harness.spans;
+    });
+
+    setUp(() {
+      harness.clear();
+      tracer = OTel.tracerProvider().getTracer('test_tracer');
+    });
+
+    test(
+      '(Issue #475) otel.Context.current.span resolves to active event span '
+      'inside sync & async handlers',
+      () async {
+        final observedSyncSpans = <otel.APISpan>[];
+        final observedAsyncSpans = <otel.APISpan>[];
+        final asyncGate = Completer<void>();
+
+        final bloc = _ContextAwareTracedBloc(
+          tracer: tracer,
+          asyncGate: asyncGate,
+          onSync: observedSyncSpans.add,
+          onAsync: observedAsyncSpans.add,
+        );
+
+        bloc.add(_SyncCtxEvent());
+        bloc.add(_AsyncCtxEvent());
+        await Future<void>.microtask(() {});
+        asyncGate.complete();
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        await bloc.close();
+
+        expect(observedSyncSpans, hasLength(1));
+        expect(observedAsyncSpans, hasLength(1));
+
+        // Verify child spans started inside handlers inherit parentSpanId.
+        final childSpans =
+            exporter.spans.where((s) => s.name.startsWith('child.')).toList();
+        final parentSpans =
+            exporter.spans.where((s) => !s.name.startsWith('child.')).toList();
+
+        expect(parentSpans, hasLength(2));
+        expect(childSpans, hasLength(2));
+
+        final syncParent =
+            parentSpans.firstWhere((s) => s.name.contains('_SyncCtxEvent'));
+        final syncChild = childSpans.firstWhere((s) => s.name == 'child.sync');
+        expect(
+          syncChild.parentSpanContext?.spanId,
+          equals(syncParent.spanContext.spanId),
+        );
+
+        final asyncParent =
+            parentSpans.firstWhere((s) => s.name.contains('_AsyncCtxEvent'));
+        final asyncChild =
+            childSpans.firstWhere((s) => s.name == 'child.async');
+        expect(
+          asyncChild.parentSpanContext?.spanId,
+          equals(asyncParent.spanContext.spanId),
+        );
+      },
+    );
+
+    test(
+      '(Issue #475) dropped or bypassed invocations set bloc.contention = true',
+      () async {
+        final gate = Completer<void>();
+        final bloc = _DroppableTracedBloc(gate: gate, tracer: tracer);
+
+        bloc
+          ..add(DoWorkEvent('first'))
+          ..add(DoWorkEvent('second'));
+
+        await Future<void>.microtask(() {});
+
+        // Dropped second event should have ended immediately with contention.
+        expect(exporter.spans, hasLength(1));
+        final droppedSpan = exporter.spans.first;
+        expect(droppedSpan.attributes.getBool('bloc.contention'), isTrue);
+
+        gate.complete();
+        await Future<void>.microtask(() {});
+        await Future<void>.microtask(() {});
+        await bloc.close();
+
+        expect(exporter.spans, hasLength(2));
+        final firstSpan = exporter.spans[1];
+        expect(firstSpan.attributes.getBool('bloc.contention'), isNull);
+        expect(firstSpan.status, equals(otel.SpanStatusCode.Ok));
+      },
+    );
+
+    test(
+      '(Issue #475) stackTraceRedactor and maxStackTraceLength work on traced '
+      'and tracedBloc',
+      () async {
+        expect(
+          () => traced<DoWorkEvent, String>(
+            sequential(),
+            maxStackTraceLength: 0,
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(
+          () => tracedBloc<DoWorkEvent, String>(
+            (b, event, handler, emit) => handler(event, emit),
+            maxStackTraceLength: -1,
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+
+        final bloc = TracedTestBloc(
+          workTransformer: sequential(),
+          tracer: tracer,
+        );
+
+        final redactedTx = traced<DoWorkEvent, String>(
+          (event, handler, emit) => handler(event, emit),
+          tracer: tracer,
+          stackTraceRedactor: (st) => 'TRACED_REDACTED_STACK_TRACE',
+          maxStackTraceLength: 15,
+        );
+
+        try {
+          final res = redactedTx(
+            bloc,
+            DoWorkEvent('fail_st'),
+            (e, emit) => throw StateError('raw'),
+            bloc.emit,
+          );
+          if (res is Future) await res;
+        } on Object catch (_) {}
+
+        expect(exporter.spans, hasLength(1));
+        final exc = exporter.spans.first.spanEvents!
+            .firstWhere((e) => e.name == 'exception');
+        expect(
+          exc.attributes?.getString('exception.stacktrace'),
+          equals('TRACED_REDACTED'),
+        );
+
+        // Empty redactor output omits exception.stacktrace.
+        harness.clear();
+        final emptyRedactedTx = tracedBloc<DoWorkEvent, String>(
+          (b, event, handler, emit) => handler(event, emit),
+          tracer: tracer,
+          stackTraceRedactor: (st) => '',
+        );
+        try {
+          final res = emptyRedactedTx(
+            bloc,
+            DoWorkEvent('fail_empty'),
+            (e, emit) => throw StateError('raw'),
+            bloc.emit,
+          );
+          if (res is Future) await res;
+        } on Object catch (_) {}
+        final excEmpty = exporter.spans.first.spanEvents!
+            .firstWhere((e) => e.name == 'exception');
+        expect(excEmpty.attributes?.getString('exception.stacktrace'), isNull);
+
+        // maxStackTraceLength == null falls back to maxAttributeLength.
+        harness.clear();
+        final fallbackCapTx = traced<DoWorkEvent, String>(
+          (event, handler, emit) => handler(event, emit),
+          tracer: tracer,
+          stackTraceRedactor: (st) => 'FALLBACK_STACK_TRACE_CONTENT',
+          maxAttributeLength: 8,
+        );
+        try {
+          final res = fallbackCapTx(
+            bloc,
+            DoWorkEvent('fail_fallback'),
+            (e, emit) => throw StateError('raw'),
+            bloc.emit,
+          );
+          if (res is Future) await res;
+        } on Object catch (_) {}
+        final excFallback = exporter.spans.first.spanEvents!
+            .firstWhere((e) => e.name == 'exception');
+        expect(
+          excFallback.attributes?.getString('exception.stacktrace'),
+          equals('FALLBACK'),
+        );
+
+        await bloc.close();
+      },
+    );
+  });
+}
+
+final class _SyncCtxEvent extends TraceTestEvent {}
+
+final class _AsyncCtxEvent extends TraceTestEvent {}
+
+class _ContextAwareTracedBloc extends BlocSignal<TraceTestEvent, String> {
+  _ContextAwareTracedBloc({
+    required otel.APITracer tracer,
+    required Completer<void> asyncGate,
+    required void Function(otel.APISpan span) onSync,
+    required void Function(otel.APISpan span) onAsync,
+  }) : super(initialState: 'idle') {
+    on<_SyncCtxEvent>(
+      (event, emit) {
+        final current = otel.Context.current.span;
+        if (current != null) onSync(current);
+        tracer.startSpan('child.sync').end();
+        emit('sync');
+      },
+      blocTransformer: traced(
+        (event, handler, emit) => handler(event, emit),
+        tracer: tracer,
+      ),
+    );
+
+    on<_AsyncCtxEvent>(
+      (event, emit) async {
+        await asyncGate.future;
+        final current = otel.Context.current.span;
+        if (current != null) onAsync(current);
+        tracer.startSpan('child.async').end();
+        emit('async');
+      },
+      blocTransformer: traced(
+        sequential(),
+        tracer: tracer,
+      ),
+    );
+  }
+}
+
+class _DroppableTracedBloc extends BlocSignal<TraceTestEvent, String> {
+  _DroppableTracedBloc({
+    required Completer<void> gate,
+    required otel.APITracer tracer,
+  }) : super(initialState: 'idle') {
+    on<DoWorkEvent>(
+      (event, emit) async {
+        await gate.future;
+        emit('done:${event.payload}');
+      },
+      blocTransformer: traced(
+        droppable(),
+        tracer: tracer,
+      ),
+    );
+  }
 }

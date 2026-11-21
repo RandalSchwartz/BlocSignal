@@ -25,6 +25,14 @@ import 'package:dartastic_opentelemetry_api/dartastic_opentelemetry_api.dart'
 /// An optional [maxAttributeLength] caps the character length of recorded
 /// error messages when greater than zero.
 ///
+/// An optional [stackTraceRedactor] callback can be provided to format or
+/// redact stack traces before recording them under `exception.stacktrace`.
+/// Returning an empty string omits `exception.stacktrace`.
+///
+/// An optional [maxStackTraceLength] caps the character length of recorded
+/// `exception.stacktrace` attributes. When omitted, [maxAttributeLength] is
+/// used if provided. When provided, it must be greater than zero.
+///
 /// ### Example
 /// ```dart
 /// class SearchBloc extends BlocSignal<SearchEvent, SearchState> {
@@ -42,10 +50,16 @@ BlocEventTransformer<E, StateType> traced<E, StateType>(
   String? spanName,
   String? Function(BlocSignalBase<dynamic> bloc, Object error)? errorRedactor,
   int? maxAttributeLength,
+  String Function(StackTrace stackTrace)? stackTraceRedactor,
+  int? maxStackTraceLength,
 }) {
   assert(
     maxAttributeLength == null || maxAttributeLength > 0,
     'maxAttributeLength must be greater than zero.',
+  );
+  assert(
+    maxStackTraceLength == null || maxStackTraceLength > 0,
+    'maxStackTraceLength must be greater than zero.',
   );
   return tracedBloc(
     transformer.toBlocTransformer(),
@@ -53,6 +67,8 @@ BlocEventTransformer<E, StateType> traced<E, StateType>(
     spanName: spanName,
     errorRedactor: errorRedactor,
     maxAttributeLength: maxAttributeLength,
+    stackTraceRedactor: stackTraceRedactor,
+    maxStackTraceLength: maxStackTraceLength,
   );
 }
 
@@ -76,6 +92,14 @@ BlocEventTransformer<E, StateType> traced<E, StateType>(
 /// An optional [maxAttributeLength] caps the character length of recorded
 /// error messages when greater than zero.
 ///
+/// An optional [stackTraceRedactor] callback can be provided to format or
+/// redact stack traces before recording them under `exception.stacktrace`.
+/// Returning an empty string omits `exception.stacktrace`.
+///
+/// An optional [maxStackTraceLength] caps the character length of recorded
+/// `exception.stacktrace` attributes. When omitted, [maxAttributeLength] is
+/// used if provided. When provided, it must be greater than zero.
+///
 /// ### Example
 /// ```dart
 /// on<SearchQueryChanged>(
@@ -91,10 +115,16 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
   String? spanName,
   String? Function(BlocSignalBase<dynamic> bloc, Object error)? errorRedactor,
   int? maxAttributeLength,
+  String Function(StackTrace stackTrace)? stackTraceRedactor,
+  int? maxStackTraceLength,
 }) {
   assert(
     maxAttributeLength == null || maxAttributeLength > 0,
     'maxAttributeLength must be greater than zero.',
+  );
+  assert(
+    maxStackTraceLength == null || maxStackTraceLength > 0,
+    'maxStackTraceLength must be greater than zero.',
   );
   return (bloc, event, handler, emit) {
     final effectiveTracer =
@@ -110,6 +140,7 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
 
     var exceptionRecorded = false;
     var spanEnded = false;
+    var handlerInvoked = false;
 
     void recordError(Object error, StackTrace stackTrace) {
       if (!exceptionRecorded) {
@@ -122,12 +153,22 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
             errorMessage.length > maxAttributeLength) {
           errorMessage = errorMessage.substring(0, maxAttributeLength);
         }
+
+        var formattedStackTrace = stackTraceRedactor != null
+            ? stackTraceRedactor(stackTrace)
+            : stackTrace.toString();
+        final maxStLen = maxStackTraceLength ?? maxAttributeLength;
+        if (maxStLen != null && formattedStackTrace.length > maxStLen) {
+          formattedStackTrace = formattedStackTrace.substring(0, maxStLen);
+        }
+
         span
           ..recordException(
             error,
-            stackTrace: stackTrace,
             attributes: otel.OTelAPI.attributesFromMap({
               'exception.message': errorMessage ?? '[REDACTED]',
+              if (formattedStackTrace.isNotEmpty)
+                'exception.stacktrace': formattedStackTrace,
             }),
           )
           ..setStatus(otel.SpanStatusCode.Error, errorMessage);
@@ -137,6 +178,9 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
     void endSpanOk() {
       if (!spanEnded && !exceptionRecorded) {
         spanEnded = true;
+        if (!handlerInvoked) {
+          span.setBoolAttribute('bloc.contention', true);
+        }
         span
           ..setStatus(otel.SpanStatusCode.Ok)
           ..end();
@@ -152,32 +196,36 @@ BlocEventTransformer<E, StateType> tracedBloc<E, StateType>(
     }
 
     try {
-      final result = transformer(
-        bloc,
-        event,
-        (e, em) {
-          try {
-            final res = handler(e, em);
-            if (res is Future) {
-              return res.then<void>((_) {
-                endSpanOk();
-              }).catchError((Object error, StackTrace stackTrace) {
-                endSpanError(error, stackTrace);
-                Error.throwWithStackTrace(error, stackTrace);
-              });
-            } else {
-              endSpanOk();
-            }
-            // Intentional `on Object catch` (SCAR-OTEL-02 / SCAR-ERR-02):
-            // record span error status and close the OpenTelemetry span on any
-            // synchronous `Exception` or `Error` before rethrowing.
-          } on Object catch (error, stackTrace) {
-            endSpanError(error, stackTrace);
-            rethrow;
-          }
-        },
-        emit,
-      );
+      final result = otel.Context.current.withSpan(span).runSync(
+            () => transformer(
+              bloc,
+              event,
+              (e, em) {
+                handlerInvoked = true;
+                try {
+                  final res = handler(e, em);
+                  if (res is Future) {
+                    return res.then<void>((_) {
+                      endSpanOk();
+                    }).catchError((Object error, StackTrace stackTrace) {
+                      endSpanError(error, stackTrace);
+                      Error.throwWithStackTrace(error, stackTrace);
+                    });
+                  } else {
+                    endSpanOk();
+                  }
+                  // Intentional `on Object catch` (SCAR-OTEL-02 / SCAR-ERR-02):
+                  // record span error status and close the OpenTelemetry span
+                  // on any synchronous `Exception` or `Error` before
+                  // rethrowing.
+                } on Object catch (error, stackTrace) {
+                  endSpanError(error, stackTrace);
+                  rethrow;
+                }
+              },
+              emit,
+            ),
+          );
 
       if (result is Future) {
         return result.then((_) {

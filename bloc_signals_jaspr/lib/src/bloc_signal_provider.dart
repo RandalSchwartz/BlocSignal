@@ -134,22 +134,27 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
   T? _bloc;
   bool _isInitialized = false;
   (Object, StackTrace)? _error;
+  int _providerGeneration = 0;
+
+  void _initBloc() {
+    try {
+      _bloc = component.create!(context);
+      // Intentional `on Object catch` (SCAR-ERR-02): cache any factory
+      // throwable (`Exception` or `Error`) before rethrowing so subsequent
+      // rebuilds deterministically rethrow `_error` instead of hitting a
+      // secondary `NullCheckError` on `_bloc!`.
+    } on Object catch (e, s) {
+      _error = (e, s);
+      rethrow;
+    } finally {
+      _isInitialized = true;
+    }
+  }
 
   T get bloc {
     if (component.value != null) return component.value!;
     if (!_isInitialized) {
-      try {
-        _bloc = component.create!(context);
-        // Intentional `on Object catch` (SCAR-ERR-02): cache any factory
-        // throwable (`Exception` or `Error`) before rethrowing so subsequent
-        // rebuilds deterministically rethrow `_error` instead of hitting a
-        // secondary `NullCheckError` on `_bloc!`.
-      } on Object catch (e, s) {
-        _error = (e, s);
-        rethrow;
-      } finally {
-        _isInitialized = true;
-      }
+      _initBloc();
     }
     if (_error != null) {
       Error.throwWithStackTrace(_error!.$1, _error!.$2);
@@ -163,16 +168,31 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
   void initState() {
     super.initState();
     if (!component.lazy && component.create != null) {
-      try {
-        _bloc = component.create!(context);
-        // Intentional `on Object catch` (SCAR-ERR-02): cache any factory
-        // throwable before rethrowing for deterministic rebuild behavior.
-      } on Object catch (e, s) {
-        _error = (e, s);
-        rethrow;
-      } finally {
-        _isInitialized = true;
+      _initBloc();
+    }
+  }
+
+  @override
+  void didUpdateComponent(BlocSignalProvider<T> oldComponent) {
+    super.didUpdateComponent(oldComponent);
+    if (oldComponent.create != null && component.value != null) {
+      if (_bloc != null) {
+        unawaited(_bloc!.close());
+        _bloc = null;
       }
+      _isInitialized = false;
+      _error = null;
+      _providerGeneration++;
+    } else if (oldComponent.value != null && component.create != null) {
+      _bloc = null;
+      _isInitialized = false;
+      _error = null;
+      _providerGeneration++;
+      if (!component.lazy) {
+        _initBloc();
+      }
+    } else if (component.create != null && !component.lazy && !_isInitialized) {
+      _initBloc();
     }
   }
 
@@ -188,6 +208,7 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
   Component build(BuildContext context) {
     return _BlocSignalProviderInherited<T>(
       bloc: component.value ?? _bloc,
+      generation: _providerGeneration,
       state: this,
       child: component.child,
     );
@@ -198,11 +219,13 @@ class _BlocSignalProviderInherited<T extends BlocSignalBase<dynamic>>
     extends InheritedComponent {
   const _BlocSignalProviderInherited({
     required this.bloc,
+    required this.generation,
     required this.state,
     required super.child,
   });
 
   final T? bloc;
+  final int generation;
   final _BlocSignalProviderState<T> state;
 
   @override
@@ -211,10 +234,13 @@ class _BlocSignalProviderInherited<T extends BlocSignalBase<dynamic>>
 
   @override
   bool updateShouldNotify(_BlocSignalProviderInherited<T> oldComponent) {
+    if (generation != oldComponent.generation) {
+      return true;
+    }
     if (oldComponent.bloc == null && bloc != null) {
       return false;
     }
-    return bloc != oldComponent.bloc;
+    return !identical(bloc, oldComponent.bloc);
   }
 }
 
@@ -511,7 +537,7 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   ) {
     if (_isDisposed) return;
     _inheritedRef = WeakReference(newInheritedElement);
-    if (_bloc != newBloc || _selector != newSelector) {
+    if (!identical(_bloc, newBloc) || _selector != newSelector) {
       this
         .._bloc = newBloc
         .._selector = newSelector;

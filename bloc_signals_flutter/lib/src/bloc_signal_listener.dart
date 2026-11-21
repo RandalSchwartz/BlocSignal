@@ -88,9 +88,15 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
   void _subscribe() {
     _cleanup?.call();
     _previousState = _bloc!.state.value;
+    var isInitial = true;
 
     _cleanup = effect(() {
       final currentState = _bloc!.state.value;
+      if (isInitial) {
+        isInitial = false;
+        return;
+      }
+      if (!mounted) return;
       final previous = _previousState as S;
 
       if (!_bloc!.equals(previous, currentState)) {
@@ -109,7 +115,7 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
     super.didChangeDependencies();
     final effectiveBloc =
         widget.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
-    if (_bloc != effectiveBloc) {
+    if (!identical(_bloc, effectiveBloc)) {
       _bloc = effectiveBloc;
       _subscribe();
     }
@@ -120,7 +126,7 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
     super.didUpdateWidget(oldWidget);
     final effectiveBloc =
         widget.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
-    if (_bloc != effectiveBloc) {
+    if (!identical(_bloc, effectiveBloc)) {
       _bloc = effectiveBloc;
       _subscribe();
     }

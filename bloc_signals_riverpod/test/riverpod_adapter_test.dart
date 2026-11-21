@@ -537,4 +537,155 @@ void main() {
       sub.close();
     });
   });
+
+  group('(Issue #476: Riverpod Adapter Hardening)', () {
+    late ProviderContainer container;
+
+    setUp(() {
+      container = ProviderContainer();
+    });
+
+    tearDown(() {
+      container.dispose();
+    });
+
+    test(
+      '(Issue #476: RiverpodNotifierBlocSignal.notifier resolves live notifier '
+      'after container.invalidate)',
+      () {
+        final counterProvider = NotifierProvider<CounterNotifier, int>(
+          CounterNotifier.new,
+        );
+        final bloc = counterProvider.toBlocSignal(container);
+        addTearDown(bloc.close);
+
+        bloc.notifier.increment();
+        expect(bloc.stateValue, equals(1));
+
+        container.invalidate(counterProvider);
+        expect(container.read(counterProvider), equals(0));
+
+        // Accessing bloc.notifier after invalidation must resolve the new
+        // live notifier instance rather than returning the stale one.
+        expect(
+          identical(bloc.notifier, container.read(counterProvider.notifier)),
+          isTrue,
+        );
+        bloc.notifier.increment();
+        expect(container.read(counterProvider), equals(1));
+        expect(bloc.stateValue, equals(1));
+      },
+    );
+
+    test(
+      '(Issue #476: RiverpodBlocSignal forwards provider errors to onError)',
+      () async {
+        final shouldThrowProvider = StateProvider<bool>((ref) => false);
+        final derivedProvider = Provider<int>((ref) {
+          if (ref.watch(shouldThrowProvider)) {
+            throw StateError('provider failure');
+          }
+          return 1;
+        });
+
+        final errors = <Object>[];
+        final bloc = _ErrorRecordingRiverpodBlocSignal(
+          container,
+          derivedProvider,
+          onRecordedError: errors.add,
+        );
+        addTearDown(bloc.close);
+
+        expect(bloc.stateValue, equals(1));
+
+        container.read(shouldThrowProvider.notifier).state = true;
+        await Future<void>.delayed(Duration.zero);
+        await container.pump();
+
+        expect(errors, hasLength(1));
+        expect(errors.single, isA<StateError>());
+      },
+    );
+
+    test(
+      '(Issue #476: BlocSignalNotifier.build does not assign state '
+      'synchronously mid-build)',
+      () {
+        final cubit = TestCubit(initialState: 7);
+        addTearDown(cubit.close);
+
+        final notifier = _SpyBlocSignalNotifier(cubit);
+        final provider = NotifierProvider<_SpyBlocSignalNotifier, int>(
+          () => notifier,
+        );
+
+        expect(container.read(provider), equals(7));
+        expect(notifier.assignedDuringBuild, isFalse);
+
+        cubit.increment();
+        expect(container.read(provider), equals(8));
+      },
+    );
+
+    test(
+      '(Issue #476: toProvider(autoClose: true) evicts closed cache entry '
+      'on dispose)',
+      () {
+        final cubit = TestCubit(initialState: 5);
+        final p1 = cubit.toProvider(autoClose: true);
+
+        expect(container.read(p1), equals(5));
+        expect(cubit.isClosed, isFalse);
+
+        container.invalidate(p1);
+        expect(cubit.isClosed, isTrue);
+
+        // Once closed and disposed, toProvider(autoClose: true) must not
+        // return the evicted stale provider.
+        final p2 = cubit.toProvider(autoClose: true);
+        expect(identical(p1, p2), isFalse);
+      },
+    );
+  });
+}
+
+class _ErrorRecordingRiverpodBlocSignal extends RiverpodBlocSignal<int> {
+  _ErrorRecordingRiverpodBlocSignal(
+    super.container,
+    super.listenable, {
+    required this.onRecordedError,
+  });
+
+  final void Function(Object error) onRecordedError;
+
+  @override
+  void onError(Object error, StackTrace stackTrace) {
+    onRecordedError(error);
+    super.onError(error, stackTrace);
+  }
+}
+
+class _SpyBlocSignalNotifier extends BlocSignalNotifier<TestCubit, int> {
+  _SpyBlocSignalNotifier(super.bloc);
+
+  bool _isBuilding = false;
+  bool assignedDuringBuild = false;
+
+  @override
+  set state(int value) {
+    if (_isBuilding) {
+      assignedDuringBuild = true;
+    }
+    super.state = value;
+  }
+
+  @override
+  int build() {
+    _isBuilding = true;
+    try {
+      return super.build();
+    } finally {
+      _isBuilding = false;
+    }
+  }
 }

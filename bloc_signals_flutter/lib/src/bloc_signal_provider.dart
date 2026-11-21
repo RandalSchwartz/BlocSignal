@@ -113,22 +113,27 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
   T? _bloc;
   bool _isInitialized = false;
   (Object, StackTrace)? _error;
+  int _providerGeneration = 0;
+
+  void _initBloc() {
+    try {
+      _bloc = widget.create!(context);
+      // Intentional `on Object catch` (SCAR-ERR-02): cache any factory
+      // throwable (`Exception` or `Error`) before rethrowing so subsequent
+      // rebuilds deterministically rethrow `_error` instead of hitting a
+      // secondary `NullCheckError` on `_bloc!`.
+    } on Object catch (e, s) {
+      _error = (e, s);
+      rethrow;
+    } finally {
+      _isInitialized = true;
+    }
+  }
 
   T get bloc {
     if (widget.value != null) return widget.value!;
     if (!_isInitialized) {
-      try {
-        _bloc = widget.create!(context);
-        // Intentional `on Object catch` (SCAR-ERR-02): cache any factory
-        // throwable (`Exception` or `Error`) before rethrowing so subsequent
-        // rebuilds deterministically rethrow `_error` instead of hitting a
-        // secondary `NullCheckError` on `_bloc!`.
-      } on Object catch (e, s) {
-        _error = (e, s);
-        rethrow;
-      } finally {
-        _isInitialized = true;
-      }
+      _initBloc();
     }
     if (_error != null) {
       Error.throwWithStackTrace(_error!.$1, _error!.$2);
@@ -142,16 +147,31 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
   void initState() {
     super.initState();
     if (!widget.lazy && widget.create != null) {
-      try {
-        _bloc = widget.create!(context);
-        // Intentional `on Object catch` (SCAR-ERR-02): cache any factory
-        // throwable before rethrowing for deterministic rebuild behavior.
-      } on Object catch (e, s) {
-        _error = (e, s);
-        rethrow;
-      } finally {
-        _isInitialized = true;
+      _initBloc();
+    }
+  }
+
+  @override
+  void didUpdateWidget(BlocSignalProvider<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.create != null && widget.value != null) {
+      if (_bloc != null) {
+        unawaited(_bloc!.close());
+        _bloc = null;
       }
+      _isInitialized = false;
+      _error = null;
+      _providerGeneration++;
+    } else if (oldWidget.value != null && widget.create != null) {
+      _bloc = null;
+      _isInitialized = false;
+      _error = null;
+      _providerGeneration++;
+      if (!widget.lazy) {
+        _initBloc();
+      }
+    } else if (widget.create != null && !widget.lazy && !_isInitialized) {
+      _initBloc();
     }
   }
 
@@ -167,6 +187,7 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
   Widget build(BuildContext context) {
     return _BlocSignalProviderInherited<T>(
       bloc: widget.value ?? _bloc,
+      generation: _providerGeneration,
       state: this,
       child: widget.child,
     );
@@ -177,11 +198,13 @@ class _BlocSignalProviderInherited<T extends BlocSignalBase<dynamic>>
     extends InheritedWidget {
   const _BlocSignalProviderInherited({
     required this.bloc,
+    required this.generation,
     required this.state,
     required super.child,
   });
 
   final T? bloc;
+  final int generation;
   final _BlocSignalProviderState<T> state;
 
   @override
@@ -190,10 +213,13 @@ class _BlocSignalProviderInherited<T extends BlocSignalBase<dynamic>>
 
   @override
   bool updateShouldNotify(_BlocSignalProviderInherited<T> oldWidget) {
+    if (generation != oldWidget.generation) {
+      return true;
+    }
     if (oldWidget.bloc == null && bloc != null) {
       return false;
     }
-    return bloc != oldWidget.bloc;
+    return !identical(bloc, oldWidget.bloc);
   }
 
   bool shouldNotify(_BlocSignalProviderInherited<T> oldWidget) =>
@@ -525,7 +551,7 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
 
   void update(T newBloc, R Function(T) newSelector) {
     if (_isDisposed) return;
-    if (_bloc != newBloc || _selector != newSelector) {
+    if (!identical(_bloc, newBloc) || _selector != newSelector) {
       this
         .._bloc = newBloc
         .._selector = newSelector;

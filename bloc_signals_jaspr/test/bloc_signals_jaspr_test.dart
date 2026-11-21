@@ -1046,6 +1046,320 @@ void main() {
       );
     },
   );
+
+  group('(Issue #476: Jaspr Builder, Listener, Selector & Provider)', () {
+    testComponents(
+      '(Issue #476: BlocSignalBuilder buildWhen receives actual previous '
+      'emitted state after skipped rebuilds)',
+      (tester) async {
+        final cubit = CounterCubit();
+        addTearDown(cubit.close);
+        final pairs = <(int, int)>[];
+
+        tester.pumpComponent(
+          BlocSignalBuilder<CounterCubit, int>(
+            bloc: cubit,
+            buildWhen: (previous, current) {
+              pairs.add((previous, current));
+              return current != 1;
+            },
+            builder: (context, state) => div([Component.text('Count: $state')]),
+          ),
+        );
+
+        expect(find.text('Count: 0'), findsOneComponent);
+        expect(pairs, isEmpty);
+
+        cubit.emit(1);
+        await tester.pump();
+        expect(find.text('Count: 0'), findsOneComponent);
+        expect(pairs, equals([(0, 1)]));
+
+        cubit.emit(2);
+        await tester.pump();
+        expect(find.text('Count: 2'), findsOneComponent);
+        expect(pairs, equals([(0, 1), (1, 2)]));
+
+        cubit.emit(1);
+        await tester.pump();
+        expect(find.text('Count: 2'), findsOneComponent);
+
+        cubit.emit(2);
+        await tester.pump();
+        expect(find.text('Count: 2'), findsOneComponent);
+        expect(pairs, equals([(0, 1), (1, 2), (2, 1), (1, 2)]));
+      },
+    );
+
+    testComponents(
+      '(Issue #476: Builder, Listener, and Selector suppress initial-pass '
+      'callbacks with non-reflexive equals)',
+      (tester) async {
+        final cubit = _NonReflexiveJasprCubit();
+        addTearDown(cubit.close);
+        final buildWhenPairs = <(int, int)>[];
+        final listenWhenPairs = <(int, int)>[];
+        final listenedStates = <int>[];
+        var selectorBuildCount = 0;
+
+        tester.pumpComponent(
+          BlocSignalListener<_NonReflexiveJasprCubit, int>(
+            bloc: cubit,
+            listenWhen: (previous, current) {
+              listenWhenPairs.add((previous, current));
+              return true;
+            },
+            listener: (context, state) => listenedStates.add(state),
+            child: div([
+              BlocSignalBuilder<_NonReflexiveJasprCubit, int>(
+                bloc: cubit,
+                buildWhen: (previous, current) {
+                  buildWhenPairs.add((previous, current));
+                  return true;
+                },
+                builder: (context, state) =>
+                    div([Component.text('Builder: $state')]),
+              ),
+              BlocSignalSelector<_NonReflexiveJasprCubit, int, int>(
+                bloc: cubit,
+                selector: (state) => state,
+                equals: (_, __) => false,
+                builder: (context, value) {
+                  selectorBuildCount++;
+                  return div([Component.text('Selector: $value')]);
+                },
+              ),
+            ]),
+          ),
+        );
+
+        expect(buildWhenPairs, isEmpty);
+        expect(listenWhenPairs, isEmpty);
+        expect(listenedStates, isEmpty);
+        expect(selectorBuildCount, equals(1));
+
+        cubit.emit(1);
+        await tester.pump();
+
+        expect(buildWhenPairs, equals([(0, 1)]));
+        expect(listenWhenPairs, equals([(0, 1)]));
+        expect(listenedStates, equals([1]));
+        expect(selectorBuildCount, equals(2));
+        expect(find.text('Builder: 1'), findsOneComponent);
+        expect(find.text('Selector: 1'), findsOneComponent);
+      },
+    );
+
+    testComponents(
+      '(Issue #476: BlocSignalProvider.value swaps distinct value-equal '
+      'containers via !identical above const subtree)',
+      (tester) async {
+        _issue476JasprEvents.clear();
+        addTearDown(_issue476JasprEvents.clear);
+        final c1 = _ValueEqualJasprCubit(1);
+        final c2 = _ValueEqualJasprCubit(2);
+        addTearDown(c1.close);
+        addTearDown(c2.close);
+        expect(c1 == c2, isTrue);
+        expect(identical(c1, c2), isFalse);
+
+        late void Function(_ValueEqualJasprCubit) swapCubit;
+
+        tester.pumpComponent(
+          _ValueEqualJasprSwapHost(
+            initialCubit: c1,
+            onCreated: (setter) => swapCubit = setter,
+          ),
+        );
+
+        expect(find.text('Watch: 1'), findsOneComponent);
+        expect(find.text('Builder: 1'), findsOneComponent);
+        expect(find.text('Selector: 1'), findsOneComponent);
+        expect(find.text('Select: 1'), findsOneComponent);
+
+        swapCubit(c2);
+        await tester.pump();
+
+        expect(find.text('Watch: 2'), findsOneComponent);
+        expect(find.text('Builder: 2'), findsOneComponent);
+        expect(find.text('Selector: 2'), findsOneComponent);
+        expect(find.text('Select: 2'), findsOneComponent);
+
+        c1.emit(99);
+        c2.emit(3);
+        await tester.pump();
+
+        expect(_issue476JasprEvents, equals([3]));
+        expect(find.text('Watch: 3'), findsOneComponent);
+        expect(find.text('Builder: 3'), findsOneComponent);
+        expect(find.text('Selector: 3'), findsOneComponent);
+        expect(find.text('Select: 3'), findsOneComponent);
+      },
+    );
+
+    testComponents(
+      '(Issue #476: BlocSignalProvider didUpdateComponent handles create <-> '
+      'value switches and lazy true -> false above const subtree)',
+      (tester) async {
+        final createdCubits = <CounterCubit>[];
+        final externalCubit = CounterCubit()..emit(42);
+        addTearDown(externalCubit.close);
+        late void Function({
+          required bool useValue,
+          required bool lazy,
+          bool readInLazy,
+        }) updateConfig;
+
+        tester.pumpComponent(
+          _ProviderModeSwitchJasprHost(
+            externalCubit: externalCubit,
+            onCreated: createdCubits.add,
+            onHostReady: (setter) => updateConfig = setter,
+          ),
+        );
+
+        expect(createdCubits, isEmpty);
+
+        updateConfig(useValue: false, lazy: false, readInLazy: true);
+        await tester.pump();
+        expect(createdCubits, hasLength(1));
+        final ownedCubit = createdCubits.first;
+        expect(ownedCubit.isClosed, isFalse);
+        expect(find.text('ConstCount: 0'), findsOneComponent);
+
+        updateConfig(useValue: true, lazy: false, readInLazy: true);
+        await tester.pump();
+        expect(ownedCubit.isClosed, isTrue);
+        expect(find.text('ConstCount: 42'), findsOneComponent);
+
+        updateConfig(useValue: false, lazy: false, readInLazy: true);
+        await tester.pump();
+        expect(externalCubit.isClosed, isFalse);
+        expect(createdCubits, hasLength(2));
+        expect(find.text('ConstCount: 0'), findsOneComponent);
+
+        await createdCubits.last.close();
+      },
+    );
+
+    testComponents(
+      '(Issue #476: lazy: true create provider materialized by const '
+      'dependent rebinds const descendants when switched to .value)',
+      (tester) async {
+        _issue476JasprEvents.clear();
+        addTearDown(_issue476JasprEvents.clear);
+        final createdCubits = <CounterCubit>[];
+        final externalCubit = CounterCubit()..emit(42);
+        addTearDown(externalCubit.close);
+        late void Function({
+          required bool useValue,
+          required bool lazy,
+          bool readInLazy,
+        }) updateConfig;
+
+        tester.pumpComponent(
+          _ProviderModeSwitchJasprHost(
+            externalCubit: externalCubit,
+            onCreated: createdCubits.add,
+            onHostReady: (setter) => updateConfig = setter,
+            initialReadInLazy: true,
+            useFullSubtree: true,
+          ),
+        );
+
+        expect(createdCubits, hasLength(1));
+        final lazyBloc = createdCubits.single;
+        expect(find.text('Watch: 0'), findsOneComponent);
+        expect(find.text('Builder: 0'), findsOneComponent);
+        expect(find.text('Selector: 0'), findsOneComponent);
+        expect(find.text('Select: 0'), findsOneComponent);
+
+        updateConfig(useValue: true, lazy: false, readInLazy: true);
+        await tester.pump();
+
+        expect(lazyBloc.isClosed, isTrue);
+        expect(find.text('Watch: 42'), findsOneComponent);
+        expect(find.text('Builder: 42'), findsOneComponent);
+        expect(find.text('Selector: 42'), findsOneComponent);
+        expect(find.text('Select: 42'), findsOneComponent);
+
+        externalCubit.emit(43);
+        await tester.pump();
+        expect(_issue476JasprEvents, equals([43]));
+        expect(find.text('Watch: 43'), findsOneComponent);
+        expect(find.text('Builder: 43'), findsOneComponent);
+        expect(find.text('Selector: 43'), findsOneComponent);
+        expect(find.text('Select: 43'), findsOneComponent);
+      },
+    );
+
+    testComponents(
+      '(Issue #476: Builder, Listener, and Selector suppress callbacks after '
+      'unmount)',
+      (tester) async {
+        final cubit = CounterCubit();
+        addTearDown(cubit.close);
+        var buildWhenCalls = 0;
+        var builderCalls = 0;
+        var listenWhenCalls = 0;
+        var listenerCalls = 0;
+        var selectorCalls = 0;
+
+        void Function()? unmountSubtree;
+
+        tester.pumpComponent(
+          _UnmountJasprHost(
+            onReady: (unmount) => unmountSubtree = unmount,
+            child: BlocSignalListener<CounterCubit, int>(
+              bloc: cubit,
+              listenWhen: (_, __) {
+                listenWhenCalls++;
+                return true;
+              },
+              listener: (_, __) => listenerCalls++,
+              child: div([
+                BlocSignalBuilder<CounterCubit, int>(
+                  bloc: cubit,
+                  buildWhen: (_, __) {
+                    buildWhenCalls++;
+                    return true;
+                  },
+                  builder: (_, state) {
+                    builderCalls++;
+                    return div([Component.text('B: $state')]);
+                  },
+                ),
+                BlocSignalSelector<CounterCubit, int, int>(
+                  bloc: cubit,
+                  selector: (state) {
+                    selectorCalls++;
+                    return state;
+                  },
+                  builder: (_, v) => div([Component.text('S: $v')]),
+                ),
+              ]),
+            ),
+          ),
+        );
+
+        final initialBuilderCalls = builderCalls;
+        final initialSelectorCalls = selectorCalls;
+
+        // Unmount the entire component subtree via host state change.
+        unmountSubtree!();
+        await tester.pump();
+
+        cubit.emit(10);
+        await tester.pump();
+
+        expect(buildWhenCalls, equals(0));
+        expect(builderCalls, equals(initialBuilderCalls));
+        expect(listenWhenCalls, equals(0));
+        expect(listenerCalls, equals(0));
+        expect(selectorCalls, equals(initialSelectorCalls));
+      },
+    );
+  });
 }
 
 class _CustomJasprProviderSingleChildComponent extends StatelessComponent
@@ -1423,5 +1737,236 @@ class _ConstConsumerComponent extends StatelessComponent {
       builder: (context, state) =>
           div([Component.text('ConsumerCount: $state')]),
     );
+  }
+}
+
+class _NonReflexiveJasprCubit extends CubitSignal<int> {
+  _NonReflexiveJasprCubit()
+      : super(
+          initialState: 0,
+          equals: (_, __) => false,
+        );
+}
+
+class _ValueEqualJasprCubit extends CubitSignal<int> {
+  _ValueEqualJasprCubit(int initial) : super(initialState: initial);
+
+  @override
+  // Intentionally overrides == on a CubitSignal test double for !identical().
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) => other is _ValueEqualJasprCubit;
+
+  @override
+  // Matches custom == override on this test double.
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => 0;
+}
+
+final List<int> _issue476JasprEvents = <int>[];
+
+class _ValueEqualJasprSwapHost extends StatefulComponent {
+  const _ValueEqualJasprSwapHost({
+    required this.initialCubit,
+    required this.onCreated,
+  });
+
+  final _ValueEqualJasprCubit initialCubit;
+  final void Function(void Function(_ValueEqualJasprCubit)) onCreated;
+
+  @override
+  State<_ValueEqualJasprSwapHost> createState() =>
+      _ValueEqualJasprSwapHostState();
+}
+
+class _ValueEqualJasprSwapHostState extends State<_ValueEqualJasprSwapHost> {
+  late _ValueEqualJasprCubit _cubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _cubit = component.initialCubit;
+    component.onCreated((next) {
+      setState(() {
+        _cubit = next;
+      });
+    });
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalProvider<_ValueEqualJasprCubit>.value(
+      value: _cubit,
+      child: const _ValueEqualJasprConstSubtree(),
+    );
+  }
+}
+
+class _ValueEqualJasprConstSubtree extends StatelessComponent {
+  const _ValueEqualJasprConstSubtree();
+
+  @override
+  Component build(BuildContext context) {
+    final watched = context.watch<_ValueEqualJasprCubit>().stateValue;
+    final selected =
+        context.select<_ValueEqualJasprCubit, int>((bloc) => bloc.stateValue);
+    return BlocSignalListener<_ValueEqualJasprCubit, int>(
+      listener: (context, state) => _issue476JasprEvents.add(state),
+      child: div([
+        div([Component.text('Watch: $watched')]),
+        BlocSignalBuilder<_ValueEqualJasprCubit, int>(
+          builder: (context, state) => div([Component.text('Builder: $state')]),
+        ),
+        BlocSignalSelector<_ValueEqualJasprCubit, int, int>(
+          selector: (state) => state,
+          builder: (context, value) =>
+              div([Component.text('Selector: $value')]),
+        ),
+        div([Component.text('Select: $selected')]),
+      ]),
+    );
+  }
+}
+
+class _ProviderModeSwitchJasprHost extends StatefulComponent {
+  const _ProviderModeSwitchJasprHost({
+    required this.externalCubit,
+    required this.onCreated,
+    required this.onHostReady,
+    this.initialReadInLazy = false,
+    this.useFullSubtree = false,
+  });
+
+  final CounterCubit externalCubit;
+  final void Function(CounterCubit) onCreated;
+  final void Function(
+    void Function({
+      required bool useValue,
+      required bool lazy,
+      bool readInLazy,
+    }),
+  ) onHostReady;
+  final bool initialReadInLazy;
+  final bool useFullSubtree;
+
+  @override
+  State<_ProviderModeSwitchJasprHost> createState() =>
+      _ProviderModeSwitchJasprHostState();
+}
+
+class _ProviderModeSwitchJasprHostState
+    extends State<_ProviderModeSwitchJasprHost> {
+  bool _useValue = false;
+  bool _lazy = true;
+  late bool _readInLazy = component.initialReadInLazy;
+
+  @override
+  void initState() {
+    super.initState();
+    component.onHostReady(({
+      required useValue,
+      required lazy,
+      readInLazy = false,
+    }) {
+      setState(() {
+        _useValue = useValue;
+        _lazy = lazy;
+        _readInLazy = readInLazy;
+      });
+    });
+  }
+
+  @override
+  Component build(BuildContext context) {
+    final Component child;
+    if (!_readInLazy && _lazy && !_useValue) {
+      child = const div([Component.text('Lazy')]);
+    } else if (component.useFullSubtree) {
+      child = const _CounterJasprConstFullSubtree();
+    } else {
+      child = const _CounterJasprConstWatcher();
+    }
+    if (_useValue) {
+      return BlocSignalProvider<CounterCubit>.value(
+        value: component.externalCubit,
+        child: child,
+      );
+    }
+    return BlocSignalProvider<CounterCubit>(
+      lazy: _lazy,
+      create: (context) {
+        final c = CounterCubit();
+        component.onCreated(c);
+        return c;
+      },
+      child: child,
+    );
+  }
+}
+
+class _CounterJasprConstWatcher extends StatelessComponent {
+  const _CounterJasprConstWatcher();
+
+  @override
+  Component build(BuildContext context) {
+    final count = context.watch<CounterCubit>().stateValue;
+    return div([Component.text('ConstCount: $count')]);
+  }
+}
+
+class _CounterJasprConstFullSubtree extends StatelessComponent {
+  const _CounterJasprConstFullSubtree();
+
+  @override
+  Component build(BuildContext context) {
+    final watched = context.watch<CounterCubit>().stateValue;
+    final selected =
+        context.select<CounterCubit, int>((bloc) => bloc.stateValue);
+    return BlocSignalListener<CounterCubit, int>(
+      listener: (context, state) => _issue476JasprEvents.add(state),
+      child: div([
+        div([Component.text('Watch: $watched')]),
+        BlocSignalBuilder<CounterCubit, int>(
+          builder: (context, state) => div([Component.text('Builder: $state')]),
+        ),
+        BlocSignalSelector<CounterCubit, int, int>(
+          selector: (state) => state,
+          builder: (context, value) =>
+              div([Component.text('Selector: $value')]),
+        ),
+        div([Component.text('Select: $selected')]),
+      ]),
+    );
+  }
+}
+
+class _UnmountJasprHost extends StatefulComponent {
+  const _UnmountJasprHost({
+    required this.onReady,
+    required this.child,
+  });
+
+  final void Function(void Function()) onReady;
+  final Component child;
+
+  @override
+  State<_UnmountJasprHost> createState() => _UnmountJasprHostState();
+}
+
+class _UnmountJasprHostState extends State<_UnmountJasprHost> {
+  bool _mounted = true;
+
+  @override
+  void initState() {
+    super.initState();
+    component.onReady(() {
+      setState(() {
+        _mounted = false;
+      });
+    });
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return _mounted ? component.child : const div([]);
   }
 }

@@ -47,23 +47,31 @@ class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
     extends State<BlocSignalBuilder<T, S>> {
   T? _bloc;
   S? _state;
+  S? _previousState;
   void Function()? _cleanup;
 
   void _subscribe() {
     _cleanup?.call();
-    _state = _bloc!.state.value;
+    final initialState = _bloc!.state.value;
+    _state = initialState;
+    _previousState = initialState;
+    var isInitial = true;
 
     _cleanup = effect(
       () {
         final currentState = _bloc!.state.value;
-        final previous = _state as S;
+        if (isInitial) {
+          isInitial = false;
+          return;
+        }
+        if (!mounted) return;
+        final previous = _previousState as S;
         if (!_bloc!.equals(previous, currentState)) {
+          _previousState = currentState;
           if (component.buildWhen == null ||
               component.buildWhen!(previous, currentState)) {
             _state = currentState;
-            if (mounted) {
-              setState(() {});
-            }
+            setState(() {});
           }
         }
       },
@@ -76,7 +84,7 @@ class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
     super.didChangeDependencies();
     final effectiveBloc =
         component.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
-    if (_bloc != effectiveBloc) {
+    if (!identical(_bloc, effectiveBloc)) {
       _bloc = effectiveBloc;
       _subscribe();
     }
@@ -87,7 +95,7 @@ class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
     super.didUpdateComponent(oldComponent);
     final effectiveBloc =
         component.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
-    if (_bloc != effectiveBloc) {
+    if (!identical(_bloc, effectiveBloc)) {
       _bloc = effectiveBloc;
       _subscribe();
     }

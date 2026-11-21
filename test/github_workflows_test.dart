@@ -272,5 +272,101 @@ void main() {
         reason: 'ci.yml must not pin flutter-version: "3.47.9"',
       );
     });
+
+    test('(Issue #473) gemini-code-review.yml loads AGENTS.md and skills from '
+        'trusted base ref via git, escapes untrusted XML tags, and strips '
+        'reference-style markdown images', () {
+      final reviewFile = File(
+        '${_resolveRepoRoot().path}/.github/workflows/gemini-code-review.yml',
+      );
+      expect(reviewFile.existsSync(), isTrue);
+      final content = reviewFile.readAsStringSync();
+
+      // Trusted base-ref resolution and git-based reads (no PR worktree reads)
+      expect(
+        content,
+        contains('trustedRef'),
+        reason:
+            'Must resolve trustedRef for base branch/commit instruction reads',
+      );
+      expect(
+        content,
+        matches(RegExp(r"execFileSync\(\s*'git',\s*\[\s*'ls-tree'")),
+        reason:
+            'Must list skill files from trustedRef via execFileSync git '
+            'ls-tree',
+      );
+      expect(
+        content,
+        matches(RegExp(r"execFileSync\(\s*'git',\s*\[\s*'show'")),
+        reason:
+            'Must read AGENTS.md and skills from trustedRef via execFileSync '
+            'git show',
+      );
+      expect(
+        content,
+        isNot(contains("fs.readFileSync('AGENTS.md'")),
+        reason:
+            'Must not read AGENTS.md from untrusted PR worktree via '
+            'fs.readFileSync',
+      );
+      expect(
+        content,
+        isNot(contains('fs.readFileSync(fullSkillPath')),
+        reason: 'Must not read plugin skills from untrusted PR worktree',
+      );
+      expect(
+        content,
+        isNot(contains('fs.readFileSync(skillMd')),
+        reason: 'Must not read repo skills from untrusted PR worktree',
+      );
+
+      // XML delimiter escaping for untrusted PR content
+      expect(
+        content,
+        contains('escapeUntrustedXmlTags'),
+        reason:
+            'Must escape <untrusted_pr_*> / </untrusted_pr_*> tags in PR '
+            'inputs',
+      );
+      expect(
+        content,
+        contains('escapeUntrustedXmlTags(prTitle)'),
+        reason: 'Must escape prTitle before interpolating into userContentText',
+      );
+      expect(
+        content,
+        contains('escapeUntrustedXmlTags(prBody)'),
+        reason: 'Must escape prBody before interpolating into userContentText',
+      );
+      expect(
+        content,
+        contains('escapeUntrustedXmlTags(truncatedDiff)'),
+        reason:
+            'Must escape truncatedDiff before interpolating into '
+            'userContentText',
+      );
+
+      // Reference-style markdown image stripping in reviewText
+      expect(
+        content,
+        contains(r'!\[[^\]]*\]\[[^\]]*\]'),
+        reason: 'Must strip reference-style markdown images ![alt][ref]',
+      );
+      expect(
+        content,
+        contains(r'/!\[[^\]]*\]/g'),
+        reason:
+            'Must unconditionally strip remaining shortcut ![alt] image tokens '
+            'without whitespace lookahead exemption',
+      );
+      expect(
+        content,
+        contains(r'^[\s>]*\[[^\]]+\]:'),
+        reason:
+            'Must strip reference definitions even inside blockquotes or '
+            'indented lines',
+      );
+    });
   });
 }

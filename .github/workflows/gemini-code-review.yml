@@ -49,6 +49,7 @@ jobs:
           script: |
             const fs = require('fs');
             const path = require('path');
+            const { execFileSync } = require('child_process');
             const apiKey = process.env.GEMINI_API_KEY;
             if (!apiKey) {
               console.log('⚠️ No GEMINI_API_KEY secret configured in repository settings. Skipping automated code review.');
@@ -83,6 +84,7 @@ jobs:
 
             let prTitle = context.payload.pull_request?.title || 'PR Review';
             let prBody = context.payload.pull_request?.body || 'No description provided.';
+            let prBaseRef = context.payload.pull_request?.base?.ref || process.env.GITHUB_BASE_REF || '';
             if (inputPr && !context.payload.pull_request) {
               try {
                 const { data: prData } = await github.rest.pulls.get({
@@ -92,62 +94,87 @@ jobs:
                 });
                 prTitle = prData.title || prTitle;
                 prBody = prData.body || prBody;
+                prBaseRef = prData.base?.ref || prBaseRef;
               } catch (e) {
                 console.log('Notice: Could not fetch PR #' + inputPr + ' metadata:', e.message);
               }
             }
 
-            // 1. Ingest AGENTS.md (core developer handbook & repo constitution)
+            const trustedRef = prBaseRef
+              ? 'origin/' + prBaseRef
+              : (process.env.GITHUB_SHA || 'HEAD');
+            const readTrustedFile = (repoPath) => {
+              return execFileSync('git', ['show', trustedRef + ':' + repoPath], {
+                encoding: 'utf8',
+                maxBuffer: 10 * 1024 * 1024
+              });
+            };
+
+            // 1. Ingest AGENTS.md from trusted base ref (core developer handbook & repo constitution)
             let agentsContext = '';
-            if (fs.existsSync('AGENTS.md')) {
-              try {
-                agentsContext = fs.readFileSync('AGENTS.md', 'utf8');
-                console.log('Loaded AGENTS.md (' + agentsContext.length + ' chars)');
-              } catch (e) {
-                console.log('Notice: Failed reading AGENTS.md:', e.message);
-              }
+            try {
+              agentsContext = readTrustedFile('AGENTS.md');
+              console.log('Loaded AGENTS.md from ' + trustedRef + ' (' + agentsContext.length + ' chars)');
+            } catch (e) {
+              console.log('Notice: Failed reading AGENTS.md from ' + trustedRef + ':', e.message);
             }
 
-            // 2. Ingest all public framework skills unconditionally
-            const pluginSkillsDir = path.join('plugins', 'bloc-signals', 'skills', 'bloc-signals');
+            // 2. Ingest all public framework skills unconditionally from trusted base ref
+            const pluginSkillsDir = 'plugins/bloc-signals/skills/bloc-signals';
             let skillsContext = '';
-            if (fs.existsSync(pluginSkillsDir)) {
-              try {
-                const skillFiles = fs.readdirSync(pluginSkillsDir).filter(f => f.endsWith('.md')).sort();
-                for (const file of skillFiles) {
-                  const fullSkillPath = path.join(pluginSkillsDir, file);
-                  try {
-                    const content = fs.readFileSync(fullSkillPath, 'utf8');
-                    skillsContext += '\n\n--- SKILL GUIDANCE: ' + file + ' ---\n' + content;
-                    console.log('Loaded framework skill: ' + file + ' (' + content.length + ' chars)');
-                  } catch (e) {
-                    console.log('Notice: Failed reading skill ' + file + ':', e.message);
-                  }
+            try {
+              const lsOutput = execFileSync(
+                'git',
+                ['ls-tree', '--name-only', trustedRef, pluginSkillsDir + '/'],
+                { encoding: 'utf8' }
+              );
+              const skillFiles = lsOutput
+                .split('\n')
+                .map(f => f.trim())
+                .filter(f => f.endsWith('.md'))
+                .sort();
+              for (const fullSkillPath of skillFiles) {
+                const file = path.posix.basename(fullSkillPath);
+                try {
+                  const content = readTrustedFile(fullSkillPath);
+                  skillsContext += '\n\n--- SKILL GUIDANCE: ' + file + ' ---\n' + content;
+                  console.log('Loaded framework skill from ' + trustedRef + ': ' + file + ' (' + content.length + ' chars)');
+                } catch (e) {
+                  console.log('Notice: Failed reading skill ' + file + ':', e.message);
                 }
-              } catch (e) {
-                console.log('Notice: Failed scanning plugin skills directory:', e.message);
               }
+            } catch (e) {
+              console.log('Notice: Failed scanning plugin skills directory in ' + trustedRef + ':', e.message);
             }
 
-            // 3. Scan .agents/skills if referenced in diff
-            const repoSkillsDir = path.join('.agents', 'skills');
-            if (fs.existsSync(repoSkillsDir)) {
-              try {
-                const lowerDiff = diff.toLowerCase();
-                const subdirs = fs.readdirSync(repoSkillsDir);
-                for (const subdir of subdirs) {
-                  if (lowerDiff.includes(subdir.toLowerCase())) {
-                    const skillMd = path.join(repoSkillsDir, subdir, 'SKILL.md');
-                    if (fs.existsSync(skillMd)) {
-                      const skillContent = fs.readFileSync(skillMd, 'utf8');
-                      skillsContext += '\n\n--- SKILL GUIDANCE: ' + subdir + ' ---\n' + skillContent;
-                      console.log('Loaded repo skill: ' + subdir + ' (' + skillContent.length + ' chars)');
-                    }
+            // 3. Scan .agents/skills from trusted base ref if referenced in diff
+            const repoSkillsDir = '.agents/skills';
+            try {
+              const lowerDiff = diff.toLowerCase();
+              const lsRepoSkills = execFileSync(
+                'git',
+                ['ls-tree', '--name-only', trustedRef, repoSkillsDir + '/'],
+                { encoding: 'utf8' }
+              );
+              const subdirs = lsRepoSkills
+                .split('\n')
+                .map(s => s.trim())
+                .filter(Boolean);
+              for (const fullSubdir of subdirs) {
+                const subdir = path.posix.basename(fullSubdir);
+                if (lowerDiff.includes(subdir.toLowerCase())) {
+                  const skillMd = fullSubdir + '/SKILL.md';
+                  try {
+                    const skillContent = readTrustedFile(skillMd);
+                    skillsContext += '\n\n--- SKILL GUIDANCE: ' + subdir + ' ---\n' + skillContent;
+                    console.log('Loaded repo skill from ' + trustedRef + ': ' + subdir + ' (' + skillContent.length + ' chars)');
+                  } catch (e) {
+                    // SKILL.md may not exist in this subdir
                   }
                 }
-              } catch (e) {
-                console.log('Notice: Failed reading .agents/skills:', e.message);
               }
+            } catch (e) {
+              console.log('Notice: Failed reading .agents/skills from ' + trustedRef + ':', e.message);
             }
 
             const maxContextLength = 500000;
@@ -173,12 +200,19 @@ jobs:
               "   - Explicit recommendation tag: 🟢 APPROVE or 🟡 REQUEST CHANGES.\n\n" +
               "Format your response in clean GitHub Markdown with headings, bullet points, and an explicit GCA approval status tag.";
 
+            const escapeUntrustedXmlTags = (text) => {
+              return String(text).replace(
+                /<(\/?untrusted_pr_(?:title|description|diff)\b[^>]*)>/gi,
+                '&lt;$1&gt;'
+              );
+            };
+
             const userContentText = "=== PULL REQUEST DETAILS ===\n" +
-              "<untrusted_pr_title>\n" + prTitle + "\n</untrusted_pr_title>\n\n" +
-              "<untrusted_pr_description>\n" + prBody + "\n</untrusted_pr_description>\n\n" +
+              "<untrusted_pr_title>\n" + escapeUntrustedXmlTags(prTitle) + "\n</untrusted_pr_title>\n\n" +
+              "<untrusted_pr_description>\n" + escapeUntrustedXmlTags(prBody) + "\n</untrusted_pr_description>\n\n" +
               "<untrusted_pr_diff>\n" +
               "```diff\n" +
-              truncatedDiff + "\n" +
+              escapeUntrustedXmlTags(truncatedDiff) + "\n" +
               "```\n" +
               "</untrusted_pr_diff>";
 
@@ -219,8 +253,11 @@ jobs:
               return;
             }
 
-            // Strip markdown and HTML image tags to prevent tracking pixels or external image exfiltration
+            // Strip markdown (inline and reference-style) and HTML image tags to prevent tracking pixels or external image exfiltration
             reviewText = reviewText.replace(/!\[[^\]]*\]\([^)]*\)/g, '[image removed]');
+            reviewText = reviewText.replace(/!\[[^\]]*\]\[[^\]]*\]/g, '[image removed]');
+            reviewText = reviewText.replace(/!\[[^\]]*\]/g, '[image removed]');
+            reviewText = reviewText.replace(/^[\s>]*\[[^\]]+\]:\s*\S+.*$/gm, '[reference removed]');
             reviewText = reviewText.replace(/<img\b[^>]*>/gi, '[image removed]');
 
             if (!issueNumber) {

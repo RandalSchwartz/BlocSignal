@@ -4,22 +4,38 @@ import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 /// visual terminal boxes matching `agy-cli` styling.
 class TuiRenderer {
   static final RegExp _ansiEscapeRegex = RegExp(
-    r'\x1B(?:\[[0-?]*[ -/]*[@-~]|\].*?(?:\x07|\x1B\\)|[@-Z\\^_`a-~])',
+    r'\x1B(?:\[[0-?]*[ -/]*[@-~]|\][^\x07\x1B]*(?:\x07|\x1B\\|$)|[@-Z\\^_`a-~])',
     dotAll: true,
   );
 
   static final RegExp _controlCharRegex = RegExp(
-    r'[\x00-\x08\x0B-\x1F\x7F-\x9F]',
+    r'[\x00-\x08\x0B-\x1F\x7F-\x9F\u202A-\u202E\u2066-\u2069]',
   );
 
-  /// Strips ANSI escape sequences and C0/C1 control characters from [value],
-  /// preserving horizontal tabs (`\t`) and newlines (`\n`).
+  /// Strips ANSI escape sequences, C0/C1 control characters, and Unicode BiDi
+  /// override/isolate characters from [value], preserving horizontal tabs
+  /// (`\t`) and newlines (`\n`).
   static String sanitize(Object? value) {
     if (value == null) return '';
     return value
         .toString()
         .replaceAll(_ansiEscapeRegex, '')
         .replaceAll(_controlCharRegex, '');
+  }
+
+  /// Formats an agent tool callback action response with sanitized
+  /// [actionName], [surfaceId], and [formData] fields.
+  static String formatActionResponse({
+    required String actionName,
+    required String surfaceId,
+    required Map<String, Object?> formData,
+  }) {
+    final sanitizedForm = formData.entries
+        .map((e) => '${sanitize(e.key)}: ${sanitize(e.value)}')
+        .join(', ');
+    return '   Action: ${sanitize(actionName)}\n'
+        '   Surface: ${sanitize(surfaceId)}\n'
+        '   Form Data: {$sanitizedForm}';
   }
 
   /// Formats an [A2uiSurfaceState] into an ANSI terminal representation.

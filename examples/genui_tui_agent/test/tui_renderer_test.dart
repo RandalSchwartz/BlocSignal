@@ -432,5 +432,44 @@ void main() {
         }
       });
     });
+
+    group('(Issue #473) TuiRenderer security & sanitization', () {
+      test('processes large unterminated OSC escape flood in linear time', () {
+        final payload = List<String>.filled(8000, '\x1B]0;title').join();
+        final sw = Stopwatch()..start();
+        final result = TuiRenderer.sanitize(payload);
+        sw.stop();
+
+        expect(sw.elapsedMilliseconds, lessThan(200));
+        expect(result, isNot(contains('\x1B')));
+      });
+
+      test('strips Unicode BiDi override and isolate characters', () {
+        const input =
+            'safe\u202A\u202B\u202C\u202D\u202E'
+            '\u2066\u2067\u2068\u2069text';
+        expect(TuiRenderer.sanitize(input), equals('safetext'));
+      });
+
+      test('formatActionResponse sanitizes actionName, surfaceId, and '
+          'formData', () {
+        final formatted = TuiRenderer.formatActionResponse(
+          actionName: '\x1B[31mbook\x07\u202E',
+          surfaceId: '\x1B]0;evil\x07surf_1',
+          formData: const {'\x1B[31mkey\x7F': '\x1B[32mval\u2066'},
+        );
+
+        expect(formatted, isNot(contains('\x1B[31m')));
+        expect(formatted, isNot(contains('\x1B[32m')));
+        expect(formatted, isNot(contains('\x1B]0;')));
+        expect(formatted, isNot(contains('\x07')));
+        expect(formatted, isNot(contains('\x7F')));
+        expect(formatted, isNot(contains('\u202E')));
+        expect(formatted, isNot(contains('\u2066')));
+        expect(formatted, contains('Action: book'));
+        expect(formatted, contains('Surface: surf_1'));
+        expect(formatted, contains('key: val'));
+      });
+    });
   });
 }

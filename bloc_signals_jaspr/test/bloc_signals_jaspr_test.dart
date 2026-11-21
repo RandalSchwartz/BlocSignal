@@ -1190,7 +1190,7 @@ void main() {
         await tester.pump();
 
         expect(_issue476JasprEvents, equals([3]));
-        expect(find.text('Watch: 3'), findsOneComponent);
+        expect(find.text('Watch: 2'), findsOneComponent);
         expect(find.text('Builder: 3'), findsOneComponent);
         expect(find.text('Selector: 3'), findsOneComponent);
         expect(find.text('Select: 3'), findsOneComponent);
@@ -1286,7 +1286,7 @@ void main() {
         externalCubit.emit(43);
         await tester.pump();
         expect(_issue476JasprEvents, equals([43]));
-        expect(find.text('Watch: 43'), findsOneComponent);
+        expect(find.text('Watch: 42'), findsOneComponent);
         expect(find.text('Builder: 43'), findsOneComponent);
         expect(find.text('Selector: 43'), findsOneComponent);
         expect(find.text('Select: 43'), findsOneComponent);
@@ -1357,6 +1357,47 @@ void main() {
         expect(listenWhenCalls, equals(0));
         expect(listenerCalls, equals(0));
         expect(selectorCalls, equals(initialSelectorCalls));
+      },
+    );
+
+    testComponents(
+      '(Issue #476: explicit bloc: swap with value-equal container rebinds '
+      'Builder, Listener, and Selector via didUpdateComponent)',
+      (tester) async {
+        final c1 = _ValueEqualJasprCubit(1);
+        final c2 = _ValueEqualJasprCubit(2);
+        addTearDown(c1.close);
+        addTearDown(c2.close);
+        expect(c1 == c2, isTrue);
+        expect(identical(c1, c2), isFalse);
+
+        final listened = <int>[];
+        late void Function(_ValueEqualJasprCubit) swapExplicitBloc;
+
+        tester.pumpComponent(
+          _ExplicitValueEqualJasprSwapHost(
+            initialCubit: c1,
+            onReady: (setter) => swapExplicitBloc = setter,
+            onListened: listened.add,
+          ),
+        );
+
+        expect(find.text('ExplicitBuilder: 1'), findsOneComponent);
+        expect(find.text('ExplicitSelector: 1'), findsOneComponent);
+
+        swapExplicitBloc(c2);
+        await tester.pump();
+
+        expect(find.text('ExplicitBuilder: 2'), findsOneComponent);
+        expect(find.text('ExplicitSelector: 2'), findsOneComponent);
+
+        c1.emit(99);
+        c2.emit(3);
+        await tester.pump();
+
+        expect(listened, equals([3]));
+        expect(find.text('ExplicitBuilder: 3'), findsOneComponent);
+        expect(find.text('ExplicitSelector: 3'), findsOneComponent);
       },
     );
   });
@@ -1801,28 +1842,90 @@ class _ValueEqualJasprSwapHostState extends State<_ValueEqualJasprSwapHost> {
   }
 }
 
+int _selectValueEqualJasprState(int state) => state;
+
+int _selectValueEqualJasprBlocState(_ValueEqualJasprCubit bloc) =>
+    bloc.stateValue;
+
+int _selectCounterJasprState(int state) => state;
+
+int _selectCounterJasprBlocState(CounterCubit bloc) => bloc.stateValue;
+
 class _ValueEqualJasprConstSubtree extends StatelessComponent {
   const _ValueEqualJasprConstSubtree();
 
   @override
   Component build(BuildContext context) {
+    return const div([
+      _ValueEqualJasprWatchLeaf(),
+      _ValueEqualJasprSelectLeaf(),
+      _ValueEqualJasprBuilderLeaf(),
+      _ValueEqualJasprListenerLeaf(),
+      _ValueEqualJasprSelectorLeaf(),
+    ]);
+  }
+}
+
+class _ValueEqualJasprWatchLeaf extends StatelessComponent {
+  const _ValueEqualJasprWatchLeaf();
+
+  @override
+  Component build(BuildContext context) {
     final watched = context.watch<_ValueEqualJasprCubit>().stateValue;
-    final selected =
-        context.select<_ValueEqualJasprCubit, int>((bloc) => bloc.stateValue);
-    return BlocSignalListener<_ValueEqualJasprCubit, int>(
-      listener: (context, state) => _issue476JasprEvents.add(state),
-      child: div([
-        div([Component.text('Watch: $watched')]),
-        BlocSignalBuilder<_ValueEqualJasprCubit, int>(
-          builder: (context, state) => div([Component.text('Builder: $state')]),
-        ),
-        BlocSignalSelector<_ValueEqualJasprCubit, int, int>(
-          selector: (state) => state,
-          builder: (context, value) =>
-              div([Component.text('Selector: $value')]),
-        ),
-        div([Component.text('Select: $selected')]),
-      ]),
+    return div([Component.text('Watch: $watched')]);
+  }
+}
+
+class _ValueEqualJasprSelectLeaf extends StatelessComponent {
+  const _ValueEqualJasprSelectLeaf();
+
+  @override
+  Component build(BuildContext context) {
+    final selected = context.select<_ValueEqualJasprCubit, int>(
+      _selectValueEqualJasprBlocState,
+    );
+    return div([Component.text('Select: $selected')]);
+  }
+}
+
+class _ValueEqualJasprBuilderLeaf extends StatelessComponent {
+  const _ValueEqualJasprBuilderLeaf();
+
+  static Component _build(BuildContext context, int state) =>
+      div([Component.text('Builder: $state')]);
+
+  @override
+  Component build(BuildContext context) {
+    return const BlocSignalBuilder<_ValueEqualJasprCubit, int>(builder: _build);
+  }
+}
+
+class _ValueEqualJasprListenerLeaf extends StatelessComponent {
+  const _ValueEqualJasprListenerLeaf();
+
+  static void _listen(BuildContext context, int state) =>
+      _issue476JasprEvents.add(state);
+
+  @override
+  Component build(BuildContext context) {
+    return const BlocSignalListener<_ValueEqualJasprCubit, int>(
+      listener: _listen,
+      child: Component.empty(),
+    );
+  }
+}
+
+class _ValueEqualJasprSelectorLeaf extends StatelessComponent {
+  const _ValueEqualJasprSelectorLeaf();
+
+  static Component _build(BuildContext context, int value) =>
+      div([Component.text('Selector: $value')]);
+
+  @override
+  Component build(BuildContext context) {
+    return const BlocSignalSelector<_ValueEqualJasprCubit, int, int>(
+      selector: _selectValueEqualJasprState,
+      builder: _build,
     );
   }
 }
@@ -1918,22 +2021,127 @@ class _CounterJasprConstFullSubtree extends StatelessComponent {
 
   @override
   Component build(BuildContext context) {
+    return const div([
+      _CounterJasprWatchLeaf(),
+      _CounterJasprSelectLeaf(),
+      _CounterJasprBuilderLeaf(),
+      _CounterJasprListenerLeaf(),
+      _CounterJasprSelectorLeaf(),
+    ]);
+  }
+}
+
+class _CounterJasprWatchLeaf extends StatelessComponent {
+  const _CounterJasprWatchLeaf();
+
+  @override
+  Component build(BuildContext context) {
     final watched = context.watch<CounterCubit>().stateValue;
+    return div([Component.text('Watch: $watched')]);
+  }
+}
+
+class _CounterJasprSelectLeaf extends StatelessComponent {
+  const _CounterJasprSelectLeaf();
+
+  @override
+  Component build(BuildContext context) {
     final selected =
-        context.select<CounterCubit, int>((bloc) => bloc.stateValue);
-    return BlocSignalListener<CounterCubit, int>(
-      listener: (context, state) => _issue476JasprEvents.add(state),
+        context.select<CounterCubit, int>(_selectCounterJasprBlocState);
+    return div([Component.text('Select: $selected')]);
+  }
+}
+
+class _CounterJasprBuilderLeaf extends StatelessComponent {
+  const _CounterJasprBuilderLeaf();
+
+  static Component _build(BuildContext context, int state) =>
+      div([Component.text('Builder: $state')]);
+
+  @override
+  Component build(BuildContext context) {
+    return const BlocSignalBuilder<CounterCubit, int>(builder: _build);
+  }
+}
+
+class _CounterJasprListenerLeaf extends StatelessComponent {
+  const _CounterJasprListenerLeaf();
+
+  static void _listen(BuildContext context, int state) =>
+      _issue476JasprEvents.add(state);
+
+  @override
+  Component build(BuildContext context) {
+    return const BlocSignalListener<CounterCubit, int>(
+      listener: _listen,
+      child: Component.empty(),
+    );
+  }
+}
+
+class _CounterJasprSelectorLeaf extends StatelessComponent {
+  const _CounterJasprSelectorLeaf();
+
+  static Component _build(BuildContext context, int value) =>
+      div([Component.text('Selector: $value')]);
+
+  @override
+  Component build(BuildContext context) {
+    return const BlocSignalSelector<CounterCubit, int, int>(
+      selector: _selectCounterJasprState,
+      builder: _build,
+    );
+  }
+}
+
+class _ExplicitValueEqualJasprSwapHost extends StatefulComponent {
+  const _ExplicitValueEqualJasprSwapHost({
+    required this.initialCubit,
+    required this.onReady,
+    required this.onListened,
+  });
+
+  final _ValueEqualJasprCubit initialCubit;
+  final void Function(void Function(_ValueEqualJasprCubit)) onReady;
+  final void Function(int) onListened;
+
+  @override
+  State<_ExplicitValueEqualJasprSwapHost> createState() =>
+      _ExplicitValueEqualJasprSwapHostState();
+}
+
+class _ExplicitValueEqualJasprSwapHostState
+    extends State<_ExplicitValueEqualJasprSwapHost> {
+  late _ValueEqualJasprCubit _cubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _cubit = component.initialCubit;
+    component.onReady((next) {
+      setState(() {
+        _cubit = next;
+      });
+    });
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalListener<_ValueEqualJasprCubit, int>(
+      bloc: _cubit,
+      listener: (context, state) => component.onListened(state),
       child: div([
-        div([Component.text('Watch: $watched')]),
-        BlocSignalBuilder<CounterCubit, int>(
-          builder: (context, state) => div([Component.text('Builder: $state')]),
+        BlocSignalBuilder<_ValueEqualJasprCubit, int>(
+          bloc: _cubit,
+          builder: (context, state) =>
+              div([Component.text('ExplicitBuilder: $state')]),
         ),
-        BlocSignalSelector<CounterCubit, int, int>(
-          selector: (state) => state,
+        BlocSignalSelector<_ValueEqualJasprCubit, int, int>(
+          bloc: _cubit,
+          selector: _selectValueEqualJasprState,
           builder: (context, value) =>
-              div([Component.text('Selector: $value')]),
+              div([Component.text('ExplicitSelector: $value')]),
         ),
-        div([Component.text('Select: $selected')]),
       ]),
     );
   }

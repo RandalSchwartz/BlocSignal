@@ -1715,7 +1715,7 @@ void main() {
         await tester.pump();
 
         expect(_issue476FlutterEvents, equals([3]));
-        expect(find.text('Watch: 3'), findsOneWidget);
+        expect(find.text('Watch: 2'), findsOneWidget);
         expect(find.text('Builder: 3'), findsOneWidget);
         expect(find.text('Selector: 3'), findsOneWidget);
         expect(find.text('Select: 3'), findsOneWidget);
@@ -1822,7 +1822,7 @@ void main() {
         externalCubit.emit(43);
         await tester.pump();
         expect(_issue476FlutterEvents, equals([43]));
-        expect(find.text('Watch: 43'), findsOneWidget);
+        expect(find.text('Watch: 42'), findsOneWidget);
         expect(find.text('Builder: 43'), findsOneWidget);
         expect(find.text('Selector: 43'), findsOneWidget);
         expect(find.text('Select: 43'), findsOneWidget);
@@ -1909,6 +1909,49 @@ void main() {
         );
 
         expect(tester.takeException(), isA<StateError>());
+      },
+    );
+
+    testWidgets(
+      '(Issue #476: explicit bloc: swap with value-equal container rebinds '
+      'Builder, Listener, and Selector via didUpdateWidget)',
+      (tester) async {
+        final c1 = _ValueEqualCubit(1);
+        final c2 = _ValueEqualCubit(2);
+        addTearDown(c1.close);
+        addTearDown(c2.close);
+        expect(c1 == c2, isTrue);
+        expect(identical(c1, c2), isFalse);
+
+        final listened = <int>[];
+        late void Function(_ValueEqualCubit) swapExplicitBloc;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: _ExplicitValueEqualSwapHost(
+              initialCubit: c1,
+              onReady: (setter) => swapExplicitBloc = setter,
+              onListened: listened.add,
+            ),
+          ),
+        );
+
+        expect(find.text('ExplicitBuilder: 1'), findsOneWidget);
+        expect(find.text('ExplicitSelector: 1'), findsOneWidget);
+
+        swapExplicitBloc(c2);
+        await tester.pump();
+
+        expect(find.text('ExplicitBuilder: 2'), findsOneWidget);
+        expect(find.text('ExplicitSelector: 2'), findsOneWidget);
+
+        c1.emit(99);
+        c2.emit(3);
+        await tester.pump();
+
+        expect(listened, equals([3]));
+        expect(find.text('ExplicitBuilder: 3'), findsOneWidget);
+        expect(find.text('ExplicitSelector: 3'), findsOneWidget);
       },
     );
   });
@@ -2162,28 +2205,89 @@ class _ValueEqualSwapHostState extends State<_ValueEqualSwapHost> {
   }
 }
 
+int _selectValueEqualState(int state) => state;
+
+int _selectValueEqualBlocState(_ValueEqualCubit bloc) => bloc.stateValue;
+
+int _selectCounterState(int state) => state;
+
+int _selectCounterBlocState(CounterCubit bloc) => bloc.stateValue;
+
 class _ValueEqualConstSubtree extends StatelessWidget {
   const _ValueEqualConstSubtree();
 
   @override
   Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        _ValueEqualWatchLeaf(),
+        _ValueEqualSelectLeaf(),
+        _ValueEqualBuilderLeaf(),
+        _ValueEqualListenerLeaf(),
+        _ValueEqualSelectorLeaf(),
+      ],
+    );
+  }
+}
+
+class _ValueEqualWatchLeaf extends StatelessWidget {
+  const _ValueEqualWatchLeaf();
+
+  @override
+  Widget build(BuildContext context) {
     final watched = context.watch<_ValueEqualCubit>().stateValue;
-    final selected = context.select<_ValueEqualCubit, int>((b) => b.stateValue);
-    return BlocSignalListener<_ValueEqualCubit, int>(
-      listener: (context, state) => _issue476FlutterEvents.add(state),
-      child: Column(
-        children: [
-          Text('Watch: $watched'),
-          BlocSignalBuilder<_ValueEqualCubit, int>(
-            builder: (context, state) => Text('Builder: $state'),
-          ),
-          BlocSignalSelector<_ValueEqualCubit, int, int>(
-            selector: (state) => state,
-            builder: (context, value) => Text('Selector: $value'),
-          ),
-          Text('Select: $selected'),
-        ],
-      ),
+    return Text('Watch: $watched');
+  }
+}
+
+class _ValueEqualSelectLeaf extends StatelessWidget {
+  const _ValueEqualSelectLeaf();
+
+  @override
+  Widget build(BuildContext context) {
+    final selected =
+        context.select<_ValueEqualCubit, int>(_selectValueEqualBlocState);
+    return Text('Select: $selected');
+  }
+}
+
+class _ValueEqualBuilderLeaf extends StatelessWidget {
+  const _ValueEqualBuilderLeaf();
+
+  static Widget _build(BuildContext context, int state) =>
+      Text('Builder: $state');
+
+  @override
+  Widget build(BuildContext context) {
+    return const BlocSignalBuilder<_ValueEqualCubit, int>(builder: _build);
+  }
+}
+
+class _ValueEqualListenerLeaf extends StatelessWidget {
+  const _ValueEqualListenerLeaf();
+
+  static void _listen(BuildContext context, int state) =>
+      _issue476FlutterEvents.add(state);
+
+  @override
+  Widget build(BuildContext context) {
+    return const BlocSignalListener<_ValueEqualCubit, int>(
+      listener: _listen,
+    );
+  }
+}
+
+class _ValueEqualSelectorLeaf extends StatelessWidget {
+  const _ValueEqualSelectorLeaf();
+
+  static Widget _build(BuildContext context, int value) =>
+      Text('Selector: $value');
+
+  @override
+  Widget build(BuildContext context) {
+    return const BlocSignalSelector<_ValueEqualCubit, int, int>(
+      selector: _selectValueEqualState,
+      builder: _build,
     );
   }
 }
@@ -2278,21 +2382,126 @@ class _CounterConstFullSubtree extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        _CounterWatchLeaf(),
+        _CounterSelectLeaf(),
+        _CounterBuilderLeaf(),
+        _CounterListenerLeaf(),
+        _CounterSelectorLeaf(),
+      ],
+    );
+  }
+}
+
+class _CounterWatchLeaf extends StatelessWidget {
+  const _CounterWatchLeaf();
+
+  @override
+  Widget build(BuildContext context) {
     final watched = context.watch<CounterCubit>().stateValue;
-    final selected = context.select<CounterCubit, int>((b) => b.stateValue);
-    return BlocSignalListener<CounterCubit, int>(
-      listener: (context, state) => _issue476FlutterEvents.add(state),
+    return Text('Watch: $watched');
+  }
+}
+
+class _CounterSelectLeaf extends StatelessWidget {
+  const _CounterSelectLeaf();
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = context.select<CounterCubit, int>(_selectCounterBlocState);
+    return Text('Select: $selected');
+  }
+}
+
+class _CounterBuilderLeaf extends StatelessWidget {
+  const _CounterBuilderLeaf();
+
+  static Widget _build(BuildContext context, int state) =>
+      Text('Builder: $state');
+
+  @override
+  Widget build(BuildContext context) {
+    return const BlocSignalBuilder<CounterCubit, int>(builder: _build);
+  }
+}
+
+class _CounterListenerLeaf extends StatelessWidget {
+  const _CounterListenerLeaf();
+
+  static void _listen(BuildContext context, int state) =>
+      _issue476FlutterEvents.add(state);
+
+  @override
+  Widget build(BuildContext context) {
+    return const BlocSignalListener<CounterCubit, int>(
+      listener: _listen,
+    );
+  }
+}
+
+class _CounterSelectorLeaf extends StatelessWidget {
+  const _CounterSelectorLeaf();
+
+  static Widget _build(BuildContext context, int value) =>
+      Text('Selector: $value');
+
+  @override
+  Widget build(BuildContext context) {
+    return const BlocSignalSelector<CounterCubit, int, int>(
+      selector: _selectCounterState,
+      builder: _build,
+    );
+  }
+}
+
+class _ExplicitValueEqualSwapHost extends StatefulWidget {
+  const _ExplicitValueEqualSwapHost({
+    required this.initialCubit,
+    required this.onReady,
+    required this.onListened,
+  });
+
+  final _ValueEqualCubit initialCubit;
+  final void Function(void Function(_ValueEqualCubit)) onReady;
+  final void Function(int) onListened;
+
+  @override
+  State<_ExplicitValueEqualSwapHost> createState() =>
+      _ExplicitValueEqualSwapHostState();
+}
+
+class _ExplicitValueEqualSwapHostState
+    extends State<_ExplicitValueEqualSwapHost> {
+  late _ValueEqualCubit _cubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _cubit = widget.initialCubit;
+    widget.onReady((next) {
+      setState(() {
+        _cubit = next;
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSignalListener<_ValueEqualCubit, int>(
+      bloc: _cubit,
+      listener: (context, state) => widget.onListened(state),
       child: Column(
         children: [
-          Text('Watch: $watched'),
-          BlocSignalBuilder<CounterCubit, int>(
-            builder: (context, state) => Text('Builder: $state'),
+          BlocSignalBuilder<_ValueEqualCubit, int>(
+            bloc: _cubit,
+            builder: (context, state) => Text('ExplicitBuilder: $state'),
           ),
-          BlocSignalSelector<CounterCubit, int, int>(
-            selector: (state) => state,
-            builder: (context, value) => Text('Selector: $value'),
+          BlocSignalSelector<_ValueEqualCubit, int, int>(
+            bloc: _cubit,
+            selector: _selectValueEqualState,
+            builder: (context, value) => Text('ExplicitSelector: $value'),
           ),
-          Text('Select: $selected'),
         ],
       ),
     );

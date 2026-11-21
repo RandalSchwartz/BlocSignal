@@ -241,5 +241,36 @@ void main() {
         );
       },
     );
+
+    test('(Issue #457) gemini-code-review.yml uses gemini-3.8-flash and ci.yml '
+        'does not pin flutter-version 3.47.9', () {
+      final rootPath = _resolveRepoRoot().path;
+      final reviewFile = File(
+        '$rootPath/.github/workflows/gemini-code-review.yml',
+      );
+      final ciFile = File('$rootPath/.github/workflows/ci.yml');
+
+      expect(reviewFile.existsSync(), isTrue);
+      expect(ciFile.existsSync(), isTrue);
+
+      final reviewContent = reviewFile.readAsStringSync();
+      final ciContent = ciFile.readAsStringSync();
+
+      expect(
+        reviewContent,
+        contains("const model = 'gemini-3.8-flash';"),
+        reason: 'gemini-code-review.yml must use gemini-3.8-flash',
+      );
+      expect(
+        reviewContent,
+        isNot(contains('gemini-flash-latest')),
+        reason: 'gemini-code-review.yml must not use gemini-flash-latest',
+      );
+      expect(
+        ciContent,
+        isNot(contains('flutter-version: "3.47.9"')),
+        reason: 'ci.yml must not pin flutter-version: "3.47.9"',
+      );
+    });
   });
 }

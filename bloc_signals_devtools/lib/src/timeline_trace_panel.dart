@@ -51,7 +51,10 @@ class TimelineTracePanel extends StatelessWidget {
         final entry = history[index];
         final type = entry['type']?.toString() ?? 'transition';
         final timestamp = entry['timestamp']?.toString() ?? '';
-        final data = (entry['data'] as Map<String, dynamic>?) ?? {};
+        final rawData = entry['data'];
+        final data = rawData is Map<String, dynamic>
+            ? rawData
+            : const <String, dynamic>{};
         final isError = type == 'error';
         final isSelected = entry == selectedEntry;
 

@@ -116,9 +116,9 @@ class _LiveBlocSignalsDevToolsExtensionState
           errorMessage: _controller.errorMessage,
           onRefresh: _controller.fetchInstances,
           onSelectInstance: (item) {
-            final hashCode = item['hashCode'] as int?;
-            if (hashCode != null) {
-              unawaited(_controller.fetchHistoryForInstance(hashCode));
+            final rawHashCode = item['hashCode'];
+            if (rawHashCode is int) {
+              unawaited(_controller.fetchHistoryForInstance(rawHashCode));
             }
           },
         );

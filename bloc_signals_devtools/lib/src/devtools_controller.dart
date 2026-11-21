@@ -60,24 +60,58 @@ class BlocSignalsDevToolsController with ChangeNotifier {
   StreamSubscription<vm.Event>? _subscription;
   Timer? _debounceTimer;
   bool _isFetching = false;
+  bool _isDisposed = false;
+  int _fetchGeneration = 0;
+
+  void _safeNotifyListeners() {
+    if (!_isDisposed) {
+      notifyListeners();
+    }
+  }
+
+  static const int _maxDateTimeMicroseconds = 8640000000000000000;
+
+  static String _parseTimestamp(dynamic rawTs) {
+    if (rawTs is num && rawTs.isFinite) {
+      final micros = rawTs.toInt();
+      if (micros >= -_maxDateTimeMicroseconds &&
+          micros <= _maxDateTimeMicroseconds) {
+        return DateTime.fromMicrosecondsSinceEpoch(micros).toIso8601String();
+      }
+    }
+    return DateTime.now().toIso8601String();
+  }
 
   /// Attaches a stream of [vm.Event] (typically from
   /// `vm_service.onExtensionEvent`).
   void attachEventStream(Stream<vm.Event> stream) {
+    if (_isDisposed) return;
     unawaited(_subscription?.cancel());
-    _subscription = stream.listen(handleEvent);
+    _subscription = stream.listen(
+      handleEvent,
+      onError: (Object error, StackTrace stackTrace) {
+        if (_isDisposed) return;
+        _errorMessage = 'VM service event stream error: $error';
+        _safeNotifyListeners();
+      },
+    );
   }
 
   /// Processes an incoming [vm.Event] from the VM service.
   void handleEvent(vm.Event event) {
+    if (_isDisposed) return;
     final kind = event.extensionKind;
     if (kind == null || !kind.startsWith('bloc_signal.')) return;
 
-    final rawData = event.extensionData?.data;
+    final Map<Object?, Object?>? rawData = event.extensionData?.data;
     final data = rawData != null
-        ? Map<String, dynamic>.from(rawData)
+        ? <String, dynamic>{
+            for (final entry in rawData.entries)
+              if (entry.key is String) entry.key! as String: entry.value,
+          }
         : const <String, dynamic>{};
-    final id = data['hashCode'] as int?;
+    final rawId = data['hashCode'];
+    final id = rawId is int ? rawId : null;
 
     if (kind == 'bloc_signal.onCreate') {
       _scheduleDebouncedFetch();
@@ -97,32 +131,42 @@ class BlocSignalsDevToolsController with ChangeNotifier {
   void _scheduleDebouncedFetch() {
     _debounceTimer?.cancel();
     _debounceTimer = Timer(debounceDuration, () {
+      if (_isDisposed) return;
       unawaited(fetchInstances());
     });
   }
 
   /// Fetches all active containers from `ext.bloc_signal.getInstances`.
   Future<void> fetchInstances() async {
-    if (_isFetching) return;
+    if (_isFetching || _isDisposed) return;
+    final generation = _fetchGeneration;
     _isFetching = true;
     _isLoading = true;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final json = await callExtensionRpc('ext.bloc_signal.getInstances');
-      final rawInstances = json['instances'] as List<dynamic>?;
-      _instances = rawInstances?.cast<Map<String, dynamic>>().toList() ?? [];
-      _isLoading = false;
-      notifyListeners();
-    } on Exception catch (e) {
-      _isLoading = false;
-      _errorMessage =
-          'Could not fetch containers. Ensure DevToolsBlocSignalObserver is '
-          'registered: $e';
-      notifyListeners();
+      if (_isDisposed || generation != _fetchGeneration) return;
+      final rawInstances = json['instances'];
+      _instances = rawInstances is List
+          ? rawInstances.whereType<Map<String, dynamic>>().toList()
+          : <Map<String, dynamic>>[];
+      // SCAR-ERR-02: Justified exception: DevTools controller RPC polling must
+      // surface any RPC/wire failure in the UI error banner without crashing
+      // the DevTools panel or wedging _isLoading.
+    } on Object catch (e) {
+      if (!_isDisposed && generation == _fetchGeneration) {
+        _errorMessage =
+            'Could not fetch containers. Ensure DevToolsBlocSignalObserver is '
+            'registered: $e';
+      }
     } finally {
-      _isFetching = false;
+      if (generation == _fetchGeneration) {
+        _isLoading = false;
+        _isFetching = false;
+        _safeNotifyListeners();
+      }
     }
   }
 
@@ -135,7 +179,7 @@ class BlocSignalsDevToolsController with ChangeNotifier {
         ..._instances[idx],
         'isClosed': true,
       };
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -143,11 +187,7 @@ class BlocSignalsDevToolsController with ChangeNotifier {
     final transitionEntry = <String, dynamic>{
       'hashCode': id,
       'type': 'transition',
-      'timestamp': data['timestamp'] != null
-          ? DateTime.fromMicrosecondsSinceEpoch(
-              (data['timestamp'] as num).toInt(),
-            ).toIso8601String()
-          : DateTime.now().toIso8601String(),
+      'timestamp': _parseTimestamp(data['timestamp']),
       'data': <String, dynamic>{
         'event': data['event'],
         'currentState': data['currentState'],
@@ -165,7 +205,7 @@ class BlocSignalsDevToolsController with ChangeNotifier {
           ..._instances[idx],
           'stateValue': data['nextState']?.toString() ?? '',
         };
-        notifyListeners();
+        _safeNotifyListeners();
       }
     }
   }
@@ -179,7 +219,7 @@ class BlocSignalsDevToolsController with ChangeNotifier {
         ..._instances[idx],
         'stateValue': data['nextState']?.toString() ?? '',
       };
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -187,11 +227,7 @@ class BlocSignalsDevToolsController with ChangeNotifier {
     final errorEntry = <String, dynamic>{
       'hashCode': id,
       'type': 'error',
-      'timestamp': data['timestamp'] != null
-          ? DateTime.fromMicrosecondsSinceEpoch(
-              (data['timestamp'] as num).toInt(),
-            ).toIso8601String()
-          : DateTime.now().toIso8601String(),
+      'timestamp': _parseTimestamp(data['timestamp']),
       'data': <String, dynamic>{
         'error': data['error'],
         'stackTrace': data['stackTrace'],
@@ -205,11 +241,7 @@ class BlocSignalsDevToolsController with ChangeNotifier {
     final telemetryEntry = <String, dynamic>{
       'hashCode': id,
       'type': 'telemetry',
-      'timestamp': data['timestamp'] != null
-          ? DateTime.fromMicrosecondsSinceEpoch(
-              (data['timestamp'] as num).toInt(),
-            ).toIso8601String()
-          : DateTime.now().toIso8601String(),
+      'timestamp': _parseTimestamp(data['timestamp']),
       'data': <String, dynamic>{
         'name': data['name'],
         'event': data['event'],
@@ -229,19 +261,22 @@ class BlocSignalsDevToolsController with ChangeNotifier {
   void _addHistoryEntry(Map<String, dynamic> entry) {
     _history.insert(0, entry);
     _trimHistory();
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   /// Fetches historical transitions for a specific container by its [hashCode].
   Future<void> fetchHistoryForInstance(int hashCode) async {
+    if (_isDisposed) return;
+    final generation = _fetchGeneration;
     try {
       final json = await callExtensionRpc(
         'ext.bloc_signal.getHistory',
         {'hashCode': '$hashCode'},
       );
-      final historyList = json['history'] as List<dynamic>?;
-      if (historyList != null) {
-        final parsed = historyList.cast<Map<String, dynamic>>().toList();
+      if (_isDisposed || generation != _fetchGeneration) return;
+      final historyList = json['history'];
+      if (historyList is List) {
+        final parsed = historyList.whereType<Map<String, dynamic>>().toList();
         for (final entry in parsed) {
           final exists = _history.any(
             (e) =>
@@ -258,9 +293,11 @@ class BlocSignalsDevToolsController with ChangeNotifier {
           return tB.compareTo(tA);
         });
         _trimHistory();
-        notifyListeners();
+        _safeNotifyListeners();
       }
-    } on Exception {
+      // SCAR-ERR-02: Justified exception: Historical buffer load failure
+      // falls back safely to the live history stream.
+    } on Object {
       // Historical buffer load failure falls back safely to live history
       // stream.
     }
@@ -268,16 +305,20 @@ class BlocSignalsDevToolsController with ChangeNotifier {
 
   /// Resets instance and history buffers.
   void reset() {
+    if (_isDisposed) return;
+    _fetchGeneration++;
     _debounceTimer?.cancel();
     _instances = [];
     _history.clear();
+    _isFetching = false;
     _isLoading = false;
     _errorMessage = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _debounceTimer?.cancel();
     unawaited(_subscription?.cancel());
     super.dispose();

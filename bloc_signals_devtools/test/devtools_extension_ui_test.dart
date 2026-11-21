@@ -250,5 +250,49 @@ void main() {
       await tester.pump();
       expect(selected?['hashCode'], equals(1001));
     });
+
+    testWidgets(
+      '(Issue #474: NBO-1) UI widgets handle malformed non-int hashCode and '
+      'non-Map data fields without throwing TypeError',
+      (tester) async {
+        final malformedInstances = [
+          <String, dynamic>{
+            'hashCode': 'not-an-int',
+            'type': 'WeirdCubit',
+            'stateValue': '0',
+            'isClosed': false,
+          },
+        ];
+        final malformedHistory = [
+          <String, dynamic>{
+            'hashCode': 'not-an-int',
+            'type': 'transition',
+            'timestamp': '15:00:00',
+            'data': 'not-a-map',
+          },
+        ];
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocSignalsDevToolsExtension(
+              instances: malformedInstances,
+              history: malformedHistory,
+            ),
+          ),
+        );
+
+        await tester.tap(find.text('WeirdCubit'));
+        await tester.pump();
+
+        await tester.tap(find.byKey(const Key('history_entry_0')));
+        await tester.pump();
+
+        expect(
+          find.byKey(const Key('instance_tile_invalid_0')),
+          findsOneWidget,
+        );
+        expect(find.text('WeirdCubit'), findsOneWidget);
+      },
+    );
   });
 }

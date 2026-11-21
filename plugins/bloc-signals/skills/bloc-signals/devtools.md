@@ -79,8 +79,14 @@ DevToolsService.instance.unregisterEventDeserializer<CartBloc>();
 DevToolsService.instance.clearEventDeserializers();
 ```
 
+### Redaction, Payload Caps & Metadata Sanitization
+`DevToolsBlocSignalObserver` and `DevToolsService.instance.configure(...)` support optional redaction callbacks and payload truncation to prevent sensitive state, events, errors, or oversized payloads from leaking over the VM Service:
+- `stateRedactor`, `eventRedactor`, `errorRedactor`, `stackTraceRedactor`: Optional callbacks wrapped in `try / on Exception` (falling back to `'<redaction_error>'` on exception so redactor failures never abort `emit()` or RPCs). Returning `null` from `stateRedactor` / `eventRedactor` / `errorRedactor` omits the value (falling back to `'[REDACTED]'` in `handleDispatch` RPC error responses).
+- `maxPayloadLength`: Defaults to `4096` UTF-16 code units (preserving surrogate pairs and appending `'...[truncated]'` when exceeded). Set to `null` or `<= 0` to disable truncation.
+- `DevToolsService.sanitizeMetadata`: Recursively sanitizes `double.nan` (`'NaN'`), `double.infinity` (`'Infinity'`), `double.negativeInfinity` (`'-Infinity'`), and nested `Map`/`Iterable` structures with a `maxDepth = 8` and `Set<Object>.identity()` cycle guard (`'<max_depth_or_cycle>'`) so telemetry payloads are always `jsonEncode`-safe.
+
 ### Zero Release Overhead (`DevToolsService.isEnabled`)
-In release builds (`!_inDebugMode`), `DevToolsService.isEnabled` is forced to `false` (and setting `isEnabled = true` is ignored). All instance tracking, transition history buffers, extension registration, and `developer.postEvent` calls are completely skipped for zero runtime memory overhead.
+In release builds (`!_inDebugMode`), `DevToolsService.isEnabled` is forced to `false` (and setting `isEnabled = true` is ignored). All instance tracking, transition history buffers, extension registration, `handleGetInstances` / `handleGetHistory` / `handleDispatch` RPCs, and `developer.postEvent` calls are completely skipped for zero runtime memory overhead.
 
 ---
 

@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Fix (devtools)**: Harden `BlocSignalsDevToolsController` and DevTools extension UI widgets (`main.dart`, `bloc_signals_devtools.dart`, `InstanceTreeView`, `TimelineTracePanel`) against malformed VM Service payloads with safe `is` checks and generation-guarded `reset()`/`fetchInstances()`/`fetchHistoryForInstance()` lifecycle handling, catch `on Object` and reset `_isLoading`/`_isFetching` in `finally`, guard `notifyListeners()` with `_isDisposed`, attach `onError` to event stream subscriptions, and rebuild the shipped `extension/devtools/build/` bundle (#474).
+
 ## 1.0.4
 
 - **Fix (devtools)**: Silence Flutter 3.47+/3.50 `deprecated_member_use` lints on `package:flutter/material.dart` imports to preserve `sdk: ^3.5.0` and Flutter `>=3.22.2` compatibility while maintaining 160/160 pub points.

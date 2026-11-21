@@ -73,8 +73,8 @@ void main() {
     });
 
     test(
-      '(Issue #340) fetchInstances does NOT swallow fatal Error subtypes '
-      '(StateError / TypeError) and resets reentrancy lock via finally',
+      '(Issue #340, Issue #474: F07) fetchInstances catches RPC errors '
+      'gracefully and resets isLoading and reentrancy lock via finally',
       () async {
         final controller = BlocSignalsDevToolsController(
           callExtensionRpc: (method, [args]) async {
@@ -83,11 +83,9 @@ void main() {
         );
         addTearDown(controller.dispose);
 
-        await expectLater(
-          controller.fetchInstances(),
-          throwsStateError,
-        );
-        expect(controller.errorMessage, isNull);
+        await controller.fetchInstances();
+        expect(controller.isLoading, isFalse);
+        expect(controller.errorMessage, isNotNull);
       },
     );
 
@@ -471,8 +469,8 @@ void main() {
     );
 
     test(
-      '(Issue #340) fetchHistoryForInstance catches Exception gracefully '
-      'while fatal Error (StateError / TypeError) fails fast and propagates',
+      '(Issue #340, Issue #474: F07) fetchHistoryForInstance handles '
+      'Exception, StateError, and malformed history payloads gracefully',
       () async {
         var callMode = 'exception';
         final controller = BlocSignalsDevToolsController(
@@ -483,7 +481,7 @@ void main() {
             if (callMode == 'state_error') {
               throw StateError('fatal state bug');
             }
-            // Returns malformed 'history' value causing TypeError on cast
+            // Returns malformed 'history' value
             return {'history': 42};
           },
         );
@@ -493,19 +491,15 @@ void main() {
         await controller.fetchHistoryForInstance(9001);
         expect(controller.history, isEmpty);
 
-        // 2. Fatal StateError fails fast and propagates
+        // 2. StateError is caught without wedging controller
         callMode = 'state_error';
-        await expectLater(
-          controller.fetchHistoryForInstance(9001),
-          throwsStateError,
-        );
+        await controller.fetchHistoryForInstance(9001);
+        expect(controller.history, isEmpty);
 
-        // 3. Fatal TypeError during JSON cast fails fast and propagates
+        // 3. Malformed JSON value is safely ignored without throwing TypeError
         callMode = 'type_error';
-        await expectLater(
-          controller.fetchHistoryForInstance(9001),
-          throwsA(isA<TypeError>()),
-        );
+        await controller.fetchHistoryForInstance(9001);
+        expect(controller.history, isEmpty);
       },
     );
 
@@ -530,5 +524,331 @@ void main() {
 
       controller.dispose();
     });
+
+    test(
+      '(Issue #474: F07) malformed instances, history, and event payloads '
+      'do not throw TypeError and reset isLoading == false',
+      () async {
+        final controller = BlocSignalsDevToolsController(
+          callExtensionRpc: (method, [args]) async {
+            if (method == 'ext.bloc_signal.getInstances') {
+              return {
+                'instances': [
+                  'bad_entry',
+                  {'hashCode': 1, 'type': 'TestCubit', 'stateValue': '0'},
+                ],
+              };
+            }
+            return {
+              'history': [
+                123,
+                {
+                  'hashCode': 1,
+                  'type': 'transition',
+                  'timestamp': '2026-11-20T00:00:00.000Z',
+                  'data': {'event': 'inc'},
+                },
+              ],
+            };
+          },
+        );
+        addTearDown(controller.dispose);
+
+        await controller.fetchInstances();
+        expect(controller.isLoading, isFalse);
+        expect(controller.instances.length, equals(1));
+
+        // Non-List 'instances' payload resets to empty list without throwing.
+        final nonListController = BlocSignalsDevToolsController(
+          callExtensionRpc: (method, [args]) async => {'instances': 42},
+        );
+        addTearDown(nonListController.dispose);
+        await nonListController.fetchInstances();
+        expect(nonListController.isLoading, isFalse);
+        expect(nonListController.instances, isEmpty);
+
+        await controller.fetchHistoryForInstance(1);
+        expect(controller.history.length, equals(1));
+
+        // Malformed vm.Event fields (non-int hashCode, non-num timestamp)
+        expect(
+          () => controller.handleEvent(
+            vm.Event(
+              kind: 'Extension',
+              extensionKind: 'bloc_signal.onTransition',
+              extensionData: vm.ExtensionData()
+                ..data.addAll({
+                  'hashCode': 'not-an-int',
+                  'timestamp': 'not-a-num',
+                  'event': 'inc',
+                  'nextState': '1',
+                }),
+            ),
+          ),
+          returnsNormally,
+        );
+        expect(
+          () => controller.handleEvent(
+            vm.Event(
+              kind: 'Extension',
+              extensionKind: 'bloc_signal.onError',
+              extensionData: vm.ExtensionData()
+                ..data.addAll({
+                  'hashCode': 'not-an-int',
+                  'timestamp': 'bad',
+                  'error': 'err',
+                }),
+            ),
+          ),
+          returnsNormally,
+        );
+        expect(
+          () => controller.handleEvent(
+            vm.Event(
+              kind: 'Extension',
+              extensionKind: 'bloc_signal.onTelemetry',
+              extensionData: vm.ExtensionData()
+                ..data.addAll({
+                  'hashCode': 'not-an-int',
+                  'timestamp': 'bad',
+                  'name': 'metric',
+                }),
+            ),
+          ),
+          returnsNormally,
+        );
+      },
+    );
+
+    test(
+      '(Issue #474: F08) disposing controller mid-await or during stream '
+      'errors does not call notifyListeners() after dispose',
+      () async {
+        final rpcCompleter = Completer<Map<String, dynamic>>();
+        final controller = BlocSignalsDevToolsController(
+          callExtensionRpc: (method, [args]) => rpcCompleter.future,
+        );
+
+        var notifications = 0;
+        controller.addListener(() {
+          notifications++;
+        });
+
+        final streamController = StreamController<vm.Event>();
+        addTearDown(streamController.close);
+        controller.attachEventStream(streamController.stream);
+
+        // Trigger stream error — must be handled by onError without crashing
+        streamController.addError(Exception('stream failure'));
+        await Future<void>.delayed(Duration.zero);
+
+        final fetchFuture = controller.fetchInstances();
+        final notificationsBeforeDispose = notifications;
+        controller.dispose();
+
+        rpcCompleter.complete({'instances': <dynamic>[]});
+        await fetchFuture;
+
+        expect(notifications, equals(notificationsBeforeDispose));
+
+        // Every post-dispose early-return branch:
+        controller
+          ..attachEventStream(streamController.stream)
+          ..reset()
+          ..handleEvent(
+            vm.Event(
+              kind: 'Extension',
+              extensionKind: 'bloc_signal.onTransition',
+            ),
+          );
+        await controller.fetchHistoryForInstance(1);
+      },
+    );
+
+    test(
+      '(Issue #474: BLOCKER-2, BLOCKER-5) _parseTimestamp rejects NaN, '
+      'Infinity, and out-of-range timestamps, and post-dispose async '
+      'errors/completions do not notifyListeners',
+      () async {
+        final historyCompleter = Completer<Map<String, dynamic>>();
+        final errorCompleter = Completer<Map<String, dynamic>>();
+        var mode = 'history';
+
+        final controller = BlocSignalsDevToolsController(
+          callExtensionRpc: (method, [args]) {
+            if (mode == 'history') return historyCompleter.future;
+            return errorCompleter.future;
+          },
+        );
+        var notifications = 0;
+        controller.addListener(() => notifications++);
+
+        // Non-finite and out-of-range timestamps
+        final before = DateTime.now().subtract(const Duration(seconds: 5));
+        for (final badTs in <dynamic>[
+          double.nan,
+          double.infinity,
+          double.negativeInfinity,
+          1e25,
+          -1e25,
+        ]) {
+          controller.handleEvent(
+            vm.Event(
+              kind: 'Extension',
+              extensionKind: 'bloc_signal.onTransition',
+              extensionData: vm.ExtensionData()
+                ..data.addAll({
+                  'hashCode': 1,
+                  'timestamp': badTs,
+                  'event': 'ev',
+                  'nextState': '1',
+                }),
+            ),
+          );
+        }
+        final after = DateTime.now().add(const Duration(seconds: 5));
+        expect(controller.history.length, equals(5));
+        for (final entry in controller.history) {
+          final parsed = DateTime.parse(entry['timestamp'] as String);
+          expect(parsed.isAfter(before), isTrue);
+          expect(parsed.isBefore(after), isTrue);
+        }
+
+        // Dispose while fetchHistoryForInstance is in flight
+        final histFut = controller.fetchHistoryForInstance(1);
+        mode = 'error';
+        final fetchErrFut = controller.fetchInstances();
+        final beforeDispose = notifications;
+        controller.dispose();
+
+        // Calling fetchInstances after dispose is a safe no-op
+        await controller.fetchInstances();
+
+        historyCompleter.complete({'history': <dynamic>[]});
+        errorCompleter.completeError(StateError('late error'));
+        await histFut;
+        await fetchErrFut;
+        expect(notifications, equals(beforeDispose));
+      },
+    );
+
+    test(
+      '(Issue #474: BLOCKER-1) stream onError after dispose does not call '
+      'notifyListeners',
+      () async {
+        final controller = BlocSignalsDevToolsController(
+          callExtensionRpc: (method, [args]) async =>
+              {'instances': <dynamic>[]},
+        );
+        var notifications = 0;
+        controller.addListener(() => notifications++);
+
+        late StreamController<vm.Event> sc;
+        sc = StreamController<vm.Event>(
+          onCancel: () async {
+            // Delay cancel slightly so error arrives while _isDisposed is true
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+          },
+        );
+        addTearDown(sc.close);
+        controller.attachEventStream(sc.stream);
+
+        final beforeDispose = notifications;
+        controller.dispose();
+        sc.addError(Exception('late stream error'));
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+        expect(notifications, equals(beforeDispose));
+      },
+    );
+
+    test(
+      '(Issue #474: BLOCKER-2) reconnect fetchInstances and stale '
+      'fetchHistoryForInstance across reset() discard stale responses without '
+      'clearing new fetch state',
+      () async {
+        final rpc1 = Completer<Map<String, dynamic>>();
+        final rpc2 = Completer<Map<String, dynamic>>();
+        final histRpc = Completer<Map<String, dynamic>>();
+        var callIndex = 0;
+
+        final controller = BlocSignalsDevToolsController(
+          callExtensionRpc: (method, [args]) {
+            if (method == 'ext.bloc_signal.getHistory') return histRpc.future;
+            callIndex++;
+            return callIndex == 1 ? rpc1.future : rpc2.future;
+          },
+        );
+        addTearDown(controller.dispose);
+
+        // Start fetch 1 and history fetch, then reset() mid-flight
+        final f1 = controller.fetchInstances();
+        final h1 = controller.fetchHistoryForInstance(1);
+        controller.reset();
+
+        // Reconnect: start fetch 2 immediately after reset()
+        final f2 = controller.fetchInstances();
+        expect(controller.isLoading, isTrue);
+
+        // Stale fetch 1 and stale history complete first — must NOT clear
+        // fetch 2's isLoading or populate stale data!
+        rpc1.complete({
+          'instances': [
+            {'hashCode': 1, 'type': 'StaleCubit', 'stateValue': '0'},
+          ],
+        });
+        histRpc.complete({
+          'history': [
+            {
+              'hashCode': 1,
+              'type': 'transition',
+              'timestamp': '2026-11-20T00:00:00.000Z',
+              'data': {'event': 'stale'},
+            },
+          ],
+        });
+        await f1;
+        await h1;
+
+        expect(controller.isLoading, isTrue);
+        expect(controller.instances, isEmpty);
+        expect(controller.history, isEmpty);
+
+        // Fetch 2 completes — populates fresh instances and clears isLoading
+        rpc2.complete({
+          'instances': [
+            {'hashCode': 2, 'type': 'FreshCubit', 'stateValue': '1'},
+          ],
+        });
+        await f2;
+
+        expect(controller.isLoading, isFalse);
+        expect(controller.instances.length, equals(1));
+        expect(controller.instances.first['type'], equals('FreshCubit'));
+      },
+    );
+
+    test(
+      '(Issue #474: NBO-3) fetchInstances discards stale in-flight responses '
+      'after reset()',
+      () async {
+        final completer = Completer<Map<String, dynamic>>();
+        final controller = BlocSignalsDevToolsController(
+          callExtensionRpc: (method, [args]) => completer.future,
+        );
+        addTearDown(controller.dispose);
+
+        final fetchFuture = controller.fetchInstances();
+        controller.reset();
+        completer.complete({
+          'instances': [
+            {'hashCode': 99, 'type': 'StaleCubit', 'stateValue': '0'},
+          ],
+        });
+        await fetchFuture;
+
+        expect(controller.instances, isEmpty);
+        expect(controller.isLoading, isFalse);
+      },
+    );
   });
 }

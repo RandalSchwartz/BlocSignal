@@ -4,14 +4,16 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/error/listener.dart';
+import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that catches incorrect usages of `context.select` with
-/// 3 generic type parameters.
+/// missing, wrong-arity, raw `BlocSignalBase`, or non-`BlocSignalBase` generic
+/// type parameters.
 ///
-/// In `bloc_signals_flutter`, `context.select<B, R>` takes
-/// 2 generic parameters:
-/// 1. `B`: The `BlocSignalBase` container type
+/// In `bloc_signals_flutter` and `bloc_signals_jaspr`, `context.select<B, R>`
+/// requires 2 explicit generic parameters:
+/// 1. `B`: A concrete `BlocSignalBase` container subtype
 /// 2. `R`: The selected return value type
 class AvoidInvalidContextSelectGenerics extends DartLintRule {
   /// Creates an [AvoidInvalidContextSelectGenerics] lint rule.
@@ -19,11 +21,11 @@ class AvoidInvalidContextSelectGenerics extends DartLintRule {
 
   static const _code = LintCode(
     name: 'avoid_invalid_context_select_generics',
-    problemMessage:
-        'In "bloc_signals_flutter", "context.select<B, R>" takes 2 generic '
-        'type parameters (<Bloc, Selected>) instead of 3.',
-    correctionMessage: 'Remove the redundant State generic argument. Use '
-        '"context.select<Bloc, Selected>((bloc) => ...)" instead.',
+    problemMessage: 'In "bloc_signals_flutter" and "bloc_signals_jaspr", '
+        '"context.select<B, R>" requires 2 explicit generic type parameters '
+        '(<Bloc extends BlocSignalBase, Selected>).',
+    correctionMessage: 'Specify both the concrete BlocSignalBase subtype and '
+        'selected type: "context.select<MyBloc, Selected>((bloc) => ...)".',
   );
 
   @override
@@ -35,29 +37,31 @@ class AvoidInvalidContextSelectGenerics extends DartLintRule {
     context.registry.addMethodInvocation((node) {
       if (node.methodName.name != 'select') return;
 
-      final target = node.target;
-      if (target == null || !_isBuildContext(target)) return;
+      if (!BlocContainerUtils.isBuildContextReceiver(node.target)) return;
 
       final typeArguments = node.typeArguments;
-      if (typeArguments != null && typeArguments.arguments.length > 2) {
+      if (typeArguments == null || typeArguments.arguments.length != 2) {
+        reporter.atNode(typeArguments ?? node.methodName, _code);
+        return;
+      }
+
+      final firstArg = typeArguments.arguments.first;
+      final firstType = firstArg.type;
+      if (firstType == null || firstType is InvalidType) return;
+
+      if (firstType is DynamicType || firstType is VoidType) {
+        reporter.atNode(typeArguments, _code);
+        return;
+      }
+
+      final isBlocSubtype = BlocContainerUtils.blocSignalBaseChecker
+          .isAssignableFromType(firstType);
+      final isRawBase = firstArg is NamedType &&
+          firstArg.typeArguments == null &&
+          BlocContainerUtils.blocSignalBaseChecker.isExactlyType(firstType);
+      if (!isBlocSubtype || isRawBase) {
         reporter.atNode(typeArguments, _code);
       }
     });
-  }
-
-  bool _isBuildContext(Expression target) {
-    final targetType = target.staticType;
-    if (targetType != null &&
-        targetType is! DynamicType &&
-        targetType is! InvalidType) {
-      return targetType
-          .getDisplayString(withNullability: false)
-          .contains('BuildContext');
-    }
-    final targetSource = target.toSource();
-    return targetSource == 'context' ||
-        targetSource.endsWith('.context') ||
-        targetSource == 'ctx' ||
-        targetSource.endsWith('.ctx');
   }
 }

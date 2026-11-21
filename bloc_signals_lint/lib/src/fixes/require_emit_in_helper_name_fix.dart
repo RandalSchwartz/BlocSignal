@@ -5,11 +5,12 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/error.dart';
 import 'package:analyzer/source/source_range.dart';
+import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// An automated IDE quick-fix for `RequireEmitInHelperName` that renames
 /// private helper methods calling `emit()` by appending `AndEmit` to the method
-/// declaration and its internal call sites within the class.
+/// declaration and its internal call sites within the class or mixin.
 class RequireEmitInHelperNameFix extends DartFix {
   /// Creates a [RequireEmitInHelperNameFix] instance.
   RequireEmitInHelperNameFix();
@@ -25,8 +26,13 @@ class RequireEmitInHelperNameFix extends DartFix {
     context.registry.addMethodDeclaration((node) {
       if (!analysisError.sourceRange.intersects(node.name.sourceRange)) return;
 
-      final classDeclaration = node.thisOrAncestorOfType<ClassDeclaration>();
-      if (classDeclaration == null) return;
+      final container = BlocContainerUtils.nearestContainerDeclaration(node);
+      final members = switch (container) {
+        ClassDeclaration() => container.members,
+        MixinDeclaration() => container.members,
+        _ => null,
+      };
+      if (members == null) return;
 
       final oldName = node.name.lexeme;
       final newName = '${oldName}AndEmit';
@@ -39,7 +45,7 @@ class RequireEmitInHelperNameFix extends DartFix {
           .addDartFileEdit((builder) {
         builder.addSimpleReplacement(node.name.sourceRange, newName);
 
-        for (final member in classDeclaration.members) {
+        for (final member in members) {
           member.visitChildren(
             _RenameInvocationVisitor(oldName, (invocation) {
               builder.addSimpleReplacement(
@@ -56,9 +62,13 @@ class RequireEmitInHelperNameFix extends DartFix {
   /// Helper for unit testing AST string transformation.
   static String computeRename({
     required String source,
-    required ClassDeclaration classDeclaration,
     required MethodDeclaration methodToRename,
+    ClassDeclaration? classDeclaration,
+    MixinDeclaration? mixinDeclaration,
   }) {
+    final members = classDeclaration?.members ?? mixinDeclaration?.members;
+    if (members == null) return source;
+
     final oldName = methodToRename.name.lexeme;
     final newName = '${oldName}AndEmit';
 
@@ -66,7 +76,7 @@ class RequireEmitInHelperNameFix extends DartFix {
       methodToRename.name.sourceRange,
     ];
 
-    for (final member in classDeclaration.members) {
+    for (final member in members) {
       member.visitChildren(
         _RenameInvocationVisitor(oldName, (invocation) {
           replacements.add(invocation.methodName.sourceRange);
@@ -92,11 +102,9 @@ class _RenameInvocationVisitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    if (node.methodName.name == targetName) {
-      final target = node.target;
-      if (target == null || target is ThisExpression) {
-        onMatch(node);
-      }
+    if (node.methodName.name == targetName &&
+        BlocContainerUtils.isSelfOrUnqualifiedTarget(node.realTarget)) {
+      onMatch(node);
     }
     super.visitMethodInvocation(node);
   }

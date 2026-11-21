@@ -4,6 +4,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/error/listener.dart';
 import 'package:bloc_signals_lint/src/fixes/prefer_read_in_callbacks_fix.dart';
+import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that suggests using `context.read<T>()` instead of
@@ -34,9 +35,7 @@ class PreferBlocSignalProviderReadInCallbacks extends DartLintRule {
     context.registry.addMethodInvocation((node) {
       if (node.methodName.name != 'watch') return;
 
-      final target = node.target;
-      if (target == null) return;
-      if (target.toSource() != 'context') return;
+      if (!BlocContainerUtils.isBuildContextReceiver(node.target)) return;
 
       final enclosingFunction = node.thisOrAncestorOfType<FunctionExpression>();
       if (enclosingFunction == null) return;

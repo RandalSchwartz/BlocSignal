@@ -5,6 +5,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/listener.dart';
 import 'package:bloc_signals_lint/src/fixes/require_emit_in_helper_name_fix.dart';
+import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that requires private helper methods invoking `emit()` to have
@@ -24,11 +25,6 @@ class RequireEmitInHelperName extends DartLintRule {
         'reflect state emission.',
     correctionMessage:
         "Rename to '{0}AndEmit' to declare state transition side-effects.",
-  );
-
-  static const _blocSignalBaseChecker = TypeChecker.fromName(
-    'BlocSignalBase',
-    packageName: 'bloc_signals',
   );
 
   static final _emittingNameRegex = RegExp(
@@ -72,39 +68,29 @@ class RequireEmitInHelperName extends DartLintRule {
     CustomLintContext context,
   ) {
     context.registry.addClassDeclaration((node) {
-      final classElement = node.declaredFragment?.element;
-      final extendsClause = node.extendsClause?.superclass.toSource();
-      final withClause = node.withClause?.toSource();
-
-      final isBlocContainer = (classElement != null &&
-              _blocSignalBaseChecker.isSuperOf(classElement)) ||
-          (extendsClause != null &&
-              (extendsClause.contains('BlocSignal') ||
-                  extendsClause.contains('CubitSignal') ||
-                  extendsClause.contains('ReplayCubit') ||
-                  extendsClause.contains('ReplayBloc') ||
-                  extendsClause.contains('HydratedCubit') ||
-                  extendsClause.contains('HydratedBloc'))) ||
-          (withClause != null &&
-              (withClause.contains('CubitSignalMixin') ||
-                  withClause.contains('BlocSignalMixin') ||
-                  withClause.contains('ReplayMixin') ||
-                  withClause.contains('ReplayCubitMixin') ||
-                  withClause.contains('ReplayBlocMixin') ||
-                  withClause.contains('HydratedMixin')));
-
-      if (!isBlocContainer) return;
-
-      for (final member in node.members.whereType<MethodDeclaration>()) {
-        if (isFlaggedHelper(member)) {
-          reporter.atToken(
-            member.name,
-            code,
-            arguments: [member.name.lexeme],
-          );
-        }
-      }
+      _checkMembers(node, node.members, reporter);
     });
+    context.registry.addMixinDeclaration((node) {
+      _checkMembers(node, node.members, reporter);
+    });
+  }
+
+  void _checkMembers(
+    AstNode declaration,
+    NodeList<ClassMember> members,
+    ErrorReporter reporter,
+  ) {
+    if (!BlocContainerUtils.isBlocContainerDeclaration(declaration)) return;
+
+    for (final member in members.whereType<MethodDeclaration>()) {
+      if (isFlaggedHelper(member)) {
+        reporter.atToken(
+          member.name,
+          code,
+          arguments: [member.name.lexeme],
+        );
+      }
+    }
   }
 }
 
@@ -115,11 +101,9 @@ class _EmitInvocationVisitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    if (node.methodName.name == 'emit') {
-      final target = node.target;
-      if (target == null || target is ThisExpression) {
-        onEmitFound();
-      }
+    if (node.methodName.name == 'emit' &&
+        BlocContainerUtils.isSelfOrUnqualifiedTarget(node.realTarget)) {
+      onEmitFound();
     }
     super.visitMethodInvocation(node);
   }

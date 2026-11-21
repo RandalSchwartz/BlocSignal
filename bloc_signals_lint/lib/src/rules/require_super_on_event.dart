@@ -5,6 +5,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:analyzer/error/listener.dart';
 import 'package:bloc_signals_lint/src/fixes/add_super_on_event_fix.dart';
+import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
 import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that requires `onEvent` overrides to invoke
@@ -23,11 +24,6 @@ class RequireSuperOnEvent extends DartLintRule {
         "'await super.onEvent(event);' to your method body.",
   );
 
-  static const _blocSignalBaseChecker = TypeChecker.fromName(
-    'BlocSignalBase',
-    packageName: 'bloc_signals',
-  );
-
   @override
   List<Fix> getFixes() => [AddSuperOnEventFix()];
 
@@ -40,11 +36,9 @@ class RequireSuperOnEvent extends DartLintRule {
     context.registry.addMethodDeclaration((node) {
       if (node.name.lexeme != 'onEvent') return;
 
-      final classNode = node.thisOrAncestorOfType<ClassDeclaration>();
-      if (classNode == null) return;
-      final classElement = classNode.declaredFragment?.element;
-      if (classElement == null) return;
-      if (!_blocSignalBaseChecker.isSuperOf(classElement)) return;
+      final container = BlocContainerUtils.nearestContainerDeclaration(node);
+      if (container == null) return;
+      if (!BlocContainerUtils.isBlocSignalHost(container)) return;
 
       var callsSuperOnEvent = false;
       node.body.visitChildren(

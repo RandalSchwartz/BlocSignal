@@ -4,6 +4,7 @@ import 'package:bloc_signals_lint/src/rules/avoid_invalid_context_select_generic
 import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_unmanaged_signal_effects.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_unused_select_result.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_bloc_signal_provider_read_in_callbacks.dart';
 import 'package:test/test.dart';
 
@@ -490,6 +491,298 @@ void badCleanup(BuildContext context) {
           providerCloseCode,
         );
         expect(providerCloseLints, hasLength(2));
+      },
+    );
+  });
+
+  group(
+      '(Issue #477: Areas 2 & 3) Jaspr, HookWidget, build() effects, and '
+      'BuildContext rules', () {
+    test(
+      '(Issue #477: Area 2) AvoidUnmanagedSignalEffects flags Jaspr '
+      'components, HookWidget, subclasses, and assigned effect/computed in '
+      'build(), while allowing initState and useEffect',
+      () async {
+        const jasprCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+import 'package:jaspr/jaspr.dart';
+
+class MyJasprStateless extends StatelessComponent {
+  @override
+  Component build(BuildContext context) {
+    final stop = effect(() {});
+    final c = computed(() => 1);
+    return Component();
+  }
+}
+
+class MyJasprState extends State<StatefulComponent> {
+  late final void Function() _stop;
+
+  @override
+  void initState() {
+    _stop = effect(() {});
+  }
+
+  void _initComputed() {
+    final c = computed(() => 2);
+  }
+
+  @override
+  Component build(BuildContext context) {
+    effect(() {});
+    return Component();
+  }
+}
+''';
+        final jasprLints = await runLintRule(
+          const AvoidUnmanagedSignalEffects(),
+          jasprCode,
+        );
+        // 2 in MyJasprStateless.build (stop = effect, c = computed) +
+        // 1 in MyJasprState.build (effect)
+        expect(jasprLints, hasLength(3));
+
+        const hooksAndSubclassCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+
+class BaseWidget extends StatelessWidget {
+  Widget build(BuildContext context) => Container();
+}
+
+class SubWidget extends BaseWidget {
+  @override
+  Widget build(BuildContext context) {
+    final stop = effect(() {});
+    return Container();
+  }
+}
+
+class MyHookWidget extends HookWidget {
+  @override
+  Widget build(BuildContext context) {
+    useEffect(() {
+      return effect(() {});
+    }, const []);
+    final leaked = computed(() => 42);
+    return Container();
+  }
+}
+''';
+        final hooksLints = await runLintRule(
+          const AvoidUnmanagedSignalEffects(),
+          hooksAndSubclassCode,
+        );
+        // 1 in SubWidget.build (effect) + 1 in MyHookWidget.build (computed);
+        // useEffect callback allowed
+        expect(hooksLints, hasLength(2));
+      },
+    );
+
+    test(
+      '(Issue #477: Area 3) AvoidInvalidContextSelectGenerics flags omitted '
+      'generics, 1 arg, >2 args, non-BlocSignalBase, and raw BlocSignalBase',
+      () async {
+        const code = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+}
+
+class MyWidget extends StatelessWidget {
+  Widget build(BuildContext context) {
+    final a = context.select((CounterCubit b) => b.value);
+    final b = context.select<CounterCubit>((b) => b.value);
+    final c = context.select<CounterCubit, int, String>((b) => b.value);
+    final d = context.select<int, String>((i) => i.toString());
+    final e = context.select<BlocSignalBase, int>((b) => 0);
+    final valid = context.select<CounterCubit, int>((b) => b.value);
+    return Container();
+  }
+}
+''';
+        final lints = await runLintRule(
+          const AvoidInvalidContextSelectGenerics(),
+          code,
+        );
+        expect(lints, hasLength(5));
+      },
+    );
+
+    test(
+      '(Issue #477: Area 3) PreferBlocSignalProviderReadInCallbacks and '
+      'AvoidUnusedSelectResult recognize non-context BuildContext variables',
+      () async {
+        const watchCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+}
+
+class MyWidget extends StatelessWidget {
+  Widget build(BuildContext ctx) {
+    return Button(
+      onPressed: () {
+        ctx.watch<CounterCubit>();
+      },
+    );
+  }
+}
+''';
+        final watchLints = await runLintRule(
+          const PreferBlocSignalProviderReadInCallbacks(),
+          watchCode,
+        );
+        expect(watchLints, hasLength(1));
+        expect(watchLints.first.lexeme, equals('watch'));
+
+        const selectCode = '''
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+}
+
+class MyWidget extends StatelessWidget {
+  Widget build(BuildContext buildContext) {
+    buildContext.select<CounterCubit, int>((b) => b.value);
+    return Container();
+  }
+}
+''';
+        final selectLints = await runLintRule(
+          const AvoidUnusedSelectResult(),
+          selectCode,
+        );
+        expect(selectLints, hasLength(1));
+        expect(selectLints.first.lexeme, equals('select'));
+      },
+    );
+
+    test(
+      '(Issue #477: BLOCKER-1) AvoidUnmanagedSignalEffects ignores non-UI '
+      'classes extending user-defined State or Component',
+      () async {
+        const nonUiCode = '''
+class State {}
+class Component {}
+
+class DomainState extends State {
+  void run() {
+    effect(() {});
+  }
+}
+
+class DomainComponent extends Component {
+  Object build(Object context) {
+    final stop = effect(() {});
+    return stop;
+  }
+}
+''';
+        final lints = await runLintRule(
+          const AvoidUnmanagedSignalEffects(),
+          nonUiCode,
+        );
+        expect(lints, isEmpty);
+      },
+    );
+
+    test(
+      '(Issue #477: BLOCKER-2) AvoidInvalidContextSelectGenerics flags '
+      'dynamic and void first type args while allowing BlocSignalBase<int>',
+      () async {
+        const code = '''
+class MyWidget extends StatelessWidget {
+  Widget build(BuildContext context) {
+    final a = context.select<dynamic, int>((b) => 0);
+    final b = context.select<void, int>((b) => 0);
+    final valid = context.select<BlocSignalBase<int>, int>((b) => b.value);
+    return Container();
+  }
+}
+''';
+        final lints = await runLintRule(
+          const AvoidInvalidContextSelectGenerics(),
+          code,
+        );
+        expect(
+          lints.map((l) => l.lexeme),
+          equals(['<dynamic, int>', '<void, int>']),
+        );
+      },
+    );
+
+    test(
+      '(Issue #477: NBO-1) PreferBlocSignalProviderReadInCallbacks and '
+      'AvoidUnusedSelectResult skip non-BuildContext named context and '
+      'detect Jaspr BuildContext',
+      () async {
+        const fakeContextCode = '''
+class FakeCtx {
+  T watch<T>() => throw UnimplementedError();
+  R select<B, R>(R Function(B) fn) => throw UnimplementedError();
+}
+
+void runFake(FakeCtx context) {
+  Button(onPressed: () {
+    context.watch<int>();
+  });
+  context.select<int, int>((i) => i);
+}
+''';
+        expect(
+          await runLintRule(
+            const PreferBlocSignalProviderReadInCallbacks(),
+            fakeContextCode,
+          ),
+          isEmpty,
+        );
+        expect(
+          await runLintRule(
+            const AvoidUnusedSelectResult(),
+            fakeContextCode,
+          ),
+          isEmpty,
+        );
+
+        const jasprContextCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+import 'package:jaspr/jaspr.dart';
+
+class CounterCubit extends CubitSignal<int> {
+  CounterCubit() : super(initialState: 0);
+}
+
+class MyButton {
+  MyButton({void Function()? onPressed});
+}
+
+class MyJasprComp extends StatelessComponent {
+  @override
+  Component build(BuildContext ctx) {
+    ctx.select<CounterCubit, int>((b) => b.value);
+    MyButton(
+      onPressed: () {
+        ctx.watch<CounterCubit>();
+      },
+    );
+    return Component();
+  }
+}
+''';
+        expect(
+          await runLintRule(
+            const PreferBlocSignalProviderReadInCallbacks(),
+            jasprContextCode,
+          ),
+          hasLength(1),
+        );
+        expect(
+          await runLintRule(
+            const AvoidUnusedSelectResult(),
+            jasprContextCode,
+          ),
+          hasLength(1),
+        );
       },
     );
   });

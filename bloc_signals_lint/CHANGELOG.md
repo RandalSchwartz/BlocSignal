@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (lint)**: Support `MixinDeclaration` and `BlocSignalMixin` hosts across `AvoidDuplicateEventHandlers`, `RequireEmitInHelperName` (+ `RequireEmitInHelperNameFix`), `AvoidRawSignalEffectsInBloc`, `RequireSuperOnEvent`, `AvoidPrimitiveEventTypes`, and `AvoidPseudoEventsInTelemetry`; support Jaspr components, `HookWidget`, and direct `build()` `effect()`/`computed()` allocations in `AvoidUnmanagedSignalEffects`; and flag omitted/invalid `context.select` generics and non-`context` `BuildContext` receivers across `AvoidInvalidContextSelectGenerics`, `PreferBlocSignalProviderReadInCallbacks`, and `AvoidUnusedSelectResult` (#477).
+
 ## 1.3.5
 
 - **Fix (lint)**: `AvoidMultipleSynchronousEmits` now treats a `catch` clause as starting after a suspension boundary when the `try` body contains an `await` (outside nested closures, including `await for`), so the canonical `Loading` to terminal async pattern is no longer reported while synchronous double emissions still are (#406).

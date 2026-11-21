@@ -3,6 +3,7 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_multiple_synchronous_emits.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_primitive_event_types.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_pseudo_events_in_telemetry.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
@@ -1140,6 +1141,358 @@ class ExternalService {
         );
         expect(lints, hasLength(1));
         expect(lints.first.lexeme, equals('emit'));
+      },
+    );
+  });
+
+  group('(Issue #477: Area 1) MixinDeclaration & BlocSignalMixin support', () {
+    test(
+      '(Issue #477: Area 1) AvoidDuplicateEventHandlers detects duplicates in '
+      'MixinDeclaration, BlocSignalMixin host, aliased imports, cascades, '
+      'while isolating nested classes and external targets',
+      () async {
+        const code = '''
+import 'dart:core';
+import 'dart:core' as core;
+import 'package:bloc_signals/bloc_signals.dart';
+
+sealed class CounterEvent {}
+class Increment extends CounterEvent {}
+
+mixin CounterMixin on BlocSignal<CounterEvent, int> {
+  void register() {
+    on<Increment>((e, emit) {});
+    on<Increment>((e, emit) {});
+  }
+}
+
+class MixinHostBloc extends BlocSignalBase<int>
+    with BlocSignalMixin<CounterEvent, int> {
+  MixinHostBloc() : super(initialState: 0) {
+    initCubitSignal(initialState: 0);
+    on<Increment>((e, emit) {});
+    this..on<Increment>((e, emit) {});
+  }
+}
+
+class OuterBloc extends BlocSignal<CounterEvent, int> {
+  OuterBloc(BlocSignal<CounterEvent, int> other) : super(initialState: 0) {
+    on<Increment>((e, emit) {});
+    other.on<Increment>((e, emit) {});
+    void local() {
+      // Nested class should not collide with OuterBloc
+      final _ = _InnerBloc();
+    }
+    local();
+  }
+}
+
+class _InnerBloc extends BlocSignal<CounterEvent, int> {
+  _InnerBloc() : super(initialState: 0) {
+    on<Increment>((e, emit) {});
+  }
+}
+
+class AliasedBloc extends BlocSignal<core.Object, int> {
+  AliasedBloc() : super(initialState: 0) {
+    on<core.int>((e, emit) {});
+    on<int>((e, emit) {});
+  }
+}
+''';
+        final lints = await runLintRule(
+          const AvoidDuplicateEventHandlers(),
+          code,
+        );
+        // 1 in CounterMixin, 1 in MixinHostBloc (cascade),
+        // 1 in AliasedBloc
+        expect(lints, hasLength(3));
+      },
+    );
+
+    test(
+      '(Issue #477: Area 1) RequireEmitInHelperName detects non-emitting '
+      'helper in MixinDeclaration and cascade this..emit()',
+      () async {
+        const badCode = '''
+mixin CounterCubitMixin on CubitSignal<int> {
+  void _bump() {
+    this..emit(value + 1);
+  }
+  void _bumpAndEmit() {
+    emit(value + 1);
+  }
+}
+''';
+        final lints = await runLintRule(
+          const RequireEmitInHelperName(),
+          badCode,
+        );
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('_bump'));
+      },
+    );
+
+    test(
+      '(Issue #477: Area 1) AvoidRawSignalEffectsInBloc detects raw effect() '
+      'in MixinDeclaration on CubitSignal',
+      () async {
+        const badCode = '''
+mixin EffectMixin on CubitSignal<int> {
+  void setup() {
+    effect(() {});
+  }
+}
+''';
+        final lints = await runLintRule(
+          const AvoidRawSignalEffectsInBloc(),
+          badCode,
+        );
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('effect'));
+      },
+    );
+
+    test(
+      '(Issue #477: Area 1) RequireSuperOnEvent detects missing super.onEvent '
+      'in MixinDeclaration and BlocSignalMixin host',
+      () async {
+        const badCode = '''
+sealed class E {}
+
+mixin EventMixin on BlocSignal<E, int> {
+  @override
+  void onEvent(E event) {}
+}
+
+class MixinHost extends BlocSignalBase<int> with BlocSignalMixin<E, int> {
+  MixinHost() : super(initialState: 0);
+
+  @override
+  void onEvent(E event) {}
+}
+''';
+        final lints = await runLintRule(
+          const RequireSuperOnEvent(),
+          badCode,
+        );
+        expect(lints, hasLength(2));
+        expect(lints.every((l) => l.lexeme == 'onEvent'), isTrue);
+      },
+    );
+
+    test(
+      '(Issue #477: Area 1) AvoidPrimitiveEventTypes detects primitive event '
+      'types in MixinDeclaration on-clauses',
+      () async {
+        const badCode = '''
+mixin BadBlocMixin on BlocSignal<int, String> {}
+mixin BadMixinConstraint on BlocSignalMixin<String, int> {}
+''';
+        final lints = await runLintRule(
+          const AvoidPrimitiveEventTypes(),
+          badCode,
+        );
+        expect(lints, hasLength(2));
+        expect(lints.map((l) => l.lexeme), containsAll(['int', 'String']));
+      },
+    );
+
+    test(
+      '(Issue #477: Area 1) AvoidPseudoEventsInTelemetry detects pseudo-events '
+      'in MixinDeclaration on CubitSignal and CubitSignalMixin',
+      () async {
+        const badCode = '''
+mixin TelemetryCubitMixin on CubitSignal<int> {
+  void tap() {
+    emitTelemetry('buttonPressed');
+  }
+}
+
+mixin TelemetryMixinConstraint on CubitSignalMixin<int> {
+  void submit() {
+    emitTelemetry('formSubmitted');
+  }
+}
+''';
+        final lints = await runLintRule(
+          const AvoidPseudoEventsInTelemetry(),
+          badCode,
+        );
+        expect(lints, hasLength(2));
+      },
+    );
+
+    test(
+      '(Issue #477: BLOCKER-1) BlocSignalObserver subclasses are not '
+      'misclassified as BlocSignal containers',
+      () async {
+        const observerCode = '''
+class MyObserver extends BlocSignalObserver {
+  @override
+  void onEvent(BlocSignalBase<Object?> bloc, Object? event) {}
+
+  void on<E>(void Function(E, void Function(int)) handler) {}
+  void emit(int v) {}
+
+  void _helper() {
+    emit(1);
+    effect(() {});
+    on<int>((e, emit) {});
+    on<int>((e, emit) {});
+  }
+}
+''';
+        expect(
+          await runLintRule(const RequireSuperOnEvent(), observerCode),
+          isEmpty,
+        );
+        expect(
+          await runLintRule(const AvoidDuplicateEventHandlers(), observerCode),
+          isEmpty,
+        );
+        expect(
+          await runLintRule(const AvoidRawSignalEffectsInBloc(), observerCode),
+          isEmpty,
+        );
+        expect(
+          await runLintRule(const RequireEmitInHelperName(), observerCode),
+          isEmpty,
+        );
+      },
+    );
+
+    test(
+      '(Issue #477: BLOCKER-1) BlocSignalBase with CubitSignalMixin and '
+      'mixin on BlocSignalBase are not misclassified as BlocSignal hosts',
+      () async {
+        const cubitCode = '''
+class MyCubit extends BlocSignalBase<int> with CubitSignalMixin<int> {
+  MyCubit() : super(initialState: 0);
+
+  void onEvent(Object event) {}
+  void on<E>(void Function(E, void Function(int)) handler) {}
+
+  void tap() {
+    emitTelemetry('buttonPressed');
+    on<int>((e, emit) {});
+    on<int>((e, emit) {});
+  }
+}
+
+mixin BaseOnlyMixin on BlocSignalBase<int> {
+  void onEvent(Object event) {}
+}
+''';
+        expect(
+          await runLintRule(const RequireSuperOnEvent(), cubitCode),
+          isEmpty,
+        );
+        expect(
+          await runLintRule(const AvoidDuplicateEventHandlers(), cubitCode),
+          isEmpty,
+        );
+        final telemetryLints = await runLintRule(
+          const AvoidPseudoEventsInTelemetry(),
+          cubitCode,
+        );
+        expect(telemetryLints, hasLength(1));
+      },
+    );
+
+    test(
+      '(Issue #477: NBO-1) Negative and valid MixinDeclaration, unresolved '
+      'type, and foreign-cascade coverage',
+      () async {
+        const duplicateEdgeCode = '''
+mixin PlainMixin {
+  void on<E>(void Function() cb) {}
+  void setup() {
+    on<int>(() {});
+    on<int>(() {});
+  }
+}
+
+class UnresolvedEventBloc extends BlocSignal<Object, int> {
+  UnresolvedEventBloc() : super(initialState: 0) {
+    on<UndefinedEvent>((e, emit) {});
+    on<UndefinedEvent>((e, emit) {});
+  }
+}
+''';
+        final dupLints = await runLintRule(
+          const AvoidDuplicateEventHandlers(),
+          duplicateEdgeCode,
+        );
+        expect(dupLints, hasLength(1));
+
+        const validMixinSuperCode = '''
+sealed class E {}
+mixin ValidEventMixin on BlocSignal<E, int> {
+  @override
+  void onEvent(E event) {
+    super.onEvent(event);
+  }
+}
+''';
+        expect(
+          await runLintRule(const RequireSuperOnEvent(), validMixinSuperCode),
+          isEmpty,
+        );
+
+        const validMixinPrimitiveCode = '''
+sealed class MyEvent {}
+mixin GoodBlocMixin on BlocSignal<MyEvent, int> {}
+''';
+        expect(
+          await runLintRule(
+            const AvoidPrimitiveEventTypes(),
+            validMixinPrimitiveCode,
+          ),
+          isEmpty,
+        );
+
+        const nonCubitMixinCode = '''
+sealed class E {}
+mixin BlocTelemetryMixin on BlocSignal<E, int> {
+  void tap() {
+    emitTelemetry('buttonPressed');
+  }
+}
+mixin PlainTelemetryMixin {
+  void emitTelemetry(String name) {}
+  void tap() {
+    emitTelemetry('buttonPressed');
+  }
+}
+''';
+        expect(
+          await runLintRule(
+            const AvoidPseudoEventsInTelemetry(),
+            nonCubitMixinCode,
+          ),
+          isEmpty,
+        );
+
+        const foreignCascadeEmitCode = '''
+class Other {
+  void emit(int v) {}
+}
+
+class MyCubit extends CubitSignal<int> {
+  MyCubit() : super(initialState: 0);
+  void _helper(Other other) {
+    other..emit(1);
+  }
+}
+''';
+        expect(
+          await runLintRule(
+            const RequireEmitInHelperName(),
+            foreignCascadeEmitCode,
+          ),
+          isEmpty,
+        );
       },
     );
   });

@@ -1,6 +1,10 @@
 include: package:very_good_analysis/analysis_options.yaml
 
 analyzer:
+  errors:
+    # Suppress Flutter <3.50 (3.47.9 CI pin #438/#439) unnecessary_ignore infos
+    # on Flutter 3.50+ deprecated_member_use compatibility guards.
+    unnecessary_ignore: ignore
   exclude:
     - example/**
     - build/**

@@ -4,6 +4,7 @@ All notable changes to `bloc_signals_genui_flutter` will be documented in this f
 
 ## Unreleased
 
+- **Fix (genui_flutter)**: Re-export shared hardened `A2uiImageUrlPolicy` from `bloc_signals_genui` for SSRF parser-differential and private/CGNAT/ULA/NAT64 range protection (#463).
 - **Fix (genui_flutter)**: Clamp Material and Cupertino `Slider` `min`/`max` bounds to `[-1e12, 1e12]` with finite-span fallback `[0.0, 100.0]` and cap `divisions` to `[1, 1000]` via shared `parseSliderRange` helper (#472).
 
 ## 2.1.1

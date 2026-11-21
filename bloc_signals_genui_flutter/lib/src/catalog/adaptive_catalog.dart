@@ -1,5 +1,5 @@
+import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_flutter/src/a2ui_flutter_catalog.dart';
-import 'package:bloc_signals_genui_flutter/src/catalog/a2ui_image_url_policy.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/cupertino_tokens.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/a2ui_button.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/widgets/a2ui_card.dart';

@@ -365,6 +365,54 @@ void main() {
     });
 
     testComponents(
+        '(Issue #463) Image enforces A2uiImageUrlPolicy by default and '
+        'threads custom imagePolicy through A2uiJasprCatalog.standard',
+        (tester) async {
+      for (final blockedUrl in const [
+        'http://example.com/photo.png',
+        'https://127.0.0.1/photo.png',
+        'https://169.254.169.254/latest/meta-data',
+        'https://10.0.0.1/internal.png',
+        'https://0177.0.0.1/octal.png',
+      ]) {
+        final blockedCtx = makeContext('img_blocked', 'Image', {
+          'url': blockedUrl,
+          'description': 'Blocked',
+        });
+        tester.pumpComponent(
+          Builder(builder: (context) => buildA2uiImage(context, blockedCtx)),
+        );
+        expect(
+          find.tag('img'),
+          findsNothing,
+          reason: 'Expected $blockedUrl to be blocked by default policy',
+        );
+        expect(
+          find.byComponentPredicate(
+            (component) =>
+                component is div &&
+                (component.classes?.contains('a2ui-image-fallback') ?? false),
+          ),
+          findsOneComponent,
+        );
+      }
+
+      const customPolicy = A2uiImageUrlPolicy(
+        allowedSchemes: {'http', 'https'},
+        allowPrivateNetworks: true,
+      );
+      final catalog = A2uiJasprCatalog.standard(imagePolicy: customPolicy);
+      final privateCtx = makeContext('img_private', 'Image', const {
+        'url': 'http://10.0.0.1/internal.png',
+        'description': 'Internal asset',
+      });
+      tester.pumpComponent(
+        Builder(builder: (context) => catalog.build(context, privateCtx)),
+      );
+      expect(find.tag('img'), findsOneComponent);
+    });
+
+    testComponents(
         'CheckBox binds boolean value and displays validation errors',
         (tester) async {
       final ctx = makeContext('cb_1', 'CheckBox', const {

@@ -419,7 +419,7 @@ enum DocSymbol(
   ),
   a2uiImageUrlPolicy(
     'A2uiImageUrlPolicy',
-    'bloc_signals_genui_flutter',
+    'bloc_signals_genui',
     'A2uiImageUrlPolicy-class.html',
   ),
   a2uiJasprCatalog(

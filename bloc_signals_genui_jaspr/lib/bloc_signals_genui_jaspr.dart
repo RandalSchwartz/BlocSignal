@@ -15,6 +15,9 @@
 /// ```
 library;
 
+export 'package:bloc_signals_genui/bloc_signals_genui.dart'
+    show A2uiImageUrlPolicy;
+
 export 'src/a2ui_component_context.dart';
 export 'src/a2ui_jaspr_catalog.dart';
 export 'src/a2ui_surface_view.dart';

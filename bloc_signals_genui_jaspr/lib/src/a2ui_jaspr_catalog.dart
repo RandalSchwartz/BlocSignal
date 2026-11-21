@@ -1,3 +1,4 @@
+import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_jaspr/src/a2ui_component_context.dart';
 import 'package:bloc_signals_genui_jaspr/src/catalog/standard_catalog.dart';
 import 'package:jaspr/dom.dart';
@@ -23,10 +24,13 @@ class A2uiJasprCatalog {
             : <String, A2uiJasprComponentBuilder>{};
 
   /// Creates a standard catalog pre-populated with standard component builders
-  /// (for example Text, Row, Column, Button, TextField, Card, Divider).
-  factory A2uiJasprCatalog.standard() {
+  /// (for example Text, Row, Column, Button, TextField, Card, Divider),
+  /// validating `Image` URLs with [imagePolicy].
+  factory A2uiJasprCatalog.standard({
+    A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy(),
+  }) {
     final catalog = A2uiJasprCatalog();
-    registerStandardComponents(catalog);
+    registerStandardComponents(catalog, imagePolicy: imagePolicy);
     return catalog;
   }
 

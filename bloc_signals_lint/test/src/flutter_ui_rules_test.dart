@@ -13,12 +13,9 @@ import 'lint_test_harness.dart';
 void main() {
   tearDownAll(disposeLintTestHarness);
 
-  group(
-    '(Issue #315: R1) Flutter UI Rule AST Detection via rule.run()',
-    () {
-      test('AvoidEmitInBuild detects emit or add inside build method',
-          () async {
-        const badCode = '''
+  group('(Issue #315: R1) Flutter UI Rule AST Detection via rule.run()', () {
+    test('AvoidEmitInBuild detects emit or add inside build method', () async {
+      const badCode = '''
 class MyEvent {}
 class MyBloc extends BlocSignal<MyEvent, int> {
   MyBloc() : super(initialState: 0);
@@ -33,17 +30,18 @@ class MyWidget {
   }
 }
 ''';
-        final lints = await runLintRule(const AvoidEmitInBuild(), badCode);
-        expect(lints, hasLength(2));
-        expect(lints.map((l) => l.lexeme), containsAll(['emit', 'add']));
-        expect(
-          lints.map((l) => l.arguments?.first),
-          containsAll(['emit', 'add']),
-        );
-      });
+      final lints = await runLintRule(AvoidEmitInBuild(), badCode);
+      expect(lints, hasLength(2));
+      expect(lints.map((l) => l.lexeme), containsAll(['emit', 'add']));
+      expect(
+        lints.map((l) => l.arguments?.first),
+        containsAll(['emit', 'add']),
+      );
+    });
 
-      test('AvoidEmitInBuild accepts emit or add inside event callbacks',
-          () async {
+    test(
+      'AvoidEmitInBuild accepts emit or add inside event callbacks',
+      () async {
         const goodCode = '''
 class MyEvent {}
 class MyBloc extends BlocSignal<MyEvent, int> {
@@ -61,14 +59,15 @@ class MyWidget {
   }
 }
 ''';
-        final lints = await runLintRule(const AvoidEmitInBuild(), goodCode);
+        final lints = await runLintRule(AvoidEmitInBuild(), goodCode);
         expect(lints, isEmpty);
-      });
+      },
+    );
 
-      test(
-        'AvoidEmitInBuild ignores emit or add on non-bloc objects in build',
-        () async {
-          const goodCode = '''
+    test(
+      'AvoidEmitInBuild ignores emit or add on non-bloc objects in build',
+      () async {
+        const goodCode = '''
 class CustomEmitter {
   void emit(int v) {}
 }
@@ -85,13 +84,14 @@ class MyWidget {
   }
 }
 ''';
-          final lints = await runLintRule(const AvoidEmitInBuild(), goodCode);
-          expect(lints, isEmpty);
-        },
-      );
+        final lints = await runLintRule(AvoidEmitInBuild(), goodCode);
+        expect(lints, isEmpty);
+      },
+    );
 
-      test('AvoidUnmanagedSignalEffects detects unassigned effect in widget',
-          () async {
+    test(
+      'AvoidUnmanagedSignalEffects detects unassigned effect in widget',
+      () async {
         const badCode = '''
 class MyStatefulWidget extends State {
   void initState() {
@@ -101,16 +101,16 @@ class MyStatefulWidget extends State {
   }
 }
 ''';
-        final lints =
-            await runLintRule(const AvoidUnmanagedSignalEffects(), badCode);
+        final lints = await runLintRule(AvoidUnmanagedSignalEffects(), badCode);
         expect(lints, hasLength(1));
         expect(lints.first.lexeme, equals('effect'));
-      });
+      },
+    );
 
-      test(
-        'AvoidUnmanagedSignalEffects accepts assigned effect in widget',
-        () async {
-          const goodCode = '''
+    test(
+      'AvoidUnmanagedSignalEffects accepts assigned effect in widget',
+      () async {
+        const goodCode = '''
 class MyStatefulWidget extends State {
   late final void Function() _dispose;
   void initState() {
@@ -120,18 +120,18 @@ class MyStatefulWidget extends State {
   }
 }
 ''';
-          final lints = await runLintRule(
-            const AvoidUnmanagedSignalEffects(),
-            goodCode,
-          );
-          expect(lints, isEmpty);
-        },
-      );
+        final lints = await runLintRule(
+          AvoidUnmanagedSignalEffects(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
+      },
+    );
 
-      test(
-        'PreferBlocSignalProviderReadInCallbacks detects watch in onPressed',
-        () async {
-          const badCode = '''
+    test(
+      'PreferBlocSignalProviderReadInCallbacks detects watch in onPressed',
+      () async {
+        const badCode = '''
 class MyBloc extends CubitSignal<int> {
   MyBloc() : super(initialState: 0);
 }
@@ -146,19 +146,19 @@ class MyWidget {
   }
 }
 ''';
-          final lints = await runLintRule(
-            const PreferBlocSignalProviderReadInCallbacks(),
-            badCode,
-          );
-          expect(lints, hasLength(1));
-          expect(lints.first.lexeme, equals('watch'));
-        },
-      );
+        final lints = await runLintRule(
+          PreferBlocSignalProviderReadInCallbacks(),
+          badCode,
+        );
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('watch'));
+      },
+    );
 
-      test(
-        'PreferBlocSignalProviderReadInCallbacks accepts read in onPressed',
-        () async {
-          const goodCode = '''
+    test(
+      'PreferBlocSignalProviderReadInCallbacks accepts read in onPressed',
+      () async {
+        const goodCode = '''
 class MyBloc extends CubitSignal<int> {
   MyBloc() : super(initialState: 0);
 }
@@ -173,19 +173,17 @@ class MyWidget {
   }
 }
 ''';
-          final lints = await runLintRule(
-            const PreferBlocSignalProviderReadInCallbacks(),
-            goodCode,
-          );
-          expect(lints, isEmpty);
-        },
-      );
+        final lints = await runLintRule(
+          PreferBlocSignalProviderReadInCallbacks(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
+      },
+    );
 
-      test(
-        'AvoidProvidingExistingInstanceWithCreate detects existing ref in '
-        'create',
-        () async {
-          const badCode = '''
+    test('AvoidProvidingExistingInstanceWithCreate detects existing ref in '
+        'create', () async {
+      const badCode = '''
 class MyBloc extends CubitSignal<int> {
   MyBloc() : super(initialState: 0);
 }
@@ -201,20 +199,17 @@ class MyWidget {
   }
 }
 ''';
-          final lints = await runLintRule(
-            const AvoidProvidingExistingInstanceWithCreate(),
-            badCode,
-          );
-          expect(lints, hasLength(1));
-          expect(lints.first.lexeme, equals('myGlobalBloc'));
-        },
+      final lints = await runLintRule(
+        AvoidProvidingExistingInstanceWithCreate(),
+        badCode,
       );
+      expect(lints, hasLength(1));
+      expect(lints.first.lexeme, equals('myGlobalBloc'));
+    });
 
-      test(
-        'AvoidProvidingExistingInstanceWithCreate accepts fresh constructor '
-        'in create',
-        () async {
-          const goodCode = '''
+    test('AvoidProvidingExistingInstanceWithCreate accepts fresh constructor '
+        'in create', () async {
+      const goodCode = '''
 class MyBloc extends CubitSignal<int> {
   MyBloc() : super(initialState: 0);
 }
@@ -228,16 +223,16 @@ class MyWidget {
   }
 }
 ''';
-          final lints = await runLintRule(
-            const AvoidProvidingExistingInstanceWithCreate(),
-            goodCode,
-          );
-          expect(lints, isEmpty);
-        },
+      final lints = await runLintRule(
+        AvoidProvidingExistingInstanceWithCreate(),
+        goodCode,
       );
+      expect(lints, isEmpty);
+    });
 
-      test('AvoidManualCloseOnProvidedBloc detects context.read().close()',
-          () async {
+    test(
+      'AvoidManualCloseOnProvidedBloc detects context.read().close()',
+      () async {
         const badCode = '''
 class CounterBloc extends CubitSignal<int> {
   CounterBloc() : super(initialState: 0);
@@ -248,17 +243,18 @@ void dispose(BuildContext context) {
 }
 ''';
         final lints = await runLintRule(
-          const AvoidManualCloseOnProvidedBloc(),
+          AvoidManualCloseOnProvidedBloc(),
           badCode,
         );
         expect(lints, hasLength(1));
         expect(lints.first.lexeme, equals('close'));
-      });
+      },
+    );
 
-      test(
-        'AvoidContextWatchForBlocState detects context.watch<T>() in build',
-        () async {
-          const badCode = '''
+    test(
+      'AvoidContextWatchForBlocState detects context.watch<T>() in build',
+      () async {
+        const badCode = '''
 class CounterBloc extends CubitSignal<int> {
   CounterBloc() : super(initialState: 0);
 }
@@ -270,20 +266,20 @@ class CounterView {
   }
 }
 ''';
-          final lints = await runLintRule(
-            const AvoidContextWatchForBlocState(),
-            badCode,
-          );
-          expect(lints, hasLength(1));
-          expect(lints.first.lexeme, equals('watch'));
-          expect(lints.first.arguments, equals(['CounterBloc']));
-        },
-      );
+        final lints = await runLintRule(
+          AvoidContextWatchForBlocState(),
+          badCode,
+        );
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('watch'));
+        expect(lints.first.arguments, equals(['CounterBloc']));
+      },
+    );
 
-      test(
-        'AvoidContextWatchForBlocState accepts context.read<T>() in build',
-        () async {
-          const goodCode = '''
+    test(
+      'AvoidContextWatchForBlocState accepts context.read<T>() in build',
+      () async {
+        const goodCode = '''
 class CounterBloc extends CubitSignal<int> {
   CounterBloc() : super(initialState: 0);
 }
@@ -295,18 +291,18 @@ class CounterView {
   }
 }
 ''';
-          final lints = await runLintRule(
-            const AvoidContextWatchForBlocState(),
-            goodCode,
-          );
-          expect(lints, isEmpty);
-        },
-      );
+        final lints = await runLintRule(
+          AvoidContextWatchForBlocState(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
+      },
+    );
 
-      test(
-        'AvoidInvalidContextSelectGenerics detects 3 generic type parameters',
-        () async {
-          const badCode = '''
+    test(
+      'AvoidInvalidContextSelectGenerics detects 3 generic type parameters',
+      () async {
+        const badCode = '''
 class CounterState {}
 class CounterBloc extends CubitSignal<int> {
   CounterBloc() : super(initialState: 0);
@@ -319,22 +315,19 @@ class CounterView {
   }
 }
 ''';
-          final lints = await runLintRule(
-            const AvoidInvalidContextSelectGenerics(),
-            badCode,
-          );
-          expect(lints, hasLength(1));
-          expect(
-            lints.first.lexeme,
-            equals('<CounterBloc, CounterState, int>'),
-          );
-        },
-      );
+        final lints = await runLintRule(
+          AvoidInvalidContextSelectGenerics(),
+          badCode,
+        );
+        expect(lints, hasLength(1));
+        expect(lints.first.lexeme, equals('<CounterBloc, CounterState, int>'));
+      },
+    );
 
-      test(
-        'AvoidInvalidContextSelectGenerics accepts 2 generic type parameters',
-        () async {
-          const goodCode = '''
+    test(
+      'AvoidInvalidContextSelectGenerics accepts 2 generic type parameters',
+      () async {
+        const goodCode = '''
 class CounterBloc extends CubitSignal<int> {
   CounterBloc() : super(initialState: 0);
 }
@@ -346,23 +339,20 @@ class CounterView {
   }
 }
 ''';
-          final lints = await runLintRule(
-            const AvoidInvalidContextSelectGenerics(),
-            goodCode,
-          );
-          expect(lints, isEmpty);
-        },
-      );
-    },
-  );
+        final lints = await runLintRule(
+          AvoidInvalidContextSelectGenerics(),
+          goodCode,
+        );
+        expect(lints, isEmpty);
+      },
+    );
+  });
 
   group('(Issue #326: R12) Closure and Receiver Guards', () {
-    test(
-      'AvoidContextWatchForBlocState ignores context.watch<T>() inside '
-      'closures in build(), while PreferBlocSignalProviderReadInCallbacks '
-      'flags it once',
-      () async {
-        const code = '''
+    test('AvoidContextWatchForBlocState ignores context.watch<T>() inside '
+        'closures in build(), while PreferBlocSignalProviderReadInCallbacks '
+        'flags it once', () async {
+      const code = '''
 class CounterBloc extends CubitSignal<int> {
   CounterBloc() : super(initialState: 0);
 }
@@ -386,19 +376,18 @@ class CounterView {
   }
 }
 ''';
-        final watchInBuildLints = await runLintRule(
-          const AvoidContextWatchForBlocState(),
-          code,
-        );
-        expect(watchInBuildLints, isEmpty);
+      final watchInBuildLints = await runLintRule(
+        AvoidContextWatchForBlocState(),
+        code,
+      );
+      expect(watchInBuildLints, isEmpty);
 
-        final readInCallbacksLints = await runLintRule(
-          const PreferBlocSignalProviderReadInCallbacks(),
-          code,
-        );
-        expect(readInCallbacksLints, hasLength(2));
-      },
-    );
+      final readInCallbacksLints = await runLintRule(
+        PreferBlocSignalProviderReadInCallbacks(),
+        code,
+      );
+      expect(readInCallbacksLints, hasLength(2));
+    });
 
     test(
       'AvoidInvalidContextSelectGenerics ignores non-BuildContext and implicit '
@@ -417,7 +406,7 @@ void runQuery(Database db) {
 }
 ''';
         final nonContextLints = await runLintRule(
-          const AvoidInvalidContextSelectGenerics(),
+          AvoidInvalidContextSelectGenerics(),
           nonContextCode,
         );
         expect(nonContextLints, isEmpty);
@@ -434,7 +423,7 @@ Widget buildWidget(BuildContext ctx) {
 }
 ''';
         final ctxLints = await runLintRule(
-          const AvoidInvalidContextSelectGenerics(),
+          AvoidInvalidContextSelectGenerics(),
           ctxCode,
         );
         expect(ctxLints, hasLength(1));
@@ -471,7 +460,7 @@ void cleanup(BuildContext context, Box box) {
 }
 ''';
         final unrelatedLints = await runLintRule(
-          const AvoidManualCloseOnProvidedBloc(),
+          AvoidManualCloseOnProvidedBloc(),
           unrelatedCode,
         );
         expect(unrelatedLints, isEmpty);
@@ -487,7 +476,7 @@ void badCleanup(BuildContext context) {
 }
 ''';
         final providerCloseLints = await runLintRule(
-          const AvoidManualCloseOnProvidedBloc(),
+          AvoidManualCloseOnProvidedBloc(),
           providerCloseCode,
         );
         expect(providerCloseLints, hasLength(2));
@@ -495,15 +484,12 @@ void badCleanup(BuildContext context) {
     );
   });
 
-  group(
-      '(Issue #477: Areas 2 & 3) Jaspr, HookWidget, build() effects, and '
+  group('(Issue #477: Areas 2 & 3) Jaspr, HookWidget, build() effects, and '
       'BuildContext rules', () {
-    test(
-      '(Issue #477: Area 2) AvoidUnmanagedSignalEffects flags Jaspr '
-      'components, HookWidget, subclasses, and assigned effect/computed in '
-      'build(), while allowing initState and useEffect',
-      () async {
-        const jasprCode = '''
+    test('(Issue #477: Area 2) AvoidUnmanagedSignalEffects flags Jaspr '
+        'components, HookWidget, subclasses, and assigned effect/computed in '
+        'build(), while allowing initState and useEffect', () async {
+      const jasprCode = '''
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -535,15 +521,15 @@ class MyJasprState extends State<StatefulComponent> {
   }
 }
 ''';
-        final jasprLints = await runLintRule(
-          const AvoidUnmanagedSignalEffects(),
-          jasprCode,
-        );
-        // 2 in MyJasprStateless.build (stop = effect, c = computed) +
-        // 1 in MyJasprState.build (effect)
-        expect(jasprLints, hasLength(3));
+      final jasprLints = await runLintRule(
+        AvoidUnmanagedSignalEffects(),
+        jasprCode,
+      );
+      // 2 in MyJasprStateless.build (stop = effect, c = computed) +
+      // 1 in MyJasprState.build (effect)
+      expect(jasprLints, hasLength(3));
 
-        const hooksAndSubclassCode = '''
+      const hooksAndSubclassCode = '''
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -571,15 +557,14 @@ class MyHookWidget extends HookWidget {
   }
 }
 ''';
-        final hooksLints = await runLintRule(
-          const AvoidUnmanagedSignalEffects(),
-          hooksAndSubclassCode,
-        );
-        // 1 in SubWidget.build (effect) + 1 in MyHookWidget.build (computed);
-        // useEffect callback allowed
-        expect(hooksLints, hasLength(2));
-      },
-    );
+      final hooksLints = await runLintRule(
+        AvoidUnmanagedSignalEffects(),
+        hooksAndSubclassCode,
+      );
+      // 1 in SubWidget.build (effect) + 1 in MyHookWidget.build (computed);
+      // useEffect callback allowed
+      expect(hooksLints, hasLength(2));
+    });
 
     test(
       '(Issue #477: Area 3) AvoidInvalidContextSelectGenerics flags omitted '
@@ -603,7 +588,7 @@ class MyWidget extends StatelessWidget {
 }
 ''';
         final lints = await runLintRule(
-          const AvoidInvalidContextSelectGenerics(),
+          AvoidInvalidContextSelectGenerics(),
           code,
         );
         expect(lints, hasLength(5));
@@ -630,7 +615,7 @@ class MyWidget extends StatelessWidget {
 }
 ''';
         final watchLints = await runLintRule(
-          const PreferBlocSignalProviderReadInCallbacks(),
+          PreferBlocSignalProviderReadInCallbacks(),
           watchCode,
         );
         expect(watchLints, hasLength(1));
@@ -649,7 +634,7 @@ class MyWidget extends StatelessWidget {
 }
 ''';
         final selectLints = await runLintRule(
-          const AvoidUnusedSelectResult(),
+          AvoidUnusedSelectResult(),
           selectCode,
         );
         expect(selectLints, hasLength(1));
@@ -657,11 +642,9 @@ class MyWidget extends StatelessWidget {
       },
     );
 
-    test(
-      '(Issue #477: BLOCKER-1) AvoidUnmanagedSignalEffects ignores non-UI '
-      'classes extending user-defined State or Component',
-      () async {
-        const nonUiCode = '''
+    test('(Issue #477: BLOCKER-1) AvoidUnmanagedSignalEffects ignores non-UI '
+        'classes extending user-defined State or Component', () async {
+      const nonUiCode = '''
 class State {}
 class Component {}
 
@@ -678,13 +661,9 @@ class DomainComponent extends Component {
   }
 }
 ''';
-        final lints = await runLintRule(
-          const AvoidUnmanagedSignalEffects(),
-          nonUiCode,
-        );
-        expect(lints, isEmpty);
-      },
-    );
+      final lints = await runLintRule(AvoidUnmanagedSignalEffects(), nonUiCode);
+      expect(lints, isEmpty);
+    });
 
     test(
       '(Issue #477: BLOCKER-2) AvoidInvalidContextSelectGenerics flags '
@@ -701,7 +680,7 @@ class MyWidget extends StatelessWidget {
 }
 ''';
         final lints = await runLintRule(
-          const AvoidInvalidContextSelectGenerics(),
+          AvoidInvalidContextSelectGenerics(),
           code,
         );
         expect(
@@ -711,12 +690,10 @@ class MyWidget extends StatelessWidget {
       },
     );
 
-    test(
-      '(Issue #477: NBO-1) PreferBlocSignalProviderReadInCallbacks and '
-      'AvoidUnusedSelectResult skip non-BuildContext named context and '
-      'detect Jaspr BuildContext',
-      () async {
-        const fakeContextCode = '''
+    test('(Issue #477: NBO-1) PreferBlocSignalProviderReadInCallbacks and '
+        'AvoidUnusedSelectResult skip non-BuildContext named context and '
+        'detect Jaspr BuildContext', () async {
+      const fakeContextCode = '''
 class FakeCtx {
   T watch<T>() => throw UnimplementedError();
   R select<B, R>(R Function(B) fn) => throw UnimplementedError();
@@ -729,22 +706,19 @@ void runFake(FakeCtx context) {
   context.select<int, int>((i) => i);
 }
 ''';
-        expect(
-          await runLintRule(
-            const PreferBlocSignalProviderReadInCallbacks(),
-            fakeContextCode,
-          ),
-          isEmpty,
-        );
-        expect(
-          await runLintRule(
-            const AvoidUnusedSelectResult(),
-            fakeContextCode,
-          ),
-          isEmpty,
-        );
+      expect(
+        await runLintRule(
+          PreferBlocSignalProviderReadInCallbacks(),
+          fakeContextCode,
+        ),
+        isEmpty,
+      );
+      expect(
+        await runLintRule(AvoidUnusedSelectResult(), fakeContextCode),
+        isEmpty,
+      );
 
-        const jasprContextCode = '''
+      const jasprContextCode = '''
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:jaspr/jaspr.dart';
 
@@ -769,21 +743,17 @@ class MyJasprComp extends StatelessComponent {
   }
 }
 ''';
-        expect(
-          await runLintRule(
-            const PreferBlocSignalProviderReadInCallbacks(),
-            jasprContextCode,
-          ),
-          hasLength(1),
-        );
-        expect(
-          await runLintRule(
-            const AvoidUnusedSelectResult(),
-            jasprContextCode,
-          ),
-          hasLength(1),
-        );
-      },
-    );
+      expect(
+        await runLintRule(
+          PreferBlocSignalProviderReadInCallbacks(),
+          jasprContextCode,
+        ),
+        hasLength(1),
+      );
+      expect(
+        await runLintRule(AvoidUnusedSelectResult(), jasprContextCode),
+        hasLength(1),
+      );
+    });
   });
 }

@@ -1,9 +1,8 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analysis_server_plugin/edit/dart/correction_producer.dart';
+import 'package:analysis_server_plugin/edit/dart/dart_fix_kind_priority.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/error.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analyzer_plugin/utilities/change_builder/change_builder_core.dart';
+import 'package:analyzer_plugin/utilities/fixes/fixes.dart';
 
 /// An automated IDE quick-fix for `RequireCubitSignalMixinInit` that inserts
 /// `initCubitSignal(initialState: ...);` into uninitialized constructor bodies.
@@ -18,31 +17,32 @@ import 'package:custom_lint_builder/custom_lint_builder.dart';
 ///   initCubitSignal(initialState: TODO_INITIAL_STATE);
 /// }
 /// ```
-class RequireCubitSignalMixinInitFix extends DartFix {
+class RequireCubitSignalMixinInitFix extends ResolvedCorrectionProducer {
   /// Creates a [RequireCubitSignalMixinInitFix] instance.
-  RequireCubitSignalMixinInitFix();
+  new({required super.context});
+
+  static const _fixKind = FixKind(
+    'bloc_signals_lint.fix.requireCubitSignalMixinInit',
+    DartFixKindPriority.standard,
+    "Add 'initCubitSignal(initialState: ...);'",
+  );
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ChangeReporter reporter,
-    CustomLintContext context,
-    AnalysisError analysisError,
-    List<AnalysisError> others,
-  ) {
-    context.registry.addConstructorDeclaration((node) {
-      if (!analysisError.sourceRange.intersects(node.sourceRange)) return;
+  CorrectionApplicability get applicability =>
+      CorrectionApplicability.singleLocation;
 
-      final body = node.body;
-      reporter
-          .createChangeBuilder(
-        message: "Add 'initCubitSignal(initialState: ...);'",
-        priority: 100,
-      )
-          .addDartFileEdit((builder) {
+  @override
+  FixKind get fixKind => _fixKind;
+
+  @override
+  Future<void> compute(ChangeBuilder builder) async {
+    final ctor = node.thisOrAncestorOfType<ConstructorDeclaration>();
+    if (ctor != null) {
+      final body = ctor.body;
+      await builder.addDartFileEdit(file, (builder) {
         if (body is BlockFunctionBody) {
           builder.addSimpleInsertion(
-            body.offset + 1,
+            body.block.leftBracket.end,
             '\n    initCubitSignal(initialState: TODO_INITIAL_STATE);',
           );
         } else if (body is EmptyFunctionBody) {
@@ -52,25 +52,84 @@ class RequireCubitSignalMixinInitFix extends DartFix {
           );
         }
       });
-    });
+      return;
+    }
 
-    context.registry.addClassDeclaration((node) {
-      if (node.members.whereType<ConstructorDeclaration>().isNotEmpty) return;
-      if (!analysisError.sourceRange.intersects(node.name.sourceRange)) return;
-
-      reporter
-          .createChangeBuilder(
-        message: "Add constructor with 'initCubitSignal(initialState: ...);'",
-        priority: 100,
-      )
-          .addDartFileEdit((builder) {
-        builder.addSimpleInsertion(
-          node.leftBracket.end,
-          '\n  ${node.name.lexeme}() {\n'
-          '    initCubitSignal(initialState: TODO_INITIAL_STATE);\n'
-          '  }\n',
-        );
+    final primaryBody = node.thisOrAncestorOfType<PrimaryConstructorBody>();
+    if (primaryBody != null) {
+      final body = primaryBody.body;
+      await builder.addDartFileEdit(file, (builder) {
+        if (body is BlockFunctionBody) {
+          builder.addSimpleInsertion(
+            body.block.leftBracket.end,
+            '\n    initCubitSignal(initialState: TODO_INITIAL_STATE);',
+          );
+        } else if (body is EmptyFunctionBody) {
+          builder.addSimpleReplacement(
+            body.sourceRange,
+            '{\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
+          );
+        }
       });
-    });
+      return;
+    }
+
+    final classDecl = node.thisOrAncestorOfType<ClassDeclaration>();
+    if (classDecl != null) {
+      final body = classDecl.body;
+      final namePart = classDecl.namePart;
+      final hasPrimaryConstructor = namePart is PrimaryConstructorDeclaration;
+
+      if (hasPrimaryConstructor) {
+        if (body is EmptyClassBody) {
+          await builder.addDartFileEdit(file, (builder) {
+            builder.addSimpleReplacement(
+              body.sourceRange,
+              ' {\n  this {\n'
+              '    initCubitSignal(initialState: TODO_INITIAL_STATE);\n'
+              '  }\n}',
+            );
+          });
+          return;
+        }
+        if (body is BlockClassBody &&
+            body.members.whereType<PrimaryConstructorBody>().isEmpty) {
+          await builder.addDartFileEdit(file, (builder) {
+            builder.addSimpleInsertion(
+              body.leftBracket.end,
+              '\n  this {\n'
+              '    initCubitSignal(initialState: TODO_INITIAL_STATE);\n'
+              '  }\n',
+            );
+          });
+        }
+        return;
+      }
+
+      final className = namePart.typeName.lexeme;
+      if (body is EmptyClassBody) {
+        await builder.addDartFileEdit(file, (builder) {
+          builder.addSimpleReplacement(
+            body.sourceRange,
+            ' {\n  $className() {\n'
+            '    initCubitSignal(initialState: TODO_INITIAL_STATE);\n'
+            '  }\n}',
+          );
+        });
+        return;
+      }
+
+      if (body is BlockClassBody &&
+          body.members.whereType<ConstructorDeclaration>().isEmpty) {
+        await builder.addDartFileEdit(file, (builder) {
+          builder.addSimpleInsertion(
+            body.leftBracket.end,
+            '\n  $className() {\n'
+            '    initCubitSignal(initialState: TODO_INITIAL_STATE);\n'
+            '  }\n',
+          );
+        });
+      }
+    }
   }
 }

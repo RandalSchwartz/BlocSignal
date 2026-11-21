@@ -139,7 +139,7 @@ const List<PackageItem> _allPackages = [
     icon: '🛡️',
     category: 'DevTools & Tooling',
     pubUrl: 'https://pub.dev/packages/bloc_signals_lint',
-    installCmd: 'dart pub add --dev bloc_signals_lint',
+    installCmd: 'plugins:\n  bloc_signals_lint: ^2.0.0',
   ),
 ];
 

@@ -1,20 +1,27 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/listener.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/error/error.dart';
+import 'package:bloc_signals_lint/src/utils/type_checker.dart';
 
 /// A lint rule that flags top-level variable and static field declarations
 /// initialized directly with `BlocSignalBase` instances.
-class AvoidTopLevelBlocSignalInstances extends DartLintRule {
+class AvoidTopLevelBlocSignalInstances extends AnalysisRule {
   /// Creates an [AvoidTopLevelBlocSignalInstances] lint rule.
-  const AvoidTopLevelBlocSignalInstances() : super(code: _code);
+  new()
+    : super(
+        name: 'avoid_top_level_bloc_signal_instances',
+        description:
+            'Prevent declaring BlocSignalBase instances as top-level or '
+            'static variables.',
+      );
 
-  static const _code = LintCode(
-    name: 'avoid_top_level_bloc_signal_instances',
-    problemMessage:
-        'Stateful container "{0}" should not be declared as a top-level or '
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'avoid_top_level_bloc_signal_instances',
+    'Stateful container "{0}" should not be declared as a top-level or '
         'static variable.',
     correctionMessage:
         'Scope containers using BlocSignalProvider, dependency injection, or '
@@ -28,53 +35,65 @@ class AvoidTopLevelBlocSignalInstances extends DartLintRule {
   );
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  LintCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addTopLevelVariableDeclaration((node) {
-      for (final variable in node.variables.variables) {
-        final initializer = variable.initializer;
-        if (initializer == null) continue;
+    final visitor = _Visitor(this);
+    registry
+      ..addTopLevelVariableDeclaration(this, visitor)
+      ..addFieldDeclaration(this, visitor);
+  }
+}
 
-        if (_isBlocOrCubit(variable, initializer)) {
-          reporter.atNode(
-            variable,
-            code,
-            arguments: [variable.name.lexeme],
-          );
-        }
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
+
+  final AvoidTopLevelBlocSignalInstances rule;
+
+  @override
+  void visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
+    for (final variable in node.variables.variables) {
+      final initializer = variable.initializer;
+      if (initializer == null) continue;
+
+      if (_isBlocOrCubit(variable, initializer)) {
+        rule.reportAtNode(variable, arguments: [variable.name.lexeme]);
       }
-    });
+    }
+  }
 
-    context.registry.addFieldDeclaration((node) {
-      if (!node.isStatic) return;
+  @override
+  void visitFieldDeclaration(FieldDeclaration node) {
+    if (!node.isStatic) return;
 
-      for (final variable in node.fields.variables) {
-        final initializer = variable.initializer;
-        if (initializer == null) continue;
+    for (final variable in node.fields.variables) {
+      final initializer = variable.initializer;
+      if (initializer == null) continue;
 
-        if (_isBlocOrCubit(variable, initializer)) {
-          reporter.atNode(
-            variable,
-            code,
-            arguments: [variable.name.lexeme],
-          );
-        }
+      if (_isBlocOrCubit(variable, initializer)) {
+        rule.reportAtNode(variable, arguments: [variable.name.lexeme]);
       }
-    });
+    }
   }
 
   bool _isBlocOrCubit(VariableDeclaration variable, Expression initializer) {
-    final type = variable.declaredElement?.type ?? initializer.staticType;
-    if (type != null && _blocSignalBaseChecker.isAssignableFromType(type)) {
+    final type =
+        variable.declaredFragment?.element.type ?? initializer.staticType;
+    if (type != null &&
+        AvoidTopLevelBlocSignalInstances._blocSignalBaseChecker
+            .isAssignableFromType(type)) {
       return true;
     }
 
     if (initializer is InstanceCreationExpression) {
-      final className =
-          initializer.constructorName.type.toSource().split('<').first;
+      final className = initializer.constructorName.type
+          .toSource()
+          .split('<')
+          .first;
       if (className.endsWith('Bloc') ||
           className.endsWith('Cubit') ||
           className.contains('BlocSignal')) {

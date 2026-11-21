@@ -1,21 +1,27 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/listener.dart';
-import 'package:bloc_signals_lint/src/fixes/replace_context_watch_with_read_fix.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/error/error.dart';
+import 'package:bloc_signals_lint/src/utils/type_checker.dart';
 
 /// A lint rule that flags calling `context.watch<T>()` where `T` is a
 /// `BlocSignalBase` container inside Flutter widget `build()` methods.
-class AvoidContextWatchForBlocState extends DartLintRule {
+class AvoidContextWatchForBlocState extends AnalysisRule {
   /// Creates an [AvoidContextWatchForBlocState] lint rule.
-  const AvoidContextWatchForBlocState() : super(code: _code);
+  new()
+    : super(
+        name: 'avoid_context_watch_for_bloc_state',
+        description:
+            'Avoid calling context.watch<T>() on BlocSignalBase containers '
+            'inside build() methods.',
+      );
 
-  static const _code = LintCode(
-    name: 'avoid_context_watch_for_bloc_state',
-    problemMessage:
-        'Calling "context.watch<{0}>()" inside build() only tracks container '
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'avoid_context_watch_for_bloc_state',
+    'Calling "context.watch<{0}>()" inside build() only tracks container '
         'instance swapping and will not rebuild when state emits.',
     correctionMessage:
         'Use "context.read<{0}>()" with "context.select(...)" or '
@@ -28,56 +34,61 @@ class AvoidContextWatchForBlocState extends DartLintRule {
   );
 
   @override
-  List<Fix> getFixes() => [ReplaceContextWatchWithReadFix()];
+  LintCode get diagnosticCode => code;
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addMethodInvocation((node) {
-      if (node.methodName.name != 'watch') return;
+    registry.addMethodInvocation(this, _Visitor(this));
+  }
+}
 
-      final target = node.target;
-      if (target == null) return;
-      final targetSource = target.toSource();
-      final targetType = target.staticType;
-      final isContext = targetSource == 'context' ||
-          targetSource.endsWith('context') ||
-          (targetType != null &&
-              targetType
-                  .getDisplayString(withNullability: false)
-                  .contains('BuildContext'));
-      if (!isContext) return;
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
 
-      final typeArgs = node.typeArguments?.arguments;
-      if (typeArgs == null || typeArgs.isEmpty) return;
+  final AvoidContextWatchForBlocState rule;
 
-      final typeArg = typeArgs.first;
-      final typeName = typeArg.toSource();
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    if (node.methodName.name != 'watch') return;
 
-      final staticType = typeArg.type;
-      final isBloc = (staticType != null &&
-              _blocSignalBaseChecker.isAssignableFromType(staticType)) ||
-          typeName.endsWith('Bloc') ||
-          typeName.endsWith('Cubit') ||
-          typeName.endsWith('BlocSignal') ||
-          typeName.endsWith('CubitSignal');
+    final target = node.target;
+    if (target == null) return;
+    final targetSource = target.toSource();
+    final targetType = target.staticType;
+    final isContext =
+        targetSource == 'context' ||
+        targetSource.endsWith('context') ||
+        (targetType != null &&
+            targetType.getDisplayString().contains('BuildContext'));
+    if (!isContext) return;
 
-      if (!isBloc) return;
+    final typeArgs = node.typeArguments?.arguments;
+    if (typeArgs == null || typeArgs.isEmpty) return;
 
-      final enclosingClosure = node.thisOrAncestorOfType<FunctionExpression>();
-      if (enclosingClosure != null) return;
+    final typeArg = typeArgs.first;
+    final typeName = typeArg.toSource();
 
-      final enclosingMethod = node.thisOrAncestorOfType<MethodDeclaration>();
-      if (enclosingMethod != null && enclosingMethod.name.lexeme == 'build') {
-        reporter.atNode(
-          node.methodName,
-          code,
-          arguments: [typeName],
-        );
-      }
-    });
+    final staticType = typeArg.type;
+    final isBloc =
+        (staticType != null &&
+            AvoidContextWatchForBlocState._blocSignalBaseChecker
+                .isAssignableFromType(staticType)) ||
+        typeName.endsWith('Bloc') ||
+        typeName.endsWith('Cubit') ||
+        typeName.endsWith('BlocSignal') ||
+        typeName.endsWith('CubitSignal');
+
+    if (!isBloc) return;
+
+    final enclosingClosure = node.thisOrAncestorOfType<FunctionExpression>();
+    if (enclosingClosure != null) return;
+
+    final enclosingMethod = node.thisOrAncestorOfType<MethodDeclaration>();
+    if (enclosingMethod != null && enclosingMethod.name.lexeme == 'build') {
+      rule.reportAtNode(node.methodName, arguments: [typeName]);
+    }
   }
 }

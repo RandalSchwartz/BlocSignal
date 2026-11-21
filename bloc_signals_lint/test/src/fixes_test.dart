@@ -1,9 +1,7 @@
+import 'package:analysis_server_plugin/edit/dart/correction_producer.dart';
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:analyzer/error/error.dart';
-import 'package:analyzer/source/source_range.dart';
-import 'package:analyzer_plugin/utilities/change_builder/change_builder_dart.dart';
 import 'package:bloc_signals_lint/src/fixes/add_super_on_event_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/avoid_raw_signal_effects_in_bloc_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/prefer_read_in_callbacks_fix.dart';
@@ -12,56 +10,28 @@ import 'package:bloc_signals_lint/src/fixes/replace_positional_replay_constructo
 import 'package:bloc_signals_lint/src/fixes/require_cubit_signal_mixin_init_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/require_emit_in_helper_name_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/use_provider_value_fix.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_context_watch_for_bloc_state.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
+import 'package:bloc_signals_lint/src/rules/prefer_bloc_signal_provider_read_in_callbacks.dart';
+import 'package:bloc_signals_lint/src/rules/prefer_named_replay_constructor.dart';
+import 'package:bloc_signals_lint/src/rules/require_cubit_signal_mixin_init.dart';
+import 'package:bloc_signals_lint/src/rules/require_emit_in_helper_name.dart';
+import 'package:bloc_signals_lint/src/rules/require_super_on_event.dart';
 import 'package:test/test.dart';
 
+import 'lint_test_harness.dart';
+
 void main() {
-  group('IDE Quick Fix Metadata & Construction Assertions', () {
-    test('AddSuperOnEventFix instantiates cleanly', () {
-      final fix = AddSuperOnEventFix();
-      expect(fix, isA<AddSuperOnEventFix>());
-    });
-
-    test('PreferReadInCallbacksFix instantiates cleanly', () {
-      final fix = PreferReadInCallbacksFix();
-      expect(fix, isA<PreferReadInCallbacksFix>());
-    });
-
-    test('RequireCubitSignalMixinInitFix instantiates cleanly', () {
-      final fix = RequireCubitSignalMixinInitFix();
-      expect(fix, isA<RequireCubitSignalMixinInitFix>());
-    });
-
-    test('ReplaceContextWatchWithReadFix instantiates cleanly', () {
-      final fix = ReplaceContextWatchWithReadFix();
-      expect(fix, isA<ReplaceContextWatchWithReadFix>());
-    });
-
-    test('AvoidRawSignalEffectsInBlocFix instantiates cleanly', () {
-      final fix = AvoidRawSignalEffectsInBlocFix();
-      expect(fix, isA<AvoidRawSignalEffectsInBlocFix>());
-    });
-
-    test('UseProviderValueFix instantiates cleanly', () {
-      final fix = UseProviderValueFix();
-      expect(fix, isA<UseProviderValueFix>());
-    });
-
-    test('ReplacePositionalReplayConstructorFix instantiates cleanly', () {
-      final fix = ReplacePositionalReplayConstructorFix();
-      expect(fix, isA<ReplacePositionalReplayConstructorFix>());
-    });
-
-    test('RequireEmitInHelperNameFix instantiates cleanly', () {
-      final fix = RequireEmitInHelperNameFix();
-      expect(fix, isA<RequireEmitInHelperNameFix>());
-    });
-  });
+  tearDownAll(disposeLintTestHarness);
 
   group('IDE Quick Fix Functional ChangeBuilder Verification', () {
-    test('AddSuperOnEventFix inserts super.onEvent(event); in onEvent body',
-        () {
-      const sourceCode = '''
+    test(
+      'AddSuperOnEventFix inserts super.onEvent(event); in onEvent body',
+      () async {
+        const sourceCode = '''
+sealed class MyEvent {}
+
 class MyBloc extends BlocSignal<MyEvent, int> {
   MyBloc() : super(initialState: 0);
 
@@ -70,32 +40,25 @@ class MyBloc extends BlocSignal<MyEvent, int> {
     doSomething();
   }
 }
+
+void doSomething() {}
 ''';
-      final parseResult = parseString(content: sourceCode);
-      final onEventMethod = parseResult.unit.declarations
-          .whereType<ClassDeclaration>()
-          .first
-          .members
-          .whereType<MethodDeclaration>()
-          .firstWhere((m) => m.name.lexeme == 'onEvent');
+        final transformed = await runLintFix(
+          RequireSuperOnEvent(),
+          AddSuperOnEventFix.new,
+          sourceCode,
+        );
 
-      final fix = AddSuperOnEventFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: onEventMethod.sourceRange,
-      );
+        expect(transformed, contains('super.onEvent(event);'));
+        expect(transformed, contains('doSomething();'));
+      },
+    );
 
-      expect(transformed, contains('super.onEvent(event);'));
-      expect(transformed, contains('doSomething();'));
-    });
+    test('(Issue #322: R8) AddSuperOnEventFix respects custom parameter name '
+        'in block body', () async {
+      const sourceCode = '''
+sealed class CounterEvent {}
 
-    test(
-      '(Issue #322: R8) AddSuperOnEventFix respects custom parameter name '
-      'in block body',
-      () {
-        const sourceCode = '''
 class MyBloc extends BlocSignal<CounterEvent, int> {
   MyBloc() : super(initialState: 0);
 
@@ -104,72 +67,54 @@ class MyBloc extends BlocSignal<CounterEvent, int> {
     doSomething(e);
   }
 }
+
+void doSomething(CounterEvent e) {}
 ''';
-        final parseResult = parseString(content: sourceCode);
-        final onEventMethod = parseResult.unit.declarations
-            .whereType<ClassDeclaration>()
-            .first
-            .members
-            .whereType<MethodDeclaration>()
-            .firstWhere((m) => m.name.lexeme == 'onEvent');
+      final transformed = await runLintFix(
+        RequireSuperOnEvent(),
+        AddSuperOnEventFix.new,
+        sourceCode,
+      );
 
-        final fix = AddSuperOnEventFix();
-        final transformed = _runFix(
-          fix: fix,
-          source: sourceCode,
-          unit: parseResult.unit,
-          targetRange: onEventMethod.sourceRange,
-        );
+      expect(transformed, contains('super.onEvent(e);'));
+      expect(transformed, isNot(contains('super.onEvent(event);')));
+      expect(transformed, contains('doSomething(e);'));
+      parseString(content: transformed);
+    });
 
-        expect(transformed, contains('super.onEvent(e);'));
-        expect(transformed, isNot(contains('super.onEvent(event);')));
-        expect(transformed, contains('doSomething(e);'));
-        parseString(content: transformed);
-      },
-    );
+    test('(Issue #322: R8) AddSuperOnEventFix converts arrow function body '
+        'to block body with custom parameter name', () async {
+      const sourceCode = '''
+sealed class CounterEvent {}
 
-    test(
-      '(Issue #322: R8) AddSuperOnEventFix converts arrow function body '
-      'to block body with custom parameter name',
-      () {
-        const sourceCode = '''
 class MyBloc extends BlocSignal<CounterEvent, int> {
   MyBloc() : super(initialState: 0);
 
   @override
   void onEvent(CounterEvent e) => log(e);
 }
+
+void log(CounterEvent e) {}
 ''';
-        final parseResult = parseString(content: sourceCode);
-        final onEventMethod = parseResult.unit.declarations
-            .whereType<ClassDeclaration>()
-            .first
-            .members
-            .whereType<MethodDeclaration>()
-            .firstWhere((m) => m.name.lexeme == 'onEvent');
+      final transformed = await runLintFix(
+        RequireSuperOnEvent(),
+        AddSuperOnEventFix.new,
+        sourceCode,
+      );
 
-        final fix = AddSuperOnEventFix();
-        final transformed = _runFix(
-          fix: fix,
-          source: sourceCode,
-          unit: parseResult.unit,
-          targetRange: onEventMethod.sourceRange,
-        );
+      expect(
+        transformed,
+        contains('{\n    super.onEvent(e);\n    log(e);\n  }'),
+      );
+      expect(transformed, isNot(contains('=>\n')));
+      parseString(content: transformed);
+    });
 
-        expect(
-          transformed,
-          contains('{\n    super.onEvent(e);\n    log(e);\n  }'),
-        );
-        expect(transformed, isNot(contains('=>\n')));
-        parseString(content: transformed);
-      },
-    );
+    test('(Issue #322: R8) AddSuperOnEventFix handles async block body '
+        'and empty function body', () async {
+      const asyncSource = '''
+sealed class CounterEvent {}
 
-    test(
-      '(Issue #322: R8) AddSuperOnEventFix handles async block body '
-      'and empty function body',
-      () {
-        const asyncSource = '''
 class MyBloc extends BlocSignal<CounterEvent, int> {
   MyBloc() : super(initialState: 0);
 
@@ -178,30 +123,21 @@ class MyBloc extends BlocSignal<CounterEvent, int> {
     doSomething(e);
   }
 }
+
+void doSomething(CounterEvent e) {}
 ''';
-        final asyncParse = parseString(content: asyncSource);
-        final asyncMethod = asyncParse.unit.declarations
-            .whereType<ClassDeclaration>()
-            .first
-            .members
-            .whereType<MethodDeclaration>()
-            .firstWhere((m) => m.name.lexeme == 'onEvent');
+      final asyncTransformed = await runLintFix(
+        RequireSuperOnEvent(),
+        AddSuperOnEventFix.new,
+        asyncSource,
+      );
 
-        final fix = AddSuperOnEventFix();
-        final asyncTransformed = _runFix(
-          fix: fix,
-          source: asyncSource,
-          unit: asyncParse.unit,
-          targetRange: asyncMethod.sourceRange,
-        );
+      expect(asyncTransformed, contains('async {\n    super.onEvent(e);'));
+      parseString(content: asyncTransformed);
 
-        expect(
-          asyncTransformed,
-          contains('async {\n    super.onEvent(e);'),
-        );
-        parseString(content: asyncTransformed);
+      const emptySource = '''
+sealed class CounterEvent {}
 
-        const emptySource = '''
 class MyBloc extends BlocSignal<CounterEvent, int> {
   MyBloc() : super(initialState: 0);
 
@@ -209,60 +145,49 @@ class MyBloc extends BlocSignal<CounterEvent, int> {
   void onEvent(CounterEvent e);
 }
 ''';
-        final emptyParse = parseString(content: emptySource);
-        final emptyMethod = emptyParse.unit.declarations
-            .whereType<ClassDeclaration>()
-            .first
-            .members
-            .whereType<MethodDeclaration>()
-            .firstWhere((m) => m.name.lexeme == 'onEvent');
+      final emptyTransformed = await runLintFix(
+        RequireSuperOnEvent(),
+        AddSuperOnEventFix.new,
+        emptySource,
+      );
 
-        final emptyTransformed = _runFix(
-          fix: fix,
-          source: emptySource,
-          unit: emptyParse.unit,
-          targetRange: emptyMethod.sourceRange,
-        );
+      expect(emptyTransformed, contains('{\n    super.onEvent(e);\n  }'));
+      parseString(content: emptyTransformed);
 
-        expect(
-          emptyTransformed,
-          contains('{\n    super.onEvent(e);\n  }'),
-        );
-        parseString(content: emptyTransformed);
+      const asyncArrowSource = '''
+sealed class CounterEvent {}
 
-        const asyncArrowSource = '''
 class MyBloc extends BlocSignal<CounterEvent, int> {
   MyBloc() : super(initialState: 0);
 
   @override
   Future<void> onEvent(CounterEvent e) async => await log(e);
 }
+
+Future<void> log(CounterEvent e) async {}
 ''';
-        final asyncArrowParse = parseString(content: asyncArrowSource);
-        final asyncArrowMethod = asyncArrowParse.unit.declarations
-            .whereType<ClassDeclaration>()
-            .first
-            .members
-            .whereType<MethodDeclaration>()
-            .firstWhere((m) => m.name.lexeme == 'onEvent');
+      final asyncArrowTransformed = await runLintFix(
+        RequireSuperOnEvent(),
+        AddSuperOnEventFix.new,
+        asyncArrowSource,
+      );
 
-        final asyncArrowTransformed = _runFix(
-          fix: fix,
-          source: asyncArrowSource,
-          unit: asyncArrowParse.unit,
-          targetRange: asyncArrowMethod.sourceRange,
-        );
+      expect(
+        asyncArrowTransformed,
+        contains('async {\n    super.onEvent(e);\n    await log(e);\n  }'),
+      );
+      parseString(content: asyncArrowTransformed);
+    });
 
-        expect(
-          asyncArrowTransformed,
-          contains('async {\n    super.onEvent(e);\n    await log(e);\n  }'),
-        );
-        parseString(content: asyncArrowTransformed);
-      },
-    );
-
-    test('PreferReadInCallbacksFix replaces watch with read', () {
+    test('PreferReadInCallbacksFix replaces watch with read', () async {
       const sourceCode = '''
+sealed class CounterEvent {}
+class Increment extends CounterEvent {}
+
+class CounterBloc extends BlocSignal<CounterEvent, int> {
+  CounterBloc() : super(initialState: 0);
+}
+
 Widget build(BuildContext context) {
   return ElevatedButton(
     onPressed: () => context.watch<CounterBloc>().add(Increment()),
@@ -270,165 +195,140 @@ Widget build(BuildContext context) {
   );
 }
 ''';
-      final parseResult = parseString(content: sourceCode);
-      var watchOffset = sourceCode.indexOf('.watch<');
-      if (watchOffset != -1) watchOffset += 1;
-
-      final fix = PreferReadInCallbacksFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: SourceRange(watchOffset, 5),
+      final transformed = await runLintFix(
+        PreferBlocSignalProviderReadInCallbacks(),
+        PreferReadInCallbacksFix.new,
+        sourceCode,
       );
 
       expect(transformed, contains('context.read<CounterBloc>()'));
       expect(transformed, isNot(contains('context.watch<CounterBloc>()')));
     });
 
-    test('RequireCubitSignalMixinInitFix handles block constructor body', () {
-      const sourceCode = '''
+    test(
+      'RequireCubitSignalMixinInitFix handles block constructor body',
+      () async {
+        const sourceCode = '''
 class MyService with CubitSignalMixin<int> {
   MyService() {
     doInit();
   }
 }
+
+void doInit() {}
 ''';
-      final parseResult = parseString(content: sourceCode);
-      final constructor = parseResult.unit.declarations
-          .whereType<ClassDeclaration>()
-          .first
-          .members
-          .whereType<ConstructorDeclaration>()
-          .first;
+        final transformed = await runLintFix(
+          RequireCubitSignalMixinInit(),
+          RequireCubitSignalMixinInitFix.new,
+          sourceCode,
+        );
 
-      final fix = RequireCubitSignalMixinInitFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: constructor.sourceRange,
-      );
+        expect(
+          transformed,
+          contains('initCubitSignal(initialState: TODO_INITIAL_STATE);'),
+        );
+        expect(transformed, contains('doInit();'));
+      },
+    );
 
-      expect(
-        transformed,
-        contains('initCubitSignal(initialState: TODO_INITIAL_STATE);'),
-      );
-      expect(transformed, contains('doInit();'));
-    });
-
-    test('RequireCubitSignalMixinInitFix handles empty constructor body', () {
-      const sourceCode = '''
+    test(
+      'RequireCubitSignalMixinInitFix handles empty constructor body',
+      () async {
+        const sourceCode = '''
 class MyService with CubitSignalMixin<int> {
   MyService();
 }
 ''';
-      final parseResult = parseString(content: sourceCode);
-      final constructor = parseResult.unit.declarations
-          .whereType<ClassDeclaration>()
-          .first
-          .members
-          .whereType<ConstructorDeclaration>()
-          .first;
+        final transformed = await runLintFix(
+          RequireCubitSignalMixinInit(),
+          RequireCubitSignalMixinInitFix.new,
+          sourceCode,
+        );
 
-      final fix = RequireCubitSignalMixinInitFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: constructor.sourceRange,
-      );
-
-      expect(
-        transformed,
-        contains(
-          '{\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
-        ),
-      );
-    });
+        expect(
+          transformed,
+          contains(
+            '{\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
+          ),
+        );
+      },
+    );
 
     test(
-        '(Issue #302: F2, F8) RequireCubitSignalMixinInitFix fires for unnamed '
-        'constructor at constructor token', () {
-      const sourceCode = '''
+      '(Issue #302: F2, F8) RequireCubitSignalMixinInitFix fires for unnamed '
+      'constructor at constructor token',
+      () async {
+        const sourceCode = '''
 class MyService with CubitSignalMixin<int> {
   MyService() {
     doInit();
   }
 }
+
+void doInit() {}
 ''';
-      final parseResult = parseString(content: sourceCode);
-      final ctorOffset = sourceCode.indexOf('MyService()');
+        final transformed = await runLintFix(
+          RequireCubitSignalMixinInit(),
+          RequireCubitSignalMixinInitFix.new,
+          sourceCode,
+        );
 
-      final fix = RequireCubitSignalMixinInitFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: SourceRange(ctorOffset, 'MyService'.length),
-      );
+        expect(
+          transformed,
+          contains('initCubitSignal(initialState: TODO_INITIAL_STATE);'),
+        );
+        expect(transformed, contains('doInit();'));
+      },
+    );
 
-      expect(
-        transformed,
-        contains('initCubitSignal(initialState: TODO_INITIAL_STATE);'),
-      );
-      expect(transformed, contains('doInit();'));
-    });
-
-    test(
-        '(Issue #302: F2, F8) RequireCubitSignalMixinInitFix generates '
-        'constructor for class without constructor', () {
+    test('(Issue #302: F2, F8) RequireCubitSignalMixinInitFix generates '
+        'constructor for class without constructor', () async {
       const sourceCode = '''
 class MyService with CubitSignalMixin<int> {
 }
 ''';
-      final parseResult = parseString(content: sourceCode);
-      final classOffset = sourceCode.indexOf('MyService');
-
-      final fix = RequireCubitSignalMixinInitFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: SourceRange(classOffset, 'MyService'.length),
+      final transformed = await runLintFix(
+        RequireCubitSignalMixinInit(),
+        RequireCubitSignalMixinInitFix.new,
+        sourceCode,
       );
 
-      expect(
-        transformed,
-        contains('MyService() {'),
-      );
+      expect(transformed, contains('MyService() {'));
       expect(
         transformed,
         contains('initCubitSignal(initialState: TODO_INITIAL_STATE);'),
       );
     });
 
-    test('ReplaceContextWatchWithReadFix replaces watch with read', () {
+    test('ReplaceContextWatchWithReadFix replaces watch with read', () async {
       const sourceCode = '''
-Widget build(BuildContext context) {
-  final bloc = context.watch<CounterBloc>();
-  return Container();
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+class MyWidget extends StatelessWidget {
+  Widget build(BuildContext context) {
+    final bloc = context.watch<CounterBloc>();
+    return Container();
+  }
 }
 ''';
-      final parseResult = parseString(content: sourceCode);
-      var watchOffset = sourceCode.indexOf('.watch<');
-      if (watchOffset != -1) watchOffset += 1;
-
-      final fix = ReplaceContextWatchWithReadFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: SourceRange(watchOffset, 5),
+      final transformed = await runLintFix(
+        AvoidContextWatchForBlocState(),
+        ReplaceContextWatchWithReadFix.new,
+        sourceCode,
       );
 
       expect(transformed, contains('context.read<CounterBloc>()'));
       expect(transformed, isNot(contains('context.watch<CounterBloc>()')));
     });
 
-    test('AvoidRawSignalEffectsInBlocFix replaces effect with createEffect',
-        () {
-      const sourceCode = '''
+    test(
+      'AvoidRawSignalEffectsInBlocFix replaces effect with createEffect',
+      () async {
+        const sourceCode = '''
+sealed class CounterEvent {}
+
 class CounterBloc extends BlocSignal<CounterEvent, int> {
   CounterBloc() : super(initialState: 0) {
     effect(() {
@@ -437,41 +337,35 @@ class CounterBloc extends BlocSignal<CounterEvent, int> {
   }
 }
 ''';
-      final parseResult = parseString(content: sourceCode);
-      final effectOffset = sourceCode.indexOf('effect(');
+        final transformed = await runLintFix(
+          AvoidRawSignalEffectsInBloc(),
+          AvoidRawSignalEffectsInBlocFix.new,
+          sourceCode,
+        );
 
-      final fix = AvoidRawSignalEffectsInBlocFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: SourceRange(effectOffset, 6),
-      );
+        expect(transformed, contains('createEffect(() {'));
+        expect(transformed, isNot(contains(' effect(() {')));
+      },
+    );
 
-      expect(transformed, contains('createEffect(() {'));
-      expect(transformed, isNot(contains(' effect(() {')));
-    });
-
-    test(
-        '(Issue #302: F9) UseProviderValueFix rewrites to '
-        'BlocSignalProvider.value with unwrapped closure', () {
+    test('(Issue #302: F9) UseProviderValueFix rewrites to '
+        'BlocSignalProvider.value with unwrapped closure', () async {
       const sourceCode = '''
-Widget build(BuildContext context) {
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+Widget build(BuildContext context, CounterBloc existingBloc) {
   return BlocSignalProvider(
     create: (_) => existingBloc,
     child: Container(),
   );
 }
 ''';
-      final parseResult = parseString(content: sourceCode);
-      final createOffset = sourceCode.indexOf('create:');
-
-      final fix = UseProviderValueFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: SourceRange(createOffset, 6),
+      final transformed = await runLintFix(
+        AvoidProvidingExistingInstanceWithCreate(),
+        UseProviderValueFix.new,
+        sourceCode,
       );
 
       expect(transformed, contains('BlocSignalProvider.value('));
@@ -480,11 +374,14 @@ Widget build(BuildContext context) {
       expect(transformed, isNot(contains('value: (_) => existingBloc')));
     });
 
-    test(
-        '(Issue #302: F9) UseProviderValueFix supports generic type arguments '
-        'and block function body', () {
+    test('(Issue #302: F9) UseProviderValueFix supports generic type arguments '
+        'and block function body', () async {
       const sourceCode = '''
-Widget build(BuildContext context) {
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+Widget build(BuildContext context, CounterBloc existingBloc) {
   return BlocSignalProvider<CounterBloc>(
     create: (context) {
       return existingBloc;
@@ -493,15 +390,10 @@ Widget build(BuildContext context) {
   );
 }
 ''';
-      final parseResult = parseString(content: sourceCode);
-      final createOffset = sourceCode.indexOf('create:');
-
-      final fix = UseProviderValueFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: SourceRange(createOffset, 6),
+      final transformed = await runLintFix(
+        AvoidProvidingExistingInstanceWithCreate(),
+        UseProviderValueFix.new,
+        sourceCode,
       );
 
       expect(transformed, contains('BlocSignalProvider<CounterBloc>.value('));
@@ -509,34 +401,33 @@ Widget build(BuildContext context) {
       expect(transformed, isNot(contains('create:')));
     });
 
-    test('ReplacePositionalReplayConstructorFix rewrites constructor', () {
-      const sourceCode = '''
+    test(
+      'ReplacePositionalReplayConstructorFix rewrites constructor',
+      () async {
+        const sourceCode = '''
 class CounterCubit extends ReplayCubit<int> {
   CounterCubit(int initial, {int? limit})
       : super.positional(initial, limit: limit);
 }
 ''';
-      final parseResult = parseString(content: sourceCode);
-      final positionalOffset = sourceCode.indexOf('super.positional');
+        final transformed = await runLintFix(
+          PreferNamedReplayConstructor(),
+          ReplacePositionalReplayConstructorFix.new,
+          sourceCode,
+        );
 
-      final fix = ReplacePositionalReplayConstructorFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: SourceRange(positionalOffset, 16),
-      );
+        expect(
+          transformed,
+          contains('super(initialState: initial, limit: limit);'),
+        );
+        expect(transformed, isNot(contains('super.positional')));
+      },
+    );
 
-      expect(
-        transformed,
-        contains('super(initialState: initial, limit: limit);'),
-      );
-      expect(transformed, isNot(contains('super.positional')));
-    });
-
-    test('RequireEmitInHelperNameFix renames helper declaration and call sites',
-        () {
-      const sourceCode = '''
+    test(
+      'RequireEmitInHelperNameFix renames helper declaration and call sites',
+      () async {
+        const sourceCode = '''
 class CounterCubit extends CubitSignal<int> {
   CounterCubit() : super(initialState: 0);
 
@@ -550,28 +441,126 @@ class CounterCubit extends CubitSignal<int> {
   }
 }
 ''';
-      final parseResult = parseString(content: sourceCode);
-      final helperOffset = sourceCode.indexOf('void _prune()');
+        final transformed = await runLintFix(
+          RequireEmitInHelperName(),
+          RequireEmitInHelperNameFix.new,
+          sourceCode,
+        );
 
-      final fix = RequireEmitInHelperNameFix();
-      final transformed = _runFix(
-        fix: fix,
-        source: sourceCode,
-        unit: parseResult.unit,
-        targetRange: SourceRange(helperOffset, 13),
-      );
-
-      expect(transformed, contains('void _pruneAndEmit()'));
-      expect(transformed, contains('_pruneAndEmit();'));
-      expect(transformed, contains('this._pruneAndEmit();'));
-      expect(transformed, isNot(contains('void _prune()')));
-    });
+        expect(transformed, contains('void _pruneAndEmit()'));
+        expect(transformed, contains('_pruneAndEmit();'));
+        expect(transformed, contains('this._pruneAndEmit();'));
+        expect(transformed, isNot(contains('void _prune()')));
+      },
+    );
 
     test(
-      '(Issue #477: Area 1) RequireEmitInHelperNameFix renames helper '
-      'declaration and cascade call sites inside MixinDeclaration',
-      () {
+      'ReplacePositionalReplayConstructorFix rewrites with leading named args '
+      'via runLintFix',
+      () async {
         const sourceCode = '''
+class CounterCubit extends ReplayCubit<int> {
+  CounterCubit(int initial, {int? limit})
+      : super.positional(limit: limit, initial);
+}
+''';
+        final transformed = await runLintFix(
+          PreferNamedReplayConstructor(),
+          ReplacePositionalReplayConstructorFix.new,
+          sourceCode,
+        );
+
+        expect(
+          transformed,
+          contains('super(limit: limit, initialState: initial);'),
+        );
+        expect(transformed, isNot(contains('super.positional')));
+      },
+    );
+
+    test('UseProviderValueFix handles MethodInvocation with and without type '
+        'arguments', () async {
+      const untypedFnSource = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+Object BlocSignalProvider({Object? create, Object? child}) => Object();
+
+Object build(CounterBloc existingBloc) {
+  return BlocSignalProvider(
+    create: (_) => existingBloc,
+    child: Object(),
+  );
+}
+''';
+      final untypedTransformed = await runLintFix(
+        AvoidProvidingExistingInstanceWithCreate(),
+        UseProviderValueFix.new,
+        untypedFnSource,
+      );
+      expect(untypedTransformed, contains('BlocSignalProvider.value('));
+      expect(untypedTransformed, contains('value: existingBloc,'));
+
+      const typedFnSource = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+Object BlocSignalProvider<T>({Object? create, Object? child}) => Object();
+
+Object build(CounterBloc existingBloc) {
+  return BlocSignalProvider<CounterBloc>(
+    create: (_) => existingBloc,
+    child: Object(),
+  );
+}
+''';
+      final typedTransformed = await runLintFix(
+        AvoidProvidingExistingInstanceWithCreate(),
+        UseProviderValueFix.new,
+        typedFnSource,
+      );
+      expect(
+        typedTransformed,
+        contains('BlocSignalProvider<CounterBloc>.value('),
+      );
+      expect(typedTransformed, contains('value: existingBloc,'));
+
+      const tearOffSource = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
+class CounterBloc extends CubitSignal<int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+Object BlocSignalProvider({Object? create, Object? child}) => Object();
+
+Object build(CounterBloc Function(Object) makeBloc) {
+  return BlocSignalProvider(
+    create: makeBloc,
+    child: Object(),
+  );
+}
+''';
+      final tearOffTransformed = await runLintFix(
+        AvoidProvidingExistingInstanceWithCreate(),
+        UseProviderValueFix.new,
+        tearOffSource,
+        selectionOffset: tearOffSource.indexOf('create: makeBloc'),
+      );
+      expect(tearOffTransformed, contains('BlocSignalProvider.value('));
+      expect(tearOffTransformed, contains('value: makeBloc,'));
+    });
+    test('(Issue #477: Area 1) RequireEmitInHelperNameFix renames helper '
+        'declaration and cascade call sites inside MixinDeclaration', () async {
+      const sourceCode = '''
+import 'package:bloc_signals/bloc_signals.dart';
+
 mixin CounterMixin on CubitSignal<int> {
   void update() {
     _prune();
@@ -584,25 +573,18 @@ mixin CounterMixin on CubitSignal<int> {
   }
 }
 ''';
-        final parseResult = parseString(content: sourceCode);
-        final helperOffset =
-            sourceCode.indexOf('_prune()', sourceCode.indexOf('void _prune()'));
+      final transformed = await runLintFix(
+        RequireEmitInHelperName(),
+        RequireEmitInHelperNameFix.new,
+        sourceCode,
+      );
 
-        final fix = RequireEmitInHelperNameFix();
-        final transformed = _runFix(
-          fix: fix,
-          source: sourceCode,
-          unit: parseResult.unit,
-          targetRange: SourceRange(helperOffset, 6),
-        );
-
-        expect(transformed, contains('void _pruneAndEmit()'));
-        expect(transformed, contains('_pruneAndEmit();'));
-        expect(transformed, contains('this._pruneAndEmit();'));
-        expect(transformed, contains('this.._pruneAndEmit();'));
-        expect(transformed, isNot(contains('void _prune()')));
-      },
-    );
+      expect(transformed, contains('void _pruneAndEmit()'));
+      expect(transformed, contains('_pruneAndEmit();'));
+      expect(transformed, contains('this._pruneAndEmit();'));
+      expect(transformed, contains('this.._pruneAndEmit();'));
+      expect(transformed, isNot(contains('void _prune()')));
+    });
 
     test(
       '(Issue #477: NBO-1) RequireEmitInHelperNameFix ignores foreign cascade '
@@ -625,9 +607,11 @@ mixin CounterMixin on CubitSignal<int> {
 }
 ''';
         final parseResult = parseString(content: sourceCode);
-        final mixinDecl =
-            parseResult.unit.declarations.whereType<MixinDeclaration>().first;
-        final methodDecl = mixinDecl.members
+        final mixinDecl = parseResult.unit.declarations
+            .whereType<MixinDeclaration>()
+            .first;
+        final body = mixinDecl.body as BlockClassBody;
+        final methodDecl = body.members
             .whereType<MethodDeclaration>()
             .firstWhere((m) => m.name.lexeme == '_prune');
 
@@ -642,223 +626,92 @@ mixin CounterMixin on CubitSignal<int> {
         expect(computed, contains('void _pruneAndEmit()'));
       },
     );
+
+    test(
+      'All 8 quick-fix producers expose valid applicability and fixKind',
+      () async {
+        final seenKinds = <String>{};
+
+        Future<void> verifyFix(
+          String source,
+          AnalysisRule rule,
+          ResolvedCorrectionProducer Function({
+            required CorrectionProducerContext context,
+          })
+          factory,
+        ) async {
+          await runLintFix(
+            rule,
+            factory,
+            source,
+            onProducer: (producer) {
+              expect(
+                // Testing protected applicability getter.
+                // ignore: invalid_use_of_protected_member
+                producer.applicability,
+                equals(CorrectionApplicability.singleLocation),
+              );
+              final kindId = producer.fixKind?.id;
+              expect(kindId, isNotNull);
+              expect(seenKinds.add(kindId!), isTrue);
+            },
+          );
+        }
+
+        await verifyFix(
+          'sealed class E {}\nclass B extends BlocSignal<E, int> {\n'
+          '  B() : super(initialState: 0);\n'
+          '  @override void onEvent(E e) {}\n}\n',
+          RequireSuperOnEvent(),
+          AddSuperOnEventFix.new,
+        );
+        await verifyFix(
+          'sealed class E {}\nclass B extends BlocSignal<E, int> {\n'
+          '  B() : super(initialState: 0) { effect(() {}); }\n}\n',
+          AvoidRawSignalEffectsInBloc(),
+          AvoidRawSignalEffectsInBlocFix.new,
+        );
+        await verifyFix(
+          'class B extends CubitSignal<int> { B() : super(initialState: 0); }\n'
+          'Widget f(BuildContext context) => ElevatedButton(\n'
+          '  onPressed: () => context.watch<B>(), child: Container());\n',
+          PreferBlocSignalProviderReadInCallbacks(),
+          PreferReadInCallbacksFix.new,
+        );
+        await verifyFix(
+          'class B extends CubitSignal<int> { B() : super(initialState: 0); }\n'
+          'class W extends StatelessWidget {\n'
+          '  Widget build(BuildContext context) {\n'
+          '    context.watch<B>(); return Container();\n  }\n}\n',
+          AvoidContextWatchForBlocState(),
+          ReplaceContextWatchWithReadFix.new,
+        );
+        await verifyFix(
+          'class C extends ReplayCubit<int> {\n'
+          '  C(int i) : super.positional(i);\n}\n',
+          PreferNamedReplayConstructor(),
+          ReplacePositionalReplayConstructorFix.new,
+        );
+        await verifyFix(
+          'class S with CubitSignalMixin<int> { S(); }\n',
+          RequireCubitSignalMixinInit(),
+          RequireCubitSignalMixinInitFix.new,
+        );
+        await verifyFix(
+          'class C extends CubitSignal<int> {\n'
+          '  C() : super(initialState: 0);\n  void _h() { emit(1); }\n}\n',
+          RequireEmitInHelperName(),
+          RequireEmitInHelperNameFix.new,
+        );
+        await verifyFix(
+          'class B extends CubitSignal<int> { B() : super(initialState: 0); }\n'
+          'Widget f(B b) => BlocSignalProvider(create: (_) => b);\n',
+          AvoidProvidingExistingInstanceWithCreate(),
+          UseProviderValueFix.new,
+        );
+
+        expect(seenKinds, hasLength(8));
+      },
+    );
   });
-}
-
-String _runFix({
-  required DartFix fix,
-  required String source,
-  required CompilationUnit unit,
-  required SourceRange targetRange,
-}) {
-  final registry = _TestRegistry();
-  final context = _TestContext(registry);
-  final reporter = _TestChangeReporter();
-  final error = _TestAnalysisError(targetRange);
-
-  fix.run(_TestResolver(), reporter, context, error, []);
-
-  // Dispatch AST nodes to registered callbacks.
-  unit.accept(_DispatchVisitor(registry));
-
-  // Apply edits to source code in reverse offset order.
-  final edits = reporter.edits..sort((a, b) => b.offset.compareTo(a.offset));
-
-  var result = source;
-  for (final edit in edits) {
-    result = result.substring(0, edit.offset) +
-        edit.replacement +
-        result.substring(edit.offset + edit.length);
-  }
-  return result;
-}
-
-class _TestEdit {
-  _TestEdit(this.offset, this.length, this.replacement);
-  final int offset;
-  final int length;
-  final String replacement;
-}
-
-class _TestChangeReporter implements ChangeReporter {
-  final List<_TestEdit> edits = [];
-
-  @override
-  ChangeBuilder createChangeBuilder({
-    required String message,
-    required int priority,
-  }) {
-    return _TestChangeBuilder(edits);
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _TestChangeBuilder implements ChangeBuilder {
-  _TestChangeBuilder(this.edits);
-  final List<_TestEdit> edits;
-
-  @override
-  void addDartFileEdit(
-    void Function(DartFileEditBuilder builder) buildFileEdit, {
-    ImportPrefixGenerator? importPrefixGenerator,
-    String? customPath,
-  }) {
-    final builder = _TestDartFileEditBuilder(edits);
-    buildFileEdit(builder);
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _TestDartFileEditBuilder implements DartFileEditBuilder {
-  _TestDartFileEditBuilder(this.edits);
-  final List<_TestEdit> edits;
-
-  @override
-  void addSimpleInsertion(int offset, String text) {
-    edits.add(_TestEdit(offset, 0, text));
-  }
-
-  @override
-  void addSimpleReplacement(SourceRange range, String text) {
-    edits.add(_TestEdit(range.offset, range.length, text));
-  }
-
-  @override
-  void addDeletion(SourceRange range) {
-    edits.add(_TestEdit(range.offset, range.length, ''));
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-// analyzer 14+ recommends Diagnostic over AnalysisError for AST errors.
-// ignore: deprecated_member_use
-class _TestAnalysisError implements AnalysisError {
-  _TestAnalysisError(this.sourceRange);
-
-  final SourceRange sourceRange;
-
-  @override
-  int get offset => sourceRange.offset;
-
-  @override
-  int get length => sourceRange.length;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _TestResolver implements CustomLintResolver {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _TestContext implements CustomLintContext {
-  _TestContext(this.registry);
-
-  @override
-  final LintRuleNodeRegistry registry;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _TestRegistry implements LintRuleNodeRegistry {
-  final List<void Function(MethodDeclaration)> methodDeclarations = [];
-  final List<void Function(MethodInvocation)> methodInvocations = [];
-  final List<void Function(ConstructorDeclaration)> constructorDeclarations =
-      [];
-  final List<void Function(NamedExpression)> namedExpressions = [];
-  final List<void Function(SuperConstructorInvocation)>
-      superConstructorInvocations = [];
-  final List<void Function(ClassDeclaration)> classDeclarations = [];
-
-  @override
-  void addMethodDeclaration(void Function(MethodDeclaration node) cb) =>
-      methodDeclarations.add(cb);
-
-  @override
-  void addMethodInvocation(void Function(MethodInvocation node) cb) =>
-      methodInvocations.add(cb);
-
-  @override
-  void addConstructorDeclaration(
-    void Function(ConstructorDeclaration node) cb,
-  ) =>
-      constructorDeclarations.add(cb);
-
-  @override
-  void addNamedExpression(void Function(NamedExpression node) cb) =>
-      namedExpressions.add(cb);
-
-  @override
-  void addSuperConstructorInvocation(
-    void Function(SuperConstructorInvocation node) cb,
-  ) =>
-      superConstructorInvocations.add(cb);
-
-  @override
-  void addClassDeclaration(void Function(ClassDeclaration node) cb) =>
-      classDeclarations.add(cb);
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _DispatchVisitor extends RecursiveAstVisitor<void> {
-  _DispatchVisitor(this.registry);
-  final _TestRegistry registry;
-
-  @override
-  void visitMethodDeclaration(MethodDeclaration node) {
-    for (final cb in registry.methodDeclarations) {
-      cb(node);
-    }
-    super.visitMethodDeclaration(node);
-  }
-
-  @override
-  void visitMethodInvocation(MethodInvocation node) {
-    for (final cb in registry.methodInvocations) {
-      cb(node);
-    }
-    super.visitMethodInvocation(node);
-  }
-
-  @override
-  void visitConstructorDeclaration(ConstructorDeclaration node) {
-    for (final cb in registry.constructorDeclarations) {
-      cb(node);
-    }
-    super.visitConstructorDeclaration(node);
-  }
-
-  @override
-  void visitNamedExpression(NamedExpression node) {
-    for (final cb in registry.namedExpressions) {
-      cb(node);
-    }
-    super.visitNamedExpression(node);
-  }
-
-  @override
-  void visitSuperConstructorInvocation(SuperConstructorInvocation node) {
-    for (final cb in registry.superConstructorInvocations) {
-      cb(node);
-    }
-    super.visitSuperConstructorInvocation(node);
-  }
-
-  @override
-  void visitClassDeclaration(ClassDeclaration node) {
-    for (final cb in registry.classDeclarations) {
-      cb(node);
-    }
-    super.visitClassDeclaration(node);
-  }
 }

@@ -85,7 +85,7 @@ void main() {
       expect(names, contains('select'));
       expect(names, contains('value'));
       expect(names, contains('state'));
-      expect(names, contains('createPlugin'));
+      expect(names, contains('BlocSignalsPlugin'));
     });
 
     test('(Issue #330: R16) devToolsBlocSignalObserver maps to bloc_signals package', () {

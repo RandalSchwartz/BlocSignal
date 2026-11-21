@@ -1,24 +1,28 @@
-// Ignore deprecated_member_use due to custom_lint_builder / analyzer signatures
-// across analyzer 6.8.0 through 14.x.
-// ignore_for_file: deprecated_member_use
-
 import 'dart:io';
 
+import 'package:analysis_server_plugin/edit/dart/correction_producer.dart';
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/token.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/dart/element/type_provider.dart';
+import 'package:analyzer/dart/element/type_system.dart';
+import 'package:analyzer/diagnostic/diagnostic.dart';
 import 'package:analyzer/error/error.dart';
 import 'package:analyzer/error/listener.dart';
 import 'package:analyzer/source/source_range.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analyzer_plugin/utilities/change_builder/change_builder_core.dart';
 import 'package:test/test.dart';
 
-/// A diagnostic recorded when executing a [DartLintRule] via [runLintRule].
+/// A diagnostic recorded when executing an [AnalysisRule] via [runLintRule].
 class ReportedLint {
   /// Creates a [ReportedLint] record.
-  const ReportedLint({
+  const new({
     required this.code,
     required this.lexeme,
     required this.offset,
@@ -26,8 +30,8 @@ class ReportedLint {
     this.arguments,
   });
 
-  /// The diagnostic [ErrorCode] reported by the rule.
-  final ErrorCode code;
+  /// The diagnostic [DiagnosticCode] reported by the rule.
+  final DiagnosticCode code;
 
   /// The source text or token lexeme of the reported node/token.
   final String lexeme;
@@ -69,8 +73,9 @@ String _joinPath(List<String> segments) =>
 AnalysisContextCollection _getOrCreateCollection() {
   if (_contextCollection != null) return _contextCollection!;
 
-  final tempDir = _tempWorkspaceDir ??=
-      Directory.systemTemp.createTempSync('bloc_signals_lint_test_');
+  final tempDir = _tempWorkspaceDir ??= Directory.systemTemp.createTempSync(
+    'bloc_signals_lint_test_',
+  );
   if (!_tearDownRegistered) {
     _tearDownRegistered = true;
     try {
@@ -141,12 +146,11 @@ AnalysisContextCollection _getOrCreateCollection() {
 }
 ''');
 
-  final blocSignalsLibDir =
-      Directory(_joinPath([rootPath, 'bloc_signals', 'lib']))
-        ..createSync(recursive: true);
+  final blocSignalsLibDir = Directory(
+    _joinPath([rootPath, 'bloc_signals', 'lib']),
+  )..createSync(recursive: true);
   File(_joinPath([blocSignalsLibDir.path, 'bloc_signals.dart']))
-      .writeAsStringSync(
-    '''
+      .writeAsStringSync('''
 class BlocSignalBase<State> {
   BlocSignalBase({State? initialState});
   State get stateValue => throw UnimplementedError();
@@ -195,28 +199,19 @@ abstract class BlocSignalObserver {
   void onEvent(BlocSignalBase<Object?> bloc, Object? event) {}
 }
 
-class ReplayCubit<State> extends CubitSignal<State> {
-  ReplayCubit({super.initialState, int? limit});
-  ReplayCubit.positional(State initialState, {int? limit});
-}
-
-class ReplayBloc<Event, State> extends BlocSignal<Event, State> {
-  ReplayBloc({super.initialState, int? limit});
-  ReplayBloc.positional(State initialState, {int? limit});
-}
+export 'package:bloc_signals_replay/bloc_signals_replay.dart'
+    show ReplayBloc, ReplayCubit;
 
 void Function() effect(void Function() cb) => () {};
 T Function() computed<T>(T Function() cb) => cb;
 T signal<T>(T initial) => initial;
-''',
-  );
+''');
 
-  final hydrateLibDir =
-      Directory(_joinPath([rootPath, 'bloc_signals_hydrate', 'lib']))
-        ..createSync(recursive: true);
+  final hydrateLibDir = Directory(
+    _joinPath([rootPath, 'bloc_signals_hydrate', 'lib']),
+  )..createSync(recursive: true);
   File(_joinPath([hydrateLibDir.path, 'bloc_signals_hydrate.dart']))
-      .writeAsStringSync(
-    '''
+      .writeAsStringSync('''
 import 'package:bloc_signals/bloc_signals.dart';
 
 mixin HydratedMixin<State> on BlocSignalBase<State> {}
@@ -230,8 +225,7 @@ class HydratedBlocSignal<Event, State> extends BlocSignal<Event, State>
     with HydratedMixin<State> {
   HydratedBlocSignal({super.initialState});
 }
-''',
-  );
+''');
 
   final jasprLibDir = Directory(_joinPath([rootPath, 'jaspr', 'lib']))
     ..createSync(recursive: true);
@@ -259,18 +253,18 @@ abstract class State<T extends StatefulComponent> {
 }
 ''');
 
-  final blocJasprLibDir =
-      Directory(_joinPath([rootPath, 'bloc_signals_jaspr', 'lib']))
-        ..createSync(recursive: true);
+  final blocJasprLibDir = Directory(
+    _joinPath([rootPath, 'bloc_signals_jaspr', 'lib']),
+  )..createSync(recursive: true);
   File(_joinPath([blocJasprLibDir.path, 'bloc_signals_jaspr.dart']))
       .writeAsStringSync('''
 export 'package:bloc_signals/bloc_signals.dart';
 export 'package:jaspr/jaspr.dart';
 ''');
 
-  final flutterHooksLibDir =
-      Directory(_joinPath([rootPath, 'flutter_hooks', 'lib']))
-        ..createSync(recursive: true);
+  final flutterHooksLibDir = Directory(
+    _joinPath([rootPath, 'flutter_hooks', 'lib']),
+  )..createSync(recursive: true);
   File(_joinPath([flutterHooksLibDir.path, 'flutter_hooks.dart']))
       .writeAsStringSync('''
 import 'package:flutter/widgets.dart';
@@ -282,15 +276,23 @@ abstract class HookWidget extends StatelessWidget {
 void useEffect(void Function()? Function() effect, [List<Object?>? keys]) {}
 ''');
 
-  final replayLibDir =
-      Directory(_joinPath([rootPath, 'bloc_signals_replay', 'lib']))
-        ..createSync(recursive: true);
+  final replayLibDir = Directory(
+    _joinPath([rootPath, 'bloc_signals_replay', 'lib']),
+  )..createSync(recursive: true);
   File(_joinPath([replayLibDir.path, 'bloc_signals_replay.dart']))
-      .writeAsStringSync(
-    '''
-export 'package:bloc_signals/bloc_signals.dart' show ReplayCubit, ReplayBloc;
-''',
-  );
+      .writeAsStringSync('''
+import 'package:bloc_signals/bloc_signals.dart';
+
+class ReplayCubit<State> extends CubitSignal<State> {
+  ReplayCubit({super.initialState, int? limit});
+  ReplayCubit.positional(State initialState, {int? limit});
+}
+
+class ReplayBloc<Event, State> extends BlocSignal<Event, State> {
+  ReplayBloc({super.initialState, int? limit});
+  ReplayBloc.positional(State initialState, {int? limit});
+}
+''');
 
   final flutterLibDir = Directory(_joinPath([rootPath, 'flutter', 'lib']))
     ..createSync(recursive: true);
@@ -365,15 +367,18 @@ class BlocSignalProvider<T> extends Widget {
 }
 
 /// Runs [rule] against the semantically resolved AST of [sourceCode] and
-/// returns all diagnostics reported via [ErrorReporter].
+/// returns all diagnostics reported via [DiagnosticReporter].
 Future<List<ReportedLint>> runLintRule(
-  DartLintRule rule,
+  AnalysisRule rule,
   String sourceCode,
 ) async {
   final collection = _getOrCreateCollection();
   final rootPath = _tempWorkspaceDir!.resolveSymbolicLinksSync();
-  final testFilePath =
-      _joinPath([rootPath, 'lib', 'target_${++_fileCounter}.dart']);
+  final testFilePath = _joinPath([
+    rootPath,
+    'lib',
+    'target_${++_fileCounter}.dart',
+  ]);
   final testFile = File(testFilePath);
 
   final hasImports = sourceCode.contains("import 'package:bloc_signals/");
@@ -393,12 +398,13 @@ Future<List<ReportedLint>> runLintRule(
       throw StateError('Failed to resolve unit for $testFilePath: $result');
     }
 
-    final registry = _TestRegistry();
-    final context = _TestContext(registry);
-    final reporter = _MockErrorReporter(prefixLength: prefix.length);
-    final resolver = _TestResolver(testFilePath);
+    final registry = _TestRuleVisitorRegistry();
+    final context = _TestRuleContext(result);
+    final reporter = _MockDiagnosticReporter(prefixLength: prefix.length);
 
-    rule.run(resolver, reporter, context);
+    rule
+      ..reporter = reporter
+      ..registerNodeProcessors(registry, context);
     result.unit.accept(_DispatchVisitor(registry));
 
     return reporter.reportedLints;
@@ -409,60 +415,161 @@ Future<List<ReportedLint>> runLintRule(
   }
 }
 
-class _MockErrorReporter implements ErrorReporter {
-  _MockErrorReporter({required this.prefixLength});
+/// Runs [rule] and applies the [ResolvedCorrectionProducer] created by
+/// [fixFactory] to the first reported diagnostic, returning the transformed
+/// source code (with any auto-prepended preamble stripped).
+Future<String> runLintFix(
+  AnalysisRule rule,
+  ResolvedCorrectionProducer Function({
+    required CorrectionProducerContext context,
+  })
+  fixFactory,
+  String sourceCode, {
+  void Function(ResolvedCorrectionProducer producer)? onProducer,
+  int? selectionOffset,
+}) async {
+  final collection = _getOrCreateCollection();
+  final rootPath = _tempWorkspaceDir!.resolveSymbolicLinksSync();
+  final testFilePath = _joinPath([
+    rootPath,
+    'lib',
+    'target_${++_fileCounter}.dart',
+  ]);
+  final testFile = File(testFilePath);
+
+  final hasImports = sourceCode.contains("import 'package:bloc_signals/");
+  final prefix = hasImports ? '' : _defaultPreamble;
+  final fullSource = '$prefix$sourceCode';
+
+  try {
+    testFile.writeAsStringSync(fullSource);
+
+    final analysisContext = collection.contextFor(testFilePath)
+      ..changeFile(testFilePath);
+    await analysisContext.applyPendingFileChanges();
+
+    final session = analysisContext.currentSession;
+    final libResult = await session.getResolvedLibrary(testFilePath);
+    if (libResult is! ResolvedLibraryResult) {
+      throw StateError(
+        'Failed to resolve library for $testFilePath: $libResult',
+      );
+    }
+    final unitResult = libResult.units.firstWhere(
+      (u) => u.path == testFilePath,
+    );
+
+    final int targetOffset;
+    final int targetLength;
+    if (selectionOffset != null) {
+      targetOffset = selectionOffset + prefix.length;
+      targetLength = 0;
+    } else {
+      final registry = _TestRuleVisitorRegistry();
+      final ruleContext = _TestRuleContext(unitResult);
+      final reporter = _MockDiagnosticReporter(prefixLength: prefix.length);
+
+      rule
+        ..reporter = reporter
+        ..registerNodeProcessors(registry, ruleContext);
+      unitResult.unit.accept(_DispatchVisitor(registry));
+
+      if (reporter.reportedLints.isEmpty) {
+        throw StateError('Expected at least one diagnostic from ${rule.name}');
+      }
+      final firstLint = reporter.reportedLints.first;
+      targetOffset = firstLint.offset + prefix.length;
+      targetLength = firstLint.length;
+    }
+    final producerContext = CorrectionProducerContext.createResolved(
+      libraryResult: libResult,
+      unitResult: unitResult,
+      selectionOffset: targetOffset,
+      selectionLength: targetLength,
+    );
+    final producer = fixFactory(context: producerContext);
+    onProducer?.call(producer);
+    final builder = ChangeBuilder(session: session);
+    await producer.compute(builder);
+
+    var edited = fullSource;
+    final fileEdit = builder.sourceChange.edits
+        .where((e) => e.file == testFilePath)
+        .firstOrNull;
+    if (fileEdit != null) {
+      final edits = List.of(fileEdit.edits)
+        ..sort((a, b) => b.offset.compareTo(a.offset));
+      for (final edit in edits) {
+        edited = edited.replaceRange(
+          edit.offset,
+          edit.offset + edit.length,
+          edit.replacement,
+        );
+      }
+    }
+
+    return edited.startsWith(prefix) ? edited.substring(prefix.length) : edited;
+  } finally {
+    if (testFile.existsSync()) {
+      testFile.deleteSync();
+    }
+  }
+}
+
+class _MockDiagnosticReporter implements DiagnosticReporter {
+  new({required this.prefixLength});
 
   final int prefixLength;
   final List<ReportedLint> reportedLints = [];
 
-  /// Uses `noSuchMethod` intentionally to bridge incompatible return-type
-  /// signatures across `analyzer: ">=6.8.0 <15.0.0"` (`SCAR-LINT-01`): in
-  /// `analyzer 6.8.0`, `ErrorReporter.atNode` and `atToken` return `void`,
-  /// whereas in `analyzer 8.0.0+`, `DiagnosticReporter.atNode` and `atToken`
-  /// return `Diagnostic` (`AnalysisError`). Returning `_TestAnalysisError`
-  /// via `dynamic noSuchMethod` satisfies both signatures without compile-time
-  /// override conflicts on downgrade or upgrade.
   @override
-  dynamic noSuchMethod(Invocation invocation) {
-    final name = invocation.memberName;
-    if (name == #atNode) {
-      final node = invocation.positionalArguments[0] as AstNode;
-      final code = invocation.positionalArguments[1] as ErrorCode;
-      final args = invocation.namedArguments[#arguments] as List<Object>?;
-      final adjustedOffset = node.offset - prefixLength;
-      reportedLints.add(
-        ReportedLint(
-          code: code,
-          lexeme: node.toSource(),
-          offset: adjustedOffset,
-          length: node.length,
-          arguments: args,
-        ),
-      );
-      return _TestAnalysisError(SourceRange(adjustedOffset, node.length));
-    }
-    if (name == #atToken) {
-      final token = invocation.positionalArguments[0] as Token;
-      final code = invocation.positionalArguments[1] as ErrorCode;
-      final args = invocation.namedArguments[#arguments] as List<Object>?;
-      final adjustedOffset = token.offset - prefixLength;
-      reportedLints.add(
-        ReportedLint(
-          code: code,
-          lexeme: token.lexeme,
-          offset: adjustedOffset,
-          length: token.length,
-          arguments: args,
-        ),
-      );
-      return _TestAnalysisError(SourceRange(adjustedOffset, token.length));
-    }
-    return super.noSuchMethod(invocation);
+  Diagnostic atNode(
+    AstNode node,
+    DiagnosticCode diagnosticCode, {
+    List<Object>? arguments,
+    List<DiagnosticMessage>? contextMessages,
+    Object? data,
+  }) {
+    final adjustedOffset = node.offset - prefixLength;
+    reportedLints.add(
+      ReportedLint(
+        code: diagnosticCode,
+        lexeme: node.toSource(),
+        offset: adjustedOffset,
+        length: node.length,
+        arguments: arguments,
+      ),
+    );
+    return _TestDiagnostic(SourceRange(adjustedOffset, node.length));
   }
+
+  @override
+  Diagnostic atToken(
+    Token token,
+    DiagnosticCode diagnosticCode, {
+    List<Object>? arguments,
+    List<DiagnosticMessage>? contextMessages,
+    Object? data,
+  }) {
+    final adjustedOffset = token.offset - prefixLength;
+    reportedLints.add(
+      ReportedLint(
+        code: diagnosticCode,
+        lexeme: token.lexeme,
+        offset: adjustedOffset,
+        length: token.length,
+        arguments: arguments,
+      ),
+    );
+    return _TestDiagnostic(SourceRange(adjustedOffset, token.length));
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _TestAnalysisError implements AnalysisError {
-  _TestAnalysisError(this.sourceRange);
+class _TestDiagnostic implements Diagnostic {
+  new(this.sourceRange);
 
   final SourceRange sourceRange;
 
@@ -476,196 +583,192 @@ class _TestAnalysisError implements AnalysisError {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _TestResolver implements CustomLintResolver {
-  _TestResolver(this.path);
+class _TestRuleContext implements RuleContext {
+  new(this._unitResult);
+
+  final ResolvedUnitResult _unitResult;
 
   @override
-  final String path;
+  LibraryElement? get libraryElement => _unitResult.libraryElement;
 
   @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _TestContext implements CustomLintContext {
-  _TestContext(this.registry);
+  TypeProvider get typeProvider => _unitResult.typeProvider;
 
   @override
-  final LintRuleNodeRegistry registry;
+  TypeSystem get typeSystem => _unitResult.typeSystem;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _TestRegistry implements LintRuleNodeRegistry {
-  final List<void Function(ClassDeclaration)> _classDeclarations = [];
-  final List<void Function(MixinDeclaration)> _mixinDeclarations = [];
-  final List<void Function(MethodDeclaration)> _methodDeclarations = [];
-  final List<void Function(MethodInvocation)> _methodInvocations = [];
-  final List<void Function(InstanceCreationExpression)>
-      _instanceCreationExpressions = [];
-  final List<void Function(TopLevelVariableDeclaration)>
-      _topLevelVariableDeclarations = [];
-  final List<void Function(FieldDeclaration)> _fieldDeclarations = [];
-  final List<void Function(ExpressionStatement)> _expressionStatements = [];
-  final List<void Function(SuperConstructorInvocation)>
-      _superConstructorInvocations = [];
+class _TestRuleVisitorRegistry implements RuleVisitorRegistry {
+  final List<AstVisitor<void>> _classDeclarations = [];
+  final List<AstVisitor<void>> _mixinDeclarations = [];
+  final List<AstVisitor<void>> _methodDeclarations = [];
+  final List<AstVisitor<void>> _methodInvocations = [];
+  final List<AstVisitor<void>> _instanceCreationExpressions = [];
+  final List<AstVisitor<void>> _topLevelVariableDeclarations = [];
+  final List<AstVisitor<void>> _fieldDeclarations = [];
+  final List<AstVisitor<void>> _expressionStatements = [];
+  final List<AstVisitor<void>> _superConstructorInvocations = [];
 
-  List<void Function(ClassDeclaration)> get classDeclarations =>
-      List<void Function(ClassDeclaration)>.unmodifiable(_classDeclarations);
+  List<AstVisitor<void>> get classDeclarations =>
+      List<AstVisitor<void>>.unmodifiable(_classDeclarations);
 
-  List<void Function(MixinDeclaration)> get mixinDeclarations =>
-      List<void Function(MixinDeclaration)>.unmodifiable(_mixinDeclarations);
+  List<AstVisitor<void>> get mixinDeclarations =>
+      List<AstVisitor<void>>.unmodifiable(_mixinDeclarations);
 
-  List<void Function(MethodDeclaration)> get methodDeclarations =>
-      List<void Function(MethodDeclaration)>.unmodifiable(_methodDeclarations);
+  List<AstVisitor<void>> get methodDeclarations =>
+      List<AstVisitor<void>>.unmodifiable(_methodDeclarations);
 
-  List<void Function(MethodInvocation)> get methodInvocations =>
-      List<void Function(MethodInvocation)>.unmodifiable(_methodInvocations);
+  List<AstVisitor<void>> get methodInvocations =>
+      List<AstVisitor<void>>.unmodifiable(_methodInvocations);
 
-  List<void Function(InstanceCreationExpression)>
-      get instanceCreationExpressions =>
-          List<void Function(InstanceCreationExpression)>.unmodifiable(
-            _instanceCreationExpressions,
-          );
+  List<AstVisitor<void>> get instanceCreationExpressions =>
+      List<AstVisitor<void>>.unmodifiable(_instanceCreationExpressions);
 
-  List<void Function(TopLevelVariableDeclaration)>
-      get topLevelVariableDeclarations =>
-          List<void Function(TopLevelVariableDeclaration)>.unmodifiable(
-            _topLevelVariableDeclarations,
-          );
+  List<AstVisitor<void>> get topLevelVariableDeclarations =>
+      List<AstVisitor<void>>.unmodifiable(_topLevelVariableDeclarations);
 
-  List<void Function(FieldDeclaration)> get fieldDeclarations =>
-      List<void Function(FieldDeclaration)>.unmodifiable(_fieldDeclarations);
+  List<AstVisitor<void>> get fieldDeclarations =>
+      List<AstVisitor<void>>.unmodifiable(_fieldDeclarations);
 
-  List<void Function(ExpressionStatement)> get expressionStatements =>
-      List<void Function(ExpressionStatement)>.unmodifiable(
-        _expressionStatements,
-      );
+  List<AstVisitor<void>> get expressionStatements =>
+      List<AstVisitor<void>>.unmodifiable(_expressionStatements);
 
-  List<void Function(SuperConstructorInvocation)>
-      get superConstructorInvocations =>
-          List<void Function(SuperConstructorInvocation)>.unmodifiable(
-            _superConstructorInvocations,
-          );
+  List<AstVisitor<void>> get superConstructorInvocations =>
+      List<AstVisitor<void>>.unmodifiable(_superConstructorInvocations);
 
   @override
-  void addClassDeclaration(void Function(ClassDeclaration node) cb) =>
-      _classDeclarations.add(cb);
+  void addClassDeclaration(
+    AbstractAnalysisRule rule,
+    AstVisitor<void> visitor,
+  ) => _classDeclarations.add(visitor);
 
   @override
-  void addMixinDeclaration(void Function(MixinDeclaration node) cb) =>
-      _mixinDeclarations.add(cb);
+  void addMixinDeclaration(
+    AbstractAnalysisRule rule,
+    AstVisitor<void> visitor,
+  ) => _mixinDeclarations.add(visitor);
 
   @override
-  void addMethodDeclaration(void Function(MethodDeclaration node) cb) =>
-      _methodDeclarations.add(cb);
+  void addMethodDeclaration(
+    AbstractAnalysisRule rule,
+    AstVisitor<void> visitor,
+  ) => _methodDeclarations.add(visitor);
 
   @override
-  void addMethodInvocation(void Function(MethodInvocation node) cb) =>
-      _methodInvocations.add(cb);
+  void addMethodInvocation(
+    AbstractAnalysisRule rule,
+    AstVisitor<void> visitor,
+  ) => _methodInvocations.add(visitor);
 
   @override
   void addInstanceCreationExpression(
-    void Function(InstanceCreationExpression node) cb,
-  ) =>
-      _instanceCreationExpressions.add(cb);
+    AbstractAnalysisRule rule,
+    AstVisitor<void> visitor,
+  ) => _instanceCreationExpressions.add(visitor);
 
   @override
   void addTopLevelVariableDeclaration(
-    void Function(TopLevelVariableDeclaration node) cb,
-  ) =>
-      _topLevelVariableDeclarations.add(cb);
+    AbstractAnalysisRule rule,
+    AstVisitor<void> visitor,
+  ) => _topLevelVariableDeclarations.add(visitor);
 
   @override
-  void addFieldDeclaration(void Function(FieldDeclaration node) cb) =>
-      _fieldDeclarations.add(cb);
+  void addFieldDeclaration(
+    AbstractAnalysisRule rule,
+    AstVisitor<void> visitor,
+  ) => _fieldDeclarations.add(visitor);
 
   @override
-  void addExpressionStatement(void Function(ExpressionStatement node) cb) =>
-      _expressionStatements.add(cb);
+  void addExpressionStatement(
+    AbstractAnalysisRule rule,
+    AstVisitor<void> visitor,
+  ) => _expressionStatements.add(visitor);
 
   @override
   void addSuperConstructorInvocation(
-    void Function(SuperConstructorInvocation node) cb,
-  ) =>
-      _superConstructorInvocations.add(cb);
+    AbstractAnalysisRule rule,
+    AstVisitor<void> visitor,
+  ) => _superConstructorInvocations.add(visitor);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _DispatchVisitor extends RecursiveAstVisitor<void> {
-  _DispatchVisitor(this.registry);
-  final _TestRegistry registry;
+  new(this.registry);
+  final _TestRuleVisitorRegistry registry;
 
   @override
   void visitClassDeclaration(ClassDeclaration node) {
-    for (final cb in List.of(registry.classDeclarations)) {
-      cb(node);
+    for (final visitor in List.of(registry.classDeclarations)) {
+      visitor.visitClassDeclaration(node);
     }
     super.visitClassDeclaration(node);
   }
 
   @override
   void visitMixinDeclaration(MixinDeclaration node) {
-    for (final cb in List.of(registry.mixinDeclarations)) {
-      cb(node);
+    for (final visitor in List.of(registry.mixinDeclarations)) {
+      visitor.visitMixinDeclaration(node);
     }
     super.visitMixinDeclaration(node);
   }
 
   @override
   void visitMethodDeclaration(MethodDeclaration node) {
-    for (final cb in List.of(registry.methodDeclarations)) {
-      cb(node);
+    for (final visitor in List.of(registry.methodDeclarations)) {
+      visitor.visitMethodDeclaration(node);
     }
     super.visitMethodDeclaration(node);
   }
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    for (final cb in List.of(registry.methodInvocations)) {
-      cb(node);
+    for (final visitor in List.of(registry.methodInvocations)) {
+      visitor.visitMethodInvocation(node);
     }
     super.visitMethodInvocation(node);
   }
 
   @override
   void visitInstanceCreationExpression(InstanceCreationExpression node) {
-    for (final cb in List.of(registry.instanceCreationExpressions)) {
-      cb(node);
+    for (final visitor in List.of(registry.instanceCreationExpressions)) {
+      visitor.visitInstanceCreationExpression(node);
     }
     super.visitInstanceCreationExpression(node);
   }
 
   @override
   void visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
-    for (final cb in List.of(registry.topLevelVariableDeclarations)) {
-      cb(node);
+    for (final visitor in List.of(registry.topLevelVariableDeclarations)) {
+      visitor.visitTopLevelVariableDeclaration(node);
     }
     super.visitTopLevelVariableDeclaration(node);
   }
 
   @override
   void visitFieldDeclaration(FieldDeclaration node) {
-    for (final cb in List.of(registry.fieldDeclarations)) {
-      cb(node);
+    for (final visitor in List.of(registry.fieldDeclarations)) {
+      visitor.visitFieldDeclaration(node);
     }
     super.visitFieldDeclaration(node);
   }
 
   @override
   void visitExpressionStatement(ExpressionStatement node) {
-    for (final cb in List.of(registry.expressionStatements)) {
-      cb(node);
+    for (final visitor in List.of(registry.expressionStatements)) {
+      visitor.visitExpressionStatement(node);
     }
     super.visitExpressionStatement(node);
   }
 
   @override
   void visitSuperConstructorInvocation(SuperConstructorInvocation node) {
-    for (final cb in List.of(registry.superConstructorInvocations)) {
-      cb(node);
+    for (final visitor in List.of(registry.superConstructorInvocations)) {
+      visitor.visitSuperConstructorInvocation(node);
     }
     super.visitSuperConstructorInvocation(node);
   }

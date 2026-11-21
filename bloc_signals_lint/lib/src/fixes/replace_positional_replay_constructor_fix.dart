@@ -1,10 +1,9 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analysis_server_plugin/edit/dart/correction_producer.dart';
+import 'package:analysis_server_plugin/edit/dart/dart_fix_kind_priority.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/error.dart';
 import 'package:analyzer/source/source_range.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analyzer_plugin/utilities/change_builder/change_builder_core.dart';
+import 'package:analyzer_plugin/utilities/fixes/fixes.dart';
 
 /// An automated IDE quick-fix for `PreferNamedReplayConstructor` that rewrites
 /// `super.positional(...)` to `super(initialState: ...)`.
@@ -19,52 +18,48 @@ import 'package:custom_lint_builder/custom_lint_builder.dart';
 /// CounterCubit(int initial, {int? limit})
 ///     : super(initialState: initial, limit: limit);
 /// ```
-class ReplacePositionalReplayConstructorFix extends DartFix {
+class ReplacePositionalReplayConstructorFix extends ResolvedCorrectionProducer {
   /// Creates a [ReplacePositionalReplayConstructorFix] instance.
-  ReplacePositionalReplayConstructorFix();
+  new({required super.context});
+
+  static const _fixKind = FixKind(
+    'bloc_signals_lint.fix.replacePositionalReplayConstructor',
+    DartFixKindPriority.standard,
+    "Replace 'super.positional(...)' with 'super(initialState: ...)'",
+  );
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ChangeReporter reporter,
-    CustomLintContext context,
-    AnalysisError analysisError,
-    List<AnalysisError> others,
-  ) {
-    context.registry.addSuperConstructorInvocation((node) {
-      if (!analysisError.sourceRange.intersects(node.sourceRange)) return;
-      if (node.constructorName?.name != 'positional') return;
+  CorrectionApplicability get applicability =>
+      CorrectionApplicability.singleLocation;
 
-      final period = node.period;
-      final constructorName = node.constructorName;
-      if (period == null || constructorName == null) return;
+  @override
+  FixKind get fixKind => _fixKind;
 
-      final args = node.argumentList.arguments;
-      if (args.isEmpty) return;
+  @override
+  Future<void> compute(ChangeBuilder builder) async {
+    final superCall = node.thisOrAncestorOfType<SuperConstructorInvocation>();
+    if (superCall == null || superCall.constructorName?.name != 'positional') {
+      return;
+    }
 
-      final positionalArg =
-          args.where((arg) => arg is! NamedExpression).firstOrNull;
-      if (positionalArg == null) return;
+    final period = superCall.period;
+    final constructorName = superCall.constructorName;
+    if (period == null || constructorName == null) return;
 
-      reporter
-          .createChangeBuilder(
-        message:
-            "Replace 'super.positional(...)' with 'super(initialState: ...)'",
-        priority: 100,
-      )
-          .addDartFileEdit((builder) {
-        builder
-          ..addDeletion(
-            SourceRange(
-              period.offset,
-              constructorName.end - period.offset,
-            ),
-          )
-          ..addSimpleInsertion(
-            positionalArg.offset,
-            'initialState: ',
-          );
-      });
+    final args = superCall.argumentList.arguments;
+    if (args.isEmpty) return;
+
+    final positionalArg = args
+        .where((arg) => arg is! NamedArgument)
+        .firstOrNull;
+    if (positionalArg == null) return;
+
+    await builder.addDartFileEdit(file, (builder) {
+      builder
+        ..addDeletion(
+          SourceRange(period.offset, constructorName.end - period.offset),
+        )
+        ..addSimpleInsertion(positionalArg.offset, 'initialState: ');
     });
   }
 }

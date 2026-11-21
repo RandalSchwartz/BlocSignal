@@ -1,24 +1,31 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/listener.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:analyzer/error/error.dart';
+import 'package:bloc_signals_lint/src/utils/type_checker.dart';
 
 /// A lint rule that flags calls to `emit()` or `add()` on state containers
 /// inside Flutter `Widget.build()` methods.
-class AvoidEmitInBuild extends DartLintRule {
+class AvoidEmitInBuild extends AnalysisRule {
   /// Creates an [AvoidEmitInBuild] lint rule.
-  const AvoidEmitInBuild() : super(code: _code);
+  new()
+    : super(
+        name: 'avoid_emit_in_build',
+        description:
+            'Avoid calling emit() or add() on state containers inside '
+            'Widget.build() methods.',
+      );
 
-  static const _code = LintCode(
-    name: 'avoid_emit_in_build',
-    problemMessage:
-        'State mutations ("{0}") should not be invoked directly inside '
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'avoid_emit_in_build',
+    'State mutations ("{0}") should not be invoked directly inside '
         'build() methods.',
     correctionMessage:
-        'Move state mutation or event dispatch to an event callback, '
-        'lifecycle method, or BlocSignalListener.',
+        'Move state mutation or event dispatch to an event '
+        'callback, lifecycle method, or BlocSignalListener.',
   );
 
   static const _blocSignalBaseChecker = TypeChecker.fromName(
@@ -27,34 +34,42 @@ class AvoidEmitInBuild extends DartLintRule {
   );
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  LintCode get diagnosticCode => code;
+
+  @override
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addMethodInvocation((node) {
-      final methodName = node.methodName.name;
-      if (methodName != 'emit' && methodName != 'add') return;
+    registry.addMethodInvocation(this, _Visitor(this));
+  }
+}
 
-      final target = node.target;
-      if (target == null) return;
-      final targetType = target.staticType;
-      if (targetType == null) return;
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
 
-      if (_blocSignalBaseChecker.isAssignableFromType(targetType)) {
-        final enclosingClosure =
-            node.thisOrAncestorOfType<FunctionExpression>();
-        if (enclosingClosure != null) return;
+  final AvoidEmitInBuild rule;
 
-        final enclosingMethod = node.thisOrAncestorOfType<MethodDeclaration>();
-        if (enclosingMethod != null && enclosingMethod.name.lexeme == 'build') {
-          reporter.atNode(
-            node.methodName,
-            code,
-            arguments: [methodName],
-          );
-        }
+  @override
+  void visitMethodInvocation(MethodInvocation node) {
+    final methodName = node.methodName.name;
+    if (methodName != 'emit' && methodName != 'add') return;
+
+    final target = node.target;
+    if (target == null) return;
+    final targetType = target.staticType;
+    if (targetType == null) return;
+
+    if (AvoidEmitInBuild._blocSignalBaseChecker.isAssignableFromType(
+      targetType,
+    )) {
+      final enclosingClosure = node.thisOrAncestorOfType<FunctionExpression>();
+      if (enclosingClosure != null) return;
+
+      final enclosingMethod = node.thisOrAncestorOfType<MethodDeclaration>();
+      if (enclosingMethod != null && enclosingMethod.name.lexeme == 'build') {
+        rule.reportAtNode(node.methodName, arguments: [methodName]);
       }
-    });
+    }
   }
 }

@@ -1,9 +1,8 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analysis_server_plugin/edit/dart/correction_producer.dart';
+import 'package:analysis_server_plugin/edit/dart/dart_fix_kind_priority.dart';
 import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/error.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:analyzer_plugin/utilities/change_builder/change_builder_core.dart';
+import 'package:analyzer_plugin/utilities/fixes/fixes.dart';
 
 /// An automated IDE quick-fix for `RequireSuperOnEvent` that inserts
 /// `super.onEvent(event);` into `onEvent` overrides.
@@ -26,52 +25,53 @@ import 'package:custom_lint_builder/custom_lint_builder.dart';
 ///   doSomething();
 /// }
 /// ```
-class AddSuperOnEventFix extends DartFix {
+class AddSuperOnEventFix extends ResolvedCorrectionProducer {
   /// Creates an [AddSuperOnEventFix] instance.
-  AddSuperOnEventFix();
+  new({required super.context});
+
+  static const _fixKind = FixKind(
+    'bloc_signals_lint.fix.addSuperOnEvent',
+    DartFixKindPriority.standard,
+    "Add 'super.onEvent(...);'",
+  );
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ChangeReporter reporter,
-    CustomLintContext context,
-    AnalysisError analysisError,
-    List<AnalysisError> others,
-  ) {
-    context.registry.addMethodDeclaration((node) {
-      if (!analysisError.sourceRange.intersects(node.sourceRange)) return;
+  CorrectionApplicability get applicability =>
+      CorrectionApplicability.singleLocation;
 
-      final paramName =
-          node.parameters?.parameters.firstOrNull?.name?.lexeme ?? 'event';
-      final body = node.body;
+  @override
+  FixKind get fixKind => _fixKind;
 
-      reporter
-          .createChangeBuilder(
-        message: "Add 'super.onEvent($paramName);'",
-        priority: 100,
-      )
-          .addDartFileEdit((builder) {
-        if (body is BlockFunctionBody) {
-          builder.addSimpleInsertion(
-            body.block.leftBracket.end,
-            '\n    super.onEvent($paramName);',
-          );
-        } else if (body is ExpressionFunctionBody) {
-          final keyword = body.keyword != null
-              ? '${body.keyword!.lexeme}${body.star?.lexeme ?? ''} '
-              : '';
-          final expr = body.expression.toSource();
-          builder.addSimpleReplacement(
-            body.sourceRange,
-            '$keyword{\n    super.onEvent($paramName);\n    $expr;\n  }',
-          );
-        } else if (body is EmptyFunctionBody) {
-          builder.addSimpleReplacement(
-            body.sourceRange,
-            ' {\n    super.onEvent($paramName);\n  }',
-          );
-        }
-      });
+  @override
+  Future<void> compute(ChangeBuilder builder) async {
+    final method = node.thisOrAncestorOfType<MethodDeclaration>();
+    if (method == null || method.name.lexeme != 'onEvent') return;
+
+    final paramName =
+        method.parameters?.parameters.firstOrNull?.name?.lexeme ?? 'event';
+    final body = method.body;
+
+    await builder.addDartFileEdit(file, (builder) {
+      if (body is BlockFunctionBody) {
+        builder.addSimpleInsertion(
+          body.block.leftBracket.end,
+          '\n    super.onEvent($paramName);',
+        );
+      } else if (body is ExpressionFunctionBody) {
+        final keyword = body.keyword != null
+            ? '${body.keyword!.lexeme}${body.star?.lexeme ?? ''} '
+            : '';
+        final expr = body.expression.toSource();
+        builder.addSimpleReplacement(
+          body.sourceRange,
+          '$keyword{\n    super.onEvent($paramName);\n    $expr;\n  }',
+        );
+      } else if (body is EmptyFunctionBody) {
+        builder.addSimpleReplacement(
+          body.sourceRange,
+          ' {\n    super.onEvent($paramName);\n  }',
+        );
+      }
     });
   }
 }

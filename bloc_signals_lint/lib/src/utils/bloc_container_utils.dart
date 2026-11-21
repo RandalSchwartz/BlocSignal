@@ -1,12 +1,10 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/type.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:bloc_signals_lint/src/utils/type_checker.dart';
 
 /// Shared `TypeChecker` and AST helpers for identifying `BlocSignal` /
 /// `CubitSignal` containers, mixins, UI hosts, and `BuildContext` receivers.
-class BlocContainerUtils {
-  BlocContainerUtils._();
-
+abstract final class BlocContainerUtils {
   /// Matches `BlocSignalBase` from `package:bloc_signals`.
   static const blocSignalBaseChecker = TypeChecker.fromName(
     'BlocSignalBase',
@@ -138,10 +136,7 @@ class BlocContainerUtils {
   /// Returns `true` if [declaration] is a `BlocSignal` or `BlocSignalMixin`
   /// host (`ClassDeclaration` or `MixinDeclaration`).
   static bool isBlocSignalHost(AstNode declaration) {
-    const checkers = [
-      blocSignalChecker,
-      blocSignalMixinChecker,
-    ];
+    const checkers = [blocSignalChecker, blocSignalMixinChecker];
     return _matchesContainer(declaration, checkers, _blocHostNames);
   }
 
@@ -149,10 +144,7 @@ class BlocContainerUtils {
   /// (excluding `BlocSignal` / `BlocSignalMixin` hosts).
   static bool isCubitOnlyContainer(AstNode declaration) {
     if (isBlocSignalHost(declaration)) return false;
-    const checkers = [
-      cubitSignalChecker,
-      cubitSignalMixinChecker,
-    ];
+    const checkers = [cubitSignalChecker, cubitSignalMixinChecker];
     return _matchesContainer(declaration, checkers, _cubitHostNames);
   }
 
@@ -196,17 +188,13 @@ class BlocContainerUtils {
     }
     final superclass = node.extendsClause?.superclass;
     if (superclass == null) return false;
-    return _matchesNamedType(
-      superclass,
-      const [
-        flutterWidgetChecker,
-        flutterStateChecker,
-        hookWidgetChecker,
-        jasprComponentChecker,
-        jasprStateChecker,
-      ],
-      _uiSupertypeNames,
-    );
+    return _matchesNamedType(superclass, const [
+      flutterWidgetChecker,
+      flutterStateChecker,
+      hookWidgetChecker,
+      jasprComponentChecker,
+      jasprStateChecker,
+    ], _uiSupertypeNames);
   }
 
   static bool _matchesContainer(
@@ -274,8 +262,13 @@ class BlocContainerUtils {
       }
       return false;
     }
-    final rawName =
-        namedType.toSource().split('<').first.trim().split('.').last;
+    final rawName = namedType
+        .toSource()
+        .split('<')
+        .first
+        .trim()
+        .split('.')
+        .last;
     return exactFallbackNames.contains(rawName);
   }
 }

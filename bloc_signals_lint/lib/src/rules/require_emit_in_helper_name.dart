@@ -1,12 +1,10 @@
-// Ignore deprecated_member_use due to custom_lint_builder parameter signature.
-// ignore_for_file: deprecated_member_use
-
+import 'package:analyzer/analysis_rule/analysis_rule.dart';
+import 'package:analyzer/analysis_rule/rule_context.dart';
+import 'package:analyzer/analysis_rule/rule_visitor_registry.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
-import 'package:analyzer/error/listener.dart';
-import 'package:bloc_signals_lint/src/fixes/require_emit_in_helper_name_fix.dart';
+import 'package:analyzer/error/error.dart';
 import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
 
 /// A lint rule that requires private helper methods invoking `emit()` to have
 /// a name reflecting state emission (for example `_pruneAndEmit` or
@@ -14,14 +12,20 @@ import 'package:custom_lint_builder/custom_lint_builder.dart';
 ///
 /// Disguised state mutations violate state atomicity by hiding side-effects
 /// inside innocent-sounding helper methods.
-class RequireEmitInHelperName extends DartLintRule {
+class RequireEmitInHelperName extends AnalysisRule {
   /// Creates a [RequireEmitInHelperName] lint rule.
-  const RequireEmitInHelperName() : super(code: _code);
+  new()
+    : super(
+        name: 'require_emit_in_helper_name',
+        description:
+            'Require private helper methods invoking emit() to have a name '
+            'reflecting state emission.',
+      );
 
-  static const _code = LintCode(
-    name: 'require_emit_in_helper_name',
-    problemMessage:
-        "Private helper method '{0}' calls `emit()`, but its name does not "
+  /// The diagnostic code reported by this rule.
+  static const LintCode code = LintCode(
+    'require_emit_in_helper_name',
+    "Private helper method '{0}' calls `emit()`, but its name does not "
         'reflect state emission.',
     correctionMessage:
         "Rename to '{0}AndEmit' to declare state transition side-effects.",
@@ -59,43 +63,49 @@ class RequireEmitInHelperName extends DartLintRule {
   }
 
   @override
-  List<Fix> getFixes() => [RequireEmitInHelperNameFix()];
+  LintCode get diagnosticCode => code;
 
   @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
+  void registerNodeProcessors(
+    RuleVisitorRegistry registry,
+    RuleContext context,
   ) {
-    context.registry.addClassDeclaration((node) {
-      _checkMembers(node, node.members, reporter);
-    });
-    context.registry.addMixinDeclaration((node) {
-      _checkMembers(node, node.members, reporter);
-    });
+    final visitor = _Visitor(this);
+    registry
+      ..addClassDeclaration(this, visitor)
+      ..addMixinDeclaration(this, visitor);
+  }
+}
+
+class _Visitor extends SimpleAstVisitor<void> {
+  new(this.rule);
+
+  final RequireEmitInHelperName rule;
+
+  @override
+  void visitClassDeclaration(ClassDeclaration node) {
+    _checkBody(node, node.body);
   }
 
-  void _checkMembers(
-    AstNode declaration,
-    NodeList<ClassMember> members,
-    ErrorReporter reporter,
-  ) {
+  @override
+  void visitMixinDeclaration(MixinDeclaration node) {
+    _checkBody(node, node.body);
+  }
+
+  void _checkBody(AstNode declaration, ClassBody body) {
+    if (body is! BlockClassBody) return;
     if (!BlocContainerUtils.isBlocContainerDeclaration(declaration)) return;
 
-    for (final member in members.whereType<MethodDeclaration>()) {
-      if (isFlaggedHelper(member)) {
-        reporter.atToken(
-          member.name,
-          code,
-          arguments: [member.name.lexeme],
-        );
+    for (final member in body.members.whereType<MethodDeclaration>()) {
+      if (RequireEmitInHelperName.isFlaggedHelper(member)) {
+        rule.reportAtToken(member.name, arguments: [member.name.lexeme]);
       }
     }
   }
 }
 
 class _EmitInvocationVisitor extends RecursiveAstVisitor<void> {
-  _EmitInvocationVisitor(this.onEmitFound);
+  new(this.onEmitFound);
 
   final void Function() onEmitFound;
 

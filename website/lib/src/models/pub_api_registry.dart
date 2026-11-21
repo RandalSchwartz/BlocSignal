@@ -365,10 +365,10 @@ enum DocSymbol(
   ),
 
   // Lint (bloc_signals_lint)
-  blocSignalsLintCreatePlugin(
-    'createPlugin',
+  blocSignalsLintPlugin(
+    'BlocSignalsPlugin',
     'bloc_signals_lint',
-    'createPlugin.html',
+    'BlocSignalsPlugin-class.html',
   ),
 
   // Generative UI (bloc_signals_genui & bloc_signals_genui_flutter)

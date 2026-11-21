@@ -120,6 +120,7 @@ void main() async {
 - **Explicit Surface Closure**: Dispatch `CloseSurface(surfaceId: '...')` (or ingest wire-level `DeleteSurfaceMessage`) to evict a surface, prune its action history and revision metadata, and automatically promote the most-recently-accessed surviving surface.
 - **Bounded LRU Retention**: Configure `A2uiSurfaceBloc(maxSurfaces: 10)` to automatically evict the least-recently-used non-active surface when the active session exceeds the configured cap.
 - **Default Graph Validation & Ingestion Budgets**: `validationConfig` defaults to `ValidationConfig.relaxed` (pass `validationConfig: null` to opt out for incremental/partial component streaming), alongside `maxChunkLength` (`1048576`), `maxMessagesPerBatch` (`256`), and `maxComponentsPerSurface` (`2000`).
+- **Shared Image URL Security Policy (`A2uiImageUrlPolicy`)**: `bloc_signals_genui` owns and exports `A2uiImageUrlPolicy` (re-exported by both `bloc_signals_genui_flutter` and `bloc_signals_genui_jaspr`). By default, it enforces `https://` and blocks `http://`, loopback, link-local, private/CGNAT/ULA/IPv4-compat/NAT64 ranges (`allowPrivateNetworks: false`), and IPv4 SSRF parser differentials (octal, hex, shorthand, and 32-bit integer hosts).
 
 ---
 

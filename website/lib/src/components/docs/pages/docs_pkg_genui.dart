@@ -138,7 +138,7 @@ dependencies:
                 'Built-in schema pattern checks enforce bounded pattern lengths (maxValidationPatternLength = 256), bounded input lengths (maxValidationInputLength = 2048), and linear-time ReDoS screening against nested quantifiers, backreferences, and lookarounds. Supply a custom patternValidator callback on A2uiSurfaceBloc when an app needs custom dialect semantics. '
                 'Ingestion budgets default to maxChunkLength = 1048576, maxMessagesPerBatch = 256, and maxComponentsPerSurface = 2000, while validationConfig defaults to ValidationConfig.relaxed (pass validationConfig: null to opt out for incremental/partial component streaming). '
                 'Component normalization preserves top-level structural keys (for example id, type, component, child, children, and checks) so nested properties cannot overwrite them, while integer coercion guards reject non-finite NaN and Infinity values. '
-                'UI Slider widgets clamp min/max to [-1e12, 1e12] with steps/divisions capped at 1000.',
+                'UI Slider widgets clamp min/max to [-1e12, 1e12] with steps/divisions capped at 1000, and bloc_signals_genui owns the shared A2uiImageUrlPolicy (re-exported by bloc_signals_genui_flutter and bloc_signals_genui_jaspr) which blocks http://, loopback, link-local, private/CGNAT/ULA/IPv4-compat/NAT64 ranges (allowPrivateNetworks: false), and IPv4 SSRF parser differentials (octal, hex, shorthand, and 32-bit integer hosts).',
               ),
             ]),
           ],

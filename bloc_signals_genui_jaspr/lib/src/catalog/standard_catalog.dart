@@ -1,3 +1,4 @@
+import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_jaspr/src/a2ui_jaspr_catalog.dart';
 import 'package:bloc_signals_genui_jaspr/src/catalog/components/a2ui_button.dart';
 import 'package:bloc_signals_genui_jaspr/src/catalog/components/a2ui_card.dart';
@@ -17,13 +18,16 @@ import 'package:bloc_signals_genui_jaspr/src/catalog/components/a2ui_text.dart';
 import 'package:bloc_signals_genui_jaspr/src/catalog/components/a2ui_text_field.dart';
 
 /// Registers the 16 standard A2UI `BasicCatalog` component builders into the
-/// provided [catalog].
+/// provided [catalog], validating `Image` URLs with [imagePolicy].
 ///
 /// ```dart
 /// final catalog = A2uiJasprCatalog();
 /// registerStandardComponents(catalog);
 /// ```
-void registerStandardComponents(A2uiJasprCatalog catalog) {
+void registerStandardComponents(
+  A2uiJasprCatalog catalog, {
+  A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy(),
+}) {
   catalog
     ..register('Text', buildA2uiText)
     ..register('Row', buildA2uiRow)
@@ -36,7 +40,14 @@ void registerStandardComponents(A2uiJasprCatalog catalog) {
     ..register('Tabs', buildA2uiTabs)
     ..register('Modal', buildA2uiModal)
     ..register('Icon', buildA2uiIcon)
-    ..register('Image', buildA2uiImage)
+    ..register(
+      'Image',
+      (context, componentContext) => buildA2uiImage(
+        context,
+        componentContext,
+        imagePolicy: imagePolicy,
+      ),
+    )
     ..register('CheckBox', buildA2uiCheckBox)
     ..register('ChoicePicker', buildA2uiChoicePicker)
     ..register('Slider', buildA2uiSlider)

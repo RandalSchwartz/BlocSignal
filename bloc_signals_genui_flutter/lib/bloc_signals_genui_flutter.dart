@@ -2,11 +2,13 @@
 /// Generative UI (A2UI) with BlocSignal.
 library;
 
+export 'package:bloc_signals_genui/bloc_signals_genui.dart'
+    show A2uiImageUrlPolicy;
+
 export 'src/a2ui_component_context.dart';
 export 'src/a2ui_flutter_catalog.dart';
 export 'src/a2ui_surface_view.dart';
 export 'src/adapters/genui_controller_adapter.dart';
-export 'src/catalog/a2ui_image_url_policy.dart';
 export 'src/catalog/adaptive_catalog.dart';
 export 'src/catalog/cupertino_catalog.dart';
 export 'src/catalog/cupertino_tokens.dart';

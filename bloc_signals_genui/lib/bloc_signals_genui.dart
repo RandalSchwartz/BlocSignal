@@ -68,6 +68,7 @@ export 'package:a2ui_core/a2ui_core.dart'
         coerceDynamicBoolean;
 
 export 'src/a2ui_action_response.dart';
+export 'src/a2ui_image_url_policy.dart';
 export 'src/a2ui_surface_bloc.dart';
 export 'src/a2ui_surface_event.dart';
 export 'src/a2ui_surface_state.dart';

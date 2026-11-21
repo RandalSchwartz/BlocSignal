@@ -1,3 +1,4 @@
+import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_jaspr/src/a2ui_component_context.dart';
 import 'package:bloc_signals_genui_jaspr/src/catalog/safe_prop_parser.dart';
 import 'package:jaspr/dom.dart';
@@ -20,21 +21,13 @@ const Set<String> _allowedVariants = <String>{
   'header',
 };
 
-bool _isAllowedHttpUrl(String rawUrl) {
-  final trimmed = rawUrl.trim();
-  if (trimmed.isEmpty) return false;
-  final uri = Uri.tryParse(trimmed);
-  if (uri == null || !uri.hasScheme) return false;
-  final scheme = uri.scheme.toLowerCase();
-  return scheme == 'http' || scheme == 'https';
-}
-
 /// Renders an A2UI `Image` component supporting `url`, `description`, `fit`
 /// (`contain`, `cover`, `fill`, `none`, `scaleDown`), and `variant` sizing
 /// (`icon`, `avatar`, `smallFeature`, `mediumFeature`, `largeFeature`,
 /// `header`).
 ///
-/// Validates that `url` uses an `http:` or `https:` scheme before rendering
+/// Validates `url` against [imagePolicy] (which defaults to
+/// [A2uiImageUrlPolicy] allowing only public `https:` URLs) before rendering
 /// `<img>`, falling back to a clean placeholder otherwise.
 ///
 /// ```dart
@@ -42,8 +35,9 @@ bool _isAllowedHttpUrl(String rawUrl) {
 /// ```
 Component buildA2uiImage(
   BuildContext context,
-  A2uiComponentContext componentContext,
-) {
+  A2uiComponentContext componentContext, {
+  A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy(),
+}) {
   final props = componentContext.props;
   final url = asString(props['url']).trim();
   final description = unwrapBinding(props['description'])?.toString();
@@ -82,7 +76,7 @@ Component buildA2uiImage(
       ),
   };
 
-  if (!_isAllowedHttpUrl(url)) {
+  if (!imagePolicy.isAllowed(url)) {
     return div(
       classes: 'a2ui-image a2ui-image-fallback a2ui-image-variant-$variant',
       attributes: {

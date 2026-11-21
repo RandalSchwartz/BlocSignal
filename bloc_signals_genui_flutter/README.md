@@ -108,7 +108,9 @@ class AgentSurfaceScreen extends StatelessWidget {
       body: A2uiSurfaceView(
         bloc: surfaceBloc,
         // All catalog factories (.standard, .cupertino, .adaptive) enforce
-        // A2uiImageUrlPolicy (HTTPS + non-loopback/non-link-local) by default.
+        // A2uiImageUrlPolicy (shared from bloc_signals_genui; HTTPS + public
+        // hosts only, blocking http://, loopback, link-local, private/CGNAT/
+        // ULA/IPv4-compat/NAT64 networks, and IPv4 SSRF differentials).
         catalog: A2uiFlutterCatalog.standard(
           imagePolicy: const A2uiImageUrlPolicy(),
         ),
@@ -131,7 +133,9 @@ class ModernAgentSurfaceScreen({
       body: A2uiSurfaceView(
         bloc: surfaceBloc,
         // All catalog factories (.standard, .cupertino, .adaptive) enforce
-        // A2uiImageUrlPolicy (HTTPS + non-loopback/non-link-local) by default.
+        // A2uiImageUrlPolicy (shared from bloc_signals_genui; HTTPS + public
+        // hosts only, blocking http://, loopback, link-local, private/CGNAT/
+        // ULA/IPv4-compat/NAT64 networks, and IPv4 SSRF differentials).
         catalog: A2uiFlutterCatalog.standard(
           imagePolicy: const A2uiImageUrlPolicy(),
         ),

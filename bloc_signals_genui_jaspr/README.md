@@ -51,7 +51,7 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 ## ⚡ Key Features
 
 - 🎨 **`A2uiSurfaceView`**: Reactive Jaspr web component handling the complete `A2uiSurfaceState` lifecycle (`SurfaceInitial`, `SurfaceStreaming`, `SurfaceReady`, `SurfaceSubmitting`, and `SurfaceError`) with customizable builders, per-component error boundaries, and bounded per-render `maxDepth` (default `32`) / `nodeBudget` (default `1000`) guards against exponential DAG payloads.
-- 🧱 **`A2uiJasprCatalog`**: Extensible component registry pre-populated with all 16 `BasicCatalog` DOM components (`Text`, `Row`, `Column`, `Card`, `Divider`, `Button`, `TextField`, `List`, `Tabs`, `Modal`, `Icon`, `Image`, `CheckBox`, `ChoicePicker`, `Slider`, and `DateTimeInput`) alongside immutable composition helpers (`copyWith`, `copyWithout`, `registerAll`).
+- 🧱 **`A2uiJasprCatalog`**: Extensible component registry pre-populated with all 16 `BasicCatalog` DOM components (`Text`, `Row`, `Column`, `Card`, `Divider`, `Button`, `TextField`, `List`, `Tabs`, `Modal`, `Icon`, `Image`, `CheckBox`, `ChoicePicker`, `Slider`, and `DateTimeInput`) alongside immutable composition helpers (`copyWith`, `copyWithout`, `registerAll`). `A2uiJasprCatalog.standard(imagePolicy: ...)` enforces the shared `A2uiImageUrlPolicy` (re-exported from `bloc_signals_genui`), blocking `http://`, loopback, link-local, private/CGNAT/ULA/IPv4-compat/NAT64 networks (`allowPrivateNetworks: false`), and IPv4 SSRF parser differentials (octal, hex, shorthand, and 32-bit integer hosts) by default.
 - ♿ **A2UI 1.0 Conformance (`NodeAction`, `weight`, `accessibility`, `metadata`)**: Supports `NodeAction` `functionCall` execution via `A2uiComponentContext.triggerAction()`, positive finite child `weight` (`flex-grow`) via `buildWeightedChildren`, universal `accessibility` envelopes (`hidden`, `aria-label`, `aria-description`), and component `metadata` access.
 - ✅ **Reactive `CheckRule` Validation UI**: Automatically surfaces `GenericBinder` validation state (`isValid`, `validationErrors`, `validationResults`) across form inputs and disables button submissions when validation rules fail.
 - ⚡ **Granular Signal Bindings & Two-Way Sync**: Each rendered component subscribes to its own resolved properties and writes two-way input mutations via `A2uiComponentContext.updateBoundValue`, updating leaf DOM elements and `A2uiSurfaceBloc` form data in 0ms on data changes without tearing down parent containers.
@@ -108,7 +108,10 @@ class AgentSurfacePage extends StatelessComponent {
       const h1([Component.text('Generative UI Surface')]),
       A2uiSurfaceView(
         bloc: surfaceBloc,
-        catalog: A2uiJasprCatalog.standard(),
+        // Enforces A2uiImageUrlPolicy (shared from bloc_signals_genui) by default.
+        catalog: A2uiJasprCatalog.standard(
+          imagePolicy: const A2uiImageUrlPolicy(),
+        ),
       ),
     ]);
   }
@@ -127,7 +130,10 @@ class const ModernAgentSurfacePage({
       const h1([Component.text('Generative UI Surface')]),
       A2uiSurfaceView(
         bloc: surfaceBloc,
-        catalog: A2uiJasprCatalog.standard(),
+        // Enforces A2uiImageUrlPolicy (shared from bloc_signals_genui) by default.
+        catalog: A2uiJasprCatalog.standard(
+          imagePolicy: const A2uiImageUrlPolicy(),
+        ),
       ),
     ]);
   }

@@ -108,6 +108,97 @@ File resolveContainedArticleFile(Directory articlesDir, String slug) {
   return File(canonicalTarget);
 }
 
+Duration _clampDelay(Duration delay, Duration maxDelay) {
+  if (delay < Duration.zero) return Duration.zero;
+  if (delay > maxDelay) return maxDelay;
+  return delay;
+}
+
+/// Parses an HTTP `Retry-After` header [headerValue] (either integer seconds
+/// or an HTTP-date) clamped to `[Duration.zero, maxDelay]`, returning
+/// [fallback] (also clamped) when missing or invalid.
+Duration parseRetryAfter(
+  String? headerValue, {
+  required Duration fallback,
+  DateTime? now,
+  Duration maxDelay = const Duration(seconds: 60),
+}) {
+  final clampedFallback = _clampDelay(fallback, maxDelay);
+  final trimmed = headerValue?.trim();
+  if (trimmed == null || trimmed.isEmpty) {
+    return clampedFallback;
+  }
+
+  final seconds = int.tryParse(trimmed);
+  if (seconds != null) {
+    if (seconds < 0) return clampedFallback;
+    return _clampDelay(Duration(seconds: seconds), maxDelay);
+  }
+
+  try {
+    final targetTime = HttpDate.parse(trimmed);
+    final reference = (now ?? DateTime.now()).toUtc();
+    return _clampDelay(targetTime.difference(reference), maxDelay);
+  } on HttpException {
+    return clampedFallback;
+  }
+}
+
+/// Invokes [fetch], retrying `HTTP 429` responses up to [maxRetries] times
+/// using the response's `Retry-After` header or exponential backoff starting
+/// at [initialBackoff], bounded by [maxDelay].
+Future<({int statusCode, String body})> fetchWithRateLimitRetry(
+  Future<({int statusCode, String body, String? retryAfter})> Function()
+  fetch, {
+  int maxRetries = 4,
+  Duration initialBackoff = const Duration(seconds: 2),
+  Duration maxDelay = const Duration(seconds: 60),
+  Future<void> Function(Duration delay)? sleep,
+  void Function(int retryAttempt, Duration delay)? onRetry,
+}) async {
+  final wait = sleep ?? Future<void>.delayed;
+  var attempt = 0;
+
+  while (true) {
+    final response = await fetch();
+    if (response.statusCode != 429 || attempt >= maxRetries) {
+      return (statusCode: response.statusCode, body: response.body);
+    }
+
+    final exponentialFallback = Duration(
+      milliseconds: initialBackoff.inMilliseconds * (1 << attempt),
+    );
+    final delay = parseRetryAfter(
+      response.retryAfter,
+      fallback: exponentialFallback,
+      maxDelay: maxDelay,
+    );
+    attempt++;
+    onRetry?.call(attempt, delay);
+    await wait(delay);
+  }
+}
+
+Future<({int statusCode, String body, String? retryAfter})> _getJsonResponse(
+  HttpClient client,
+  Uri uri,
+) async {
+  final request = await client.getUrl(uri);
+  request.headers.set(
+    HttpHeaders.userAgentHeader,
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+  );
+  request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+
+  final response = await request.close();
+  final body = await response.transform(utf8.decoder).join();
+  return (
+    statusCode: response.statusCode,
+    body: body,
+    retryAfter: response.headers.value(HttpHeaders.retryAfterHeader),
+  );
+}
+
 /// Script to download all published DEV.to articles for `@randalschwartz`
 /// into `doc/articles/` as canonical markdown backups.
 Future<void> main() async {
@@ -123,25 +214,23 @@ Future<void> main() async {
     );
 
     stdout.writeln('📡 Fetching article listing from DEV.to...');
-    final request = await client.getUrl(listUri);
-    request.headers.set(
-      HttpHeaders.userAgentHeader,
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+    final listRes = await fetchWithRateLimitRetry(
+      () => _getJsonResponse(client, listUri),
+      onRetry: (attempt, delay) => stderr.writeln(
+        '⏳ Rate-limited (429) fetching listing; retrying attempt $attempt '
+        'in ${delay.inSeconds}s...',
+      ),
     );
-    request.headers.set(HttpHeaders.acceptHeader, 'application/json');
 
-    final response = await request.close();
-    final jsonString = await response.transform(utf8.decoder).join();
-
-    if (response.statusCode != 200) {
+    if (listRes.statusCode != 200) {
       stderr.writeln(
-        '❌ Failed to fetch articles listing: HTTP ${response.statusCode}',
+        '❌ Failed to fetch articles listing: HTTP ${listRes.statusCode}',
       );
       exitCode = 1;
       return;
     }
 
-    final decodedArticles = jsonDecode(jsonString);
+    final decodedArticles = jsonDecode(listRes.body);
     if (decodedArticles is! List<dynamic>) {
       stderr.writeln('❌ Unexpected DEV.to articles listing payload.');
       exitCode = 1;
@@ -182,18 +271,16 @@ Future<void> main() async {
       stdout.writeln('⬇️ Fetching full markdown for: $safeSlug (ID: $id)...');
 
       final detailUri = Uri.parse('https://dev.to/api/articles/$id');
-      final detailReq = await client.getUrl(detailUri);
-      detailReq.headers.set(
-        HttpHeaders.userAgentHeader,
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+      final detailRes = await fetchWithRateLimitRetry(
+        () => _getJsonResponse(client, detailUri),
+        onRetry: (attempt, delay) => stderr.writeln(
+          '⏳ Rate-limited (429) for $id; retrying attempt $attempt '
+          'in ${delay.inSeconds}s...',
+        ),
       );
-      detailReq.headers.set(HttpHeaders.acceptHeader, 'application/json');
-
-      final detailRes = await detailReq.close();
-      final detailJson = await detailRes.transform(utf8.decoder).join();
 
       if (detailRes.statusCode == 200) {
-        final detailDecoded = jsonDecode(detailJson);
+        final detailDecoded = jsonDecode(detailRes.body);
         if (detailDecoded is Map<String, dynamic>) {
           final bodyMarkdown = detailDecoded['body_markdown'];
           if (bodyMarkdown is String && bodyMarkdown.isNotEmpty) {
@@ -208,7 +295,7 @@ Future<void> main() async {
       }
 
       // Rate-limit friendly pause
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
     }
 
     stdout.writeln(

@@ -146,4 +146,175 @@ void main() {
       expect(resolved.parent.path, equals(canonicalDir));
     });
   });
+
+  group('sync_all_articles HTTP 429 rate-limit retry and backoff', () {
+    test('parseRetryAfter parses integer seconds and clamps to maxDelay', () {
+      expect(
+        sync_tool.parseRetryAfter('5', fallback: const Duration(seconds: 2)),
+        equals(const Duration(seconds: 5)),
+      );
+      expect(
+        sync_tool.parseRetryAfter(' 0 ', fallback: const Duration(seconds: 2)),
+        equals(Duration.zero),
+      );
+      expect(
+        sync_tool.parseRetryAfter(
+          '120',
+          fallback: const Duration(seconds: 2),
+          maxDelay: const Duration(seconds: 30),
+        ),
+        equals(const Duration(seconds: 30)),
+      );
+    });
+
+    test('parseRetryAfter parses HTTP-date relative to now and clamps', () {
+      final now = DateTime.utc(2026, 11, 21, 12);
+      expect(
+        sync_tool.parseRetryAfter(
+          HttpDate.format(now.add(const Duration(seconds: 12))),
+          fallback: const Duration(seconds: 2),
+          now: now,
+        ),
+        equals(const Duration(seconds: 12)),
+      );
+      expect(
+        sync_tool.parseRetryAfter(
+          HttpDate.format(now.subtract(const Duration(seconds: 5))),
+          fallback: const Duration(seconds: 2),
+          now: now,
+        ),
+        equals(Duration.zero),
+      );
+      expect(
+        sync_tool.parseRetryAfter(
+          HttpDate.format(now.add(const Duration(minutes: 5))),
+          fallback: const Duration(seconds: 2),
+          now: now,
+          maxDelay: const Duration(seconds: 45),
+        ),
+        equals(const Duration(seconds: 45)),
+      );
+    });
+
+    test(
+      'parseRetryAfter falls back cleanly on null, negative, or invalid',
+      () {
+        expect(
+          sync_tool.parseRetryAfter(null, fallback: const Duration(seconds: 4)),
+          equals(const Duration(seconds: 4)),
+        );
+        expect(
+          sync_tool.parseRetryAfter(
+            '   ',
+            fallback: const Duration(seconds: 4),
+          ),
+          equals(const Duration(seconds: 4)),
+        );
+        expect(
+          sync_tool.parseRetryAfter('-3', fallback: const Duration(seconds: 4)),
+          equals(const Duration(seconds: 4)),
+        );
+        expect(
+          sync_tool.parseRetryAfter(
+            'not-a-date',
+            fallback: const Duration(seconds: 90),
+          ),
+          equals(const Duration(seconds: 60)),
+        );
+      },
+    );
+
+    test(
+      'fetchWithRateLimitRetry returns immediately on 200 or non-429',
+      () async {
+        final sleeps = <Duration>[];
+        var calls = 0;
+
+        final ok = await sync_tool.fetchWithRateLimitRetry(() async {
+          calls++;
+          return (statusCode: 200, body: 'ok', retryAfter: null);
+        }, sleep: (d) async => sleeps.add(d));
+        expect(ok.statusCode, equals(200));
+        expect(ok.body, equals('ok'));
+        expect(calls, equals(1));
+        expect(sleeps, isEmpty);
+
+        calls = 0;
+        final notFound = await sync_tool.fetchWithRateLimitRetry(() async {
+          calls++;
+          return (statusCode: 404, body: 'missing', retryAfter: '10');
+        }, sleep: (d) async => sleeps.add(d));
+        expect(notFound.statusCode, equals(404));
+        expect(calls, equals(1));
+        expect(sleeps, isEmpty);
+      },
+    );
+
+    test(
+      'fetchWithRateLimitRetry retries 429 using Retry-After and backoff',
+      () async {
+        final sleeps = <Duration>[];
+        final retries = <(int attempt, Duration delay)>[];
+        var attempt = 0;
+        final responses = [
+          (statusCode: 429, body: 'slow down', retryAfter: '3'),
+          (statusCode: 429, body: 'still busy', retryAfter: null),
+          (statusCode: 429, body: 'busy again', retryAfter: null),
+          (statusCode: 200, body: '{"ok":true}', retryAfter: null),
+        ];
+
+        final result = await sync_tool.fetchWithRateLimitRetry(
+          () async => responses[attempt++],
+          sleep: (d) async => sleeps.add(d),
+          onRetry: (retryAttempt, delay) => retries.add((retryAttempt, delay)),
+        );
+
+        expect(result.statusCode, equals(200));
+        expect(result.body, equals('{"ok":true}'));
+        expect(attempt, equals(4));
+        expect(
+          sleeps,
+          equals([
+            const Duration(seconds: 3), // Retry-After header from attempt 0
+            const Duration(seconds: 4), // 2s << 1 on attempt 1
+            const Duration(seconds: 8), // 2s << 2 on attempt 2
+          ]),
+        );
+        expect(
+          retries,
+          equals([
+            (1, const Duration(seconds: 3)),
+            (2, const Duration(seconds: 4)),
+            (3, const Duration(seconds: 8)),
+          ]),
+        );
+      },
+    );
+
+    test(
+      'fetchWithRateLimitRetry returns final 429 when maxRetries exhausted',
+      () async {
+        final sleeps = <Duration>[];
+        var calls = 0;
+
+        final result = await sync_tool.fetchWithRateLimitRetry(
+          () async {
+            calls++;
+            return (statusCode: 429, body: 'rate limited', retryAfter: null);
+          },
+          maxRetries: 2,
+          initialBackoff: const Duration(seconds: 1),
+          sleep: (d) async => sleeps.add(d),
+        );
+
+        expect(result.statusCode, equals(429));
+        expect(result.body, equals('rate limited'));
+        expect(calls, equals(3));
+        expect(
+          sleeps,
+          equals([const Duration(seconds: 1), const Duration(seconds: 2)]),
+        );
+      },
+    );
+  });
 }

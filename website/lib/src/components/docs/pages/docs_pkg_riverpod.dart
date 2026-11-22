@@ -76,7 +76,9 @@ class const DocsPkgRiverpodPage({super.key}) extends StatelessComponent {
             ' provides direct typed access to the underlying Riverpod notifier via the ',
           ),
           code([Component.text('.notifier')]),
-          Component.text(' property for seamless state mutations:'),
+          Component.text(
+            ' property for seamless state mutations (resolving the live notifier dynamically from the container across container.invalidate calls, while RiverpodBlocSignal forwards provider errors to onError):',
+          ),
         ]),
         const DocsCodeBlock(
           title: 'lib/riverpod_bridge.dart',
@@ -135,7 +137,7 @@ class CounterWidget extends ConsumerWidget {
           Component.text(' extension. The generated '),
           apiLink(DocSymbol.blocSignalNotifier),
           Component.text(
-            ' exposes typed .cubit and .bloc getters on the notifier, allowing Riverpod widgets to trigger mutations with zero boilerplate:',
+            ' exposes typed .cubit and .bloc getters on the notifier, allowing Riverpod widgets to trigger mutations with zero boilerplate (guarding initial build subscriptions and evicting closed autoClose: true entries from the provider cache):',
           ),
         ]),
         const DocsCodeBlock(

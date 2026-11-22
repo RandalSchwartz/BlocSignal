@@ -2,7 +2,7 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
-## Unreleased
+## 2.1.0
 
 - **Feat (genui)**: Move and export shared `A2uiImageUrlPolicy` in `bloc_signals_genui` with nullable `isAllowed(String? rawUrl)`, `allowPrivateNetworks` (default `false`), strict 4-octet decimal IPv4 parsing, SSRF parser-differential host rejection (octal, shorthand, hex, 32-bit int), private/CGNAT/ULA/NAT64 range screening, and strict embedded IPv4 validation in IPv6 literals (#463).
 - **Fix (genui)**: Harden `_isSafeValidationPattern` against adjacent unbounded quantifiers, backreferences (`\1`–`\9`, `\k<...>`), and quantifiers inside lookarounds; enforce `maxChunkLength` (`1048576`), `maxMessagesPerBatch` (`256`), and `maxComponentsPerSurface` (`2000`) ingestion budgets on `A2uiSurfaceBloc`; and default `validationConfig` to `ValidationConfig.relaxed` (#472).

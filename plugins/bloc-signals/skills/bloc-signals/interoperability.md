@@ -197,6 +197,12 @@ final AsyncState<T> signalsState = riverpodAsyncValue.toAsyncState();
 final AsyncValue<T> riverpodValue = signalsAsyncState.toAsyncValue();
 ```
 
+> [!NOTE]
+> **Riverpod Adapter Invalidation & Lifecycle Guarantees**:
+> - `RiverpodNotifierBlocSignal.notifier` resolves the live notifier dynamically from `ProviderContainer` (via `notifierProvider`) so `container.invalidate(...)` never leaves a stale notifier reference.
+> - `RiverpodBlocSignal` forwards provider errors directly to `onError`.
+> - `BlocSignalNotifier.build()` suppresses synchronous initial mid-build `state =` assignments and evicts closed `autoClose: true` providers from `_providerCache`.
+
 ---
 
 ## 5. Flutter `Listenable` & `package:provider` Interoperability (`package:bloc_signals_flutter`)

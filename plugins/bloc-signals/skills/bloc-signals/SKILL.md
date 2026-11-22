@@ -89,7 +89,7 @@ Load only the references needed for the task.
   current)`. It passes only the current state to the listener callback.
 - A global `BlocSignalObserver` is a single slot. Installing a telemetry observer can replace an
   existing logger unless the application composes them.
-- `BlocSignalBase` overrides `toString()` to output `$runtimeType($stateValue)`, providing immediate diagnostic visibility across all `CubitSignal` and `BlocSignal` subclasses.
+- `CubitSignalMixin` / `BlocSignalBase` overrides `toString()` to output `'$runtimeType(<uninitialized>)'` before `initCubitSignal` runs or `'$runtimeType(${describeState(stateValue)})'` once initialized, with `@protected describeState(state)` available to customize or redact state output without altering the `<uninitialized>` guard.
 - Prefer inline `late final` field declarations with type inference for computed properties (for example `late final itemCount = computed(() => stateValue.items.length);`) rather than uninitialized field declarations with constructor-body assignments.
 - Defend Flutter's 16.6ms/8.3ms frame budget during heavy workloads using `Isolate.run` for CPU compute, `batch()` for multi-signal mutations, and cooperative time-slicing via `Stopwatch` + `Future.pause()` (Dart 3.13+) or `Future<void>.delayed(Duration.zero)` (Dart 3.5). Never use event loop delays as a crutch to wait for state transitions to settle.
 

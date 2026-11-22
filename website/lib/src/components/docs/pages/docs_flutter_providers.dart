@@ -175,7 +175,7 @@ BlocSignalProvider<AuthBloc>(
           ),
           code([Component.text('BlocSignalProvider.value')]),
           Component.text(
-            ' to provide the existing instance without transferring disposal ownership.',
+            ' to provide the existing instance without transferring disposal ownership. Switching between BlocSignalProvider(create: ...) and BlocSignalProvider.value(...) or toggling lazy across widget updates is handled cleanly in didUpdateWidget.',
           ),
         ]),
         const DocsCallout(

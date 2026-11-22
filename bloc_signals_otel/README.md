@@ -55,8 +55,8 @@ Add `bloc_signals_otel` and `dartastic_opentelemetry` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^1.8.0
-  bloc_signals_otel: ^2.1.0
+  bloc_signals: ^1.9.0
+  bloc_signals_otel: ^2.2.0
   dartastic_opentelemetry: ^0.11.0
   dartastic_opentelemetry_api: ^0.11.0
 ```

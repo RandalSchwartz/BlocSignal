@@ -1,9 +1,10 @@
 # Changelog
 
-## Unreleased
+## 2.1.0
 
-- **Fix (genui_jaspr)**: Re-export shared hardened `A2uiImageUrlPolicy` from `bloc_signals_genui` and enforce it in `buildA2uiImage`, `registerStandardComponents`, and `A2uiJasprCatalog.standard` via `{A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy()}` (#463).
+- **Feat (genui_jaspr)**: Re-export shared hardened `A2uiImageUrlPolicy` from `bloc_signals_genui` and enforce it in `buildA2uiImage`, `registerStandardComponents`, and `A2uiJasprCatalog.standard` via `{A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy()}` (#463).
 - **Fix (genui_jaspr)**: Clamp `buildA2uiSlider` `min`/`max` bounds to `[-1e12, 1e12]` with finite-span fallback `[0.0, 100.0]` and cap `steps` to `[1, 1000]` via `parseSliderRange` (#472).
+- **Dependencies**: Bump `bloc_signals_genui` to `^2.1.0`.
 
 ## 2.0.2
 

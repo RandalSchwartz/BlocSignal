@@ -1,4 +1,4 @@
-## Unreleased
+## 1.9.0
 
 - **Feat (core)**: Guard `CubitSignalMixin.toString()` when uninitialized (`<uninitialized>`) and add `@protected describeState(StateType state)` for customizable state formatting (#474).
 - **Feat (devtools)**: Add `stateRedactor`, `eventRedactor`, `errorRedactor`, `stackTraceRedactor`, and `maxPayloadLength` (default `4096`) to `DevToolsBlocSignalObserver` and `DevToolsService`, isolate redactor exceptions, recursively sanitize `NaN`/`Infinity` and nested/cyclic metadata, and enforce `isEnabled` guards across all RPC handlers (#474).

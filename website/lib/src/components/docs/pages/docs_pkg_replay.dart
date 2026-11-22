@@ -182,8 +182,10 @@ class CanvasToolbar extends StatelessWidget {
             '. ReplayBloc routes undo and redo commands through internal ',
           ),
           apiLink(DocSymbol.onReplay),
+          Component.text(' hooks, minting a per-invocation '),
+          apiLink(DocSymbol.ambientZoneDispatchTokenKey),
           Component.text(
-            ' hooks, emitting paired onEvent and onEventCompleted observer spans (1:1 lifecycle tracking) while keeping concrete onEvent and onTransition subclass overrides type-safe and preserving nested synchronous transitions triggered by reactive effects.',
+            ' zone token so nested undo()/redo() calls isolate their telemetry and OpenTelemetry spans from enclosing add() handlers while emitting paired onEvent and onEventCompleted spans (1:1 lifecycle tracking), keeping concrete onEvent and onTransition subclass overrides type-safe, and preserving nested synchronous transitions triggered by reactive effects.',
           ),
         ]),
         const DocsCodeBlock(

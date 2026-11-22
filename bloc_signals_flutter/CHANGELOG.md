@@ -1,4 +1,4 @@
-## Unreleased
+## 1.5.2
 
 - **Fix (flutter)**: Track `_previousState` independently from rendered `_state` in `BlocSignalBuilder`, suppress initial-pass callbacks for non-reflexive `equals` and add `mounted` guards in `BlocSignalBuilder`, `BlocSignalListener`, and `BlocSignalSelector`, use `!identical()` for container swap checks, and handle `create:`/`.value` and `lazy` transitions in `BlocSignalProvider.didUpdateWidget` (#476).
 

@@ -8,12 +8,12 @@
 
 | Component | Usage & Description |
 | :--- | :--- |
-| **`BlocSignalProvider<T>`** | Provides a `BlocSignal` or `CubitSignal` instance down the Jaspr component tree via `InheritedComponent`. Supports `lazy:` creation and `.value` injection. |
+| **`BlocSignalProvider<T>`** | Provides a `BlocSignal` or `CubitSignal` instance down the Jaspr component tree via `InheritedComponent`. Supports `lazy:` creation, `.value` injection, and `didUpdateComponent` `create:` ↔ `.value(...)` / `lazy` transitions. |
 | **`MultiBlocSignalProvider`** | Combines multiple `BlocSignalProvider` instances into a single linear component hierarchy via `List<BlocSignalProviderSingleChildComponent>` (alias `BlocSignalProviderSingleChildWidget`). |
-| **`BlocSignalBuilder<T, S>`** | Rebuilds Jaspr components dynamically whenever container state updates with optional `buildWhen` filtering and automatic subscription teardown. |
-| **`BlocSignalListener<T, S>`** | Fires side-effect callbacks (such as notifications or JS interop calls) on state updates with optional `listenWhen` predicate filtering and automatic provider swap rebinding. |
+| **`BlocSignalBuilder<T, S>`** | Rebuilds Jaspr components dynamically whenever container state updates with optional `buildWhen` filtering (tracking consecutive `_previousState` pairs across suppressed rebuilds), non-reflexive `equals` initial-pass suppression, `mounted` guards, `!identical(...)` swap checks, and automatic subscription teardown. |
+| **`BlocSignalListener<T, S>`** | Fires side-effect callbacks (such as notifications or JS interop calls) on state updates with optional `listenWhen` predicate filtering, initial-pass non-reflexive `equals` and `mounted` guards, and `!identical(...)` provider swap rebinding. |
 | **`BlocSignalConsumer<T, S>`** | Combines `BlocSignalBuilder` and `BlocSignalListener`, supporting both `buildWhen` and `listenWhen`. |
-| **`BlocSignalSelector<T, S, V>`** | Subscribes to fine-grained computed state slices and rebuilds only when selection changes. |
+| **`BlocSignalSelector<T, S, V>`** | Subscribes to fine-grained computed state slices and rebuilds only when selection changes (with initial-pass non-reflexive `equals` suppression, `mounted` guards, and `!identical(...)` swap checks). |
 | **`MultiBlocSignalListener`** | Combines multiple `BlocSignalListener` instances cleanly via `List<BlocSignalListenerSingleChildComponent>` (alias `BlocSignalListenerSingleChildWidget`). |
 
 ---

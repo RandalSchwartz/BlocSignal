@@ -68,10 +68,10 @@ class const DocsPkgGenuiFlutterPage({super.key}) extends StatelessComponent {
 dependencies:
   flutter:
     sdk: flutter
-  bloc_signals: ^1.8.0
-  bloc_signals_flutter: ^1.5.1
-  bloc_signals_genui: ^2.0.2
-  bloc_signals_genui_flutter: ^2.1.1
+  bloc_signals: ^1.9.0
+  bloc_signals_flutter: ^1.5.2
+  bloc_signals_genui: ^2.1.0
+  bloc_signals_genui_flutter: ^2.1.2
   a2ui_core: ^0.7.0
 ''',
         ),

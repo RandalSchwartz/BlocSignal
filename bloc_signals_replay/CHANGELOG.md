@@ -1,6 +1,7 @@
-## Unreleased
+## 1.4.1
 
 - **Fix (replay)**: Mint a per-invocation `BlocSignalBase.ambientZoneDispatchTokenKey` in `ReplayBlocMixin._runReplayEvent` and wrap `_notifyReplayEvent`, `action`, and `_notifyReplayEventCompleted` inside `runZoned` so nested `undo()`/`redo()` calls isolate their telemetry and OpenTelemetry spans from enclosing `add()` handlers (#475).
+- **Dependencies**: Bump `bloc_signals` to `^1.9.0`.
 
 ## 1.4.0
 

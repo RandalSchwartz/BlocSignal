@@ -99,7 +99,7 @@ Add `bloc_signals_devtools` to your application's `dev_dependencies`:
 
 ```yaml
 dev_dependencies:
-  bloc_signals_devtools: ^1.0.4
+  bloc_signals_devtools: ^1.0.5
 ```
 
 ### 2. Automatic Discovery
@@ -107,7 +107,7 @@ When running your Flutter application in debug mode with `DevToolsBlocSignalObse
 
 ### 3. Architecture & Standalone Embedding
 The package is designed with a decoupled architecture:
-- `lib/bloc_signals_devtools.dart`: Pure Flutter UI widgets (`BlocSignalsDevToolsExtension`, `InstanceTreeView`, `StateDiffInspector`, `TimelineTracePanel`, `LeakDetectorBadge`) and `BlocSignalsDevToolsController` testable on the Dart VM with zero web-only imports.
+- `lib/bloc_signals_devtools.dart`: Pure Flutter UI widgets (`BlocSignalsDevToolsExtension`, `InstanceTreeView`, `StateDiffInspector`, `TimelineTracePanel`, `LeakDetectorBadge`) and `BlocSignalsDevToolsController` testable on the Dart VM with zero web-only imports. `BlocSignalsDevToolsController` and extension UI widgets harden VM Service payload handling with safe `is` type checks, generation-fenced `reset()`/`fetchInstances()`/`fetchHistoryForInstance()` lifecycle tracking, `on Object` catch with unconditional `finally` flag resets (`_isLoading` / `_isFetching`), `_isDisposed` guards on `notifyListeners()`, and event-stream `onError` handling.
 - `lib/main.dart`: Web entrypoint wrapping `DevToolsExtension` and bridging `serviceManager`, precompiled into `extension/devtools/build/` for distribution.
 
 For custom embedding or standalone tooling outside DevTools:

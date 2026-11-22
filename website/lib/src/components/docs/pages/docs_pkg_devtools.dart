@@ -21,6 +21,10 @@ class const DocsPkgDevtoolsPage({super.key}) extends StatelessComponent {
       title: 'Timeline Tracing & Profiling',
       anchor: 'timeline-tracing',
     ),
+    TocHeading(
+      title: 'Redaction, Caps & Hardening',
+      anchor: 'redaction-hardening',
+    ),
   ];
 
   @override
@@ -142,6 +146,42 @@ void main() {
             'You can correlate state mutations directly with Flutter UI frame rendering in the DevTools Performance profiler.',
           ),
         ]),
+      ]),
+
+      // 7. Redaction, Caps & Hardening
+      section(id: 'redaction-hardening', classes: 'docs-section', [
+        h2([Component.text('Redaction, Caps & Hardening')]),
+        p([
+          apiLink(DocSymbol.devToolsBlocSignalObserver),
+          Component.text(' and '),
+          apiLink(DocSymbol.devToolsService),
+          Component.text(
+            '.instance.configure(...) support stateRedactor, eventRedactor, errorRedactor, stackTraceRedactor, '
+            'and maxPayloadLength (defaulting to 4096 UTF-16 code units, preserving surrogate pairs and appending ...[truncated] when exceeded). '
+            'Redactor exceptions are isolated cleanly (falling back to <redaction_error> without aborting transitions), while returning null from '
+            'stateRedactor, eventRedactor, or errorRedactor omits the value (using [REDACTED] for handleDispatch RPC error responses).',
+          ),
+        ]),
+        p([
+          apiLink(DocSymbol.devToolsService),
+          Component.text(
+            '.sanitizeMetadata recursively normalizes double.nan, double.infinity, double.negativeInfinity, and nested or cyclic Map/Iterable '
+            'structures (maxDepth = 8) so VM Service payloads stay jsonEncode-safe, while DevToolsService.isEnabled guards all RPC handlers and '
+            'BlocSignalsDevToolsController/UI widgets harden payload decoding with safe type checks, generation fencing, and _isDisposed guards.',
+          ),
+        ]),
+        const DocsCodeBlock(
+          title: 'lib/main.dart',
+          language: 'dart',
+          code: '''
+BlocSignalObserver.observer = DevToolsBlocSignalObserver(
+  stateRedactor: (bloc, state) => '[REDACTED_STATE]',
+  eventRedactor: (bloc, event) => event?.runtimeType.toString(),
+  errorRedactor: (bloc, error) => 'SanitizedError',
+  stackTraceRedactor: (stack) => stack.toString().split('\\n').take(5).join('\\n'),
+  maxPayloadLength: 2048,
+);''',
+        ),
       ]),
     ]);
   }

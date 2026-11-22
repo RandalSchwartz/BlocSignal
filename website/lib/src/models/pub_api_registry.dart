@@ -73,6 +73,16 @@ enum DocSymbol(
     'bloc_signals',
     'BlocSignalBase/runWithoutHistory.html',
   ),
+  describeState(
+    'describeState',
+    'bloc_signals',
+    'CubitSignalMixin/describeState.html',
+  ),
+  ambientZoneDispatchTokenKey(
+    'ambientZoneDispatchTokenKey',
+    'bloc_signals',
+    'BlocSignalBase/ambientZoneDispatchTokenKey.html',
+  ),
   blocSignalState('state', 'bloc_signals', 'BlocSignalBase/state.html'),
   blocSignalStateValue(
     'stateValue',

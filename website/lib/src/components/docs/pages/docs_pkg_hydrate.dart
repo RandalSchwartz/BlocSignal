@@ -53,7 +53,7 @@ class const DocsPkgHydratePage({super.key}) extends StatelessComponent {
           language: 'yaml',
           code: '''
 dependencies:
-  bloc_signals: ^1.8.0
+  bloc_signals: ^1.9.0
   bloc_signals_hydrate: ^1.1.3
   shared_preferences: ^2.3.0
 ''',

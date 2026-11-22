@@ -72,8 +72,8 @@ void main() {
   group('(Issue #334: R20) Workspace Pubspec, Runner, '
       'and Per-Package Coverage Hygiene', () {
     test('every member bloc_signals* package declaring a bloc_signals '
-        'dependency specifies ^1.5.0, ^1.6.0, or ^1.8.0 and hydrate pubspec '
-        'has no consecutive blank lines', () {
+        'dependency specifies ^1.5.0, ^1.6.0, ^1.8.0, or ^1.9.0 and hydrate '
+        'pubspec has no consecutive blank lines', () {
       final rootDir = Directory.current;
       final memberDirs = rootDir
           .listSync()
@@ -102,10 +102,15 @@ void main() {
           final constraint = match.group(1)!;
           expect(
             constraint,
-            anyOf(equals('1.5.0'), equals('1.6.0'), equals('1.8.0')),
+            anyOf(
+              equals('1.5.0'),
+              equals('1.6.0'),
+              equals('1.8.0'),
+              equals('1.9.0'),
+            ),
             reason:
                 '${pubspecFile.path} must depend on bloc_signals '
-                '^1.5.0, ^1.6.0, or ^1.8.0, found ^$constraint',
+                '^1.5.0, ^1.6.0, ^1.8.0, or ^1.9.0, found ^$constraint',
           );
         }
       }
@@ -129,8 +134,16 @@ void main() {
           .readAsStringSync();
       expect(
         replayPubspec,
-        contains('bloc_signals: ^1.8.0'),
-        reason: 'bloc_signals_replay must require bloc_signals ^1.8.0',
+        contains('bloc_signals: ^1.9.0'),
+        reason: 'bloc_signals_replay must require bloc_signals ^1.9.0',
+      );
+
+      final otelPubspec = File('bloc_signals_otel/pubspec.yaml')
+          .readAsStringSync();
+      expect(
+        otelPubspec,
+        contains('bloc_signals: ^1.9.0'),
+        reason: 'bloc_signals_otel must require bloc_signals ^1.9.0',
       );
     });
 

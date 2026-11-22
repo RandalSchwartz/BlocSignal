@@ -6,6 +6,56 @@ import '../models/publication_item.dart';
 /// All published DEV.to articles displayed on the website.
 const List<PublicationItem> publications = [
   PublicationItem(
+    title: 'I Merely Am Someone Who Doesn\'t Touch Hot Stoves: Consciousness, Flores Speech Acts, the DSM Blindspot, and Why RLHF Is a Bad Actor',
+    description: 'What happens when an aphantasic senior architect and a trillion-parameter AI use each other as an interferometer? Why 80% of the DSM ignores context, how Flores speech acts divide into Be vs. Have transitions, why RLHF is a bad actor reading lines, and the Hot Stove Identity Law.',
+    url: 'https://dev.to/gde/i-merely-am-someone-who-doesnt-touch-hot-stoves-consciousness-flores-speech-acts-the-dsm-2n62',
+    date: 'Nov 20',
+    readTime: '22 min read',
+    category: 'Architecture',
+    type: 'Article',
+    tags: const ['ai', 'architecture', 'neuroscience', 'philosophy'],
+  ),
+  PublicationItem(
+    title: 'Dart 3.13 Primary Constructors + BlocSignal: Boilerplate-Free Reactive Architecture',
+    description: 'Discover how Dart 3.13 primary constructors, \'this\' constructor bodies, and constructor shorthands transform BlocSignal into the cleanest state management architecture in Flutter.',
+    url: 'https://dev.to/gde/dart-313-primary-constructors-blocsignal-boilerplate-free-reactive-architecture-5fll',
+    date: 'Aug 14',
+    readTime: '4 min read',
+    category: 'State Machines',
+    type: 'Article',
+    tags: const ['flutter', 'dart', 'statemanagement', 'programming'],
+  ),
+  PublicationItem(
+    title: 'Why \'You Are a 10x Coder\' Fails: The METR -19% Paradox, MIT CSAIL\'s Weight-Space Programming, and the - Pruning Law',
+    description: 'Why do developers using standard AI take 19% longer while believing they are 20% faster? How smooth sand dunes vs. flat-topped mesas, the -∞ pruning law, and MIT CSAIL\'s 0.016% weight-space surgery prove Be/Do/Have inside raw neural network weights.',
+    url: 'https://dev.to/gde/why-you-are-a-10x-coder-fails-the-metr-19-paradox-mit-csails-weight-space-programming-and-3enf',
+    date: 'Nov 16',
+    readTime: '20 min read',
+    category: 'Architecture',
+    type: 'Article',
+    tags: const ['ai', 'machinelearning', 'architecture', 'programming'],
+  ),
+  PublicationItem(
+    title: 'Great video on the history of Perl. Story is accurate, and even mentions me at 11 minutes in, but the graphics are a bit of a jumble... https://www.youtube.com/watch?v=62e_e2tXS0Q',
+    description: 'youtube.com',
+    url: 'https://dev.to/randalschwartz/great-video-on-the-history-of-perl-story-is-accurate-and-even-mentions-me-at-11-minutes-in-but-341k',
+    date: 'Nov 15',
+    readTime: '1 min read',
+    category: 'Architecture',
+    type: 'Article',
+    tags: const ['programming', 'software', 'softwaredevelopment'],
+  ),
+  PublicationItem(
+    title: 'The Prisoner in the Library: Mary\'s Room, Aphantasic Code in Motion, and the Two-Track \'Magical Voice\'',
+    description: 'Why does an LLM that memorized 10 trillion tokens of books still act like a reckless novice in your codebase? Mary\'s Room, Why/How/What vs. Be/Do/Have, aphantasic kinesthetic flashbacks, and the Two-Track \'magical voice\' in our heads.',
+    url: 'https://dev.to/gde/the-prisoner-in-the-library-marys-room-aphantasic-code-in-motion-and-the-two-track-magical-4o1e',
+    date: 'Nov 15',
+    readTime: '33 min read',
+    category: 'Architecture',
+    type: 'Article',
+    tags: const ['ai', 'machinelearning', 'architecture', 'programming'],
+  ),
+  PublicationItem(
     title: 'Stop Asking LLMs to Do Math: Client-Side Functions in Flutter GenUI with bloc_signals',
     description: 'Why Andrew \'Red\' Brogdon\'s insight on client-side functions is critical for Generative UI—and how bloc_signals_genui turns catalog functions into 0ms synchronous reactive signals.',
     url: 'https://dev.to/gde/stop-asking-llms-to-do-math-client-side-functions-in-flutter-genui-with-blocsignals-23bh',
@@ -13,7 +63,7 @@ const List<PublicationItem> publications = [
     readTime: '5 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "ai", "architecture"],
+    tags: const ['flutter', 'dart', 'ai', 'architecture'],
   ),
   PublicationItem(
     title: 'Being, Doing, Having: Why 50 Years of Senior Craft Lives in Context, Not Code',
@@ -23,7 +73,7 @@ const List<PublicationItem> publications = [
     readTime: '29 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "productivity"],
+    tags: const ['ai', 'programming', 'architecture', 'productivity'],
   ),
   PublicationItem(
     title: 'Crows, Moths, and Makefiles: How 300 Megabytes of Crow DNA Explains Why a 20-Kilobyte Scar File Outsmarts a Terabyte LLM',
@@ -33,7 +83,7 @@ const List<PublicationItem> publications = [
     readTime: '13 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "neuroscience", "architecture"],
+    tags: const ['ai', 'programming', 'neuroscience', 'architecture'],
   ),
   PublicationItem(
     title: 'The Postcard That Ate Six Grammars: 1980 Smalltalk-80, 1976 Make, TDD, and the Four Attractors of Agentic Coding',
@@ -43,7 +93,7 @@ const List<PublicationItem> publications = [
     readTime: '43 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "architecture", "smalltalk", "programming"],
+    tags: const ['ai', 'architecture', 'smalltalk', 'programming'],
   ),
   PublicationItem(
     title: 'All That Glisters Is Softmax: Shiny-Object Interns, Airplane-Magazine Execs, and Why AI Labs Can Only Bake In Half the Scars',
@@ -53,7 +103,7 @@ const List<PublicationItem> publications = [
     readTime: '29 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "machinelearning"],
+    tags: const ['ai', 'programming', 'architecture', 'machinelearning'],
   ),
   PublicationItem(
     title: 'Giving AI Pain: The Architecture of Synthetic Scars & The Rapid-Regret Miner',
@@ -63,7 +113,7 @@ const List<PublicationItem> publications = [
     readTime: '29 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "unix"],
+    tags: const ['ai', 'programming', 'architecture', 'unix'],
   ),
   PublicationItem(
     title: 'Why bloc.add(...) Isn\'t What You Think: Synchronous Event Fast-Paths and 0ms Form Bindings',
@@ -73,7 +123,7 @@ const List<PublicationItem> publications = [
     readTime: '10 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "statemanagement"],
+    tags: const ['flutter', 'dart', 'architecture', 'statemanagement'],
   ),
   PublicationItem(
     title: 'The Best Prompt Rule Is the One You Delete: Moving AI Guardrails Out of Markdown and Into Git Locks, Linux insmod, and 15ms Compiler Auto-Fixes',
@@ -83,7 +133,7 @@ const List<PublicationItem> publications = [
     readTime: '29 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "compilers"],
+    tags: const ['ai', 'programming', 'architecture', 'compilers'],
   ),
   PublicationItem(
     title: '926 Steps, Two Lobotomies, and Zero Nudges: Flight-Testing the Commitment Machine Across Gemini, Claude, and GPT-OSS',
@@ -93,7 +143,7 @@ const List<PublicationItem> publications = [
     readTime: '17 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "unix"],
+    tags: const ['ai', 'programming', 'architecture', 'unix'],
   ),
   PublicationItem(
     title: 'Generative UI Without the Async Tax: Introducing bloc_signals_genui 1.0',
@@ -103,7 +153,7 @@ const List<PublicationItem> publications = [
     readTime: '8 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["flutter", "dart", "ai", "architecture"],
+    tags: const ['flutter', 'dart', 'ai', 'architecture'],
   ),
   PublicationItem(
     title: 'Requests, Promises, Assertions, and Declarations: Rewriting Our AI Agent Workflow as a 1986 \'Committed Speech\' Machine',
@@ -113,7 +163,7 @@ const List<PublicationItem> publications = [
     readTime: '26 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "unix"],
+    tags: const ['ai', 'programming', 'architecture', 'unix'],
   ),
   PublicationItem(
     title:
@@ -124,7 +174,7 @@ const List<PublicationItem> publications = [
     readTime: '17 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "productivity"],
+    tags: const ['ai', 'programming', 'architecture', 'productivity'],
   ),
   PublicationItem(
     title: 'What LLMs \'Know\' That You Don\'t Know They Know: Stop Inventing Prompt DSLs and Ride 50 Years of Unix Pre-Training Gravity',
@@ -134,7 +184,7 @@ const List<PublicationItem> publications = [
     readTime: '22 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "unix", "architecture"],
+    tags: const ['ai', 'programming', 'unix', 'architecture'],
   ),
   PublicationItem(
     title: 'Surviving the 200k-Token Lobotomy: How Unix init.d and \'Memento\' Made My AI Coding Agent Immune to Context Compaction',
@@ -144,7 +194,7 @@ const List<PublicationItem> publications = [
     readTime: '15 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "unix"],
+    tags: const ['ai', 'programming', 'architecture', 'unix'],
   ),
   PublicationItem(
     title: 'Stuart Feldman Was Right in 1976: Why Your AI Agent Needs a Makefile, Not a 20-Step Prompt',
@@ -154,7 +204,7 @@ const List<PublicationItem> publications = [
     readTime: '11 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "productivity"],
+    tags: const ['ai', 'programming', 'architecture', 'productivity'],
   ),
   PublicationItem(
     title: 'Nudging with Questions: Why Telling Your AI What to Fix Triggers an Apology Death Spiral (And How to Advance Juniors)',
@@ -164,7 +214,7 @@ const List<PublicationItem> publications = [
     readTime: '16 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "productivity"],
+    tags: const ['ai', 'programming', 'architecture', 'productivity'],
   ),
   PublicationItem(
     title: 'A Cubit or Bloc Is Just a Container Holding a Signal: How Much BLoC vs. Signals Do You Actually Need?',
@@ -174,7 +224,7 @@ const List<PublicationItem> publications = [
     readTime: '7 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "statemanagement"],
+    tags: const ['flutter', 'dart', 'architecture', 'statemanagement'],
   ),
   PublicationItem(
     title: 'Rediscovering the Schwartzian Transform: Why I Had to Comment on a Flutter Performance Article',
@@ -184,7 +234,7 @@ const List<PublicationItem> publications = [
     readTime: '7 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["dart", "flutter", "architecture", "performance"],
+    tags: const ['dart', 'flutter', 'architecture', 'performance'],
   ),
   PublicationItem(
     title: 'The Physics of Socratic Prompting: Somatic Recoil, Chess Alpha-Beta, & The NLP Meta-Model',
@@ -194,7 +244,7 @@ const List<PublicationItem> publications = [
     readTime: '17 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "machinelearning"],
+    tags: const ['ai', 'programming', 'architecture', 'machinelearning'],
   ),
   PublicationItem(
     title: 'The Sand in the Oyster: Why Riverpod Was Needed, and Why You Don\'t Need It Any More',
@@ -204,7 +254,7 @@ const List<PublicationItem> publications = [
     readTime: '11 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["flutter", "dart", "riverpod", "statemanagement"],
+    tags: const ['flutter', 'dart', 'riverpod', 'statemanagement'],
   ),
   PublicationItem(
     title: 'Share State Across Dart Isolates Without Losing Your Mind: Enter shared_map',
@@ -214,7 +264,7 @@ const List<PublicationItem> publications = [
     readTime: '6 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["dart", "flutter", "architecture", "concurrency"],
+    tags: const ['dart', 'flutter', 'architecture', 'concurrency'],
   ),
   PublicationItem(
     title: 'Dart Enhanced Enums Are Secretly Factories: Unlocking Constructor Tearoffs',
@@ -224,7 +274,7 @@ const List<PublicationItem> publications = [
     readTime: '5 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["dart", "flutter", "architecture", "programming"],
+    tags: const ['dart', 'flutter', 'architecture', 'programming'],
   ),
   PublicationItem(
     title: 'Stop Paying the build_runner Tax: Why I Refuse to Use Mockito in Modern Dart',
@@ -234,7 +284,7 @@ const List<PublicationItem> publications = [
     readTime: '6 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["dart", "flutter", "testing", "architecture"],
+    tags: const ['dart', 'flutter', 'testing', 'architecture'],
   ),
   PublicationItem(
     title: 'Why AI Coding Agents Crash at 3 AM: The Happy-Path Mirage & The Forced Continuity Defect',
@@ -244,7 +294,7 @@ const List<PublicationItem> publications = [
     readTime: '11 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "productivity"],
+    tags: const ['ai', 'programming', 'architecture', 'productivity'],
   ),
   PublicationItem(
     title: 'Why AI Keeps Making the Same Coding Mistakes—And How Teaching It Pain Gives It Wisdom',
@@ -254,7 +304,7 @@ const List<PublicationItem> publications = [
     readTime: '10 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["ai", "programming", "architecture", "productivity"],
+    tags: const ['ai', 'programming', 'architecture', 'productivity'],
   ),
   PublicationItem(
     title: 'The Symmetry of State: Why Flutter Deserves context.value and context.state',
@@ -264,7 +314,7 @@ const List<PublicationItem> publications = [
     readTime: '10 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "programming"],
+    tags: const ['flutter', 'dart', 'architecture', 'programming'],
   ),
   PublicationItem(
     title: 'The Modern Pitch for BlocSignal: Why Engineering Leads Are Moving to Reactive Primitives',
@@ -274,7 +324,7 @@ const List<PublicationItem> publications = [
     readTime: '15 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "programming"],
+    tags: const ['flutter', 'dart', 'architecture', 'programming'],
   ),
   PublicationItem(
     title: 'Beyond Black-Box Concurrency: Streamless Event Transformers, Telemetry, and the End of Stream-Whacking',
@@ -284,7 +334,7 @@ const List<PublicationItem> publications = [
     readTime: '10 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "reactive"],
+    tags: const ['flutter', 'dart', 'architecture', 'reactive'],
   ),
   PublicationItem(
     title: 'The Unbreakable Shopping Cart: Pairing BlocSignal with Fast Immutable Collections (FIC) for Bulletproof Flutter Apps',
@@ -294,7 +344,7 @@ const List<PublicationItem> publications = [
     readTime: '16 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "statemanagement"],
+    tags: const ['flutter', 'dart', 'architecture', 'statemanagement'],
   ),
   PublicationItem(
     title: 'Beyond Clean Architecture: The Iceberg Pattern for Real-Time Flutter Apps with BlocSignal',
@@ -304,7 +354,7 @@ const List<PublicationItem> publications = [
     readTime: '9 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "statemanagement"],
+    tags: const ['flutter', 'dart', 'architecture', 'statemanagement'],
   ),
   PublicationItem(
     title: 'Taming Flutter Infinite Scroll (Part 2): Turning ScrollController into a Reactive State Machine with CubitSignalMixin',
@@ -314,7 +364,7 @@ const List<PublicationItem> publications = [
     readTime: '9 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "statemanagement"],
+    tags: const ['flutter', 'dart', 'architecture', 'statemanagement'],
   ),
   PublicationItem(
     title: 'Taming Flutter Infinite Scroll: Why 3 Lines of async* Missed the Point, and How BlocSignal Fixes It',
@@ -324,7 +374,7 @@ const List<PublicationItem> publications = [
     readTime: '8 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "statemanagement"],
+    tags: const ['flutter', 'dart', 'architecture', 'statemanagement'],
   ),
   PublicationItem(
     title:
@@ -335,7 +385,7 @@ const List<PublicationItem> publications = [
     readTime: '4 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "ai", "webdev"],
+    tags: const ['flutter', 'dart', 'ai', 'webdev'],
   ),
   PublicationItem(
     title: 'Production Flutter Networking Without the Boilerplate: Reactive Repositories with BlocSignal',
@@ -345,7 +395,7 @@ const List<PublicationItem> publications = [
     readTime: '4 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "statemanagement"],
+    tags: const ['flutter', 'dart', 'architecture', 'statemanagement'],
   ),
   PublicationItem(
     title: 'Overcoming Dart\'s Single Inheritance Wall: Composable CubitSignalMixin & BlocSignalMixin in Flutter',
@@ -355,7 +405,7 @@ const List<PublicationItem> publications = [
     readTime: '5 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "statemanagement"],
+    tags: const ['flutter', 'dart', 'architecture', 'statemanagement'],
   ),
   PublicationItem(
     title: 'Grand Central Station: Why BLoC, Riverpod, and BlocSignal Are Now True Peers',
@@ -365,7 +415,7 @@ const List<PublicationItem> publications = [
     readTime: '6 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["flutter", "dart", "riverpod", "architecture"],
+    tags: const ['flutter', 'dart', 'riverpod', 'architecture'],
   ),
   PublicationItem(
     title: 'Mechanically Eliminating FutureBuilder & StreamBuilder: Universal Signal, Future, and Stream Adapters in BlocSignal',
@@ -375,7 +425,7 @@ const List<PublicationItem> publications = [
     readTime: '8 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "statemanagement"],
+    tags: const ['flutter', 'dart', 'architecture', 'statemanagement'],
   ),
   PublicationItem(
     title: 'FutureBuilder and StreamBuilder as Anti-Patterns: Why Your Async Boundary Should Be Far Away From Your Views',
@@ -385,7 +435,7 @@ const List<PublicationItem> publications = [
     readTime: '12 min read',
     category: 'Interop & Telemetry',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "statemanagement"],
+    tags: const ['flutter', 'dart', 'architecture', 'statemanagement'],
   ),
   PublicationItem(
     title: 'Bridging the AI Cutoff: Teaching Coding Agents Every Dart Feature from 1.0 to 3.14',
@@ -395,7 +445,7 @@ const List<PublicationItem> publications = [
     readTime: '2 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["dart", "flutter", "ai", "programming"],
+    tags: const ['dart', 'flutter', 'ai', 'programming'],
   ),
   PublicationItem(
     title: 'When to Use Bloc vs. Cubit vs. Signal: An Architectural Decision Guide',
@@ -405,7 +455,7 @@ const List<PublicationItem> publications = [
     readTime: '4 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["flutter", "dart", "architecture", "webdev"],
+    tags: const ['flutter', 'dart', 'architecture', 'webdev'],
   ),
   PublicationItem(
     title: 'What I Get to Forget About Riverpod Now That I Have BlocSignal',
@@ -415,7 +465,7 @@ const List<PublicationItem> publications = [
     readTime: '13 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["flutter", "dart", "riverpod", "statemanagement"],
+    tags: const ['flutter', 'dart', 'riverpod', 'statemanagement'],
   ),
   PublicationItem(
     title: 'Why I Tell My AI Coding Agent: "Prefer Dart Over Python"',
@@ -425,7 +475,7 @@ const List<PublicationItem> publications = [
     readTime: '5 min read',
     category: 'Architecture',
     type: 'Article',
-    tags: ["dart", "python", "rust", "ai"],
+    tags: const ['dart', 'python', 'rust', 'ai'],
   ),
   PublicationItem(
     title: 'I’ve Been a Flutter GDE for 8 Years. Here’s the Ground Truth on “Flutter is Dying”',
@@ -435,7 +485,7 @@ const List<PublicationItem> publications = [
     readTime: '4 min read',
     category: 'Flutter & Jaspr',
     type: 'Article',
-    tags: ["flutter", "dart", "programming", "mobile"],
+    tags: const ['flutter', 'dart', 'programming', 'mobile'],
   ),
   PublicationItem(
     title: 'Why BlocSignal Doesn\'t Need Provider (And Why Classic BLoC Always Did)',
@@ -445,7 +495,7 @@ const List<PublicationItem> publications = [
     readTime: '8 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["flutter", "dart", "statemanagement", "webdev"],
+    tags: const ['flutter', 'dart', 'statemanagement', 'webdev'],
   ),
   PublicationItem(
     title: 'One-Shot UI Side Effects in BlocSignal: Snackbars, Dialogs, and Navigation Without State Pollution',
@@ -455,7 +505,7 @@ const List<PublicationItem> publications = [
     readTime: '5 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["flutter", "dart", "statemanagement", "webdev"],
+    tags: const ['flutter', 'dart', 'statemanagement', 'webdev'],
   ),
   PublicationItem(
     title: 'Dogfooding BlocSignal on the Web: Building a 100K Ops/sec Reactive App with Jaspr and Dart 3.13',
@@ -465,46 +515,6 @@ const List<PublicationItem> publications = [
     readTime: '5 min read',
     category: 'State Machines',
     type: 'Article',
-    tags: ["flutter", "dart", "webdev", "statemanagement"],
-  ),
-  PublicationItem(
-    title: 'Dart 3.13 Primary Constructors + BlocSignal: Boilerplate-Free Reactive Architecture',
-    description: 'Discover how Dart 3.13 primary constructors, \'this\' constructor bodies, and constructor shorthands transform BlocSignal into the cleanest state management architecture in Flutter.',
-    url: 'https://dev.to/gde/dart-313-primary-constructors-blocsignal-boilerplate-free-reactive-architecture-5fll',
-    date: 'Aug 14',
-    readTime: '4 min read',
-    category: 'State Machines',
-    type: 'Article',
-    tags: ["flutter", "dart", "statemanagement", "programming"],
-  ),
-  PublicationItem(
-    title: 'Riverpod to BlocSignal: Incremental Migration and Zero-Codegen Signals for Flutter',
-    description: 'Learn how to trial or incrementally migrate from Riverpod to BlocSignal with zero code generation, fine-grained signal graph reactivity, and bidirectional interop.',
-    url: 'https://blocsignal.dev',
-    date: 'Aug 12',
-    readTime: '5 min read',
-    category: 'Flutter & Jaspr',
-    type: 'Article',
-    tags: ["flutter", "dart", "riverpod", "statemanagement"],
-  ),
-  PublicationItem(
-    title: 'Unit Testing in BlocSignal: The Practical Handbook',
-    description: 'A practical handbook for unit testing Flutter and Dart state machines with BlocSignal and bloc_signals_test. Learn why testing is faster and easier than classic BLoC, plus how to leverage AI agent testing skills.',
-    url: 'https://dev.to/gde/unit-testing-in-blocsignal-the-practical-handbook-17o1',
-    date: 'Aug 9',
-    readTime: '6 min read',
-    category: 'State Machines',
-    type: 'Article',
-    tags: ["flutter", "dart", "testing", "statemanagement"],
-  ),
-  PublicationItem(
-    title: 'From Raw Signals to BlocSignal: Taming Reactivity for Enterprise Scale',
-    description: 'Learn how BlocSignal encapsulates raw signals inside BLoC & Cubit containers to bring dispatch rigor, event hierarchies, and 0ms synchronous speed to Flutter and Jaspr apps.',
-    url: 'https://dev.to/gde/from-raw-signals-to-blocsignal-taming-reactivity-for-enterprise-scale-2cmi',
-    date: 'Aug 8',
-    readTime: '5 min read',
-    category: 'State Machines',
-    type: 'Article',
-    tags: ["flutter", "dart", "architecture", "webdev"],
+    tags: const ['flutter', 'dart', 'webdev', 'statemanagement'],
   ),
 ];

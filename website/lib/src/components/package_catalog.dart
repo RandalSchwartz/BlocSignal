@@ -17,7 +17,7 @@ class const PackageItem({
 const List<PackageItem> _allPackages = [
   PackageItem(
     name: 'bloc_signals',
-    version: '1.8.0',
+    version: '1.9.0',
     desc: 'Core pure Dart reactive state container bridging BLoC semantics with Preact Signals v7 primitives.',
     icon: '⚡',
     category: 'Core & UI',
@@ -26,7 +26,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_flutter',
-    version: '1.5.1',
+    version: '1.5.2',
     desc: 'Flutter UI bindings, InheritedWidget providers, builders, listeners, selectors, and Listenable interop.',
     icon: '💙',
     category: 'Core & UI',
@@ -44,7 +44,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_jaspr',
-    version: '1.3.0',
+    version: '1.3.1',
     desc: 'Jaspr web component integration, InheritedComponent providers, builders, listeners, and selectors.',
     icon: '🌐',
     category: 'Core & UI',
@@ -53,7 +53,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_riverpod',
-    version: '1.1.3',
+    version: '1.1.4',
     desc: 'Bidirectional read-and-mutate Riverpod 2 & 3 interop adapters (toBlocSignal / toProvider / typed Notifier access).',
     icon: '🌊',
     category: 'State & Interop',
@@ -71,7 +71,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_replay',
-    version: '1.4.0',
+    version: '1.4.1',
     desc: 'Replay, undo, and redo state tracking utilities (ReplayCubit, ReplayBloc, ReplayEvent).',
     icon: '↩️',
     category: 'State & Interop',
@@ -80,7 +80,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_otel',
-    version: '2.1.0',
+    version: '2.2.0',
     desc: 'OpenTelemetry lifecycle tracing, transition metrics, and distributed span correlation.',
     icon: '🔭',
     category: 'DevTools & Tooling',
@@ -89,7 +89,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_devtools',
-    version: '1.0.4',
+    version: '1.0.5',
     desc: 'Custom Flutter DevTools extension for timeline tracing, state diffing, and memory leak detection.',
     icon: '🛠️',
     category: 'DevTools & Tooling',
@@ -98,7 +98,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui',
-    version: '2.0.2',
+    version: '2.1.0',
     desc: 'Pure-Dart A2UI streaming state machine and Generative UI adapter for the BlocSignal ecosystem.',
     icon: '🤖',
     category: 'Generative UI',
@@ -107,7 +107,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui_flutter',
-    version: '2.1.1',
+    version: '2.1.2',
     desc: 'Declarative Flutter surface containers and A2UI catalog widget adapters for generative user interfaces.',
     icon: '🎨',
     category: 'Generative UI',
@@ -116,7 +116,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_genui_jaspr',
-    version: '2.0.2',
+    version: '2.1.0',
     desc: 'Declarative Jaspr web components and DOM catalog adapters for generative user interfaces.',
     icon: '🌐',
     category: 'Generative UI',
@@ -134,7 +134,7 @@ const List<PackageItem> _allPackages = [
   ),
   PackageItem(
     name: 'bloc_signals_lint',
-    version: '1.3.5',
+    version: '2.0.0',
     desc: 'Analyzer plugin with 20 static analysis lint rules and 8 automated IDE quick-fixes.',
     icon: '🛡️',
     category: 'DevTools & Tooling',

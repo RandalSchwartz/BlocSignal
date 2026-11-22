@@ -1,11 +1,11 @@
 # Changelog
 
-## Unreleased
+## 2.2.0
 
 - **Fix (otel)**: Correlate `OtelBlocSignalObserver` spans by per-invocation `BlocSignalBase.ambientZoneDispatchTokenKey` so `droppable()` drops, `restartable()` preemptions, and `onError` failures close only their targeted span without corrupting sibling or replacement spans, and enforce chronological oldest-first eviction via `maxActiveSpans` (#475).
 - **Fix (otel)**: Activate `otel.Context.current.withSpan(span)` across `tracedBloc` / `traced` transformer execution so `otel.Context.current.span` resolves inside sync and async handlers, and tag bypassed or dropped invocations with `bloc.contention = true` (#475).
 - **Feat (otel)**: Add optional `stackTraceRedactor` and `maxStackTraceLength` parameters to `OtelBlocSignalObserver`, `traced()`, and `tracedBloc()` (#475).
-- **Dependencies**: Bump `bloc_signals` minimum constraint to `^1.8.0`.
+- **Dependencies**: Bump `bloc_signals` minimum constraint to `^1.9.0`.
 
 ## 2.1.0
 

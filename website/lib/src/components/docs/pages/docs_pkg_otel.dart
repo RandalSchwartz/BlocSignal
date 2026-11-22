@@ -160,8 +160,13 @@ Future<void> main() async {
         p([
           Component.text(
             'Configure stateRedactor, eventRedactor, errorRedactor, stackTraceRedactor, maxAttributeLength, and '
-            'maxStackTraceLength on OtelBlocSignalObserver (and errorRedactor, stackTraceRedactor, maxAttributeLength, '
-            'and maxStackTraceLength on traced / tracedBloc) to scrub PII or secrets and bound attribute '
+            'maxStackTraceLength on OtelBlocSignalObserver (and on ',
+          ),
+          apiLink(DocSymbol.traced),
+          Component.text(' / '),
+          apiLink(DocSymbol.tracedBloc),
+          Component.text(
+            ', which also activate otel.Context.current.withSpan(span) across handler execution and tag bypassed or dropped invocations with bloc.contention = true) to scrub PII or secrets and bound attribute '
             'string lengths. Returning null from stateRedactor or eventRedactor omits the attribute, returning null '
             'from errorRedactor omits the span status description and records [REDACTED] for exception.message, and '
             'returning an empty string from stackTraceRedactor omits exception.stacktrace. '

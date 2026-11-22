@@ -55,7 +55,7 @@ Add `bloc_signals_devtools` to your application's `dev_dependencies`:
 
 ```yaml
 dev_dependencies:
-  bloc_signals_devtools: ^1.0.4
+  bloc_signals_devtools: ^1.0.5
 ```
 
 ### 2. Register DevTools Observer

@@ -82,7 +82,7 @@ class const App({super.key}) extends StatelessComponent {
         h2([Component.text('Reactive Builders & Consumers')]),
         p([
           Component.text(
-            'Rebuild HTML elements when state changes using BlocSignalBuilder, or coordinate side effects with BlocSignalConsumer:',
+            'Rebuild HTML elements when state changes using BlocSignalBuilder, or coordinate side effects with BlocSignalConsumer. Like their Flutter counterparts, Jaspr builders track consecutive previous/current state pairs across suppressed buildWhen transitions, suppress initial-pass callbacks for non-reflexive equals, check mounted, detect container swaps via !identical(), and handle create:/.value and lazy transitions in BlocSignalProvider.didUpdateComponent:',
           ),
         ]),
         const DocsCodeBlock(

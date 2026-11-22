@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.3.1
 
 - **Fix (jaspr)**: Track `_previousState` independently from rendered `_state` in `BlocSignalBuilder`, suppress initial-pass callbacks for non-reflexive `equals` and add `mounted` guards in `BlocSignalBuilder`, `BlocSignalListener`, and `BlocSignalSelector`, use `!identical()` for container swap checks, and handle `create:`/`.value` and `lazy` transitions in `BlocSignalProvider.didUpdateComponent` (#476).
 

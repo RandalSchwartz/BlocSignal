@@ -1,6 +1,6 @@
 # Core API and event processing
 
-This reference matches `bloc_signals` 1.8.x. Re-read the installed source when the project uses a
+This reference matches `bloc_signals` 1.9.x. Re-read the installed source when the project uses a
 different version.
 
 ## Public state and lifecycle
@@ -18,6 +18,7 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 | `emitError(error, [stackTrace])` | Emits an operational error to observers and container hooks (`addError` is a backward-compatible alias). |
 | `emitTelemetry(name, {event, metadata})` | Emits an operational telemetry event and optional metadata payload to observers. |
 | `BlocSignal.add(event)` | Routes an event and returns `void`. |
+| `BlocSignalBase.ambientZoneDispatchTokenKey` | `static final Object` Zone key carrying a unique per-invocation dispatch token propagated by `BlocSignalMixin.add` across `onEvent`, transformer/handler execution, `onError`, and `onEventCompleted` for isolated concurrent telemetry correlation. |
 | `BlocSignalBase(..., options: ...)` | Accepts optional `SignalOptions<StateType>` to configure signal settings (such as debug `name`). Defaults debug name to `'$runtimeType.state'`. |
 | `createEffect(callback, options: ..., onDispose: ...)` | Creates an effect immediately, assigning `options?.name` (defaulting to `'$runtimeType.effect#N'`) and registering its disposer with the base. |
 | `isClosed` | Reports whether `close()` has run. |

@@ -51,6 +51,8 @@ void main() {
       expect(names, contains('onReset'));
       expect(names, contains('isHistorySuppressed'));
       expect(names, contains('runWithoutHistory'));
+      expect(names, contains('describeState'));
+      expect(names, contains('ambientZoneDispatchTokenKey'));
       expect(names, contains('droppable'));
       expect(names, contains('restartable'));
       expect(names, contains('sequential'));

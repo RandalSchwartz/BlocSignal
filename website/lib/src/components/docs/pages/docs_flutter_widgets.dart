@@ -86,7 +86,7 @@ class CounterDisplay extends StatelessWidget {
           Component.text('You can provide an optional '),
           code([Component.text('buildWhen')]),
           Component.text(
-            ' condition to filter which state transitions trigger widget rebuilds:',
+            ' condition to filter which state transitions trigger widget rebuilds. BlocSignalBuilder tracks _previousState independently from the last rendered state so buildWhen always receives consecutive state pairs even across suppressed rebuilds, while BlocSignalBuilder, BlocSignalListener, and BlocSignalSelector suppress initial-pass callbacks for non-reflexive equals comparators, guard callbacks with mounted, and detect container swaps via !identical():',
           ),
         ]),
         const DocsCodeBlock(

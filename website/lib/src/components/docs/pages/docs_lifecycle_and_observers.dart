@@ -246,11 +246,19 @@ class AppBlocObserver extends BlocSignalObserver {
           Component.text('The satellite package bloc_signals_otel provides '),
           apiLink(DocSymbol.otelBlocSignalObserver),
           Component.text(
-            ', instrumenting events and transitions into distributed OpenTelemetry trace spans. In addition, ',
+            ', instrumenting events and transitions into distributed OpenTelemetry trace spans using per-invocation ',
+          ),
+          apiLink(DocSymbol.ambientZoneDispatchTokenKey),
+          Component.text(
+            ' correlation across concurrent handlers. In addition, ',
           ),
           apiLink(DocSymbol.devToolsBlocSignalObserver),
           Component.text(
-            ' posts diagnostic events via dart:developer for Flutter DevTools and isolates previousObserver exceptions across all 8 lifecycle hooks. When combining multiple observers, ',
+            ' posts diagnostic events via dart:developer for Flutter DevTools, supports state/event/error/stack-trace redactors and payload length caps (default 4096), and isolates previousObserver exceptions across all 8 lifecycle hooks. Containers also expose ',
+          ),
+          apiLink(DocSymbol.describeState),
+          Component.text(
+            ' for safe, customizable toString() formatting with an automatic <uninitialized> guard on CubitSignalMixin before initCubitSignal runs. When combining multiple observers, ',
           ),
           apiLink(DocSymbol.compositeBlocSignalObserver),
           Component.text(

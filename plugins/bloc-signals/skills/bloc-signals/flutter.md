@@ -157,7 +157,7 @@ unrelated parent rebuild does not restart the effect. When `bloc:` is omitted, t
 looks up its provider with `listen: true` during `didChangeDependencies`, so if an ancestor provider replaces
 its container instance, the listener automatically rebinds and continues observing state transitions seamlessly.
 
-`BlocSignalBuilder` supports `buildWhen(previous, current)` to conditionally suppress rebuilds when state changes:
+`BlocSignalBuilder` supports `buildWhen(previous, current)` to conditionally suppress rebuilds when state changes, tracking `_previousState` independently from the rendered `_state` so `buildWhen` always receives consecutive state pairs even across suppressed rebuilds:
 
 ```dart
 BlocSignalBuilder<CounterBloc, int>(
@@ -165,6 +165,8 @@ BlocSignalBuilder<CounterBloc, int>(
   builder: (context, count) => Text('$count'),
 )
 ```
+
+`BlocSignalBuilder`, `BlocSignalListener`, and `BlocSignalSelector` also suppress initial-pass callbacks even for non-reflexive `equals` comparators, guard reactive callbacks with `mounted`, and check container swaps via `!identical(...)` (safe for value-equal container subclasses). `BlocSignalProvider.didUpdateWidget` handles `create:` / `.value(...)` and `lazy` transitions cleanly across widget updates.
 
 `BlocSignalConsumer<T, S>` combines that listener with `BlocSignalBuilder`. It forwards both `listenWhen` and `buildWhen`. Its provider lookup does listen for instance replacement.
 

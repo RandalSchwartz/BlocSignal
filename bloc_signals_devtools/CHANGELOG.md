@@ -1,4 +1,4 @@
-## Unreleased
+## 1.0.5
 
 - **Fix (devtools)**: Harden `BlocSignalsDevToolsController` and DevTools extension UI widgets (`main.dart`, `bloc_signals_devtools.dart`, `InstanceTreeView`, `TimelineTracePanel`) against malformed VM Service payloads with safe `is` checks and generation-guarded `reset()`/`fetchInstances()`/`fetchHistoryForInstance()` lifecycle handling, catch `on Object` and reset `_isLoading`/`_isFetching` in `finally`, guard `notifyListeners()` with `_isDisposed`, attach `onError` to event stream subscriptions, and rebuild the shipped `extension/devtools/build/` bundle (#474).
 

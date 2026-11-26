@@ -1,5 +1,6 @@
 ## Unreleased
 
+- **Feat (flutter)**: add fluent zero-allocation `.build` and `.build.child` widget builder extensions on `ReadonlySignal` and `BlocSignalBase` (#393).
 - **Feat (flutter)**: Add `BlocSignalProvider.maybeOf`, `context.maybeRead`, `context.maybeWatch`, structured `BlocSignalProviderNotFoundError` (extending `FlutterError`), `BlocSignalListener.transition` / `BlocSignalConsumer.transition`, `context.select(..., equals:)`, `debugFillProperties` on all 7 widgets, and `EffectOptions(name: ...)` on `BlocSignalBuilder` and `BlocSignalListener` (#481).
 - **Feat (flutter)**: Add `.child` constructors to `BlocSignalBuilder`, `BlocSignalSelector`, and `BlocSignalConsumer` for static `child` subtree preservation (#497).
 - **Feat (flutter)**: Add `take` and `takeWhile` execution quotas to `BlocSignalListener` and `BlocSignalConsumer` (#390).

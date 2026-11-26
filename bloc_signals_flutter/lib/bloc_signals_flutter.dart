@@ -16,3 +16,4 @@ export 'src/bloc_signal_provider.dart';
 export 'src/bloc_signal_selector.dart';
 export 'src/listenable_adapter.dart';
 export 'src/multi_bloc_signal_listener.dart';
+export 'src/signal_build_extension.dart';

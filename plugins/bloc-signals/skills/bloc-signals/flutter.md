@@ -54,12 +54,29 @@ is idempotent.
 ## State rebuilds
 
 `BlocSignalBuilder` reads a supplied bloc or finds one from the nearest matching provider. Its
-internal `SignalBuilder` watches `bloc.state`:
+internal `effect(...)` subscription watches `bloc.state`:
 
 ```dart
 BlocSignalBuilder<CounterBloc, int>(
   builder: (context, count) => Text('$count'),
 )
+```
+
+For concise inline widgets when you already hold a `ReadonlySignal<T>` (such as `Signal` or `Computed`) or a `BlocSignalBase<T>` (`CubitSignal` or `BlocSignal`), use the zero-allocation `.build` and `.build.child` fluent extensions (`SignalWidgetFunctor` and `BlocSignalWidgetFunctor`):
+
+```dart
+counterSignal.build((context, value) => Text('$value'));
+
+counterCubit.build.child(
+  const Icon(Icons.star),
+  (context, state, child) => Row(
+    children: [
+      if (child != null) child,
+      Text('$state'),
+    ],
+  ),
+  buildWhen: (previous, current) => current.isEven,
+);
 ```
 
 Pass `bloc:` when the instance is not provided in the current subtree.

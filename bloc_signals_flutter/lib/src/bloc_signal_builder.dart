@@ -102,9 +102,27 @@ class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
   S? _state;
   S? _previousState;
   EffectCleanup? _cleanup;
+  bool _isActive = true;
+  bool _hasPendingUpdate = false;
+
+  void _reconcileState(S currentState, {required bool notify}) {
+    final previous = _previousState as S;
+    if (!_bloc!.equals(previous, currentState)) {
+      _previousState = currentState;
+      if (widget.buildWhen == null ||
+          widget.buildWhen!(previous, currentState)) {
+        _state = currentState;
+        if (notify) {
+          setState(() {});
+        }
+      }
+    }
+  }
 
   void _subscribe() {
     _cleanup?.call();
+    _cleanup = null;
+    _hasPendingUpdate = false;
     final initialState = _bloc!.state.value;
     _state = initialState;
     _previousState = initialState;
@@ -117,19 +135,35 @@ class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
           isInitial = false;
           return;
         }
-        if (!mounted) return;
-        final previous = _previousState as S;
-        if (!_bloc!.equals(previous, currentState)) {
-          _previousState = currentState;
-          if (widget.buildWhen == null ||
-              widget.buildWhen!(previous, currentState)) {
-            _state = currentState;
-            setState(() {});
+        untracked(() {
+          if (!mounted) return;
+          if (!_isActive) {
+            _hasPendingUpdate = true;
+            return;
           }
-        }
+          _reconcileState(currentState, notify: true);
+        });
       },
       options: EffectOptions(name: 'BlocSignalBuilder<$T, $S>.effect'),
     );
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    _isActive = true;
+    if (_hasPendingUpdate) {
+      _hasPendingUpdate = false;
+      untracked(() {
+        _reconcileState(_bloc!.state.value, notify: false);
+      });
+    }
+  }
+
+  @override
+  void deactivate() {
+    _isActive = false;
+    super.deactivate();
   }
 
   @override
@@ -156,7 +190,9 @@ class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
 
   @override
   void dispose() {
+    _hasPendingUpdate = false;
     _cleanup?.call();
+    _cleanup = null;
     super.dispose();
   }
 

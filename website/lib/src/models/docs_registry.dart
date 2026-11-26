@@ -129,7 +129,7 @@ class const DocsRegistry() {
           title: 'Event Transformers & Concurrency',
           path: '/docs/event-transformers',
           category: 'Core Concepts',
-          description: 'droppable(), sequential(), restartable(), and custom streamless event Transformers.',
+          description: 'concurrent(), droppable(), sequential(), restartable(), debounce(), throttle(), and custom streamless event transformers.',
           builder: DocsEventTransformersPage.new,
           headings: DocsEventTransformersPage.headings,
           sourcePath: 'website/lib/src/components/docs/pages/docs_event_transformers.dart',

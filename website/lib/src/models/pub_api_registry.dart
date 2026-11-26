@@ -93,6 +93,8 @@ enum DocSymbol(
   restartable('restartable', 'bloc_signals', 'restartable.html'),
   sequential('sequential', 'bloc_signals', 'sequential.html'),
   concurrent('concurrent', 'bloc_signals', 'concurrent.html'),
+  debounce('debounce', 'bloc_signals', 'debounce.html'),
+  throttle('throttle', 'bloc_signals', 'throttle.html'),
   blocEventTransformer(
     'BlocEventTransformer',
     'bloc_signals',

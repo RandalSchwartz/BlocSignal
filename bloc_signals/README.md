@@ -14,7 +14,7 @@
   </tr>
 </table>
 
-This package provides core pure-Dart reactive state containers (`BlocSignalBase`, `CubitSignal`, `BlocSignal`), event concurrency transformers (`Mutex`, `droppable`, `sequential`, `restartable`), VM Service telemetry (`DevToolsBlocSignalObserver`, `DevToolsService`), and stream interop extensions.
+This package provides core pure-Dart reactive state containers (`BlocSignalBase`, `CubitSignal`, `BlocSignal`), event concurrency transformers (`Mutex`, `concurrent`, `droppable`, `sequential`, `restartable`, `debounce`, `throttle`), VM Service telemetry (`DevToolsBlocSignalObserver`, `DevToolsService`), and stream interop extensions.
 
 ---
 
@@ -51,7 +51,7 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 - ⚡ **Synchronous State Propagation**: State changes run synchronously when calling `emit(newState)` rather than asynchronously on microtask-queue Streams.
 - 🔑 **Named Constructor Initial State (`initialState:`)**: Constructors require the named parameter `initialState:` (for example, `: super(initialState: 0)`), unlike Felix BLoC's positional `: super(0)`.
 - 📊 **Explicit State Value Access (`value` / `stateValue`)**: Access raw `StateType` values directly via `value` (the preferred modern getter) or `stateValue` (fully supported for backward compatibility), for example `emit(value + 1)`. `state` exposes `ReadonlySignal<StateType>` for reactive signal bindings.
-- 🔒 **Streamless Concurrency**: Support for `Mutex`, `droppable()`, `sequential()`, and `restartable()` event transformers using pure Dart higher-order functions with zero stream memory allocations.
+- 🔒 **Streamless Concurrency**: Support for `Mutex`, `concurrent()`, `droppable()`, `sequential()`, `restartable()`, `debounce()`, and `throttle()` event transformers using pure Dart higher-order functions with zero stream memory allocations.
 
 ---
 
@@ -59,7 +59,7 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 
 - 🚀 **Synchronous Propagation**: `emit()` updates state immediately in the exact same frame without microtask delay.
 - 🎯 **Automatic De-duplication**: Identical states (`==` or custom equality) are automatically de-duplicated to prevent unnecessary downstream recalculations.
-- 🔒 **Streamless Concurrency**: Support for `Mutex`, `droppable()`, `sequential()`, and `restartable()` event transformers without stream overhead.
+- 🔒 **Streamless Concurrency**: Support for `Mutex`, `concurrent()`, `droppable()`, `sequential()`, `restartable()`, `debounce()`, and `throttle()` event transformers without stream overhead.
 - 🛠️ **DevTools & Telemetry**: Built-in VM Service RPC extensions (`DevToolsService`) and standard `dart:developer` event posting (`DevToolsBlocSignalObserver`).
 
 ---
@@ -143,7 +143,7 @@ class UserProfileRepository extends BaseRepository
 }
 ```
 
-### 4. Event Concurrency Transformers (`droppable`, `sequential`, `restartable`)
+### 4. Event Concurrency Transformers (`concurrent`, `droppable`, `sequential`, `restartable`, `debounce`, `throttle`)
 
 ```dart
 class AsyncDataBloc extends BlocSignal<DataEvent, DataState> {

@@ -72,7 +72,7 @@ The `BlocSignal` monorepo consists of 14 published packages on pub.dev:
 - 📊 **Explicit State Value Access (`stateValue`)**: Use `stateValue` (or `state.value`) to read raw `StateType` values in methods or event handlers (for example, `emit(stateValue + 1)`), while `state` exposes `ReadonlySignal<StateType>` for reactive signal bindings.
 - 🎯 **`context.select<B, R>` 2-Argument Generic Signature**: Unlike Riverpod (3 generic arguments) or classic `flutter_bloc`, `context.select<B, R>` takes **2** generic type parameters (`<Bloc, SelectedType>`) and passes the `bloc` instance directly to the callback: `(bloc) => bloc.stateValue.property`.
 - 📦 **Zero `RepositoryProvider` Bloat**: Dependency injection in `BlocSignal` is handled directly via `BlocSignalProvider` (or Riverpod/Jaspr context providers) without forcing a separate `RepositoryProvider` wrapper.
-- 🔒 **Streamless Event Concurrency**: Event concurrency transformers (`droppable`, `sequential`, `restartable`, `Mutex`) run via pure Dart higher-order functions without stream allocations or Rx dependencies.
+- 🔒 **Streamless Event Concurrency**: Event concurrency transformers (`concurrent`, `droppable`, `sequential`, `restartable`, `debounce`, `throttle`, `Mutex`) run via pure Dart higher-order functions without stream allocations or Rx dependencies.
 
 ---
 

@@ -707,6 +707,199 @@ void main() {
       },
     );
   });
+
+  group('(Issue #480) traced debounce & throttle Tests', () {
+    late TestHarness harness;
+    late InMemorySpanExporter exporter;
+    late otel.APITracer tracer;
+
+    setUpAll(() async {
+      harness = await maybeInitializeOtelForTest(
+        serviceName: 'traced_transformer_480_test',
+      );
+      exporter = harness.spans;
+    });
+
+    setUp(() {
+      harness.clear();
+      tracer = OTel.tracerProvider().getTracer('test_tracer');
+    });
+
+    test(
+      '(Issue #480) traced(debounce) closes coalesced spans with '
+      'bloc.contention and executed spans cleanly',
+      () async {
+        final bloc = TracedTestBloc(
+          workTransformer: debounce(const Duration(milliseconds: 25)),
+          tracer: tracer,
+        );
+
+        bloc.add(DoWorkEvent('a'));
+        bloc.add(DoWorkEvent('b'));
+        bloc.add(DoWorkEvent('c'));
+
+        await Future<void>.delayed(const Duration(milliseconds: 70));
+        expect(bloc.stateValue, equals('done:c'));
+        await bloc.close();
+
+        expect(exporter.spans, hasLength(3));
+        final contentionSpans = exporter.spans
+            .where((s) => s.attributes.getBool('bloc.contention') == true)
+            .toList();
+        final executedSpans = exporter.spans
+            .where((s) => s.attributes.getBool('bloc.contention') != true)
+            .toList();
+
+        expect(contentionSpans, hasLength(2));
+        expect(executedSpans, hasLength(1));
+        for (final span in exporter.spans) {
+          expect(span.status, equals(otel.SpanStatusCode.Ok));
+        }
+      },
+    );
+
+    test(
+      '(Issue #480) traced(throttle) leading-only marks dropped spans with '
+      'bloc.contention',
+      () async {
+        final bloc = TracedTestBloc(
+          workTransformer: throttle(const Duration(milliseconds: 40)),
+          tracer: tracer,
+        );
+
+        bloc.add(DoWorkEvent('first'));
+        bloc.add(DoWorkEvent('second'));
+
+        await Future<void>.delayed(const Duration(milliseconds: 70));
+        expect(bloc.stateValue, equals('done:first'));
+        await bloc.close();
+
+        expect(exporter.spans, hasLength(2));
+        final contentionSpans = exporter.spans
+            .where((s) => s.attributes.getBool('bloc.contention') == true)
+            .toList();
+        final executedSpans = exporter.spans
+            .where((s) => s.attributes.getBool('bloc.contention') != true)
+            .toList();
+
+        expect(contentionSpans, hasLength(1));
+        expect(executedSpans, hasLength(1));
+      },
+    );
+
+    test(
+      '(Issue #480) traced(throttle trailing: true) closes coalesced and '
+      'trailing spans cleanly',
+      () async {
+        final bloc = TracedTestBloc(
+          workTransformer: throttle(
+            const Duration(milliseconds: 30),
+            trailing: true,
+          ),
+          tracer: tracer,
+        );
+
+        bloc.add(DoWorkEvent('lead'));
+        bloc.add(DoWorkEvent('mid'));
+        bloc.add(DoWorkEvent('trail'));
+
+        await Future<void>.delayed(const Duration(milliseconds: 90));
+        expect(bloc.stateValue, equals('done:trail'));
+        await bloc.close();
+
+        expect(exporter.spans, hasLength(3));
+        final contentionSpans = exporter.spans
+            .where((s) => s.attributes.getBool('bloc.contention') == true)
+            .toList();
+        final executedSpans = exporter.spans
+            .where((s) => s.attributes.getBool('bloc.contention') != true)
+            .toList();
+
+        expect(contentionSpans, hasLength(1));
+        expect(executedSpans, hasLength(2));
+      },
+    );
+
+    test(
+      '(Issue #480) traced(debounce) sets SpanStatusCode.Error on handler '
+      'failure',
+      () async {
+        final bloc = _TracedFailingDebounceBloc(tracer: tracer);
+
+        Object? capturedError;
+        runZonedGuarded(
+          () => bloc.add(FailingEvent()),
+          (error, stack) => capturedError = error,
+        );
+
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await bloc.close();
+
+        expect(capturedError, isA<StateError>());
+        expect(exporter.spans, hasLength(1));
+        expect(exporter.spans.first.status, equals(otel.SpanStatusCode.Error));
+      },
+    );
+
+    test(
+      '(Issue #480: BLOCKER-1) traced(throttle trailing: true) exposes '
+      'trailing event active Context.current.span rather than closed leading '
+      'span',
+      () async {
+        final capturedSpans = <otel.APISpan?>[];
+        final bloc = _TracedTrailingContextBloc(
+          tracer: tracer,
+          onSpan: capturedSpans.add,
+        );
+
+        bloc.add(DoWorkEvent('lead'));
+        bloc.add(DoWorkEvent('trail'));
+
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+        await bloc.close();
+
+        expect(capturedSpans, hasLength(2));
+        expect(capturedSpans[0], isNotNull);
+        expect(capturedSpans[1], isNotNull);
+        expect(identical(capturedSpans[0], capturedSpans[1]), isFalse);
+        expect(
+          capturedSpans[0]!.spanContext.spanId,
+          isNot(equals(capturedSpans[1]!.spanContext.spanId)),
+        );
+      },
+    );
+  });
+}
+
+class _TracedTrailingContextBloc extends BlocSignal<TraceTestEvent, String> {
+  _TracedTrailingContextBloc({
+    required otel.APITracer tracer,
+    required void Function(otel.APISpan? span) onSpan,
+  }) : super(initialState: 'idle') {
+    on<DoWorkEvent>(
+      (event, emit) async {
+        onSpan(otel.Context.current.span);
+        emit('done:${event.payload}');
+      },
+      blocTransformer: traced(
+        throttle(const Duration(milliseconds: 25), trailing: true),
+        tracer: tracer,
+      ),
+    );
+  }
+}
+
+class _TracedFailingDebounceBloc extends BlocSignal<TraceTestEvent, String> {
+  _TracedFailingDebounceBloc({otel.APITracer? tracer})
+      : super(initialState: 'idle') {
+    on<FailingEvent>(
+      (event, emit) => throw StateError('Debounced handler failure'),
+      blocTransformer: traced(
+        debounce(const Duration(milliseconds: 15)),
+        tracer: tracer,
+      ),
+    );
+  }
 }
 
 final class _SyncCtxEvent extends TraceTestEvent {}

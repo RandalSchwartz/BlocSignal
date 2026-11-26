@@ -436,6 +436,12 @@ abstract class BlocSignalBase<StateType> {
   @mustCallSuper
   Future<void> close();
 
+  /// Registers a [callback] to be invoked when this container is closed.
+  ///
+  /// If the container is already closed, [callback] is invoked immediately.
+  @internal
+  void registerCloseCallback(void Function() callback) {}
+
   /// Hook invoked when container state is reset to its baseline (for example
   /// during persistence clearing).
   ///

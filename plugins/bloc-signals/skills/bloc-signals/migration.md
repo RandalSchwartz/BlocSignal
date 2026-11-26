@@ -8,7 +8,7 @@ This guide explains how to migrate your Flutter and Dart applications from Felix
 | :--- | :--- | :--- |
 | **`package:bloc`** | `package:bloc_signals` & `bloc_signals_bloc` | 0ms synchronous propagation, named `initialState:`, `stateValue` vs `state`, `BlocSignalObserver` lifecycle. Bidirectional interop via `toBlocSignal()` and `toClassicBloc()`. |
 | **`package:flutter_bloc`** | `package:bloc_signals_flutter` | `BlocSignalProvider`, `MultiBlocSignalProvider`, `BlocSignalBuilder` (`buildWhen`), `BlocSignalListener` (`listenWhen`), `BlocSignalConsumer`, `BlocSignalSelector`, `context.select<B, R>`. |
-| **`package:bloc_concurrency`** | `package:bloc_signals` (transformers) | Streamless higher-order functions (`droppable()`, `sequential()`, `restartable()`), async `Mutex` lock fairness guarantees. |
+| **`package:bloc_concurrency`** | `package:bloc_signals` (transformers) | Streamless higher-order functions (`concurrent()`, `droppable()`, `sequential()`, `restartable()`, `debounce()`, `throttle()`), async `Mutex` lock fairness guarantees. |
 | **`package:hydrated_bloc`** | `package:bloc_signals_hydrate` | Synchronous frame-1 constructor hydration, zero-override primitive hydration, built-in `SharedPreferences` and `SecureStorage` adapters. |
 | **`package:replay_bloc`** | `package:bloc_signals_replay` | `ReplayCubit` and `ReplayBloc`, `undo()` / `redo()`, history `limit`, `shouldReplay()`, synthetic observer events. |
 | **`package:bloc_test`** | `package:bloc_signals_test` | Declarative `blocSignalTest<B, S>`, constructor state seeding, observer scoping, deterministic completion. |
@@ -99,9 +99,12 @@ on<FetchPage>(
 ```
 
 Available built-in transformers & concurrency utilities:
+- **`concurrent()`**: Processes incoming events concurrently without queueing, dropping, or superseding.
 - **`droppable()`**: Drops incoming events while a handler for that event type is currently executing.
 - **`sequential()`**: Queues incoming events and executes them sequentially in FIFO order via `Mutex`.
 - **`restartable()`**: Allows new incoming events to supersede previous in-flight handler executions.
+- **`debounce(Duration)`**: Delays handler execution until a quiet period of `duration` elapses, coalescing bursts and cancelling pending timers on `close()`.
+- **`throttle(Duration, {bool trailing = false})`**: Rate-limits execution to once per `duration` window (`trailing: false` drops mid-cooldown events; `trailing: true` coalesces and runs the latest event on cooldown expiry).
 - **`Mutex`**: A zero-dependency async lock (`protect(() => ...)`) for custom synchronization.
 
 #### Migrating Custom Stream Transformers (Debounce Example)
@@ -113,18 +116,43 @@ EventTransformer<Event> debounce<Event>(Duration duration) {
 }
 ```
 
-**`BlocSignal` (Pure Dart `Timer`):**
+**`BlocSignal` (Built-in `debounce` or Safe Custom `Completer`-Tracked Transformer):**
 ```dart
-EventTransformer<E, S> debounce<E, S>(Duration duration) {
+// Built-in (recommended):
+on<SearchQueryChanged>(
+  _onSearchQueryChanged,
+  transformer: debounce(const Duration(milliseconds: 300)),
+);
+
+// Or, when writing a custom timed transformer, always track and complete
+// superseded Completers so errors route to onError without leaking spans:
+EventTransformer<E, S> customDebounce<E, S>(Duration duration) {
   Timer? timer;
+  Completer<void>? pendingCompleter;
   return (event, handler, emit) {
-    timer?.cancel();
-    timer = Timer(duration, () {
-      final result = handler(event, emit);
-      if (result is Future) {
-        unawaited(result);
+    if (timer?.isActive ?? false) {
+      timer?.cancel();
+      final prev = pendingCompleter;
+      pendingCompleter = null;
+      if (prev != null && !prev.isCompleted) {
+        prev.complete();
+      }
+    }
+    final completer = Completer<void>();
+    pendingCompleter = completer;
+    timer = Timer(duration, () async {
+      timer = null;
+      if (identical(pendingCompleter, completer)) {
+        pendingCompleter = null;
+      }
+      try {
+        await handler(event, emit);
+        completer.complete();
+      } on Object catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
       }
     });
+    return completer.future;
   };
 }
 ```

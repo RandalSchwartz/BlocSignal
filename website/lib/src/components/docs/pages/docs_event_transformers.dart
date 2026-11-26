@@ -13,9 +13,12 @@ class const DocsEventTransformersPage({super.key}) extends StatelessComponent {
       title: 'Streamless Concurrency Architecture',
       anchor: 'streamless-architecture',
     ),
+    TocHeading(title: 'concurrent()', anchor: 'concurrent-transformer'),
     TocHeading(title: 'droppable()', anchor: 'droppable-transformer'),
     TocHeading(title: 'sequential()', anchor: 'sequential-transformer'),
     TocHeading(title: 'restartable()', anchor: 'restartable-transformer'),
+    TocHeading(title: 'debounce()', anchor: 'debounce-transformer'),
+    TocHeading(title: 'throttle()', anchor: 'throttle-transformer'),
     TocHeading(
       title: 'Custom Transformer Recipes',
       anchor: 'custom-transformers',
@@ -62,7 +65,34 @@ class const DocsEventTransformersPage({super.key}) extends StatelessComponent {
         ),
       ]),
 
-      // 2. droppable()
+      // 2. concurrent()
+      section(id: 'concurrent-transformer', classes: 'docs-section', [
+        h2([Component.text('concurrent()')]),
+        p([
+          apiLink(DocSymbol.concurrent),
+          Component.text(
+            ' dispatches every incoming event immediately without queueing, dropping, or superseding in-flight handlers, '
+            'while guarding post-close emissions.',
+          ),
+        ]),
+        const DocsCodeBlock(
+          filename: 'concurrent_example.dart',
+          dart313Code: '''
+on<FetchNotification>((event, emit) async {
+  final item = await api.fetch(event.id);
+  emit([...stateValue, item]);
+}, transformer: concurrent());
+''',
+          dart35Code: '''
+on<FetchNotification>((event, emit) async {
+  final item = await _api.fetch(event.id);
+  emit([...stateValue, item]);
+}, transformer: concurrent());
+''',
+        ),
+      ]),
+
+      // 3. droppable()
       section(id: 'droppable-transformer', classes: 'docs-section', [
         h2([Component.text('droppable()')]),
         p([
@@ -117,7 +147,7 @@ on<PostsFetched>((event, emit) async {
         ),
       ]),
 
-      // 3. sequential()
+      // 4. sequential()
       section(id: 'sequential-transformer', classes: 'docs-section', [
         h2([Component.text('sequential()')]),
         p([
@@ -144,7 +174,7 @@ on<SyncDatabaseRecord>((event, emit) async {
         ),
       ]),
 
-      // 4. restartable()
+      // 5. restartable()
       section(id: 'restartable-transformer', classes: 'docs-section', [
         h2([Component.text('restartable()')]),
         p([
@@ -173,27 +203,118 @@ on<SearchQueryChanged>((event, emit) async {
         ),
       ]),
 
-      // 5. Custom Transformer Recipes
+      // 6. debounce()
+      section(id: 'debounce-transformer', classes: 'docs-section', [
+        h2([Component.text('debounce()')]),
+        p([
+          apiLink(DocSymbol.debounce),
+          Component.text(
+            ' delays handler execution until a quiet period of the given duration elapses without another event arriving. '
+            'Superseded events emit ',
+          ),
+          code([Component.text('event_dropped')]),
+          Component.text(' telemetry with '),
+          code([Component.text("reason: 'coalesced'")]),
+          Component.text(
+            ' and pending timers are cancelled automatically when the container closes.',
+          ),
+        ]),
+        const DocsCodeBlock(
+          filename: 'debounce_builtin_example.dart',
+          dart313Code: '''
+on<SearchQueryChanged>((event, emit) async {
+  final results = await searchService.query(event.text);
+  emit(SearchResults(results));
+}, transformer: debounce(const Duration(milliseconds: 300)));
+''',
+          dart35Code: '''
+on<SearchQueryChanged>((event, emit) async {
+  final results = await _searchService.query(event.text);
+  emit(SearchResults(results));
+}, transformer: debounce(const Duration(milliseconds: 300)));
+''',
+        ),
+      ]),
+
+      // 7. throttle()
+      section(id: 'throttle-transformer', classes: 'docs-section', [
+        h2([Component.text('throttle()')]),
+        p([
+          apiLink(DocSymbol.throttle),
+          Component.text(
+            ' rate-limits event execution to at most once per cooldown duration. '
+            'By default (',
+          ),
+          code([Component.text('trailing: false')]),
+          Component.text(
+            '), the leading event runs immediately and mid-cooldown events are dropped. Set ',
+          ),
+          code([Component.text('trailing: true')]),
+          Component.text(
+            ' to coalesce mid-cooldown events and execute the latest event when the cooldown expires.',
+          ),
+        ]),
+        const DocsCodeBlock(
+          filename: 'throttle_builtin_example.dart',
+          dart313Code: '''
+on<ScrollUpdated>(
+  (event, emit) => emit(ScrollState(offset: event.offset)),
+  transformer: throttle(
+    const Duration(milliseconds: 100),
+    trailing: true,
+  ),
+);
+''',
+          dart35Code: '''
+on<ScrollUpdated>(
+  (event, emit) => emit(ScrollState(offset: event.offset)),
+  transformer: throttle(
+    const Duration(milliseconds: 100),
+    trailing: true,
+  ),
+);
+''',
+        ),
+      ]),
+
+      // 8. Custom Transformer Recipes
       section(id: 'custom-transformers', classes: 'docs-section', [
         h2([Component.text('Custom Transformer Recipes')]),
         p([
           Component.text(
             'You can easily author custom transformers to satisfy bespoke concurrency requirements. '
-            'Here is a custom debounce transformer written in pure Dart:',
+            'When a custom timed transformer uses a ',
           ),
+          code([Component.text('Completer')]),
+          Component.text(', always complete any superseded '),
+          code([Component.text('Completer')]),
+          Component.text(' so event lifecycles and tracing spans never leak:'),
         ]),
         const DocsCodeBlock(
-          filename: 'debounce_transformer.dart',
+          filename: 'custom_debounce_transformer.dart',
           dart313Code: '''
 import 'dart:async';
 import 'package:bloc_signals/bloc_signals.dart';
 
-EventTransformer<E, S> debounce<E, S>(Duration duration) {
+EventTransformer<E, S> customDebounce<E, S>(Duration duration) {
   Timer? timer;
+  Completer<void>? pendingCompleter;
   return (event, handler, emit) {
+    if (timer?.isActive ?? false) {
+      timer?.cancel();
+      final prev = pendingCompleter;
+      pendingCompleter = null;
+      if (prev != null && !prev.isCompleted) {
+        prev.complete();
+      }
+    }
     final completer = Completer<void>();
-    timer?.cancel();
+    pendingCompleter = completer;
     timer = Timer(duration, () async {
+      timer = null;
+      if (identical(pendingCompleter, completer)) {
+        pendingCompleter = null;
+      }
       try {
         await handler(event, emit);
         completer.complete();
@@ -206,18 +327,31 @@ EventTransformer<E, S> debounce<E, S>(Duration duration) {
 }
 
 // Usage in Bloc constructor:
-// on<SearchInputChanged>(..., transformer: debounce(const Duration(milliseconds: 300)));
+// on<SearchInputChanged>(..., transformer: customDebounce(const Duration(milliseconds: 300)));
 ''',
           dart35Code: '''
 import 'dart:async';
 import 'package:bloc_signals/bloc_signals.dart';
 
-EventTransformer<E, S> debounce<E, S>(Duration duration) {
+EventTransformer<E, S> customDebounce<E, S>(Duration duration) {
   Timer? timer;
+  Completer<void>? pendingCompleter;
   return (event, handler, emit) {
+    if (timer?.isActive ?? false) {
+      timer?.cancel();
+      final prev = pendingCompleter;
+      pendingCompleter = null;
+      if (prev != null && !prev.isCompleted) {
+        prev.complete();
+      }
+    }
     final completer = Completer<void>();
-    timer?.cancel();
+    pendingCompleter = completer;
     timer = Timer(duration, () async {
+      timer = null;
+      if (identical(pendingCompleter, completer)) {
+        pendingCompleter = null;
+      }
       try {
         await handler(event, emit);
         completer.complete();
@@ -230,7 +364,7 @@ EventTransformer<E, S> debounce<E, S>(Duration duration) {
 }
 
 // Usage in Bloc constructor:
-// on<SearchInputChanged>(..., transformer: debounce(const Duration(milliseconds: 300)));
+// on<SearchInputChanged>(..., transformer: customDebounce(const Duration(milliseconds: 300)));
 ''',
         ),
         p([
@@ -315,7 +449,7 @@ EventTransformer<E, S> circuitBreaker<E, S>({
         ),
       ]),
 
-      // 6. Contextual Transformers (withBloc & traced)
+      // 9. Contextual Transformers (withBloc & traced)
       section(id: 'contextual-transformers', classes: 'docs-section', [
         h2([Component.text('Contextual Transformers (withBloc & traced)')]),
         p([
@@ -340,19 +474,56 @@ import 'package:bloc_signals/bloc_signals.dart';
 // Contextual transformer with direct access to the host bloc:
 BlocEventTransformer<E, S> debounceWithTelemetry<E, S>(Duration duration) {
   Timer? timer;
+  Completer<void>? pendingCompleter;
+  E? pendingEvent;
+  Zone? pendingZone;
   return (bloc, event, handler, emit) {
-    if (timer?.isActive ?? false) {
-      emitContainerTelemetry(
-        bloc,
-        BlocTelemetryKeys.eventDropped,
-        event: event,
-        metadata: const {'reason': 'coalesced'},
-      );
+    if (bloc.isClosed) return null;
+    while (timer?.isActive ?? false) {
+      timer?.cancel();
+      timer = null;
+      final prevEvent = pendingEvent;
+      final prevZone = pendingZone;
+      final prevCompleter = pendingCompleter;
+      pendingEvent = null;
+      pendingZone = null;
+      pendingCompleter = null;
+      if (prevCompleter != null && !prevCompleter.isCompleted) {
+        prevCompleter.complete();
+      }
+      (prevZone ?? Zone.current).run(() {
+        emitContainerTelemetry(
+          bloc,
+          BlocTelemetryKeys.eventDropped,
+          event: prevEvent,
+          metadata: const {'reason': 'coalesced'},
+        );
+      });
+      if (bloc.isClosed) return null;
     }
-    timer?.cancel();
+    final completer = Completer<void>();
+    pendingCompleter = completer;
+    pendingEvent = event;
+    pendingZone = Zone.current;
     timer = Timer(duration, () async {
-      await handler(event, emit);
+      timer = null;
+      pendingEvent = null;
+      pendingZone = null;
+      if (identical(pendingCompleter, completer)) {
+        pendingCompleter = null;
+      }
+      if (bloc.isClosed) {
+        if (!completer.isCompleted) completer.complete();
+        return;
+      }
+      try {
+        await handler(event, emit);
+        completer.complete();
+      } on Object catch (error, stack) {
+        completer.completeError(error, stack);
+      }
     });
+    return completer.future;
   };
 }
 
@@ -389,19 +560,56 @@ import 'package:bloc_signals/bloc_signals.dart';
 // Contextual transformer with direct access to the host bloc:
 BlocEventTransformer<E, S> debounceWithTelemetry<E, S>(Duration duration) {
   Timer? timer;
+  Completer<void>? pendingCompleter;
+  E? pendingEvent;
+  Zone? pendingZone;
   return (bloc, event, handler, emit) {
-    if (timer?.isActive ?? false) {
-      emitContainerTelemetry(
-        bloc,
-        BlocTelemetryKeys.eventDropped,
-        event: event,
-        metadata: const {'reason': 'coalesced'},
-      );
+    if (bloc.isClosed) return null;
+    while (timer?.isActive ?? false) {
+      timer?.cancel();
+      timer = null;
+      final prevEvent = pendingEvent;
+      final prevZone = pendingZone;
+      final prevCompleter = pendingCompleter;
+      pendingEvent = null;
+      pendingZone = null;
+      pendingCompleter = null;
+      if (prevCompleter != null && !prevCompleter.isCompleted) {
+        prevCompleter.complete();
+      }
+      (prevZone ?? Zone.current).run(() {
+        emitContainerTelemetry(
+          bloc,
+          BlocTelemetryKeys.eventDropped,
+          event: prevEvent,
+          metadata: const {'reason': 'coalesced'},
+        );
+      });
+      if (bloc.isClosed) return null;
     }
-    timer?.cancel();
+    final completer = Completer<void>();
+    pendingCompleter = completer;
+    pendingEvent = event;
+    pendingZone = Zone.current;
     timer = Timer(duration, () async {
-      await handler(event, emit);
+      timer = null;
+      pendingEvent = null;
+      pendingZone = null;
+      if (identical(pendingCompleter, completer)) {
+        pendingCompleter = null;
+      }
+      if (bloc.isClosed) {
+        if (!completer.isCompleted) completer.complete();
+        return;
+      }
+      try {
+        await handler(event, emit);
+        completer.complete();
+      } on Object catch (error, stack) {
+        completer.completeError(error, stack);
+      }
     });
+    return completer.future;
   };
 }
 

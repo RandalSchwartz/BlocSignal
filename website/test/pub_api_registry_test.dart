@@ -56,6 +56,9 @@ void main() {
       expect(names, contains('droppable'));
       expect(names, contains('restartable'));
       expect(names, contains('sequential'));
+      expect(names, contains('concurrent'));
+      expect(names, contains('debounce'));
+      expect(names, contains('throttle'));
       expect(names, contains('BlocSignalProvider'));
       expect(names, contains('BlocSignalBuilder'));
       expect(names, contains('BlocSignalListener'));

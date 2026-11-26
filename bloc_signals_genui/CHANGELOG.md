@@ -4,6 +4,7 @@ All notable changes to `bloc_signals_genui` will be documented in this file.
 
 ## Unreleased
 
+- **Feat (genui)**: Add `A2uiSurfaceBloc.recordFunctionCallTelemetry` and shared `_emitFunctionCallTelemetry` helper to bridge `function_call_evaluated` operational telemetry for `NodeAction`-bound UI buttons (#514).
 - **Feat (genui)**: emit `function_call_evaluated` operational telemetry event with invocation latency and outcome for local `functionCall` actions (#445).
 - **Fix (genui)**: Verify surface identity after async `resolveActionAsync` in `_onSubmitAction` before dispatching responses, and cancel pending surface RPC calls via `cancelSurfaceCalls` on eviction, recreation, reset, and close (#478).
 

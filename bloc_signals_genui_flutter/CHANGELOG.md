@@ -4,6 +4,7 @@ All notable changes to `bloc_signals_genui_flutter` will be documented in this f
 
 ## Unreleased
 
+- **Feat (genui_flutter)**: Bridge `function_call_evaluated` operational telemetry for `NodeAction`-bound `functionCall`, `call`, and `@call` buttons in `A2uiComponentContext.triggerAction` (#514).
 - **Fix (genui_flutter)**: Bound numeric props (`elevation`, `thickness`, `height`, `width`, `size`, `weight`) and `TextField` `maxLength`; enforce `SvgPathParser` length, command-count, and coordinate-range limits; guard `CupertinoChoicePicker` and `CupertinoTabs` against degenerate option/tab counts; isolate modal render budgets via `buildIsolatedChild`; and catch `NodeAction` `Future` `Exception` rejections in `triggerAction` (#478).
 
 ## 2.1.2

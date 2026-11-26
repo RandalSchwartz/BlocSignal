@@ -62,8 +62,11 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S>
     this.child = const Component.empty(),
     this.bloc,
     this.listenWhen,
+    this.take,
+    this.takeWhile,
     super.key,
-  })  : _listener = listener,
+  })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        _listener = listener,
         _transitionListener = null;
 
   /// Creates a [BlocSignalListener] whose [listener] receives both the
@@ -84,8 +87,11 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S>
     this.child = const Component.empty(),
     this.bloc,
     this.listenWhen,
+    this.take,
+    this.takeWhile,
     super.key,
-  })  : _listener = null,
+  })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        _listener = null,
         _transitionListener = listener;
 
   /// The bloc to listen to. If null, it is looked up from the component tree.
@@ -107,6 +113,20 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S>
   /// change.
   final bool Function(S previous, S current)? listenWhen;
 
+  /// The maximum number of times [listener] will be invoked before detaching.
+  ///
+  /// Emissions filtered out by [listenWhen] do not consume this budget. When
+  /// `0`, no active subscription is registered and [listener] is never called.
+  /// Must be non-negative when provided.
+  final int? take;
+
+  /// A predicate evaluated against each matching state before invoking
+  /// [listener].
+  ///
+  /// When it returns `false`, the listener detaches permanently without
+  /// invoking [listener] for that emission or any subsequent emissions.
+  final bool Function(S state)? takeWhile;
+
   /// The child component subtree.
   final Component child;
 
@@ -119,6 +139,8 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S>
         bloc: bloc,
         listener: _transitionListener,
         listenWhen: listenWhen,
+        take: take,
+        takeWhile: takeWhile,
         child: child,
       );
     }
@@ -127,6 +149,8 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S>
       bloc: bloc,
       listener: _listener!,
       listenWhen: listenWhen,
+      take: take,
+      takeWhile: takeWhile,
       child: child,
     );
   }
@@ -141,9 +165,24 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
   T? _bloc;
   S? _previousState;
   void Function()? _cleanup;
+  int _invocationCount = 0;
+  bool _isDetached = false;
+  bool _detachedByTakeWhile = false;
+
+  void _detach() {
+    _isDetached = true;
+    _cleanup?.call();
+    _cleanup = null;
+  }
 
   void _subscribe() {
     _cleanup?.call();
+    _cleanup = null;
+    if (_isDetached ||
+        (component.take != null && _invocationCount >= component.take!)) {
+      _isDetached = true;
+      return;
+    }
     _previousState = _bloc!.state.value;
     var isInitial = true;
 
@@ -154,7 +193,7 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
           isInitial = false;
           return;
         }
-        if (!mounted) return;
+        if (!mounted || _isDetached) return;
         final previous = _previousState as S;
 
         if (!_bloc!.equals(previous, currentState)) {
@@ -162,6 +201,16 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
 
           if (component.listenWhen == null ||
               component.listenWhen!(previous, currentState)) {
+            if (component.takeWhile != null &&
+                !component.takeWhile!(currentState)) {
+              _detachedByTakeWhile = true;
+              _detach();
+              return;
+            }
+            _invocationCount++;
+            if (component.take != null && _invocationCount >= component.take!) {
+              _detach();
+            }
             final transitionListener = component._transitionListener;
             if (transitionListener != null) {
               transitionListener(context, previous, currentState);
@@ -182,6 +231,9 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
         component.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     if (!identical(_bloc, effectiveBloc)) {
       _bloc = effectiveBloc;
+      _invocationCount = 0;
+      _isDetached = false;
+      _detachedByTakeWhile = false;
       _subscribe();
     }
   }
@@ -193,13 +245,35 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
         component.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     if (!identical(_bloc, effectiveBloc)) {
       _bloc = effectiveBloc;
+      _invocationCount = 0;
+      _isDetached = false;
+      _detachedByTakeWhile = false;
       _subscribe();
+      return;
+    }
+
+    final takeWhileRemoved =
+        oldComponent.takeWhile != null && component.takeWhile == null;
+    if (takeWhileRemoved) {
+      _detachedByTakeWhile = false;
+    }
+
+    if (component.take != oldComponent.take || takeWhileRemoved) {
+      if (_detachedByTakeWhile) {
+        return;
+      }
+      if (component.take != null && _invocationCount >= component.take!) {
+        _detach();
+      } else if (_isDetached) {
+        _isDetached = false;
+        _subscribe();
+      }
     }
   }
 
   @override
   void dispose() {
-    _cleanup?.call();
+    _detach();
     super.dispose();
   }
 

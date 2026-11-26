@@ -1401,6 +1401,659 @@ void main() {
       },
     );
   });
+
+  group('(Issue #522: take and takeWhile execution quotas)', () {
+    testComponents(
+      'take: N fires N times and detaches before N-th callback (re-entrancy)',
+      (tester) async {
+        final cubit = CounterCubit();
+        final listened = <int>[];
+
+        tester.pumpComponent(
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: BlocSignalListener<CounterCubit, int>(
+              take: 2,
+              listener: (context, state) {
+                listened.add(state);
+                if (state == 2) {
+                  // Re-entrant emit inside the N-th callback must not fire N+1.
+                  cubit.increment();
+                }
+              },
+              child: const div([Component.text('TakeReentrancy')]),
+            ),
+          ),
+        );
+
+        cubit.increment(); // 1 -> fires (count = 1)
+        await tester.pump();
+        cubit.increment(); // 2 -> detaches, fires (count = 2), triggers 3
+        await tester.pump();
+        cubit.increment(); // 4 -> already detached
+        await tester.pump();
+
+        expect(cubit.stateValue, 4);
+        expect(listened, equals([1, 2]));
+      },
+    );
+
+    testComponents(
+      'take: 0 never fires, registers no effect, and negative take throws '
+      'AssertionError',
+      (tester) async {
+        final cubit = CounterCubit();
+        final listened = <int>[];
+
+        expect(
+          () => BlocSignalListener<CounterCubit, int>(
+            take: -1,
+            listener: (context, state) {},
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(
+          () => BlocSignalListener<CounterCubit, int>.transition(
+            take: -1,
+            listener: (context, previous, current) {},
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(
+          () => BlocSignalConsumer<CounterCubit, int>(
+            take: -1,
+            listener: (context, state) {},
+            builder: (context, state) => const div([]),
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+        expect(
+          () => BlocSignalConsumer<CounterCubit, int>.transition(
+            take: -1,
+            listener: (context, previous, current) {},
+            builder: (context, state) => const div([]),
+          ),
+          throwsA(isA<AssertionError>()),
+        );
+
+        final previousObserver = SignalsObserver.instance;
+        final spy = _JasprEffectSpyObserver();
+        SignalsObserver.instance = spy;
+        addTearDown(() => SignalsObserver.instance = previousObserver);
+
+        tester.pumpComponent(
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: BlocSignalListener<CounterCubit, int>(
+              take: 0,
+              listener: (context, state) => listened.add(state),
+              child: const div([Component.text('TakeZero')]),
+            ),
+          ),
+        );
+
+        cubit.increment();
+        await tester.pump();
+        cubit.increment();
+        await tester.pump();
+
+        expect(listened, isEmpty);
+        expect(
+          spy.effectNames.where(
+            (name) => name?.contains('BlocSignalListener') ?? false,
+          ),
+          isEmpty,
+        );
+      },
+    );
+
+    testComponents(
+      'takeWhile stops permanently on first false without invoking listener',
+      (tester) async {
+        final cubit = CounterCubit();
+        final listened = <int>[];
+
+        tester.pumpComponent(
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: BlocSignalListener<CounterCubit, int>(
+              takeWhile: (state) => state < 3,
+              listener: (context, state) => listened.add(state),
+              child: const div([Component.text('TakeWhile')]),
+            ),
+          ),
+        );
+
+        cubit.increment(); // 1 (< 3 -> true)
+        await tester.pump();
+        cubit.increment(); // 2 (< 3 -> true)
+        await tester.pump();
+        cubit.increment(); // 3 (< 3 -> false, detach without invoking)
+        await tester.pump();
+        cubit.decrement(); // 2 (< 3, but permanently detached)
+        await tester.pump();
+
+        expect(listened, equals([1, 2]));
+      },
+    );
+
+    testComponents(
+      'listenWhen returning false does not consume take or evaluate takeWhile',
+      (tester) async {
+        final cubit = CounterCubit();
+        final listened = <int>[];
+        final evaluatedStates = <int>[];
+
+        tester.pumpComponent(
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: BlocSignalListener<CounterCubit, int>(
+              listenWhen: (prev, curr) => curr.isEven,
+              take: 2,
+              takeWhile: (state) {
+                evaluatedStates.add(state);
+                return state != 3;
+              },
+              listener: (context, state) => listened.add(state),
+              child: const div([Component.text('ListenWhenQuota')]),
+            ),
+          ),
+        );
+
+        cubit.increment(); // 1 (odd -> filtered, no quota/takeWhile)
+        await tester.pump();
+        cubit.increment(); // 2 (even -> takeWhile(2)=true, fire #1)
+        await tester.pump();
+        cubit.increment(); // 3 (odd -> filtered, no quota/takeWhile)
+        await tester.pump();
+        cubit.increment(); // 4 (even -> takeWhile(4)=true, fire #2 -> detach)
+        await tester.pump();
+        cubit.increment(); // 5 (detached)
+        await tester.pump();
+        cubit.increment(); // 6 (detached)
+        await tester.pump();
+
+        expect(evaluatedStates, equals([2, 4]));
+        expect(listened, equals([2, 4]));
+      },
+    );
+
+    testComponents(
+      'BlocSignalListener.transition, BlocSignalConsumer, '
+      'BlocSignalConsumer.transition, and MultiBlocSignalListener forward '
+      'take and takeWhile',
+      (tester) async {
+        final counterCubit = CounterCubit();
+        final themeCubit = ThemeCubit();
+        final transitionEvents = <String>[];
+        final consumerEvents = <int>[];
+        final consumerTransitionEvents = <String>[];
+        final multiEvents = <String>[];
+
+        tester.pumpComponent(
+          MultiBlocSignalProvider(
+            providers: [
+              BlocSignalProvider<CounterCubit>.value(value: counterCubit),
+              BlocSignalProvider<ThemeCubit>.value(value: themeCubit),
+            ],
+            child: MultiBlocSignalListener(
+              listeners: [
+                BlocSignalListener<CounterCubit, int>.transition(
+                  take: 2,
+                  takeWhile: (state) => state <= 3,
+                  listener: (context, prev, curr) =>
+                      transitionEvents.add('$prev->$curr'),
+                ),
+                BlocSignalListener<ThemeCubit, String>(
+                  take: 1,
+                  listener: (context, state) => multiEvents.add('theme:$state'),
+                ),
+              ],
+              child: div([
+                BlocSignalConsumer<CounterCubit, int>(
+                  take: 2,
+                  takeWhile: (state) => state < 3,
+                  listener: (context, state) => consumerEvents.add(state),
+                  builder: (context, state) =>
+                      div([Component.text('Consumer: $state')]),
+                ),
+                BlocSignalConsumer<CounterCubit, int>.transition(
+                  take: 3,
+                  takeWhile: (state) => state <= 2,
+                  listener: (context, prev, curr) =>
+                      consumerTransitionEvents.add('$prev->$curr'),
+                  builder: (context, state) =>
+                      div([Component.text('TransitionConsumer: $state')]),
+                ),
+              ]),
+            ),
+          ),
+        );
+
+        counterCubit.increment(); // 1
+        themeCubit.toggle(); // dark
+        await tester.pump();
+
+        counterCubit.increment(); // 2
+        themeCubit.toggle(); // light (ignored, take: 1 exhausted)
+        await tester.pump();
+
+        counterCubit.increment(); // 3
+        await tester.pump();
+
+        expect(transitionEvents, equals(['0->1', '1->2']));
+        expect(multiEvents, equals(['theme:dark']));
+        expect(consumerEvents, equals([1, 2]));
+        expect(consumerTransitionEvents, equals(['0->1', '1->2']));
+        expect(find.text('Consumer: 3'), findsOneComponent);
+        expect(find.text('TransitionConsumer: 3'), findsOneComponent);
+      },
+    );
+
+    testComponents(
+      'didUpdateComponent reconciles take and takeWhile quotas and resets '
+      'on bloc swap',
+      (tester) async {
+        final cubit1 = CounterCubit();
+        final cubit2 = CounterCubit();
+        final listened = <int>[];
+        late void Function({
+          required CounterCubit bloc,
+          int? take,
+          bool Function(int state)? takeWhile,
+        }) updateConfig;
+
+        tester.pumpComponent(
+          _QuotaUpdateJasprHost(
+            initialBloc: cubit1,
+            initialTake: 3,
+            initialTakeWhile: (state) => state < 3,
+            onReady: (setter) => updateConfig = setter,
+            onListened: listened.add,
+          ),
+        );
+
+        cubit1.increment(); // 1 (count=1)
+        await tester.pump();
+        expect(listened, equals([1]));
+
+        // Lowering take below _invocationCount (1) detaches immediately.
+        updateConfig(bloc: cubit1, take: 1, takeWhile: (state) => state < 3);
+        await tester.pump();
+        cubit1.increment(); // 2 (ignored while detached)
+        await tester.pump();
+        expect(listened, equals([1]));
+
+        // Raising take above _invocationCount re-subscribes (count=1).
+        updateConfig(bloc: cubit1, take: 3, takeWhile: (state) => state < 3);
+        await tester.pump();
+        cubit1.increment(); // 3 -> takeWhile(3)=false -> _detachedByTakeWhile
+        await tester.pump();
+        expect(listened, equals([1]));
+
+        // Expanding take while takeWhile remains keeps listener detached.
+        updateConfig(bloc: cubit1, take: 5, takeWhile: (state) => state < 3);
+        await tester.pump();
+        cubit1.decrement(); // 2 (ignored because _detachedByTakeWhile)
+        await tester.pump();
+        expect(listened, equals([1]));
+
+        // Removing takeWhile clears _detachedByTakeWhile and re-subscribes.
+        updateConfig(bloc: cubit1, take: 5);
+        await tester.pump();
+        cubit1.increment(); // 3 (count=2)
+        await tester.pump();
+        expect(listened, equals([1, 3]));
+
+        // Swapping bloc identity resets _invocationCount, _isDetached, and
+        // _detachedByTakeWhile.
+        updateConfig(bloc: cubit2, take: 1, takeWhile: (state) => state < 10);
+        await tester.pump();
+        cubit1.increment(); // old bloc ignored
+        cubit2.increment(); // 1 (new bloc count=1 -> fires then detaches)
+        await tester.pump();
+        cubit2.increment(); // 2 (new bloc detached at take=1)
+        await tester.pump();
+        expect(listened, equals([1, 3, 1]));
+      },
+    );
+
+    testComponents(
+      'didUpdateComponent preserves detachment on unrelated rebuild and '
+      'reconciles take: null',
+      (tester) async {
+        final cubit = CounterCubit();
+        final listened = <int>[];
+        late void Function({
+          required CounterCubit bloc,
+          int? take,
+          bool Function(int state)? takeWhile,
+        }) updateConfig;
+
+        tester.pumpComponent(
+          _QuotaUpdateJasprHost(
+            initialBloc: cubit,
+            initialTake: 1,
+            initialTakeWhile: (state) => state < 5,
+            onReady: (setter) => updateConfig = setter,
+            onListened: listened.add,
+          ),
+        );
+
+        cubit.increment(); // 1 (take: 1 exhausted -> detached)
+        await tester.pump();
+        expect(listened, equals([1]));
+
+        // Unrelated parent rebuild with unchanged take and fresh inline
+        // takeWhile closure preserves detachment.
+        updateConfig(bloc: cubit, take: 1, takeWhile: (state) => state < 5);
+        await tester.pump();
+        cubit.increment(); // 2 (still detached)
+        await tester.pump();
+        expect(listened, equals([1]));
+
+        // Clearing take to null while take-exhausted re-activates listener.
+        updateConfig(bloc: cubit, takeWhile: (state) => state < 5);
+        await tester.pump();
+        cubit.increment(); // 3 (fires)
+        await tester.pump();
+        expect(listened, equals([1, 3]));
+
+        // Detach via takeWhile.
+        cubit.increment(); // 4 (fires)
+        await tester.pump();
+        cubit.increment(); // 5 -> takeWhile(5)=false -> _detachedByTakeWhile
+        await tester.pump();
+        expect(listened, equals([1, 3, 4]));
+
+        // Unrelated parent rebuild with unchanged take and fresh inline
+        // takeWhile closure preserves takeWhile detachment.
+        updateConfig(bloc: cubit, takeWhile: (state) => state < 5);
+        await tester.pump();
+        cubit.decrement(); // 4 (still detached)
+        await tester.pump();
+        expect(listened, equals([1, 3, 4]));
+
+        // Clearing take to null while takeWhile-detached stays detached.
+        updateConfig(bloc: cubit, take: 10, takeWhile: (state) => state < 5);
+        await tester.pump();
+        updateConfig(bloc: cubit, takeWhile: (state) => state < 5);
+        await tester.pump();
+        cubit.decrement(); // 3 (still detached by takeWhile)
+        await tester.pump();
+        expect(listened, equals([1, 3, 4]));
+      },
+    );
+
+    testComponents(
+      'BlocSignalConsumer and BlocSignalConsumer.transition isolate take and '
+      'takeWhile',
+      (tester) async {
+        final cubit = CounterCubit();
+        final consumerTakeOnly = <int>[];
+        final consumerTakeWhileOnly = <int>[];
+        final transitionTakeOnly = <String>[];
+        final transitionTakeWhileOnly = <String>[];
+
+        tester.pumpComponent(
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: div([
+              BlocSignalConsumer<CounterCubit, int>(
+                take: 2,
+                listener: (context, state) => consumerTakeOnly.add(state),
+                builder: (context, state) =>
+                    div([Component.text('ConsumerTake: $state')]),
+              ),
+              BlocSignalConsumer<CounterCubit, int>(
+                takeWhile: (state) => state < 3,
+                listener: (context, state) => consumerTakeWhileOnly.add(state),
+                builder: (context, state) =>
+                    div([Component.text('ConsumerTakeWhile: $state')]),
+              ),
+              BlocSignalConsumer<CounterCubit, int>.transition(
+                take: 2,
+                listener: (context, prev, curr) =>
+                    transitionTakeOnly.add('$prev->$curr'),
+                builder: (context, state) =>
+                    div([Component.text('TransitionTake: $state')]),
+              ),
+              BlocSignalConsumer<CounterCubit, int>.transition(
+                takeWhile: (state) => state < 3,
+                listener: (context, prev, curr) =>
+                    transitionTakeWhileOnly.add('$prev->$curr'),
+                builder: (context, state) =>
+                    div([Component.text('TransitionTakeWhile: $state')]),
+              ),
+            ]),
+          ),
+        );
+
+        cubit.increment(); // 1
+        await tester.pump();
+        cubit.increment(); // 2
+        await tester.pump();
+        cubit.increment(); // 3 (takeWhile detaches)
+        await tester.pump();
+        cubit.decrement(); // 2 (takeWhile stays detached)
+        await tester.pump();
+
+        expect(consumerTakeOnly, equals([1, 2]));
+        expect(consumerTakeWhileOnly, equals([1, 2]));
+        expect(transitionTakeOnly, equals(['0->1', '1->2']));
+        expect(transitionTakeWhileOnly, equals(['0->1', '1->2']));
+        expect(find.text('ConsumerTake: 2'), findsOneComponent);
+        expect(find.text('TransitionTakeWhile: 2'), findsOneComponent);
+      },
+    );
+
+    testComponents(
+      'MultiBlocSignalListener forwards takeWhile detachment for default and '
+      '.transition listeners',
+      (tester) async {
+        final cubit = CounterCubit();
+        final defaultEvents = <int>[];
+        final transitionEvents = <String>[];
+
+        tester.pumpComponent(
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubit,
+            child: MultiBlocSignalListener(
+              listeners: [
+                BlocSignalListener<CounterCubit, int>(
+                  take: 5,
+                  takeWhile: (state) => state < 3,
+                  listener: (context, state) => defaultEvents.add(state),
+                ),
+                BlocSignalListener<CounterCubit, int>.transition(
+                  take: 5,
+                  takeWhile: (state) => state < 3,
+                  listener: (context, prev, curr) =>
+                      transitionEvents.add('$prev->$curr'),
+                ),
+              ],
+              child: const div([Component.text('MultiTakeWhile')]),
+            ),
+          ),
+        );
+
+        cubit.increment(); // 1
+        await tester.pump();
+        cubit.increment(); // 2
+        await tester.pump();
+        // 3 -> takeWhile(3)=false -> both detach before take: 5
+        cubit.increment();
+        await tester.pump();
+        cubit.decrement(); // 2 -> both stay detached
+        await tester.pump();
+
+        expect(defaultEvents, equals([1, 2]));
+        expect(transitionEvents, equals(['0->1', '1->2']));
+      },
+    );
+
+    testComponents(
+      'didChangeDependencies resets take and takeWhile quotas on '
+      'BlocSignalProvider swap',
+      (tester) async {
+        final takeCubit1 = CounterCubit();
+        final takeCubit2 = CounterCubit();
+        final takeListened = <int>[];
+        late void Function(CounterCubit next) swapTakeProvider;
+
+        tester.pumpComponent(
+          _ProviderSwapJasprHost(
+            initialBloc: takeCubit1,
+            onReady: (setter) => swapTakeProvider = setter,
+            child: BlocSignalListener<CounterCubit, int>(
+              take: 1,
+              listener: (context, state) => takeListened.add(state),
+              child: const div([Component.text('ProviderSwapTake')]),
+            ),
+          ),
+        );
+
+        takeCubit1.increment(); // 1 (take: 1 exhausted)
+        await tester.pump();
+        takeCubit1.increment(); // 2 (ignored)
+        await tester.pump();
+        expect(takeListened, equals([1]));
+
+        swapTakeProvider(takeCubit2);
+        await tester.pump();
+
+        takeCubit1.increment(); // old provider ignored
+        takeCubit2.increment(); // 1 (quota reset -> fires then detaches)
+        await tester.pump();
+        takeCubit2.increment(); // 2 (ignored)
+        await tester.pump();
+        expect(takeListened, equals([1, 1]));
+
+        final whileCubit1 = CounterCubit();
+        final whileCubit2 = CounterCubit();
+        final whileListened = <int>[];
+        late void Function(CounterCubit next) swapWhileProvider;
+
+        tester.pumpComponent(
+          _ProviderSwapJasprHost(
+            initialBloc: whileCubit1,
+            onReady: (setter) => swapWhileProvider = setter,
+            child: BlocSignalListener<CounterCubit, int>(
+              takeWhile: (state) => state < 2,
+              listener: (context, state) => whileListened.add(state),
+              child: const div([Component.text('ProviderSwapTakeWhile')]),
+            ),
+          ),
+        );
+
+        whileCubit1.increment(); // 1 (fires)
+        await tester.pump();
+        whileCubit1.increment(); // 2 -> takeWhile(2)=false -> detached
+        await tester.pump();
+        whileCubit1.decrement(); // 1 (stays detached)
+        await tester.pump();
+        expect(whileListened, equals([1]));
+
+        swapWhileProvider(whileCubit2);
+        await tester.pump();
+
+        whileCubit2.increment(); // 1 (takeWhile reset -> fires)
+        await tester.pump();
+        whileCubit2.increment(); // 2 -> detached
+        await tester.pump();
+        expect(whileListened, equals([1, 1]));
+      },
+    );
+
+    testComponents(
+      'dispose detaches listener cleanly before quota, after take exhaustion, '
+      'and after takeWhile detachment',
+      (tester) async {
+        // 1. Unmount before quota completion.
+        final cubitBefore = CounterCubit();
+        final listenedBefore = <int>[];
+        late void Function() unmountBefore;
+
+        tester.pumpComponent(
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubitBefore,
+            child: _UnmountJasprHost(
+              onReady: (cb) => unmountBefore = cb,
+              child: BlocSignalListener<CounterCubit, int>(
+                take: 2,
+                listener: (context, state) => listenedBefore.add(state),
+                child: const div([Component.text('DisposeBefore')]),
+              ),
+            ),
+          ),
+        );
+
+        cubitBefore.increment(); // 1
+        await tester.pump();
+        unmountBefore();
+        await tester.pump();
+        cubitBefore.increment(); // 2 (disposed -> ignored, no exception)
+        await tester.pump();
+        expect(listenedBefore, equals([1]));
+
+        // 2. Unmount after take exhaustion.
+        final cubitAfterTake = CounterCubit();
+        final listenedAfterTake = <int>[];
+        late void Function() unmountAfterTake;
+
+        tester.pumpComponent(
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubitAfterTake,
+            child: _UnmountJasprHost(
+              onReady: (cb) => unmountAfterTake = cb,
+              child: BlocSignalListener<CounterCubit, int>(
+                take: 1,
+                listener: (context, state) => listenedAfterTake.add(state),
+                child: const div([Component.text('DisposeAfterTake')]),
+              ),
+            ),
+          ),
+        );
+
+        cubitAfterTake.increment(); // 1 (exhausts take: 1)
+        await tester.pump();
+        unmountAfterTake();
+        await tester.pump();
+        cubitAfterTake.increment(); // 2 (disposed -> ignored, no exception)
+        await tester.pump();
+        expect(listenedAfterTake, equals([1]));
+
+        // 3. Unmount after takeWhile detachment.
+        final cubitAfterWhile = CounterCubit();
+        final listenedAfterWhile = <int>[];
+        late void Function() unmountAfterWhile;
+
+        tester.pumpComponent(
+          BlocSignalProvider<CounterCubit>.value(
+            value: cubitAfterWhile,
+            child: _UnmountJasprHost(
+              onReady: (cb) => unmountAfterWhile = cb,
+              child: BlocSignalListener<CounterCubit, int>(
+                takeWhile: (state) => state < 2,
+                listener: (context, state) => listenedAfterWhile.add(state),
+                child: const div([Component.text('DisposeAfterWhile')]),
+              ),
+            ),
+          ),
+        );
+
+        cubitAfterWhile.increment(); // 1 (fires)
+        await tester.pump();
+        cubitAfterWhile.increment(); // 2 (takeWhile detaches)
+        await tester.pump();
+        unmountAfterWhile();
+        await tester.pump();
+        cubitAfterWhile.decrement(); // 1 (disposed -> ignored, no exception)
+        await tester.pump();
+        expect(listenedAfterWhile, equals([1]));
+      },
+    );
+  });
 }
 
 class _CustomJasprProviderSingleChildComponent extends StatelessComponent
@@ -2175,4 +2828,124 @@ class _UnmountJasprHostState extends State<_UnmountJasprHost> {
   Component build(BuildContext context) {
     return _mounted ? component.child : const div([]);
   }
+}
+
+class _QuotaUpdateJasprHost extends StatefulComponent {
+  const _QuotaUpdateJasprHost({
+    required this.initialBloc,
+    required this.initialTake,
+    required this.initialTakeWhile,
+    required this.onReady,
+    required this.onListened,
+  });
+
+  final CounterCubit initialBloc;
+  final int? initialTake;
+  final bool Function(int state)? initialTakeWhile;
+  final void Function(
+    void Function({
+      required CounterCubit bloc,
+      int? take,
+      bool Function(int state)? takeWhile,
+    }),
+  ) onReady;
+  final void Function(int) onListened;
+
+  @override
+  State<_QuotaUpdateJasprHost> createState() => _QuotaUpdateJasprHostState();
+}
+
+class _QuotaUpdateJasprHostState extends State<_QuotaUpdateJasprHost> {
+  late CounterCubit _bloc;
+  int? _take;
+  bool Function(int state)? _takeWhile;
+
+  @override
+  void initState() {
+    super.initState();
+    _bloc = component.initialBloc;
+    _take = component.initialTake;
+    _takeWhile = component.initialTakeWhile;
+    component.onReady(({
+      required bloc,
+      take,
+      takeWhile,
+    }) {
+      setState(() {
+        _bloc = bloc;
+        _take = take;
+        _takeWhile = takeWhile;
+      });
+    });
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalListener<CounterCubit, int>(
+      bloc: _bloc,
+      take: _take,
+      takeWhile: _takeWhile,
+      listener: (context, state) => component.onListened(state),
+      child: const div([Component.text('QuotaUpdateHost')]),
+    );
+  }
+}
+
+class _ProviderSwapJasprHost extends StatefulComponent {
+  const _ProviderSwapJasprHost({
+    required this.initialBloc,
+    required this.onReady,
+    required this.child,
+  });
+
+  final CounterCubit initialBloc;
+  final void Function(void Function(CounterCubit next)) onReady;
+  final Component child;
+
+  @override
+  State<_ProviderSwapJasprHost> createState() => _ProviderSwapJasprHostState();
+}
+
+class _ProviderSwapJasprHostState extends State<_ProviderSwapJasprHost> {
+  late CounterCubit _bloc;
+
+  @override
+  void initState() {
+    super.initState();
+    _bloc = component.initialBloc;
+    component.onReady((next) {
+      setState(() {
+        _bloc = next;
+      });
+    });
+  }
+
+  @override
+  Component build(BuildContext context) {
+    return BlocSignalProvider<CounterCubit>.value(
+      value: _bloc,
+      child: component.child,
+    );
+  }
+}
+
+class _JasprEffectSpyObserver extends SignalsObserver {
+  final List<String?> effectNames = <String?>[];
+
+  @override
+  void onComputedCreated<T>(Computed<T> instance) {}
+
+  @override
+  void onComputedUpdated<T>(Computed<T> instance, T value) {}
+
+  @override
+  void onEffectCreated(Effect instance) {
+    effectNames.add(instance.name);
+  }
+
+  @override
+  void onSignalCreated<T>(Signal<T> instance, T value) {}
+
+  @override
+  void onSignalUpdated<T>(Signal<T> instance, T value) {}
 }

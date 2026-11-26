@@ -29,8 +29,11 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
     this.bloc,
     this.buildWhen,
     this.listenWhen,
+    this.take,
+    this.takeWhile,
     super.key,
-  })  : _listener = listener,
+  })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        _listener = listener,
         _transitionListener = null;
 
   /// Creates a [BlocSignalConsumer] whose [listener] receives both the
@@ -52,8 +55,11 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
     this.bloc,
     this.buildWhen,
     this.listenWhen,
+    this.take,
+    this.takeWhile,
     super.key,
-  })  : _listener = null,
+  })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        _listener = null,
         _transitionListener = listener;
 
   /// The bloc to listen and build from. If null, it is looked up from the
@@ -83,6 +89,20 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
   /// change.
   final bool Function(S previous, S current)? listenWhen;
 
+  /// The maximum number of times [listener] will be invoked before detaching.
+  ///
+  /// Emissions filtered out by [listenWhen] do not consume this budget. When
+  /// `0`, no active subscription is registered and [listener] is never called.
+  /// Must be non-negative when provided.
+  final int? take;
+
+  /// A predicate evaluated against each matching state before invoking
+  /// [listener].
+  ///
+  /// When it returns `false`, the listener detaches permanently without
+  /// invoking [listener] for that emission or any subsequent emissions.
+  final bool Function(S state)? takeWhile;
+
   @override
   Component build(BuildContext context) {
     final effectiveBloc =
@@ -97,6 +117,8 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
         bloc: effectiveBloc,
         listener: _transitionListener,
         listenWhen: listenWhen,
+        take: take,
+        takeWhile: takeWhile,
         child: child,
       );
     }
@@ -104,6 +126,8 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
       bloc: effectiveBloc,
       listener: _listener!,
       listenWhen: listenWhen,
+      take: take,
+      takeWhile: takeWhile,
       child: child,
     );
   }

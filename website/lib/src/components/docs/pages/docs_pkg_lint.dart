@@ -32,7 +32,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
         h2([Component.text('Overview & Installation')]),
         p([
           Component.text(
-            'The bloc_signals_lint package is an official Dart analyzer plugin (built on analysis_server_plugin) providing 20 specialized analyzer rules. '
+            'The bloc_signals_lint package is an official Dart analyzer plugin (built on analysis_server_plugin) providing 22 specialized analyzer rules. '
             'It detects dangerous runtime pitfalls—such as emitting states during widget build cycles, omitting mixin initializers, or unmanaged signal effects—directly in VS Code, Android Studio, and dart analyze with one-click automated quick-fixes.',
           ),
         ]),
@@ -253,6 +253,19 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                   ),
                 ]),
               ]),
+              tr([
+                td([
+                  code([Component.text('avoid_emit_or_add_in_computed')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-error', [Component.text('ERROR')]),
+                ]),
+                td([
+                  Component.text(
+                    'Flags emit() or add() calls on state containers inside computed() callbacks to keep derived signals pure.',
+                  ),
+                ]),
+              ]),
             ]),
           ]),
         ]),
@@ -403,6 +416,21 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                 td([
                   Component.text(
                     'Flags calling context.select(...) as an unused expression statement where the returned value is discarded.',
+                  ),
+                ]),
+              ]),
+              tr([
+                td([
+                  code([Component.text('avoid_bridging_in_build')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    'Flags .toBlocSignal(), .toAsyncBlocSignal(), .toValueListenable(), and ListenableBlocSignal calls directly inside UI build() methods.',
                   ),
                 ]),
               ]),

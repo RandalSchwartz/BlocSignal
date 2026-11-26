@@ -59,6 +59,7 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 | **`avoid_multiple_synchronous_emits`** | Warning | Flags multiple synchronous `emit()` calls along the same linear execution path without an intervening `await`. | — |
 | **`avoid_primitive_event_types`** | Warning | Flags `BlocSignal<Event, State>` or `BlocSignalMixin` using primitive or untyped types (`int`, `String`, `bool`, `dynamic`, etc.) as event types. | — |
 | **`avoid_pseudo_events_in_telemetry`** | Warning | Flags `emitTelemetry('...')` calls inside `CubitSignal` where the name matches UI event action patterns (`Pressed`, `Clicked`, `Submitted`, etc.). | — |
+| **`avoid_emit_or_add_in_computed`** | Error | Flags `emit()` or `add()` calls on state containers inside `computed()` callbacks. | — |
 
 ### Flutter UI Rules
 
@@ -73,6 +74,7 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 | **`avoid_invalid_context_select_generics`** | Warning | Flags `context.select<B, R>` where generic parameters are omitted or invalid. | — |
 | **`avoid_context_watch_for_bloc_state`** | Warning | Flags `context.watch<T>()` on state containers inside `build()` methods to prevent missing state emission rebuilds. | `Cmd+.` -> Replace `watch` with `read` |
 | **`avoid_unused_select_result`** | Warning | Flags calling `context.select(...)` as an unused expression statement where the result is discarded. | — |
+| **`avoid_bridging_in_build`** | Warning | Flags `.toBlocSignal()`, `.toAsyncBlocSignal()`, `.toValueListenable()`, and `ListenableBlocSignal` calls directly inside UI `build()` methods. | — |
 
 ---
 

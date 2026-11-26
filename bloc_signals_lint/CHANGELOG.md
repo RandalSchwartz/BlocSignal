@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Feat (lint)**: Add `avoid_bridging_in_build` warning rule and `avoid_emit_or_add_in_computed` error rule (#500).
+
 ## 2.0.0
 
 - **BREAKING (lint)**: Migrated `bloc_signals_lint` from `custom_lint` / `custom_lint_builder` to Dart's native `analysis_server_plugin` (`^0.3.26`, `analyzer: ^14.7.0`, `analyzer_plugin: ^0.14.20`) and bumped minimum Dart SDK constraint to `^3.13.0` (#439).

@@ -101,6 +101,12 @@ AnalysisContextCollection _getOrCreateCollection() {
       "languageVersion": "3.5"
     },
     {
+      "name": "bloc_signals_flutter",
+      "rootUri": "../bloc_signals_flutter",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
       "name": "bloc_signals_replay",
       "rootUri": "../bloc_signals_replay",
       "packageUri": "lib/",
@@ -205,6 +211,18 @@ export 'package:bloc_signals_replay/bloc_signals_replay.dart'
 void Function() effect(void Function() cb) => () {};
 T Function() computed<T>(T Function() cb) => cb;
 T signal<T>(T initial) => initial;
+
+extension StreamBlocSignalX<T> on Stream<T> {
+  BlocSignalBase<T> toBlocSignal({required T initialState}) =>
+      BlocSignalBase<T>(initialState: initialState);
+  BlocSignalBase<T> toAsyncBlocSignal() => BlocSignalBase<T>();
+}
+
+extension FutureBlocSignalX<T> on Future<T> {
+  BlocSignalBase<T> toBlocSignal({required T initialState}) =>
+      BlocSignalBase<T>(initialState: initialState);
+  BlocSignalBase<T> toAsyncBlocSignal() => BlocSignalBase<T>();
+}
 ''');
 
   final hydrateLibDir = Directory(
@@ -297,6 +315,13 @@ class ReplayBloc<Event, State> extends BlocSignal<Event, State> {
   final flutterLibDir = Directory(_joinPath([rootPath, 'flutter', 'lib']))
     ..createSync(recursive: true);
   File(_joinPath([flutterLibDir.path, 'widgets.dart'])).writeAsStringSync('''
+class Listenable {}
+class ValueListenable<T> extends Listenable {
+  T get value => throw UnimplementedError();
+}
+class ValueNotifier<T> extends ValueListenable<T> {
+  ValueNotifier(T value);
+}
 class BuildContext {
   T read<T>() => throw UnimplementedError();
   T watch<T>() => throw UnimplementedError();
@@ -328,6 +353,48 @@ class BlocSignalProvider<T> extends Widget {
   });
   static T of<T>(BuildContext context, {bool listen = false}) =>
       throw UnimplementedError();
+}
+''');
+
+  final blocFlutterLibDir = Directory(
+    _joinPath([rootPath, 'bloc_signals_flutter', 'lib']),
+  )..createSync(recursive: true);
+  File(_joinPath([blocFlutterLibDir.path, 'bloc_signals_flutter.dart']))
+      .writeAsStringSync('''
+import 'package:bloc_signals/bloc_signals.dart';
+import 'package:flutter/widgets.dart';
+
+export 'package:bloc_signals/bloc_signals.dart';
+export 'package:flutter/widgets.dart';
+
+class ListenableBlocSignal<T> extends CubitSignal<T> {
+  ListenableBlocSignal(
+    Listenable listenable, {
+    required T Function() readState,
+  }) : super(initialState: readState());
+
+  factory ListenableBlocSignal.fromValueListenable(
+    ValueListenable<T> valueListenable,
+  ) =>
+      ListenableBlocSignal<T>(
+        valueListenable,
+        readState: () => valueListenable.value,
+      );
+}
+
+extension ListenableBlocSignalX on Listenable {
+  BlocSignalBase<T> toBlocSignal<T>({required T Function() readState}) =>
+      ListenableBlocSignal<T>(this, readState: readState);
+}
+
+extension ValueListenableBlocSignalX<T> on ValueListenable<T> {
+  BlocSignalBase<T> toBlocSignal() =>
+      ListenableBlocSignal<T>.fromValueListenable(this);
+}
+
+extension BlocSignalValueListenableX<T> on BlocSignalBase<T> {
+  ValueListenable<T> toValueListenable() =>
+      ValueNotifier<T>(stateValue);
 }
 ''');
 

@@ -233,6 +233,16 @@ BlocSignalListener<AuthBloc, AuthState>(
 )
 ```
 
+Use `debounce` (trailing-edge) or `throttle` (leading-edge) on `BlocSignalListener` or `BlocSignalConsumer` — or the `BlocSignalListener.debounce` / `BlocSignalListener.throttle` constructors — to rate-limit side effects in the UI without altering bloc state emissions. `debounce` and `throttle` are mutually exclusive and cancel pending timers cleanly on `dispose()`, bloc swap, or parameter updates:
+
+```dart
+BlocSignalListener<SearchBloc, SearchState>.debounce(
+  duration: const Duration(milliseconds: 300),
+  listener: (context, state) => analytics.logSearch(state.query),
+  child: const SearchResults(),
+)
+```
+
 An unrelated parent rebuild does not restart the effect. When `bloc:` is omitted, the listener
 looks up its provider with `listen: true` during `didChangeDependencies`, so if an ancestor provider replaces
 its container instance, the listener automatically rebinds and continues observing state transitions seamlessly.

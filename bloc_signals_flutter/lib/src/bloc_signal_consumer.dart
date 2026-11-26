@@ -32,8 +32,14 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
     this.listenWhen,
     this.take,
     this.takeWhile,
+    this.debounce,
+    this.throttle,
     super.key,
   })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        assert(
+          debounce == null || throttle == null,
+          'Cannot specify both debounce and throttle.',
+        ),
         _builder = builder,
         _listener = listener,
         _transitionListener = null,
@@ -61,8 +67,14 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
     this.listenWhen,
     this.take,
     this.takeWhile,
+    this.debounce,
+    this.throttle,
     super.key,
   })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        assert(
+          debounce == null || throttle == null,
+          'Cannot specify both debounce and throttle.',
+        ),
         _builder = builder,
         _listener = null,
         _transitionListener = listener,
@@ -103,9 +115,15 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
     this.listenWhen,
     this.take,
     this.takeWhile,
+    this.debounce,
+    this.throttle,
     this.child,
     super.key,
   })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        assert(
+          debounce == null || throttle == null,
+          'Cannot specify both debounce and throttle.',
+        ),
         _builder = null,
         _listener = listener,
         _transitionListener = null,
@@ -155,6 +173,16 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
   /// invoking [listener] for that emission or any subsequent emissions.
   final bool Function(S state)? takeWhile;
 
+  /// Optional trailing-edge debounce duration for [listener].
+  ///
+  /// Mutually exclusive with [throttle].
+  final Duration? debounce;
+
+  /// Optional leading-edge throttle duration for [listener].
+  ///
+  /// Mutually exclusive with [debounce].
+  final Duration? throttle;
+
   /// An optional static child widget passed through to the `builder` callback
   /// in [BlocSignalConsumer.child].
   final Widget? child;
@@ -187,6 +215,8 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
         listenWhen: listenWhen,
         take: take,
         takeWhile: takeWhile,
+        debounce: debounce,
+        throttle: throttle,
         child: builtChild,
       );
     }
@@ -197,6 +227,8 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
       listenWhen: listenWhen,
       take: take,
       takeWhile: takeWhile,
+      debounce: debounce,
+      throttle: throttle,
       child: builtChild,
     );
   }
@@ -224,6 +256,12 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
           'takeWhile',
           takeWhile,
         ),
+      )
+      ..add(
+        DiagnosticsProperty<Duration>('debounce', debounce, defaultValue: null),
+      )
+      ..add(
+        DiagnosticsProperty<Duration>('throttle', throttle, defaultValue: null),
       );
   }
 }

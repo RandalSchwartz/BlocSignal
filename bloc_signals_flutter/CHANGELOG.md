@@ -2,6 +2,7 @@
 
 - **Feat (flutter)**: Add `BlocSignalProvider.maybeOf`, `context.maybeRead`, `context.maybeWatch`, structured `BlocSignalProviderNotFoundError` (extending `FlutterError`), `BlocSignalListener.transition` / `BlocSignalConsumer.transition`, `context.select(..., equals:)`, `debugFillProperties` on all 7 widgets, and `EffectOptions(name: ...)` on `BlocSignalBuilder` and `BlocSignalListener` (#481).
 - **Feat (flutter)**: Add `.child` constructors to `BlocSignalBuilder`, `BlocSignalSelector`, and `BlocSignalConsumer` for static `child` subtree preservation (#497).
+- **Feat (flutter)**: Add `take` and `takeWhile` execution quotas to `BlocSignalListener` and `BlocSignalConsumer` (#390).
 
 ## 1.5.2
 

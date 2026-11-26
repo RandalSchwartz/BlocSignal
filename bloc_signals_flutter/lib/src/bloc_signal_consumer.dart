@@ -30,8 +30,11 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
     this.bloc,
     this.buildWhen,
     this.listenWhen,
+    this.take,
+    this.takeWhile,
     super.key,
-  })  : _builder = builder,
+  })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        _builder = builder,
         _listener = listener,
         _transitionListener = null,
         child = null,
@@ -56,8 +59,11 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
     this.bloc,
     this.buildWhen,
     this.listenWhen,
+    this.take,
+    this.takeWhile,
     super.key,
-  })  : _builder = builder,
+  })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        _builder = builder,
         _listener = null,
         _transitionListener = listener,
         child = null,
@@ -95,9 +101,12 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
     this.bloc,
     this.buildWhen,
     this.listenWhen,
+    this.take,
+    this.takeWhile,
     this.child,
     super.key,
-  })  : _builder = null,
+  })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        _builder = null,
         _listener = listener,
         _transitionListener = null,
         _childBuilder = builder;
@@ -132,6 +141,20 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
   /// change.
   final bool Function(S previous, S current)? listenWhen;
 
+  /// The maximum number of times [listener] will be invoked before detaching.
+  ///
+  /// Emissions filtered out by [listenWhen] do not consume this budget. When
+  /// `0`, no active subscription is registered and [listener] is never called.
+  /// Must be non-negative when provided.
+  final int? take;
+
+  /// A predicate evaluated against each matching state before invoking
+  /// [listener].
+  ///
+  /// When it returns `false`, the listener detaches permanently without
+  /// invoking [listener] for that emission or any subsequent emissions.
+  final bool Function(S state)? takeWhile;
+
   /// An optional static child widget passed through to the `builder` callback
   /// in [BlocSignalConsumer.child].
   final Widget? child;
@@ -162,6 +185,8 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
         bloc: effectiveBloc,
         listener: _transitionListener,
         listenWhen: listenWhen,
+        take: take,
+        takeWhile: takeWhile,
         child: builtChild,
       );
     }
@@ -170,6 +195,8 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
       bloc: effectiveBloc,
       listener: _listener!,
       listenWhen: listenWhen,
+      take: take,
+      takeWhile: takeWhile,
       child: builtChild,
     );
   }
@@ -189,6 +216,13 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
         ObjectFlagProperty<bool Function(S previous, S current)>.has(
           'listenWhen',
           listenWhen,
+        ),
+      )
+      ..add(IntProperty('take', take, defaultValue: null))
+      ..add(
+        ObjectFlagProperty<bool Function(S state)>.has(
+          'takeWhile',
+          takeWhile,
         ),
       );
   }

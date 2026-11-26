@@ -95,6 +95,12 @@ AnalysisContextCollection _getOrCreateCollection() {
   "configVersion": 2,
   "packages": [
     {
+      "name": "preact_signals",
+      "rootUri": "../preact_signals",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
       "name": "bloc_signals",
       "rootUri": "../bloc_signals",
       "packageUri": "lib/",
@@ -152,11 +158,33 @@ AnalysisContextCollection _getOrCreateCollection() {
 }
 ''');
 
+  final preactSignalsLibDir = Directory(
+    _joinPath([rootPath, 'preact_signals', 'lib']),
+  )..createSync(recursive: true);
+  File(_joinPath([preactSignalsLibDir.path, 'preact_signals.dart']))
+      .writeAsStringSync('''
+class ReadonlySignal<T> {
+  T get value => throw UnimplementedError();
+  void Function() subscribe(void Function(T value) fn) => () {};
+}
+
+class Signal<T> extends ReadonlySignal<T> {}
+
+class Computed<T> extends ReadonlySignal<T> {}
+
+void Function() effect(void Function() cb) => () {};
+Computed<T> computed<T>(T Function() cb) => Computed<T>();
+Signal<T> signal<T>(T initial) => Signal<T>();
+''');
+
   final blocSignalsLibDir = Directory(
     _joinPath([rootPath, 'bloc_signals', 'lib']),
   )..createSync(recursive: true);
   File(_joinPath([blocSignalsLibDir.path, 'bloc_signals.dart']))
       .writeAsStringSync('''
+export 'package:preact_signals/preact_signals.dart'
+    show Computed, ReadonlySignal, Signal, computed, effect, signal;
+
 class BlocSignalBase<State> {
   BlocSignalBase({State? initialState});
   State get stateValue => throw UnimplementedError();
@@ -165,6 +193,7 @@ class BlocSignalBase<State> {
   void emitTelemetry(String name, {Map<String, Object?>? metadata}) {}
   void createEffect(void Function() cb) {}
   void onError(Object error, StackTrace stackTrace) {}
+  Stream<State> toStream() => const Stream.empty();
   Future<void> close() async {}
 }
 
@@ -208,10 +237,6 @@ abstract class BlocSignalObserver {
 export 'package:bloc_signals_replay/bloc_signals_replay.dart'
     show ReplayBloc, ReplayCubit;
 
-void Function() effect(void Function() cb) => () {};
-T Function() computed<T>(T Function() cb) => cb;
-T signal<T>(T initial) => initial;
-
 extension StreamBlocSignalX<T> on Stream<T> {
   BlocSignalBase<T> toBlocSignal({required T initialState}) =>
       BlocSignalBase<T>(initialState: initialState);
@@ -232,7 +257,10 @@ extension FutureBlocSignalX<T> on Future<T> {
       .writeAsStringSync('''
 import 'package:bloc_signals/bloc_signals.dart';
 
-mixin HydratedMixin<State> on BlocSignalBase<State> {}
+mixin HydratedMixin<State> on BlocSignalBase<State> {
+  String get storagePrefix => '';
+  void hydrate() {}
+}
 
 class HydratedCubitSignal<State> extends CubitSignal<State>
     with HydratedMixin<State> {
@@ -254,6 +282,7 @@ class BuildContext {
   T read<T>() => throw UnimplementedError();
   T watch<T>() => throw UnimplementedError();
   R select<B, R>(R Function(B bloc) selector) => throw UnimplementedError();
+  S value<B, S>() => throw UnimplementedError();
 }
 
 abstract class StatelessComponent extends Component {
@@ -276,8 +305,42 @@ abstract class State<T extends StatefulComponent> {
   )..createSync(recursive: true);
   File(_joinPath([blocJasprLibDir.path, 'bloc_signals_jaspr.dart']))
       .writeAsStringSync('''
+import 'package:jaspr/jaspr.dart';
+
 export 'package:bloc_signals/bloc_signals.dart';
 export 'package:jaspr/jaspr.dart';
+
+class BlocSignalProvider<T> extends Component {
+  BlocSignalProvider({
+    T Function(BuildContext context)? create,
+    Component? child,
+  });
+  BlocSignalProvider.value({
+    T? value,
+    Component? child,
+  });
+}
+
+class BlocSignalListener<B, S> extends Component {
+  BlocSignalListener({
+    void Function(BuildContext context, S state)? listener,
+    Component? child,
+  });
+}
+
+class MultiBlocSignalProvider extends Component {
+  MultiBlocSignalProvider({
+    required List<BlocSignalProvider<dynamic>> providers,
+    required Component child,
+  });
+}
+
+class MultiBlocSignalListener extends Component {
+  MultiBlocSignalListener({
+    required List<BlocSignalListener<dynamic, dynamic>> listeners,
+    required Component child,
+  });
+}
 ''');
 
   final flutterHooksLibDir = Directory(
@@ -326,12 +389,18 @@ class BuildContext {
   T read<T>() => throw UnimplementedError();
   T watch<T>() => throw UnimplementedError();
   R select<B, R>(R Function(B bloc) selector) => throw UnimplementedError();
+  S value<B, S>() => throw UnimplementedError();
 }
 
 class Widget {}
 class StatelessWidget extends Widget {}
 class StatefulWidget extends Widget {}
-class State<T> {}
+class State<T> {
+  void initState() {}
+  void didChangeDependencies() {}
+  void dispose() {}
+  Widget build(BuildContext context) => Container();
+}
 class Container extends Widget {}
 class Text extends Widget {
   Text(String s);
@@ -353,6 +422,24 @@ class BlocSignalProvider<T> extends Widget {
   });
   static T of<T>(BuildContext context, {bool listen = false}) =>
       throw UnimplementedError();
+}
+class BlocSignalListener<B, S> extends Widget {
+  BlocSignalListener({
+    void Function(BuildContext context, S state)? listener,
+    Widget? child,
+  });
+}
+class MultiBlocSignalProvider extends Widget {
+  MultiBlocSignalProvider({
+    required List<BlocSignalProvider<dynamic>> providers,
+    required Widget child,
+  });
+}
+class MultiBlocSignalListener extends Widget {
+  MultiBlocSignalListener({
+    required List<BlocSignalListener<dynamic, dynamic>> listeners,
+    required Widget child,
+  });
 }
 ''');
 
@@ -448,7 +535,7 @@ Future<List<ReportedLint>> runLintRule(
   ]);
   final testFile = File(testFilePath);
 
-  final hasImports = sourceCode.contains("import 'package:bloc_signals/");
+  final hasImports = sourceCode.contains("import 'package:bloc_signals");
   final prefix = hasImports ? '' : _defaultPreamble;
   final fullSource = '$prefix$sourceCode';
 
@@ -504,7 +591,7 @@ Future<String> runLintFix(
   ]);
   final testFile = File(testFilePath);
 
-  final hasImports = sourceCode.contains("import 'package:bloc_signals/");
+  final hasImports = sourceCode.contains("import 'package:bloc_signals");
   final prefix = hasImports ? '' : _defaultPreamble;
   final fullSource = '$prefix$sourceCode';
 

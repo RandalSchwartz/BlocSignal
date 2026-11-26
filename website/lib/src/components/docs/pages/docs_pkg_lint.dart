@@ -32,7 +32,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
         h2([Component.text('Overview & Installation')]),
         p([
           Component.text(
-            'The bloc_signals_lint package is an official Dart analyzer plugin (built on analysis_server_plugin) providing 22 specialized analyzer rules. '
+            'The bloc_signals_lint package is an official Dart analyzer plugin (built on analysis_server_plugin) providing 28 specialized analyzer rules. '
             'It detects dangerous runtime pitfalls—such as emitting states during widget build cycles, omitting mixin initializers, or unmanaged signal effects—directly in VS Code, Android Studio, and dart analyze with one-click automated quick-fixes.',
           ),
         ]),
@@ -266,6 +266,51 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                   ),
                 ]),
               ]),
+              tr([
+                td([
+                  code([Component.text('require_hydrated_storage_prefix')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    'Requires concrete HydratedCubitSignal, HydratedBlocSignal, and HydratedMixin classes to override storagePrefix.',
+                  ),
+                ]),
+              ]),
+              tr([
+                td([
+                  code([Component.text('require_hydrated_mixin_init')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    'Requires classes mixing in HydratedMixin with CubitSignalMixin or BlocSignalMixin to call hydrate() in constructors.',
+                  ),
+                ]),
+              ]),
+              tr([
+                td([
+                  code([Component.text('avoid_unmanaged_signal_subscription')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    'Flags discarded ReadonlySignal.subscribe(...) calls whose cleanup closure is not retained.',
+                  ),
+                ]),
+              ]),
             ]),
           ]),
         ]),
@@ -315,7 +360,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                 ]),
                 td([
                   Component.text(
-                    'Flags unmanaged effect() calls inside Flutter Widget/HookWidget/State or Jaspr Component/State methods without lifecycle cleanup, and direct effect()/computed() allocations inside build().',
+                    'Flags unmanaged effect() calls inside Flutter Widget/HookWidget/State or Jaspr Component/State methods outside build() without lifecycle cleanup.',
                   ),
                 ]),
               ]),
@@ -434,6 +479,53 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                   ),
                 ]),
               ]),
+              tr([
+                td([
+                  code([
+                    Component.text('require_child_outside_multi_bloc_signal'),
+                  ]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    'Flags BlocSignalProvider, BlocSignalProvider.value, and BlocSignalListener omitting child: outside MultiBlocSignalProvider or MultiBlocSignalListener.',
+                  ),
+                ]),
+              ]),
+              tr([
+                td([
+                  code([Component.text('avoid_signal_creation_in_build')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    'Flags direct signal(), computed(), and effect() allocations inside build() methods.',
+                  ),
+                ]),
+              ]),
+              tr([
+                td([
+                  code([Component.text('avoid_context_select_outside_build')]),
+                ]),
+                td([
+                  span(classes: 'badge badge-warning', [
+                    Component.text('WARNING'),
+                  ]),
+                ]),
+                td([
+                  Component.text(
+                    'Flags context.select(...) and context.value(...) calls outside build(), including callbacks, closures, and non-build lifecycle methods.',
+                  ),
+                ]),
+              ]),
             ]),
           ]),
         ]),
@@ -535,6 +627,60 @@ void example(BuildContext context, CounterBloc bloc) {
             strong([Component.text('RequireEmitInHelperNameFix')]),
             Component.text(
               ': Renames private helper methods calling emit() and their call sites by appending AndEmit.',
+            ),
+          ]),
+          li([
+            strong([Component.text('AddHydratedStoragePrefixFix')]),
+            Component.text(
+              ': Inserts @override String get storagePrefix => ...; on concrete hydrated containers.',
+            ),
+          ]),
+          li([
+            strong([Component.text('AddHydratedMixinInitFix')]),
+            Component.text(
+              ': Inserts hydrate(); into uninitialized HydratedMixin constructor bodies.',
+            ),
+          ]),
+          li([
+            strong([Component.text('ReplaceContextSelectOutsideBuildFix')]),
+            Component.text(
+              ': Rewrites context.select<B, R>(...) or context.value<B, S>() outside build() to context.read<B>().',
+            ),
+          ]),
+          li([
+            strong([Component.text('FixContextSelectGenericsFix')]),
+            Component.text(
+              ': Reduces invalid context.select<B, S, R> type arguments to <B, R>.',
+            ),
+          ]),
+          li([
+            strong([Component.text('InsertToStreamForTransformerFix')]),
+            Component.text(
+              ': Inserts .toStream() before stream transformer calls on BlocSignalBase containers.',
+            ),
+          ]),
+          li([
+            strong([Component.text('BindUnusedSelectResultFix')]),
+            Component.text(
+              ': Binds discarded context.select(...) statements to final value = ....',
+            ),
+          ]),
+          li([
+            strong([Component.text('RemoveManualCloseOnProvidedBlocFix')]),
+            Component.text(
+              ': Removes manual close() calls on provider-managed containers.',
+            ),
+          ]),
+          li([
+            strong([Component.text('RemoveDuplicateEventHandlerFix')]),
+            Component.text(
+              ': Removes duplicate on<Event>(...) handler registrations.',
+            ),
+          ]),
+          li([
+            strong([Component.text('ReplaceContextWatchWithValueFix')]),
+            Component.text(
+              ': Alternative fix rewriting context.watch<B>() to context.value<B, S>().',
             ),
           ]),
         ]),

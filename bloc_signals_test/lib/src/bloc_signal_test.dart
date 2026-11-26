@@ -1,8 +1,63 @@
 import 'dart:async';
 
 import 'package:bloc_signals/bloc_signals.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:meta/meta.dart';
 import 'package:test/test.dart' as test_pkg;
+
+final Object _fakeAsyncZoneKey = Object();
+
+FakeAsync _requireFakeAsync(String caller) {
+  final fakeAsync = Zone.current[_fakeAsyncZoneKey];
+  if (fakeAsync is! FakeAsync) {
+    throw StateError(
+      '$caller() can only be called inside '
+      'blocSignalTest(..., fakeAsync: true).',
+    );
+  }
+  return fakeAsync;
+}
+
+/// Advances the virtual clock inside a `blocSignalTest(..., fakeAsync: true)`
+/// block by [duration], firing scheduled timers and flushing microtasks.
+///
+/// Throws a [StateError] if called outside an active
+/// `blocSignalTest(..., fakeAsync: true)` execution zone.
+///
+/// ```dart
+/// blocSignalTest<DebounceCubit, int>(
+///   'debounces rapid updates in virtual time',
+///   build: DebounceCubit.new,
+///   act: (cubit) {
+///     cubit.scheduleIncrement(1, const Duration(seconds: 5));
+///     elapse(const Duration(seconds: 5));
+///   },
+///   fakeAsync: true,
+///   expect: () => [1],
+/// );
+/// ```
+void elapse(Duration duration) => _requireFakeAsync('elapse').elapse(duration);
+
+/// Flushes pending microtasks inside a `blocSignalTest(..., fakeAsync: true)`
+/// block without advancing the virtual clock.
+///
+/// Throws a [StateError] if called outside an active
+/// `blocSignalTest(..., fakeAsync: true)` execution zone.
+///
+/// ```dart
+/// blocSignalTest<CounterCubit, int>(
+///   'flushes scheduled microtasks deterministically',
+///   build: CounterCubit.new,
+///   act: (cubit) {
+///     scheduleMicrotask(cubit.increment);
+///     flushMicrotasks();
+///   },
+///   fakeAsync: true,
+///   expect: () => [1],
+/// );
+/// ```
+void flushMicrotasks() =>
+    _requireFakeAsync('flushMicrotasks').flushMicrotasks();
 
 /// Declaratively tests a [BlocSignalBase] instance.
 ///
@@ -37,7 +92,24 @@ import 'package:test/test.dart' as test_pkg;
 /// emitted states should be skipped from the expectation list.
 ///
 /// [wait] is an optional [Duration] to await after [act] before checking
-/// expectations.
+/// expectations. When [fakeAsync] is `true`, [wait] advances the virtual clock
+/// via `FakeAsync.elapse` instead of waiting in wall-clock time.
+///
+/// [fakeAsync] is an optional `bool` that defaults to `false`. When `true`,
+/// [build], [act], and [wait] execute inside a `FakeAsync` virtual-time zone,
+/// enabling deterministic, zero-wall-clock-latency testing of timers and delays
+/// via [wait], [elapse], and [flushMicrotasks].
+///
+/// ```dart
+/// blocSignalTest<TimerCubit, int>(
+///   'emits after virtual delay without waiting in real time',
+///   build: TimerCubit.new,
+///   act: (cubit) => cubit.incrementAfter(const Duration(seconds: 30)),
+///   fakeAsync: true,
+///   wait: const Duration(seconds: 30),
+///   expect: () => [1],
+/// );
+/// ```
 ///
 /// [expect] is an optional callback returning an [Iterable] or
 /// [test_pkg.Matcher] of expected states.
@@ -62,6 +134,7 @@ void blocSignalTest<B extends BlocSignalBase<State>, State>(
   FutureOr<void> Function()? setUp,
   FutureOr<void> Function(B bloc)? act,
   Duration? wait,
+  bool fakeAsync = false,
   int skip = 0,
   Object? Function()? expect,
   FutureOr<void> Function(B bloc)? verify,
@@ -77,6 +150,7 @@ void blocSignalTest<B extends BlocSignalBase<State>, State>(
       setUp: setUp,
       act: act,
       wait: wait,
+      fakeAsync: fakeAsync,
       skip: skip,
       expect: expect,
       verify: verify,
@@ -104,6 +178,7 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
   FutureOr<void> Function()? setUp,
   FutureOr<void> Function(B bloc)? act,
   Duration? wait,
+  bool fakeAsync = false,
   int skip = 0,
   Object? Function()? expect,
   FutureOr<void> Function(B bloc)? verify,
@@ -148,26 +223,30 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
 
   void Function()? disposeListener;
   try {
-    bloc = build();
-    for (final pair in initialErrors) {
-      if (identical(pair.$1, bloc)) {
-        caughtErrors.add(pair.$2);
+    B prepareBloc() {
+      final built = build();
+      bloc = built;
+      for (final pair in initialErrors) {
+        if (identical(pair.$1, built)) {
+          caughtErrors.add(pair.$2);
+        }
       }
-    }
-    for (final pair in initialTelemetry) {
-      if (identical(pair.$1, bloc)) {
-        caughtTelemetry.add(pair.$2);
+      for (final pair in initialTelemetry) {
+        if (identical(pair.$1, built)) {
+          caughtTelemetry.add(pair.$2);
+        }
       }
-    }
 
-    var initialSkipped = false;
-    disposeListener = bloc.state.subscribe((value) {
-      if (!initialSkipped) {
-        initialSkipped = true;
-        return;
-      }
-      states.add(value);
-    });
+      var initialSkipped = false;
+      disposeListener = built.state.subscribe((value) {
+        if (!initialSkipped) {
+          initialSkipped = true;
+          return;
+        }
+        states.add(value);
+      });
+      return built;
+    }
 
     final unhandledErrors = <(Object, StackTrace)>[];
     final parentZone = Zone.current;
@@ -184,37 +263,78 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
       }
     }
 
-    final targetBloc = bloc;
-    unawaited(
-      runZonedGuarded(
-        () async {
-          try {
-            if (act != null) {
-              try {
-                final actResult = act(targetBloc);
-                if (actResult is Future) {
-                  await actResult;
+    if (fakeAsync) {
+      try {
+        FakeAsync().run((async) {
+          final targetBloc = runZoned(
+            prepareBloc,
+            zoneValues: <Object?, Object?>{_fakeAsyncZoneKey: async},
+          );
+          runZonedGuarded(
+            () {
+              if (act != null) {
+                try {
+                  final actResult = act(targetBloc);
+                  if (actResult is Future) {
+                    unawaited(
+                      actResult.then<void>((_) {}, onError: recordError),
+                    );
+                  }
+                  // Intentional `on Object catch` (SCAR-ERR-02): capture any
+                  // throwable from `act` so `errors` matcher can assert on it.
+                } on Object catch (error, stackTrace) {
+                  recordError(error, stackTrace);
                 }
-                // Intentional `on Object catch` (SCAR-ERR-02): capture any
-                // throwable from `act` so `errors` matcher can assert on it.
-              } on Object catch (error, stackTrace) {
-                recordError(error, stackTrace);
               }
-            }
 
-            await Future<void>.delayed(Duration.zero);
+              async.flushMicrotasks();
 
-            if (wait != null) {
-              await Future<void>.delayed(wait);
+              if (wait != null) {
+                async.elapse(wait);
+              }
+            },
+            recordError,
+            zoneValues: <Object?, Object?>{_fakeAsyncZoneKey: async},
+          );
+        });
+      } finally {
+        completer.complete();
+      }
+    } else {
+      final targetBloc = prepareBloc();
+      unawaited(
+        runZonedGuarded(
+          () async {
+            try {
+              if (act != null) {
+                try {
+                  final actResult = act(targetBloc);
+                  if (actResult is Future) {
+                    await actResult;
+                  }
+                  // Intentional `on Object catch` (SCAR-ERR-02): capture any
+                  // throwable from `act` so `errors` matcher can assert on it.
+                } on Object catch (error, stackTrace) {
+                  recordError(error, stackTrace);
+                }
+              }
+
+              await Future<void>.delayed(Duration.zero);
+
+              if (wait != null) {
+                await Future<void>.delayed(wait);
+              }
+            } finally {
+              completer.complete();
             }
-          } finally {
-            completer.complete();
-          }
-        },
-        recordError,
-      ),
-    );
-    await completer.future;
+          },
+          recordError,
+        ),
+      );
+      await completer.future;
+    }
+
+    final targetBloc = bloc!;
 
     if (unhandledErrors.isNotEmpty) {
       final (error, stackTrace) = unhandledErrors.first;
@@ -238,15 +358,16 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
     }
 
     if (verify != null) {
-      final verifyResult = verify(bloc);
+      final verifyResult = verify(targetBloc);
       if (verifyResult is Future) {
         await verifyResult;
       }
     }
   } finally {
     disposeListener?.call();
-    if (bloc != null) {
-      await bloc.close();
+    final builtBloc = bloc;
+    if (builtBloc != null) {
+      await builtBloc.close();
     }
     BlocSignalObserver.observer = baselineObserver;
     await tearDown?.call();

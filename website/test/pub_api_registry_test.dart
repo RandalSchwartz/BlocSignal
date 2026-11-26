@@ -65,6 +65,8 @@ void main() {
       expect(names, contains('BlocSignalConsumer'));
       expect(names, contains('BlocSignalSelector'));
       expect(names, contains('blocSignalTest'));
+      expect(names, contains('elapse'));
+      expect(names, contains('flushMicrotasks'));
       expect(names, contains('HydratedMixin'));
       expect(names, contains('HydratedCubitSignal'));
       expect(names, contains('HydratedBlocSignal'));

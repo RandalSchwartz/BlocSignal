@@ -584,6 +584,335 @@ void main() {
         },
       );
     });
+
+    group('(Issue #499) FakeAsync virtual-time support', () {
+      var fakeSetUpCalled = false;
+      var fakeTearDownCalled = false;
+      _TimerCubit? createdTimerCubit;
+
+      blocSignalTest<_TimerCubit, int>(
+        'advances virtual time with wait without wall-clock delay',
+        build: _TimerCubit.new,
+        act: (cubit) => cubit.incrementAfter(const Duration(seconds: 30)),
+        fakeAsync: true,
+        wait: const Duration(seconds: 30),
+        expect: () => [1],
+      );
+
+      blocSignalTest<_DebounceCubit, int>(
+        'supports multi-step elapse inside act for debounce flows',
+        build: _DebounceCubit.new,
+        act: (cubit) {
+          cubit.scheduleIncrement(1, const Duration(seconds: 5));
+          elapse(const Duration(seconds: 3));
+          // Second call cancels the first timer before it fires.
+          cubit.scheduleIncrement(2, const Duration(seconds: 5));
+          elapse(const Duration(seconds: 4));
+          // Still pending at 4s; advance past 5s.
+          elapse(const Duration(seconds: 1));
+        },
+        fakeAsync: true,
+        expect: () => [2],
+      );
+
+      blocSignalTest<_TimerCubit, int>(
+        'supports flushMicrotasks inside act without advancing virtual clock',
+        build: _TimerCubit.new,
+        act: (cubit) {
+          scheduleMicrotask(cubit.increment);
+          flushMicrotasks();
+          expect(cubit.stateValue, equals(1));
+        },
+        fakeAsync: true,
+        expect: () => [1],
+      );
+
+      test(
+        'fails when uncaught timer error occurs under fakeAsync and errors '
+        'is omitted',
+        () async {
+          await expectLater(
+            runBlocSignalTest<_TimerCubit, int>(
+              build: _TimerCubit.new,
+              act: (cubit) => cubit.throwInTimer(
+                const Duration(seconds: 10),
+                StateError('timer crash'),
+              ),
+              fakeAsync: true,
+              wait: const Duration(seconds: 10),
+            ),
+            throwsA(isA<StateError>()),
+          );
+        },
+      );
+
+      blocSignalTest<_TimerCubit, int>(
+        'captures expected timer error when errors matcher is provided',
+        build: _TimerCubit.new,
+        act: (cubit) => cubit.throwInTimer(
+          const Duration(seconds: 10),
+          StateError('expected timer crash'),
+        ),
+        fakeAsync: true,
+        wait: const Duration(seconds: 10),
+        expect: () => <int>[],
+        errors: () => [
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'expected timer crash',
+          ),
+        ],
+      );
+
+      blocSignalTest<CounterCubit, int>(
+        'captures synchronous throw in act under fakeAsync',
+        build: CounterCubit.new,
+        act: (cubit) => cubit.failSync(),
+        fakeAsync: true,
+        expect: () => <int>[],
+        errors: () => [
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'cubit sync state error',
+          ),
+        ],
+      );
+
+      test(
+        'elapse throws StateError when called outside fakeAsync',
+        () {
+          expect(
+            () => elapse(const Duration(seconds: 1)),
+            throwsA(isA<StateError>()),
+          );
+        },
+      );
+
+      test(
+        'flushMicrotasks throws StateError when called outside fakeAsync',
+        () {
+          expect(
+            flushMicrotasks,
+            throwsA(isA<StateError>()),
+          );
+        },
+      );
+
+      blocSignalTest<_TimerCubit, int>(
+        'preserves setUp, tearDown, skip, verify, expectTelemetry, and close '
+        'parity under fakeAsync',
+        setUp: () {
+          fakeSetUpCalled = true;
+        },
+        build: () {
+          createdTimerCubit = _TimerCubit();
+          return createdTimerCubit!;
+        },
+        act: (cubit) {
+          cubit
+            ..incrementWithTelemetry()
+            ..incrementAfter(const Duration(seconds: 5));
+        },
+        fakeAsync: true,
+        wait: const Duration(seconds: 5),
+        skip: 1,
+        expect: () => [2],
+        expectTelemetry: () => [
+          isTelemetry('timer_incremented', metadata: {'current': 0}),
+        ],
+        verify: (cubit) {
+          expect(fakeSetUpCalled, isTrue);
+          expect(cubit.isClosed, isFalse);
+          expect(cubit.stateValue, equals(2));
+        },
+        tearDown: () {
+          fakeTearDownCalled = true;
+        },
+      );
+
+      test(
+        'verifies tearDown and bloc.close() ran after fakeAsync test',
+        () {
+          expect(fakeTearDownCalled, isTrue);
+          expect(createdTimerCubit, isNotNull);
+          expect(createdTimerCubit!.isClosed, isTrue);
+        },
+      );
+
+      blocSignalTest<_TimerCubit, int>(
+        'supports act returning a Future that succeeds under fakeAsync',
+        build: _TimerCubit.new,
+        act: (cubit) async {
+          await Future<void>.delayed(const Duration(seconds: 5));
+          cubit.increment();
+        },
+        fakeAsync: true,
+        wait: const Duration(seconds: 5),
+        expect: () => [1],
+      );
+
+      blocSignalTest<_TimerCubit, int>(
+        'captures async error from Future returned by act under fakeAsync',
+        build: _TimerCubit.new,
+        act: (cubit) async {
+          await Future<void>.delayed(const Duration(seconds: 5));
+          throw ArgumentError('async act failure');
+        },
+        fakeAsync: true,
+        wait: const Duration(seconds: 5),
+        expect: () => <int>[],
+        errors: () => [
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            'async act failure',
+          ),
+        ],
+      );
+
+      blocSignalTest<_ConstructorTimerCubit, int>(
+        'captures constructor-scheduled Timer inside build with act null and '
+        'wait under fakeAsync',
+        build: _ConstructorTimerCubit.new,
+        fakeAsync: true,
+        wait: const Duration(seconds: 15),
+        expect: () => [1],
+      );
+
+      test(
+        'propagates synchronous build() throw under fakeAsync and restores '
+        'baseline observer',
+        () async {
+          final baseline = TrackingObserver();
+          BlocSignalObserver.observer = baseline;
+          addTearDown(() => BlocSignalObserver.observer = null);
+
+          var tearDownCalled = false;
+          await expectLater(
+            runBlocSignalTest<CounterCubit, int>(
+              build: () => throw StateError('build boom'),
+              fakeAsync: true,
+              tearDown: () {
+                tearDownCalled = true;
+              },
+            ),
+            throwsA(
+              isA<StateError>().having(
+                (e) => e.message,
+                'message',
+                'build boom',
+              ),
+            ),
+          );
+
+          expect(BlocSignalObserver.observer, same(baseline));
+          expect(tearDownCalled, isTrue);
+        },
+      );
+
+      blocSignalTest<CounterCubit, int>(
+        'captures failing non-void Future<int> returned by act under fakeAsync',
+        build: CounterCubit.new,
+        act: (cubit) => Future<int>.delayed(
+          const Duration(seconds: 2),
+          () => throw StateError('typed future error'),
+        ),
+        fakeAsync: true,
+        wait: const Duration(seconds: 2),
+        expect: () => <int>[],
+        errors: () => [
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'typed future error',
+          ),
+        ],
+      );
+
+      test(
+        'rethrows synchronous and asynchronous act errors (including '
+        'Future<int>) when errors is omitted under fakeAsync and cleans up',
+        () async {
+          final baseline = TrackingObserver();
+          BlocSignalObserver.observer = baseline;
+          addTearDown(() => BlocSignalObserver.observer = null);
+
+          CounterCubit? syncCubit;
+          await expectLater(
+            runBlocSignalTest<CounterCubit, int>(
+              build: () => syncCubit = CounterCubit(),
+              act: (cubit) => cubit.failSync(),
+              fakeAsync: true,
+            ),
+            throwsA(isA<StateError>()),
+          );
+          expect(syncCubit!.isClosed, isTrue);
+          expect(BlocSignalObserver.observer, same(baseline));
+
+          CounterCubit? asyncCubit;
+          await expectLater(
+            runBlocSignalTest<CounterCubit, int>(
+              build: () => asyncCubit = CounterCubit(),
+              act: (_) => Future<int>.delayed(
+                const Duration(seconds: 2),
+                () => throw ArgumentError('omitted typed future error'),
+              ),
+              fakeAsync: true,
+              wait: const Duration(seconds: 2),
+            ),
+            throwsA(isA<ArgumentError>()),
+          );
+          expect(asyncCubit!.isClosed, isTrue);
+          expect(BlocSignalObserver.observer, same(baseline));
+        },
+      );
+
+      blocSignalTest<_TransformedBloc, int>(
+        'supports BlocSignal debounce() transformer under fakeAsync',
+        build: _TransformedBloc.new,
+        act: (bloc) {
+          bloc.add(const _DebouncedEvent(1));
+          elapse(const Duration(milliseconds: 200));
+          bloc.add(const _DebouncedEvent(2));
+          elapse(const Duration(milliseconds: 300));
+        },
+        fakeAsync: true,
+        expect: () => [2],
+      );
+
+      blocSignalTest<_TransformedBloc, int>(
+        'supports BlocSignal throttle() transformer under fakeAsync',
+        build: _TransformedBloc.new,
+        act: (bloc) {
+          bloc
+            ..add(const _ThrottledEvent(1))
+            ..add(const _ThrottledEvent(2));
+          elapse(const Duration(milliseconds: 500));
+          bloc.add(const _ThrottledEvent(3));
+        },
+        fakeAsync: true,
+        expect: () => [1, 3],
+      );
+
+      blocSignalTest<CounterBloc, int>(
+        'deduplicates async BlocSignal handler onError and rethrow under '
+        'fakeAsync',
+        build: CounterBloc.new,
+        act: (bloc) => bloc.add(AsyncErrorEvent()),
+        fakeAsync: true,
+        wait: const Duration(milliseconds: 20),
+        expect: () => <int>[],
+        errors: () => [
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            'async handler argument error',
+          ),
+        ],
+      );
+    });
   });
 }
 
@@ -605,5 +934,95 @@ class _ConstructorTelemetryCubit extends CubitSignal<int> {
 class _ConstructorErrorCubit extends CubitSignal<int> {
   _ConstructorErrorCubit() : super(initialState: 0) {
     emitError(Exception('error during construction'));
+  }
+}
+
+class _TimerCubit extends CubitSignal<int> {
+  _TimerCubit() : super(initialState: 0);
+
+  Timer? _timer;
+
+  void increment() => emit(stateValue + 1);
+
+  void incrementWithTelemetry() {
+    emitTelemetry('timer_incremented', metadata: {'current': stateValue});
+    emit(stateValue + 1);
+  }
+
+  void incrementAfter(Duration delay) {
+    _timer?.cancel();
+    _timer = Timer(delay, () => emit(stateValue + 1));
+  }
+
+  void throwInTimer(Duration delay, Object error) {
+    _timer?.cancel();
+    _timer = Timer(
+      delay,
+      () => Error.throwWithStackTrace(error, StackTrace.current),
+    );
+  }
+
+  @override
+  Future<void> close() {
+    _timer?.cancel();
+    return super.close();
+  }
+}
+
+class _DebounceCubit extends CubitSignal<int> {
+  _DebounceCubit() : super(initialState: 0);
+
+  Timer? _debounceTimer;
+
+  void scheduleIncrement(int target, Duration delay) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(delay, () => emit(target));
+  }
+
+  @override
+  Future<void> close() {
+    _debounceTimer?.cancel();
+    return super.close();
+  }
+}
+
+class _ConstructorTimerCubit extends CubitSignal<int> {
+  _ConstructorTimerCubit() : super(initialState: 0) {
+    _timer = Timer(const Duration(seconds: 15), () => emit(1));
+  }
+
+  Timer? _timer;
+
+  @override
+  Future<void> close() {
+    _timer?.cancel();
+    return super.close();
+  }
+}
+
+abstract class _TransformedEvent {
+  const _TransformedEvent();
+}
+
+class _DebouncedEvent extends _TransformedEvent {
+  const _DebouncedEvent(this.value);
+  final int value;
+}
+
+class _ThrottledEvent extends _TransformedEvent {
+  const _ThrottledEvent(this.value);
+  final int value;
+}
+
+class _TransformedBloc extends BlocSignal<_TransformedEvent, int> {
+  _TransformedBloc() : super(initialState: 0) {
+    on<_DebouncedEvent>(
+      (event, emit) => emit(event.value),
+      transformer: debounce(const Duration(milliseconds: 300)),
+    );
+    on<_ThrottledEvent>(
+      (event, emit) => emit(event.value),
+      transformer: throttle(const Duration(milliseconds: 500)),
+    );
   }
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **Feat (test)**: Add opt-in `fakeAsync` virtual-time `wait`, `elapse`, and `flushMicrotasks` support to `blocSignalTest` (#499).
+- **Dependencies**: Add direct dependency on `fake_async: ^1.3.0` (#499).
+
 ## 1.0.3
 
 - **Docs (test)**: Document idiomatic Fake/Stub classes and `mocktail` backing-signal patterns for widget and golden testing (#313).

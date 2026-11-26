@@ -215,6 +215,55 @@ blocSignalTest<UserBloc, UserState>(
 );
 ''',
         ),
+        h3([Component.text('Virtual-Time Testing with fakeAsync & elapse')]),
+        p([
+          Component.text('For timer-driven flows such as '),
+          apiLink(DocSymbol.debounce),
+          Component.text(' or '),
+          apiLink(DocSymbol.throttle),
+          Component.text(', pass '),
+          code([Component.text('fakeAsync: true')]),
+          Component.text(
+            ' to run inside a virtual clock and advance time deterministically with ',
+          ),
+          code([Component.text('wait:')]),
+          Component.text(', '),
+          apiLink(DocSymbol.elapse),
+          Component.text(', and '),
+          apiLink(DocSymbol.flushMicrotasks),
+          Component.text(' without wall-clock waiting:'),
+        ]),
+        const DocsCodeBlock(
+          title: 'Virtual-Time Debounce Testing with fakeAsync',
+          dart313Code: '''
+blocSignalTest<SearchBloc, SearchState>(
+  'debounces search queries in virtual time',
+  build: SearchBloc.new,
+  act: (bloc) {
+    bloc.add(const QueryChanged('da'));
+    elapse(const Duration(milliseconds: 200));
+    bloc.add(const QueryChanged('dart'));
+    elapse(const Duration(milliseconds: 300));
+  },
+  fakeAsync: true,
+  expect: () => [const SearchResults('dart')],
+);
+''',
+          dart35Code: '''
+blocSignalTest<SearchBloc, SearchState>(
+  'debounces search queries in virtual time',
+  build: SearchBloc.new,
+  act: (SearchBloc bloc) {
+    bloc.add(const QueryChanged('da'));
+    elapse(const Duration(milliseconds: 200));
+    bloc.add(const QueryChanged('dart'));
+    elapse(const Duration(milliseconds: 300));
+  },
+  fakeAsync: true,
+  expect: () => <SearchState>[const SearchResults('dart')],
+);
+''',
+        ),
       ]),
 
       section(id: 'error-testing', classes: 'docs-section', [

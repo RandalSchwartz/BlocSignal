@@ -175,6 +175,12 @@ enum DocSymbol(
 
   // Testing (bloc_signals_test)
   blocSignalTest('blocSignalTest', 'bloc_signals_test', 'blocSignalTest.html'),
+  elapse('elapse', 'bloc_signals_test', 'elapse.html'),
+  flushMicrotasks(
+    'flushMicrotasks',
+    'bloc_signals_test',
+    'flushMicrotasks.html',
+  ),
 
   // Hydrate (bloc_signals_hydrate)
   hydratedMixin(

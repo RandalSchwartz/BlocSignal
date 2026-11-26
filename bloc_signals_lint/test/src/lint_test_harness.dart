@@ -131,6 +131,18 @@ AnalysisContextCollection _getOrCreateCollection() {
       "languageVersion": "3.5"
     },
     {
+      "name": "bloc_signals_bloc",
+      "rootUri": "../bloc_signals_bloc",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "bloc_signals_riverpod",
+      "rootUri": "../bloc_signals_riverpod",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
       "name": "jaspr",
       "rootUri": "../jaspr",
       "packageUri": "lib/",
@@ -182,6 +194,8 @@ Signal<T> signal<T>(T initial) => Signal<T>();
   )..createSync(recursive: true);
   File(_joinPath([blocSignalsLibDir.path, 'bloc_signals.dart']))
       .writeAsStringSync('''
+import 'package:preact_signals/preact_signals.dart';
+
 export 'package:preact_signals/preact_signals.dart'
     show Computed, ReadonlySignal, Signal, computed, effect, signal;
 
@@ -237,6 +251,25 @@ abstract class BlocSignalObserver {
 export 'package:bloc_signals_replay/bloc_signals_replay.dart'
     show ReplayBloc, ReplayCubit;
 
+class StreamBlocSignal<StateType> extends CubitSignal<StateType> {
+  StreamBlocSignal(Stream<StateType> stream, {required super.initialState});
+}
+
+class FutureBlocSignal<StateType> extends CubitSignal<StateType> {
+  FutureBlocSignal(Future<StateType> future, {required super.initialState});
+}
+
+class SignalBlocSignal<StateType> extends CubitSignal<StateType> {
+  SignalBlocSignal(ReadonlySignal<StateType> signal)
+      : super(initialState: signal.value);
+}
+
+extension ReadonlySignalBlocSignalExtension<StateType>
+    on ReadonlySignal<StateType> {
+  SignalBlocSignal<StateType> toBlocSignal() =>
+      SignalBlocSignal<StateType>(this);
+}
+
 extension StreamBlocSignalX<T> on Stream<T> {
   BlocSignalBase<T> toBlocSignal({required T initialState}) =>
       BlocSignalBase<T>(initialState: initialState);
@@ -247,6 +280,124 @@ extension FutureBlocSignalX<T> on Future<T> {
   BlocSignalBase<T> toBlocSignal({required T initialState}) =>
       BlocSignalBase<T>(initialState: initialState);
   BlocSignalBase<T> toAsyncBlocSignal() => BlocSignalBase<T>();
+}
+''');
+
+  final blocAdapterLibDir = Directory(
+    _joinPath([rootPath, 'bloc_signals_bloc', 'lib']),
+  )..createSync(recursive: true);
+  File(_joinPath([blocAdapterLibDir.path, 'bloc_signals_bloc.dart']))
+      .writeAsStringSync('''
+import 'package:bloc_signals/bloc_signals.dart';
+
+class ClassicBloc<Event, State> {
+  ClassicBloc(State initialState);
+}
+
+class ClassicCubit<State> {
+  ClassicCubit(State initialState);
+}
+
+class ClassicBlocSignal<Event, State> extends BlocSignal<Event, State> {
+  ClassicBlocSignal(ClassicBloc<Event, State> bloc, {bool autoClose = false});
+}
+
+class ClassicCubitSignal<C extends ClassicCubit<State>, State>
+    extends CubitSignal<State> {
+  ClassicCubitSignal(this.cubit, {bool autoClose = false});
+  final C cubit;
+}
+
+class BlocSignalToClassicBloc<Event, State> extends ClassicBloc<Event, State> {
+  BlocSignalToClassicBloc(
+    BlocSignal<Event, State> blocSignal, {
+    bool autoClose = false,
+  }) : super(blocSignal.stateValue);
+}
+
+class BlocSignalToClassicCubit<B extends BlocSignalBase<State>, State>
+    extends ClassicCubit<State> {
+  BlocSignalToClassicCubit(this.blocSignal, {bool autoClose = false})
+      : super(blocSignal.stateValue);
+  final B blocSignal;
+}
+
+extension ClassicBlocToSignalX<Event, State> on ClassicBloc<Event, State> {
+  ClassicBlocSignal<Event, State> toBlocSignal({bool autoClose = false}) =>
+      ClassicBlocSignal<Event, State>(this, autoClose: autoClose);
+}
+
+extension ClassicCubitToSignalX<C extends ClassicCubit<State>, State> on C {
+  ClassicCubitSignal<C, State> toBlocSignal({bool autoClose = false}) =>
+      ClassicCubitSignal<C, State>(this, autoClose: autoClose);
+}
+
+extension BlocSignalToClassicBlocX<Event, State> on BlocSignal<Event, State> {
+  BlocSignalToClassicBloc<Event, State> toClassicBloc({
+    bool autoClose = false,
+  }) =>
+      BlocSignalToClassicBloc<Event, State>(this, autoClose: autoClose);
+}
+
+extension BlocSignalBaseToClassicX<State> on BlocSignalBase<State> {
+  BlocSignalToClassicCubit<BlocSignalBase<State>, State> toClassicCubit({
+    bool autoClose = false,
+  }) =>
+      BlocSignalToClassicCubit<BlocSignalBase<State>, State>(
+        this,
+        autoClose: autoClose,
+      );
+  BlocSignalToClassicCubit<BlocSignalBase<State>, State> toClassicBloc({
+    bool autoClose = false,
+  }) =>
+      BlocSignalToClassicCubit<BlocSignalBase<State>, State>(
+        this,
+        autoClose: autoClose,
+      );
+}
+''');
+
+  final riverpodAdapterLibDir = Directory(
+    _joinPath([rootPath, 'bloc_signals_riverpod', 'lib']),
+  )..createSync(recursive: true);
+  File(_joinPath([riverpodAdapterLibDir.path, 'bloc_signals_riverpod.dart']))
+      .writeAsStringSync('''
+import 'package:bloc_signals/bloc_signals.dart';
+
+class ProviderContainer {}
+class ProviderListenable<T> {}
+class Ref {}
+
+class RiverpodBlocSignal<T> extends CubitSignal<T> {
+  RiverpodBlocSignal(
+    ProviderContainer container,
+    ProviderListenable<T> listenable,
+  );
+
+  factory RiverpodBlocSignal.fromRef(
+    Ref ref,
+    ProviderListenable<T> listenable,
+  ) =>
+      RiverpodBlocSignal<T>(ProviderContainer(), listenable);
+}
+
+class RiverpodNotifierBlocSignal<NotifierT, T> extends RiverpodBlocSignal<T> {
+  RiverpodNotifierBlocSignal(
+    NotifierT notifier,
+    super.container,
+    super.listenable,
+  );
+
+  factory RiverpodNotifierBlocSignal.fromRef(
+    NotifierT notifier,
+    Ref ref,
+    ProviderListenable<T> listenable,
+  ) =>
+      RiverpodNotifierBlocSignal<NotifierT, T>(
+        notifier,
+        ProviderContainer(),
+        listenable,
+      );
 }
 ''');
 

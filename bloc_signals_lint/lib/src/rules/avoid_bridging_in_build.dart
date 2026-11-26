@@ -8,8 +8,12 @@ import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
 import 'package:bloc_signals_lint/src/utils/type_checker.dart';
 
 /// A lint rule that flags bridging calls (`.toBlocSignal()`,
-/// `.toAsyncBlocSignal()`, `.toValueListenable()`, and `ListenableBlocSignal`)
-/// directly inside UI `build()` methods.
+/// `.toAsyncBlocSignal()`, `.toValueListenable()`, `.toClassicBloc()`,
+/// `.toClassicCubit()`, `.toStream()`, and official adapter constructors such
+/// as `ListenableBlocSignal`, `StreamBlocSignal`, `FutureBlocSignal`,
+/// `SignalBlocSignal`, `ClassicBlocSignal`, `ClassicCubitSignal`,
+/// `BlocSignalToClassicBloc`, `BlocSignalToClassicCubit`, `RiverpodBlocSignal`,
+/// and `RiverpodNotifierBlocSignal`) directly inside UI `build()` methods.
 class AvoidBridgingInBuild extends AnalysisRule {
   /// Creates an [AvoidBridgingInBuild] lint rule.
   new()
@@ -17,7 +21,8 @@ class AvoidBridgingInBuild extends AnalysisRule {
         name: 'avoid_bridging_in_build',
         description:
             'Avoid calling bridging adapters (.toBlocSignal(), '
-            '.toAsyncBlocSignal(), .toValueListenable(), ListenableBlocSignal) '
+            '.toAsyncBlocSignal(), .toValueListenable(), .toClassicBloc(), '
+            '.toClassicCubit(), .toStream(), or adapter constructors) '
             'directly inside build() methods.',
       );
 
@@ -30,15 +35,44 @@ class AvoidBridgingInBuild extends AnalysisRule {
         'a BlocSignalProvider.create callback, or a state container instead.',
   );
 
-  static const _listenableBlocSignalChecker = TypeChecker.fromName(
-    'ListenableBlocSignal',
-    packageName: 'bloc_signals_flutter',
-  );
+  static const _adapterCheckers = <TypeChecker>[
+    TypeChecker.fromName(
+      'ListenableBlocSignal',
+      packageName: 'bloc_signals_flutter',
+    ),
+    TypeChecker.fromName('StreamBlocSignal', packageName: 'bloc_signals'),
+    TypeChecker.fromName('FutureBlocSignal', packageName: 'bloc_signals'),
+    TypeChecker.fromName('SignalBlocSignal', packageName: 'bloc_signals'),
+    TypeChecker.fromName('ClassicBlocSignal', packageName: 'bloc_signals_bloc'),
+    TypeChecker.fromName(
+      'ClassicCubitSignal',
+      packageName: 'bloc_signals_bloc',
+    ),
+    TypeChecker.fromName(
+      'BlocSignalToClassicBloc',
+      packageName: 'bloc_signals_bloc',
+    ),
+    TypeChecker.fromName(
+      'BlocSignalToClassicCubit',
+      packageName: 'bloc_signals_bloc',
+    ),
+    TypeChecker.fromName(
+      'RiverpodBlocSignal',
+      packageName: 'bloc_signals_riverpod',
+    ),
+    TypeChecker.fromName(
+      'RiverpodNotifierBlocSignal',
+      packageName: 'bloc_signals_riverpod',
+    ),
+  ];
 
   static const _bridgingMethods = <String>{
     'toBlocSignal',
     'toAsyncBlocSignal',
     'toValueListenable',
+    'toClassicBloc',
+    'toClassicCubit',
+    'toStream',
   };
 
   static const _officialPackages = <String>{
@@ -82,7 +116,7 @@ class _Visitor extends SimpleAstVisitor<void> {
       return;
     }
 
-    if (_isDirectInUiBuild(node)) {
+    if (BlocContainerUtils.isDirectInUiBuild(node)) {
       rule.reportAtNode(node.methodName, arguments: [methodName]);
     }
   }
@@ -91,31 +125,17 @@ class _Visitor extends SimpleAstVisitor<void> {
   void visitInstanceCreationExpression(InstanceCreationExpression node) {
     final constructorType = node.constructorName.type.type;
     if (constructorType == null ||
-        !AvoidBridgingInBuild._listenableBlocSignalChecker.isAssignableFromType(
-          constructorType,
+        !AvoidBridgingInBuild._adapterCheckers.any(
+          (checker) => checker.isAssignableFromType(constructorType),
         )) {
       return;
     }
 
-    if (_isDirectInUiBuild(node)) {
+    if (BlocContainerUtils.isDirectInUiBuild(node)) {
       rule.reportAtNode(
         node.constructorName,
         arguments: [node.constructorName.toSource()],
       );
     }
-  }
-
-  static bool _isDirectInUiBuild(AstNode node) {
-    if (node.thisOrAncestorOfType<FunctionExpression>() != null) {
-      return false;
-    }
-    final enclosingMethod = node.thisOrAncestorOfType<MethodDeclaration>();
-    if (enclosingMethod == null || enclosingMethod.name.lexeme != 'build') {
-      return false;
-    }
-    final enclosingClass = enclosingMethod
-        .thisOrAncestorOfType<ClassDeclaration>();
-    return enclosingClass != null &&
-        BlocContainerUtils.isUiComponentOrState(enclosingClass);
   }
 }

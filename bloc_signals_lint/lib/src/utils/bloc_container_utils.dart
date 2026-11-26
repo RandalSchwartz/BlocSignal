@@ -174,27 +174,59 @@ abstract final class BlocContainerUtils {
         source.endsWith('.buildContext');
   }
 
-  /// Returns `true` if [node] is a Flutter `Widget`/`State`/`HookWidget` or
-  /// Jaspr `StatelessComponent`/`StatefulComponent`/`State` subclass.
-  static bool isUiComponentOrState(ClassDeclaration node) {
-    final element = node.declaredFragment?.element;
-    if (element != null &&
-        (flutterWidgetChecker.isSuperOf(element) ||
-            flutterStateChecker.isSuperOf(element) ||
-            hookWidgetChecker.isSuperOf(element) ||
-            jasprComponentChecker.isSuperOf(element) ||
-            jasprStateChecker.isSuperOf(element))) {
-      return true;
+  static const _uiCheckers = <TypeChecker>[
+    flutterWidgetChecker,
+    flutterStateChecker,
+    hookWidgetChecker,
+    jasprComponentChecker,
+    jasprStateChecker,
+  ];
+
+  /// Returns `true` if [declaration] is a Flutter `Widget`/`State`/`HookWidget`
+  /// or Jaspr `StatelessComponent`/`StatefulComponent`/`State` subclass or
+  /// `State` / `Component` / `Widget` mixin.
+  static bool isUiComponentOrState(AstNode declaration) {
+    if (declaration is ClassDeclaration) {
+      final element = declaration.declaredFragment?.element;
+      if (element != null &&
+          _uiCheckers.any((checker) => checker.isSuperOf(element))) {
+        return true;
+      }
+      final superclass = declaration.extendsClause?.superclass;
+      if (superclass == null) return false;
+      return _matchesNamedType(superclass, _uiCheckers, _uiSupertypeNames);
     }
-    final superclass = node.extendsClause?.superclass;
-    if (superclass == null) return false;
-    return _matchesNamedType(superclass, const [
-      flutterWidgetChecker,
-      flutterStateChecker,
-      hookWidgetChecker,
-      jasprComponentChecker,
-      jasprStateChecker,
-    ], _uiSupertypeNames);
+    if (declaration is MixinDeclaration) {
+      final element = declaration.declaredFragment?.element;
+      if (element != null &&
+          _uiCheckers.any((checker) => checker.isSuperOf(element))) {
+        return true;
+      }
+      final onClause = declaration.onClause;
+      if (onClause == null) return false;
+      for (final constraint in onClause.superclassConstraints) {
+        if (_matchesNamedType(constraint, _uiCheckers, _uiSupertypeNames)) {
+          return true;
+        }
+      }
+      return false;
+    }
+    return false;
+  }
+
+  /// Returns `true` if [node] is directly inside a `build()` method of a UI
+  /// component, widget, or state class/mixin (outside nested closures).
+  static bool isDirectInUiBuild(AstNode node) {
+    if (node.thisOrAncestorOfType<FunctionExpression>() != null) {
+      return false;
+    }
+    final enclosingMethod = node.thisOrAncestorOfType<MethodDeclaration>();
+    if (enclosingMethod == null || enclosingMethod.name.lexeme != 'build') {
+      return false;
+    }
+    final enclosingContainer = nearestContainerDeclaration(enclosingMethod);
+    return enclosingContainer != null &&
+        isUiComponentOrState(enclosingContainer);
   }
 
   static bool _matchesContainer(

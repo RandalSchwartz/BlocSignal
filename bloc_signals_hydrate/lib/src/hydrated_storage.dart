@@ -29,6 +29,35 @@ dynamic cloneHydratedJsonValue(dynamic value) {
 /// to target legacy unprefixed keys directly.
 const String kDefaultHydratedStoragePrefix = 'bloc_signals_hydrate_';
 
+/// An interface for synchronous encryption and integrity verification of
+/// persisted state payloads in [HydratedStorage].
+///
+/// Because [HydratedStorage.read] is synchronous for constructor-time
+/// hydration, both [encrypt] and [decrypt] must execute synchronously.
+///
+/// Example:
+/// ```dart
+/// class PrefixCipher implements HydratedCipher {
+///   const PrefixCipher();
+///
+///   @override
+///   dynamic encrypt(dynamic data) => {'v': 1, 'data': data};
+///
+///   @override
+///   dynamic decrypt(dynamic data) => (data as Map)['data'];
+/// }
+/// ```
+abstract interface class HydratedCipher {
+  /// Encrypts or wraps a serialized [data] payload before writing to storage.
+  dynamic encrypt(dynamic data);
+
+  /// Decrypts or verifies a stored [data] payload read from storage.
+  ///
+  /// Implementations should throw an [Exception] (such as [FormatException])
+  /// if the payload has been tampered with or cannot be decrypted.
+  dynamic decrypt(dynamic data);
+}
+
 /// An abstract interface for state persistence backends used by
 /// `HydratedBlocSignal` and `HydratedCubitSignal`.
 ///

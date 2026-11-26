@@ -246,13 +246,20 @@ void main() {
       expect(controller.increment, throwsA(isA<AssertionError>()));
     });
 
-    test('uninitialized mixin access throws helpful AssertionErrors', () async {
+    test('uninitialized mixin access throws helpful errors', () async {
       final uninit = UninitializedServiceController();
       expect(uninit.isInitialized, isFalse);
-      expect(() => uninit.state, throwsA(isA<AssertionError>()));
-      expect(() => uninit.value, throwsA(isA<AssertionError>()));
-      expect(() => uninit.stateValue, throwsA(isA<AssertionError>()));
-      expect(() => uninit.publicEmit(1), throwsA(isA<AssertionError>()));
+      final throwsInitStateError = throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          contains('initCubitSignal'),
+        ),
+      );
+      expect(() => uninit.state, throwsInitStateError);
+      expect(() => uninit.value, throwsInitStateError);
+      expect(() => uninit.stateValue, throwsInitStateError);
+      expect(() => uninit.publicEmit(1), throwsInitStateError);
       await uninit.close();
       expect(uninit.isClosed, isTrue);
     });

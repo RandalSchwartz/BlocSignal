@@ -13,7 +13,7 @@ import 'package:dartastic_opentelemetry/dartastic_opentelemetry.dart';
 
 Future<void> main() async {
   await OTel.initialize(serviceName: 'my_app');
-  BlocSignalObserver.observer = OtelBlocSignalObserver();
+  BlocSignalObserver.addObserver(OtelBlocSignalObserver());
   runApp(const App());
 }
 ```
@@ -22,11 +22,10 @@ When `tracer` is omitted, `OtelBlocSignalObserver` resolves `OTelAPI.tracerProvi
 
 ```dart
 final tracer = OTelAPI.tracerProvider().getTracer('custom_tracer');
-BlocSignalObserver.observer = OtelBlocSignalObserver(tracer: tracer);
+BlocSignalObserver.addObserver(OtelBlocSignalObserver(tracer: tracer));
 ```
 
-The global observer is a single slot. Compose observers in application code when logging, crash
-reporting, and OpenTelemetry must all receive the same events.
+Use `BlocSignalObserver.addObserver(...)` or `MultiBlocSignalObserver` (`CompositeBlocSignalObserver`) when logging, crash reporting, and OpenTelemetry must all receive the same events (duplicate identical observer instances are ignored).
 
 ## Span lifecycle
 
@@ -62,16 +61,18 @@ In standard flows, an event that waits indefinitely does not produce `onEventCom
 `state.value`, `event.value`, and error messages record `.toString()` by default. To sanitize PII, secrets, or high-cardinality tokens, and to bound attribute sizes, configure `stateRedactor`, `eventRedactor`, `errorRedactor`, and `maxAttributeLength`:
 
 ```dart
-BlocSignalObserver.observer = OtelBlocSignalObserver(
-  stateRedactor: (bloc, state) {
-    if (state is UserProfileState) {
-      return 'UserProfile(id: ${state.id}, email: [REDACTED])';
-    }
-    return state?.toString();
-  },
-  eventRedactor: (bloc, event) => event is LoginSubmitted ? 'LoginSubmitted([REDACTED])' : event?.toString(),
-  errorRedactor: (bloc, error) => error is AuthException ? 'AuthException([REDACTED])' : error.toString(),
-  maxAttributeLength: 512,
+BlocSignalObserver.addObserver(
+  OtelBlocSignalObserver(
+    stateRedactor: (bloc, state) {
+      if (state is UserProfileState) {
+        return 'UserProfile(id: ${state.id}, email: [REDACTED])';
+      }
+      return state?.toString();
+    },
+    eventRedactor: (bloc, event) => event is LoginSubmitted ? 'LoginSubmitted([REDACTED])' : event?.toString(),
+    errorRedactor: (bloc, error) => error is AuthException ? 'AuthException([REDACTED])' : error.toString(),
+    maxAttributeLength: 512,
+  ),
 );
 ```
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_hydrate/src/hydrated_storage.dart';
@@ -39,6 +40,35 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
   /// An explicit [HydratedStorage] override instance for this container. If
   /// `null`, falls back to [HydratedStorage.storage].
   HydratedStorage? get storageOverride => null;
+
+  /// An optional synchronous [HydratedCipher] used to encrypt payloads on
+  /// write and decrypt/verify payloads on hydration.
+  HydratedCipher? get cipher => null;
+
+  /// An optional maximum UTF-8 byte length for the encoded payload written to
+  /// storage.
+  ///
+  /// When non-null and the serialized (and optionally version-wrapped and
+  /// encrypted) payload exceeds this limit, [persist] aborts the write before
+  /// touching storage and reports a [FormatException] to [onError].
+  int? get maxPayloadBytes => null;
+
+  /// An optional schema version integer for persisted payloads.
+  ///
+  /// When non-null, persisted payloads are wrapped in a version envelope and
+  /// older or legacy unversioned payloads are passed to [migrate] during
+  /// hydration.
+  int? get storageVersion => null;
+
+  /// Migrates a persisted [json] payload from [fromVersion] to the current
+  /// [storageVersion].
+  ///
+  /// Legacy unversioned payloads are passed with `fromVersion == 0`. Defaults
+  /// to returning [json] unchanged.
+  dynamic migrate(dynamic json, int fromVersion) => json;
+
+  static const String _versionKey = '__bloc_signals_version__';
+  static const String _dataKey = '__bloc_signals_data__';
 
   /// Resolves the active [HydratedStorage] instance.
   @protected
@@ -138,8 +168,33 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
       return initial;
     }
     try {
-      final dynamic json = storage.read(storageToken);
+      dynamic json = storage.read(storageToken);
       if (json != null) {
+        final activeCipher = cipher;
+        if (activeCipher != null) {
+          json = activeCipher.decrypt(json);
+        }
+        final version = storageVersion;
+        if (version != null) {
+          if (json is Map &&
+              json.containsKey(_versionKey) &&
+              json.containsKey(_dataKey)) {
+            final rawVersion = json[_versionKey];
+            if (rawVersion is! int) {
+              throw FormatException(
+                'Invalid storage version type for $storageToken: '
+                'expected int, got ${rawVersion.runtimeType}.',
+              );
+            }
+            var data = json[_dataKey];
+            if (rawVersion != version) {
+              data = migrate(data, rawVersion);
+            }
+            json = data;
+          } else {
+            json = migrate(json, 0);
+          }
+        }
         final restored = fromJson(json);
         if (restored != null) {
           return restored;
@@ -200,18 +255,52 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
       );
       return;
     }
-    final dynamic json;
+    final dynamic rawJson;
     try {
-      json = toJson(state);
+      rawJson = toJson(state);
     } on Exception catch (error, stackTrace) {
       onError(error, stackTrace);
       return;
     }
+    dynamic payload = rawJson;
+    if (payload != null) {
+      final version = storageVersion;
+      if (version != null) {
+        payload = <String, dynamic>{
+          _versionKey: version,
+          _dataKey: payload,
+        };
+      }
+      final activeCipher = cipher;
+      if (activeCipher != null) {
+        try {
+          payload = activeCipher.encrypt(payload);
+        } on Exception catch (error, stackTrace) {
+          onError(error, stackTrace);
+          return;
+        }
+      }
+      final byteLimit = maxPayloadBytes;
+      if (byteLimit != null) {
+        final encoded = payload is String ? payload : jsonEncode(payload);
+        final byteLength = utf8.encode(encoded).length;
+        if (byteLength > byteLimit) {
+          onError(
+            FormatException(
+              'Persisted payload for $storageToken exceeds maxPayloadBytes '
+              '($byteLength > $byteLimit).',
+            ),
+            StackTrace.current,
+          );
+          return;
+        }
+      }
+    }
     final targetGen = ++_storageGeneration;
     if (!_storageMutex.isLocked) {
       try {
-        final result = json != null
-            ? storage.write(storageToken, json)
+        final result = payload != null
+            ? storage.write(storageToken, payload)
             : storage.delete(storageToken);
         if (result is Future<void>) {
           unawaited(
@@ -235,8 +324,8 @@ mixin HydratedMixin<StateType> on BlocSignalBase<StateType> {
       _storageMutex.protect(() async {
         if (targetGen != _storageGeneration || isClosed) return;
         try {
-          final result = json != null
-              ? storage.write(storageToken, json)
+          final result = payload != null
+              ? storage.write(storageToken, payload)
               : storage.delete(storageToken);
           if (result is Future<void>) {
             await result;

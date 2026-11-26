@@ -108,31 +108,34 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
 
   @override
   ReadonlySignal<StateType> get state {
-    assert(
-      _isInitialized,
-      'initCubitSignal() must be called in the constructor of $runtimeType '
-      'before accessing state.',
-    );
+    if (!_isInitialized) {
+      throw StateError(
+        'initCubitSignal() must be called in the constructor of $runtimeType '
+        'before accessing state.',
+      );
+    }
     return _state;
   }
 
   @override
   StateType get value {
-    assert(
-      _isInitialized,
-      'initCubitSignal() must be called in the constructor of $runtimeType '
-      'before accessing value.',
-    );
+    if (!_isInitialized) {
+      throw StateError(
+        'initCubitSignal() must be called in the constructor of $runtimeType '
+        'before accessing value.',
+      );
+    }
     return _state.value;
   }
 
   @override
   StateType get stateValue {
-    assert(
-      _isInitialized,
-      'initCubitSignal() must be called in the constructor of $runtimeType '
-      'before accessing stateValue.',
-    );
+    if (!_isInitialized) {
+      throw StateError(
+        'initCubitSignal() must be called in the constructor of $runtimeType '
+        'before accessing stateValue.',
+      );
+    }
     return _state.value;
   }
 
@@ -153,16 +156,17 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   @protected
   @visibleForTesting
   void emit(StateType newState) {
-    assert(
-      _isInitialized,
-      'initCubitSignal() must be called in the constructor of $runtimeType '
-      'before calling emit().',
-    );
+    if (!_isInitialized) {
+      throw StateError(
+        'initCubitSignal() must be called in the constructor of $runtimeType '
+        'before calling emit().',
+      );
+    }
     assert(
       !_isClosed,
       'Cannot emit new states after calling close() on $runtimeType.',
     );
-    if (_isClosed || !_isInitialized) return;
+    if (_isClosed) return;
     final oldState = _state.peek();
     if (equals(oldState, newState)) return;
 

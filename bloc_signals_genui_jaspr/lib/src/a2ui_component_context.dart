@@ -19,9 +19,11 @@ class A2uiComponentContext {
     required this.buildChildCallback,
     required this.buildChildrenCallback,
     required this.surfaceId,
+    this.buildIsolatedChildCallback,
     this.rawProps = const {},
     this.node,
     this.dataPath = '/',
+    this.siblingDisambiguator,
   });
 
   /// The underlying A2UI [ComponentModel].
@@ -64,11 +66,19 @@ class A2uiComponentContext {
   /// The active surface identifier.
   final String surfaceId;
 
+  /// Optional disambiguator suffix when the same component ID appears multiple
+  /// times as siblings in a container.
+  final String? siblingDisambiguator;
+
   /// Internal callback to recursively render a child component by its ID.
   final Component Function(String childId) buildChildCallback;
 
   /// Internal callback to recursively render a list of child component IDs.
   final List<Component> Function(List<String> childIds) buildChildrenCallback;
+
+  /// Optional callback to render a child component with an isolated render
+  /// budget (for example inside a modal dialog).
+  final Component Function(String childId)? buildIsolatedChildCallback;
 
   /// Whether this component currently passes all attached `CheckRule`
   /// validations.
@@ -187,6 +197,18 @@ class A2uiComponentContext {
   /// ```
   Component buildChild(String childId) => buildChildCallback(childId);
 
+  /// Recursively renders a child component with the specified [childId] inside
+  /// an isolated render budget when [buildIsolatedChildCallback] is provided,
+  /// falling back to [buildChild].
+  ///
+  /// ```dart
+  /// final dialogChild = componentContext.buildIsolatedChild('modal_content');
+  /// ```
+  Component buildIsolatedChild(String childId) =>
+      buildIsolatedChildCallback != null
+          ? buildIsolatedChildCallback!(childId)
+          : buildChildCallback(childId);
+
   /// Recursively renders a list of child components with [childIds].
   ///
   /// ```dart
@@ -196,7 +218,8 @@ class A2uiComponentContext {
       buildChildrenCallback(childIds);
 
   /// Recursively renders [childIds] and wraps any child declaring a positive
-  /// finite `weight` in a `div` with `flex-grow` matching `weight`.
+  /// finite `weight` in a `div` with `flex-grow` clamped to
+  /// `[0.0001, 1000.0]`.
   ///
   /// Intended for `Row` and `Column` flex containers.
   ///
@@ -248,10 +271,11 @@ class A2uiComponentContext {
 
   Component _wrapWithWeight(Component child, Object? rawWeight) {
     if (rawWeight is num && rawWeight.isFinite && rawWeight > 0) {
+      final boundedGrow = rawWeight.clamp(0.0001, 1000.0).toDouble();
       return div(
         classes: 'a2ui-weighted-child',
         styles: Styles(
-          flex: Flex(grow: rawWeight.toDouble()),
+          flex: Flex(grow: boundedGrow),
         ),
         [child],
       );
@@ -271,7 +295,15 @@ class A2uiComponentContext {
     final modelAction = component.properties['action'];
 
     if (rawAction is NodeAction) {
-      unawaited(rawAction());
+      unawaited(
+        rawAction().then<void>(
+          (_) {},
+          onError: (Object error, StackTrace stackTrace) {
+            if (error is Exception) return;
+            Error.throwWithStackTrace(error, stackTrace);
+          },
+        ),
+      );
       final isFunctionCall = modelAction is Map &&
           (modelAction['functionCall'] is Map || modelAction['call'] != null);
       if (!isFunctionCall && (modelAction is Map || modelAction is String)) {

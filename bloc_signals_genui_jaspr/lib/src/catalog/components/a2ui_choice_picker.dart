@@ -148,6 +148,14 @@ class _A2uiChoicePickerState extends State<_A2uiChoicePicker> {
         ],
       );
     } else {
+      final disambig = componentContext.siblingDisambiguator;
+      final scopeId =
+          componentContext.node?.instanceId ?? componentContext.component.id;
+      final radioName = isMultiple
+          ? null
+          : 'a2ui_choice_${componentContext.surfaceId}_'
+              '${componentContext.dataPath}_$scopeId'
+              '${disambig != null ? '_$disambig' : ''}';
       optionsComponent = div(
         classes: 'a2ui-choice-list',
         styles: const Styles(
@@ -168,9 +176,7 @@ class _A2uiChoicePickerState extends State<_A2uiChoicePicker> {
                 input<bool>(
                   type: isMultiple ? InputType.checkbox : InputType.radio,
                   checked: selectedValues.contains(option.value),
-                  name: isMultiple
-                      ? null
-                      : 'a2ui_choice_${componentContext.component.id}',
+                  name: radioName,
                   onChange: (isSelected) =>
                       toggleOption(option.value, selected: isSelected),
                   styles: const Styles(

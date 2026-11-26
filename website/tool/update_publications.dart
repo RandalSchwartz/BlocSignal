@@ -149,6 +149,6 @@ Future<void> main() async {
   }
 
   print(
-    '🎉 Done! Run `dart compile js lib/main.dart -o build/www/main.dart.js` to build static site.',
+    '🎉 Done! Run `dart compile js lib/main.dart --csp -O2 -o build/www/main.dart.js` to build static site.',
   );
 }

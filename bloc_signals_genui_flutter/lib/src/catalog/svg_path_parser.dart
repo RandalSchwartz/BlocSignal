@@ -45,11 +45,20 @@ class SvgPathPainter extends CustomPainter {
 /// final path = SvgPathParser.parse('M 2 2 L 22 2 L 12 22 Z');
 /// ```
 abstract final class SvgPathParser {
+  /// Maximum permitted SVG path string length.
+  static const int maxPathLength = 8192;
+
+  /// Maximum permitted SVG path command count.
+  static const int maxCommandCount = 512;
+
+  /// Maximum permitted absolute coordinate magnitude.
+  static const double maxCoordinateMagnitude = 100000;
+
   /// Parses an SVG path data string [data] into a [Path], or returns `null` if
-  /// [data] is empty or contains invalid syntax.
+  /// [data] is empty, exceeds parser bounds, or contains invalid syntax.
   static Path? parse(String data) {
     final trimmed = data.trim();
-    if (trimmed.isEmpty) return null;
+    if (trimmed.isEmpty || trimmed.length > maxPathLength) return null;
 
     final parser = _SvgPathCursor(trimmed);
     return parser.parsePath();
@@ -70,6 +79,15 @@ class _SvgPathCursor {
   double lastCtrlY = 0;
   String? prevCommand;
   bool hasCommands = false;
+  int commandCount = 0;
+
+  bool _isValidCoord(double value) =>
+      value.isFinite && value.abs() <= SvgPathParser.maxCoordinateMagnitude;
+
+  bool _consumeCommandQuota() {
+    commandCount++;
+    return commandCount <= SvgPathParser.maxCommandCount;
+  }
 
   void _skipSeparators() {
     while (index < source.length) {
@@ -189,6 +207,7 @@ class _SvgPathCursor {
       }
 
       if (command == 'Z' || command == 'z') {
+        if (!_consumeCommandQuota()) return null;
         path.close();
         curX = startX;
         curY = startY;
@@ -201,6 +220,7 @@ class _SvgPathCursor {
       if (!_hasMoreNumbers()) return null;
 
       while (_hasMoreNumbers()) {
+        if (!_consumeCommandQuota()) return null;
         final isRel = command == command!.toLowerCase();
         switch (command) {
           case 'M':
@@ -208,8 +228,11 @@ class _SvgPathCursor {
             final x = _readNumber();
             final y = _readNumber();
             if (x == null || y == null) return null;
-            curX = isRel ? curX + x : x;
-            curY = isRel ? curY + y : y;
+            final nextX = isRel ? curX + x : x;
+            final nextY = isRel ? curY + y : y;
+            if (!_isValidCoord(nextX) || !_isValidCoord(nextY)) return null;
+            curX = nextX;
+            curY = nextY;
             startX = curX;
             startY = curY;
             path.moveTo(curX, curY);
@@ -221,8 +244,11 @@ class _SvgPathCursor {
             final x = _readNumber();
             final y = _readNumber();
             if (x == null || y == null) return null;
-            curX = isRel ? curX + x : x;
-            curY = isRel ? curY + y : y;
+            final nextX = isRel ? curX + x : x;
+            final nextY = isRel ? curY + y : y;
+            if (!_isValidCoord(nextX) || !_isValidCoord(nextY)) return null;
+            curX = nextX;
+            curY = nextY;
             path.lineTo(curX, curY);
             prevCommand = command;
             hasCommands = true;
@@ -230,7 +256,9 @@ class _SvgPathCursor {
           case 'h':
             final x = _readNumber();
             if (x == null) return null;
-            curX = isRel ? curX + x : x;
+            final nextX = isRel ? curX + x : x;
+            if (!_isValidCoord(nextX)) return null;
+            curX = nextX;
             path.lineTo(curX, curY);
             prevCommand = command;
             hasCommands = true;
@@ -238,7 +266,9 @@ class _SvgPathCursor {
           case 'v':
             final y = _readNumber();
             if (y == null) return null;
-            curY = isRel ? curY + y : y;
+            final nextY = isRel ? curY + y : y;
+            if (!_isValidCoord(nextY)) return null;
+            curY = nextY;
             path.lineTo(curX, curY);
             prevCommand = command;
             hasCommands = true;
@@ -264,6 +294,14 @@ class _SvgPathCursor {
             final ay2 = isRel ? curY + y2 : y2;
             final ax = isRel ? curX + x : x;
             final ay = isRel ? curY + y : y;
+            if (!_isValidCoord(ax1) ||
+                !_isValidCoord(ay1) ||
+                !_isValidCoord(ax2) ||
+                !_isValidCoord(ay2) ||
+                !_isValidCoord(ax) ||
+                !_isValidCoord(ay)) {
+              return null;
+            }
             path.cubicTo(ax1, ay1, ax2, ay2, ax, ay);
             lastCtrlX = ax2;
             lastCtrlY = ay2;
@@ -288,6 +326,14 @@ class _SvgPathCursor {
             final ay2 = isRel ? curY + y2 : y2;
             final ax = isRel ? curX + x : x;
             final ay = isRel ? curY + y : y;
+            if (!_isValidCoord(ax1) ||
+                !_isValidCoord(ay1) ||
+                !_isValidCoord(ax2) ||
+                !_isValidCoord(ay2) ||
+                !_isValidCoord(ax) ||
+                !_isValidCoord(ay)) {
+              return null;
+            }
             path.cubicTo(ax1, ay1, ax2, ay2, ax, ay);
             lastCtrlX = ax2;
             lastCtrlY = ay2;
@@ -308,6 +354,12 @@ class _SvgPathCursor {
             final ay1 = isRel ? curY + y1 : y1;
             final ax = isRel ? curX + x : x;
             final ay = isRel ? curY + y : y;
+            if (!_isValidCoord(ax1) ||
+                !_isValidCoord(ay1) ||
+                !_isValidCoord(ax) ||
+                !_isValidCoord(ay)) {
+              return null;
+            }
             path.quadraticBezierTo(ax1, ay1, ax, ay);
             lastCtrlX = ax1;
             lastCtrlY = ay1;
@@ -325,6 +377,12 @@ class _SvgPathCursor {
             final ay1 = isPrevQuad ? 2 * curY - lastCtrlY : curY;
             final ax = isRel ? curX + x : x;
             final ay = isRel ? curY + y : y;
+            if (!_isValidCoord(ax1) ||
+                !_isValidCoord(ay1) ||
+                !_isValidCoord(ax) ||
+                !_isValidCoord(ay)) {
+              return null;
+            }
             path.quadraticBezierTo(ax1, ay1, ax, ay);
             lastCtrlX = ax1;
             lastCtrlY = ay1;
@@ -352,6 +410,13 @@ class _SvgPathCursor {
             }
             final ax = isRel ? curX + x : x;
             final ay = isRel ? curY + y : y;
+            if (!_isValidCoord(rx) ||
+                !_isValidCoord(ry) ||
+                !_isValidCoord(rot) ||
+                !_isValidCoord(ax) ||
+                !_isValidCoord(ay)) {
+              return null;
+            }
             path.arcToPoint(
               Offset(ax, ay),
               radius: Radius.elliptical(rx.abs(), ry.abs()),

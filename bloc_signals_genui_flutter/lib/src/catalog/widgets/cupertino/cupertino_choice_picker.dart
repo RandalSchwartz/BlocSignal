@@ -71,7 +71,11 @@ Widget buildCupertinoChoicePicker(
       : null;
 
   Widget buildOptions(List<({String label, String value})> displayed) {
-    if (!isMultiple && displayed.length >= 2) {
+    final uniqueValues = displayed.map((o) => o.value).toSet();
+    if (!isMultiple &&
+        displayed.length >= 2 &&
+        displayed.length <= 5 &&
+        uniqueValues.length == displayed.length) {
       final segmentedChildren = <String, Widget>{
         for (final option in displayed)
           option.value: Padding(

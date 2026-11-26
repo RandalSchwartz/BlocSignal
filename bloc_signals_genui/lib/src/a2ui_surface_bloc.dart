@@ -310,6 +310,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
           .map((s) => s.id)
           .firstWhere((id) => id != _activeSurfaceId);
 
+      _processor.rpc.cancelSurfaceCalls(victimId);
       _processor.model.deleteSurface(victimId);
       _pruneSurfaceMetadata(victimId);
     }
@@ -319,6 +320,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     for (final msg in messages) {
       if (msg is CreateSurfaceMessage) {
         if (_processor.model.getSurface(msg.surfaceId) != null) {
+          _processor.rpc.cancelSurfaceCalls(msg.surfaceId);
           _processor.model.deleteSurface(msg.surfaceId);
         }
         _activeSurfaceId = msg.surfaceId;
@@ -878,6 +880,9 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
     if (resolvedOrFuture is Future<Map<String, dynamic>?>) {
       return resolvedOrFuture.then((resolved) {
+        if (!identical(_processor.model.getSurface(surfaceId), surface)) {
+          return;
+        }
         final ctx = _extractResolvedEventContext(resolved) ?? event.context;
         dispatchResolvedContext(ctx);
       });
@@ -996,6 +1001,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     if (surfaceId == null) {
       _cancelActiveStream();
       for (final surface in _processor.model.allSurfaces.toList()) {
+        _processor.rpc.cancelSurfaceCalls(surface.id);
         _processor.model.deleteSurface(surface.id);
       }
       _responseHistory.clear();
@@ -1043,6 +1049,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       return;
     }
 
+    _processor.rpc.cancelSurfaceCalls(targetId);
     _processor.model.deleteSurface(targetId);
     if (_activeSurfaceId == targetId) {
       _activeSurfaceId = null;

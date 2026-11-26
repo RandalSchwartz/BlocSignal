@@ -79,7 +79,9 @@ Widget buildA2uiIcon(
 ) {
   final props = componentContext.props;
   final rawName = unwrapBinding(props['name'] ?? props['icon']);
-  final size = props['size'] != null ? asDouble(props['size'], 24) : 24.0;
+  final size = props['size'] != null
+      ? asBoundedDouble(props['size'], min: 1, max: 256, defaultValue: 24)
+      : 24.0;
   final semanticLabel = unwrapBinding(props['description'])?.toString();
 
   if (rawName is Map && rawName['svgPath'] != null) {

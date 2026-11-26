@@ -188,3 +188,55 @@ const int kMaxSliderDivisions = 1000;
 
   return (min: min, max: max, value: currentValue, divisions: divisions);
 }
+
+/// Safely converts a dynamic [value] to a non-negative finite [double],
+/// clamping negative values to `0.0` and falling back to [defaultValue]
+/// (clamped to `>= 0.0`) when [value] is null, non-finite, or unparseable.
+///
+/// ```dart
+/// final size = asNonNegativeDouble(-4, 1.0);
+/// print(size); // 0.0
+/// ```
+double asNonNegativeDouble(dynamic value, [double defaultValue = 0.0]) {
+  final safeDefault =
+      defaultValue.isFinite && defaultValue >= 0 ? defaultValue : 0.0;
+  final parsed = asDouble(value, safeDefault);
+  if (!parsed.isFinite || parsed < 0) return 0;
+  return parsed;
+}
+
+/// Safely converts a dynamic [value] to a finite [double] clamped to
+/// `[min, max]`.
+///
+/// ```dart
+/// final clamped = asBoundedDouble(999, min: 1, max: 256, defaultValue: 24);
+/// print(clamped); // 256.0
+/// ```
+double asBoundedDouble(
+  dynamic value, {
+  required double min,
+  required double max,
+  required double defaultValue,
+}) {
+  final safeDefault = defaultValue.clamp(min, max);
+  final parsed = asDouble(value, safeDefault);
+  if (!parsed.isFinite) return safeDefault;
+  return parsed.clamp(min, max);
+}
+
+/// Safely converts a dynamic [value] to an [int] clamped to `[min, max]`.
+///
+/// ```dart
+/// final limit = asBoundedInt(50000, min: 1, max: 10000, defaultValue: 100);
+/// print(limit); // 10000
+/// ```
+int asBoundedInt(
+  dynamic value, {
+  required int min,
+  required int max,
+  required int defaultValue,
+}) {
+  final safeDefault = defaultValue.clamp(min, max);
+  final parsed = asInt(value, safeDefault);
+  return parsed.clamp(min, max);
+}

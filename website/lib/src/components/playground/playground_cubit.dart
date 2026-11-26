@@ -73,6 +73,12 @@ class PlaygroundCubit({final PlaygroundScenario? initialScenario})
     _renderInstantAndEmit();
   }
 
+  /// Maximum permitted length for raw JSON payloads in the playground.
+  static const int maxRawJsonLength = 65536;
+
+  /// Maximum number of action entries retained in [PlaygroundState.actionLog].
+  static const int maxActionLogEntries = 50;
+
   /// The underlying A2UI surface bloc orchestrating DOM components.
   final A2uiSurfaceBloc surfaceBloc;
 
@@ -112,25 +118,41 @@ class PlaygroundCubit({final PlaygroundScenario? initialScenario})
 
   /// Updates the raw JSON buffer, evaluating syntax validity.
   void updateJson(String newJson) {
-    String? error;
-    try {
-      final decoded = jsonDecode(newJson);
-      if (decoded is! List) {
-        error = 'JSON root must be an array of A2UI message objects.';
-      }
-    } on FormatException catch (e) {
-      error = e.message;
-    } catch (e) {
-      error = e.toString();
-    }
+    final result = _decodeAndValidateRawJson(newJson);
 
     emit(
       stateValue.copyWith(
         rawJson: newJson,
-        parseError: error,
-        clearParseError: error == null,
+        parseError: result.error,
+        clearParseError: result.error == null,
       ),
     );
+  }
+
+  ({List<dynamic>? messages, String? error}) _decodeAndValidateRawJson(
+    String raw,
+  ) {
+    if (raw.length > maxRawJsonLength) {
+      return (
+        messages: null,
+        error:
+            'JSON payload exceeds maximum length of $maxRawJsonLength characters.',
+      );
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        return (
+          messages: null,
+          error: 'JSON root must be an array of A2UI message objects.',
+        );
+      }
+      return (messages: decoded, error: null);
+    } on FormatException catch (e) {
+      return (messages: null, error: e.message);
+    } on Exception catch (e) {
+      return (messages: null, error: e.toString());
+    }
   }
 
   /// Parses the raw JSON buffer and instantly hydrates the [surfaceBloc].
@@ -140,25 +162,13 @@ class PlaygroundCubit({final PlaygroundScenario? initialScenario})
   }
 
   void _renderInstantAndEmit() {
-    List<dynamic> messages;
-    try {
-      final decoded = jsonDecode(stateValue.rawJson);
-      if (decoded is! List) {
-        emit(
-          stateValue.copyWith(
-            parseError: 'JSON root must be an array of A2UI message objects.',
-          ),
-        );
-        return;
-      }
-      messages = decoded;
-    } on FormatException catch (e) {
-      emit(stateValue.copyWith(parseError: e.message));
-      return;
-    } catch (e) {
-      emit(stateValue.copyWith(parseError: e.toString()));
+    final result = _decodeAndValidateRawJson(stateValue.rawJson);
+    if (result.error != null || result.messages == null) {
+      emit(stateValue.copyWith(parseError: result.error));
       return;
     }
+
+    final messages = result.messages!;
 
     emit(stateValue.copyWith(clearParseError: true));
 
@@ -179,25 +189,13 @@ class PlaygroundCubit({final PlaygroundScenario? initialScenario})
   }) async {
     cancelStreaming();
 
-    List<dynamic> messages;
-    try {
-      final decoded = jsonDecode(stateValue.rawJson);
-      if (decoded is! List) {
-        emit(
-          stateValue.copyWith(
-            parseError: 'JSON root must be an array of A2UI message objects.',
-          ),
-        );
-        return;
-      }
-      messages = decoded;
-    } on FormatException catch (e) {
-      emit(stateValue.copyWith(parseError: e.message));
-      return;
-    } catch (e) {
-      emit(stateValue.copyWith(parseError: e.toString()));
+    final result = _decodeAndValidateRawJson(stateValue.rawJson);
+    if (result.error != null || result.messages == null) {
+      emit(stateValue.copyWith(parseError: result.error));
       return;
     }
+
+    final messages = result.messages!;
 
     _isCanceled = false;
     final completer = Completer<void>();
@@ -259,7 +257,14 @@ class PlaygroundCubit({final PlaygroundScenario? initialScenario})
   /// Records an action dispatch into [PlaygroundState.actionLog].
   void recordAction(PlaygroundActionEntry action) {
     final updatedLog = [action, ...stateValue.actionLog];
-    emit(stateValue.copyWith(actionLog: updatedLog));
+    if (updatedLog.length > maxActionLogEntries) {
+      updatedLog.removeRange(maxActionLogEntries, updatedLog.length);
+    }
+    emit(
+      stateValue.copyWith(
+        actionLog: List<PlaygroundActionEntry>.unmodifiable(updatedLog),
+      ),
+    );
   }
 
   /// Resets the playground to the active scenario's default state.

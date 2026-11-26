@@ -1019,14 +1019,19 @@ class _ResolvedNodeWidgetState extends State<_ResolvedNodeWidget> {
         : widget.budget;
     _isSelfRebuild = false;
 
-    Widget buildSingleChild(String childId, {String? siblingDisambiguator}) {
+    Widget buildSingleChild(
+      String childId, {
+      String? siblingDisambiguator,
+      _RenderBudget? budgetOverride,
+    }) {
+      final targetBudget = budgetOverride ?? activeBudget;
       final childNode = childNodes[childId];
       if (childNode != null) {
         return widget.buildNodeCallback(
           childNode,
           nextPath,
           depth: widget.depth + 1,
-          budget: activeBudget,
+          budget: targetBudget,
           siblingDisambiguator: siblingDisambiguator,
         );
       }
@@ -1034,7 +1039,7 @@ class _ResolvedNodeWidgetState extends State<_ResolvedNodeWidget> {
         childId,
         nextPath,
         depth: widget.depth + 1,
-        budget: activeBudget,
+        budget: targetBudget,
         dataPath: node.dataPath,
         siblingDisambiguator: siblingDisambiguator,
       );
@@ -1049,6 +1054,13 @@ class _ResolvedNodeWidgetState extends State<_ResolvedNodeWidget> {
       surfaceBloc: widget.bloc,
       surfaceId: widget.surfaceId,
       buildChildCallback: buildSingleChild,
+      buildIsolatedChildCallback: (childId) => buildSingleChild(
+        childId,
+        budgetOverride: _RenderBudget(
+          maxDepth: widget.budget.maxDepth,
+          nodeBudget: widget.budget.nodeBudget,
+        ),
+      ),
       buildChildrenCallback: (ids) {
         final seen = <String>{};
         return [
@@ -1230,6 +1242,16 @@ class _BoundComponentWidgetState extends State<_BoundComponentWidget> {
         nextPath,
         depth: widget.depth + 1,
         budget: activeBudget,
+        dataPath: widget.dataPath,
+      ),
+      buildIsolatedChildCallback: (childId) => widget.buildComponentCallback(
+        childId,
+        nextPath,
+        depth: widget.depth + 1,
+        budget: _RenderBudget(
+          maxDepth: widget.budget.maxDepth,
+          nodeBudget: widget.budget.nodeBudget,
+        ),
         dataPath: widget.dataPath,
       ),
       buildChildrenCallback: (ids) {

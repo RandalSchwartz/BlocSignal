@@ -30,13 +30,21 @@ Component buildA2uiTextField(
     props['variant'] ?? props['textFieldType'],
     'shortText',
   );
+  final rawMaxLength = props['maxLength'];
+  final maxLength = rawMaxLength != null
+      ? asBoundedInt(rawMaxLength, min: 1, max: 10000, defaultValue: 10000)
+      : null;
   final currentValue = asString(props['value']);
 
   final Component control;
   if (variant == 'longText') {
+    final textareaAttrs = <String, String>{
+      if (maxLength != null) 'maxlength': '$maxLength',
+    };
     control = textarea(
       classes: 'a2ui-input a2ui-textarea',
       placeholder: placeholder,
+      attributes: textareaAttrs.isNotEmpty ? textareaAttrs : null,
       onInput: (textValue) {
         componentContext.updateBoundValue('value', textValue);
       },
@@ -66,6 +74,7 @@ Component buildA2uiTextField(
     final attributes = <String, String>{
       if (placeholder != null && placeholder.isNotEmpty)
         'placeholder': placeholder,
+      if (maxLength != null) 'maxlength': '$maxLength',
     };
 
     control = input<String>(

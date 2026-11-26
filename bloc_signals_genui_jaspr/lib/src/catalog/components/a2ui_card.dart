@@ -18,7 +18,12 @@ Component buildA2uiCard(
   final props = componentContext.props;
   final childId = extractChildId(props['child']);
   final childIds = extractChildIds(props['children']);
-  final elevation = asDouble(props['elevation'], 1);
+  final elevation = asBoundedDouble(
+    props['elevation'],
+    min: 0,
+    max: 24,
+    defaultValue: 1,
+  );
 
   final List<Component> content;
   if (childId != null) {

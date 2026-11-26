@@ -254,4 +254,45 @@ void main() {
       cubit.close();
     });
   });
+
+  group('(Issue #478) PlaygroundCubit Input & Log Bounds', () {
+    late PlaygroundCubit cubit;
+
+    setUp(() {
+      cubit = PlaygroundCubit();
+    });
+
+    tearDown(() async {
+      await cubit.close();
+    });
+
+    test('(Issue #478) updateJson, renderInstant, and startStreaming reject '
+        'oversized JSON payloads', () async {
+      final oversized = '[{"version":"1.0","pad":"${'a' * 70000}"}]';
+      cubit.updateJson(oversized);
+      expect(cubit.stateValue.parseError, isNotNull);
+
+      await cubit.renderInstant();
+      expect(cubit.stateValue.parseError, isNotNull);
+
+      await cubit.startStreaming(chunkDelay: Duration.zero);
+      expect(cubit.stateValue.parseError, isNotNull);
+      expect(cubit.stateValue.isStreaming, isFalse);
+    });
+
+    test('(Issue #478) recordAction caps actionLog at 50 entries', () {
+      for (var i = 0; i < 65; i++) {
+        cubit.recordAction(
+          PlaygroundActionEntry(
+            actionName: 'action_$i',
+            surfaceId: 'flight-booking',
+          ),
+        );
+      }
+
+      expect(cubit.stateValue.actionLog.length, equals(50));
+      expect(cubit.stateValue.actionLog.first.actionName, equals('action_64'));
+      expect(cubit.stateValue.actionLog.last.actionName, equals('action_15'));
+    });
+  });
 }

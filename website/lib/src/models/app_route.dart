@@ -1,28 +1,15 @@
-import 'package:jaspr/jaspr.dart';
-
-import '../pages/docs_page.dart';
-import '../pages/home_page.dart';
-import '../pages/minesweeper_page.dart';
-import '../pages/playground_page.dart';
-import '../pages/ported_examples_page.dart';
-import '../pages/publications_page.dart';
-import '../pages/showcase_page.dart';
-
 /// Defines client-side application routes for blocsignal.dev.
-enum AppRoute(
-  final String path,
-  final String label,
-  final Component Function() builder,
-) {
-  home('/', 'Home', HomePage.new),
-  docs('/docs', 'Docs', DocsPage.new),
-  showcase('/showcase', 'Showcase', ShowcasePage.new),
-  portedExamples('/ported-examples', 'Ported Examples', PortedExamplesPage.new),
-  minesweeper('/minesweeper', '🎮 Minesweeper', MinesweeperPage.new),
-  publications('/publications', '📚 Publications', PublicationsPage.new),
-  playground('/playground', '⚡ Playground', PlaygroundPage.new);
+enum AppRoute(final String path, final String label) {
+  home('/', 'Home'),
+  docs('/docs', 'Docs'),
+  showcase('/showcase', 'Showcase'),
+  portedExamples('/ported-examples', 'Ported Examples'),
+  minesweeper('/minesweeper', '🎮 Minesweeper'),
+  publications('/publications', '📚 Publications'),
+  playground('/playground', '⚡ Playground');
 
-  /// Parses the browser's current [path] and [hash] into a type-safe [AppRoute].
+  /// Parses the browser's current [path] and [hash] into a type-safe
+  /// [AppRoute].
   static AppRoute fromLocation({String? path, String? hash}) {
     final p = path ?? '';
     final h = (hash ?? '').toLowerCase();

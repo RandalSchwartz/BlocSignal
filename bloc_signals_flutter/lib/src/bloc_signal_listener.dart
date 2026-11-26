@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_flutter/src/bloc_signal_provider.dart';
 import 'package:flutter/foundation.dart';
@@ -47,8 +49,67 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S> extends StatefulWidget
     this.listenWhen,
     this.take,
     this.takeWhile,
+    this.debounce,
+    this.throttle,
     super.key,
   })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        assert(
+          debounce == null || throttle == null,
+          'Cannot specify both debounce and throttle.',
+        ),
+        _listener = listener,
+        _transitionListener = null;
+
+  /// Creates a [BlocSignalListener] that debounces state emissions by
+  /// [duration], invoking [listener] only after emissions pause for [duration].
+  ///
+  /// Example:
+  /// ```dart
+  /// BlocSignalListener<SearchBloc, SearchState>.debounce(
+  ///   duration: const Duration(milliseconds: 300),
+  ///   listener: (context, state) => logSearch(state),
+  ///   child: const SearchResults(),
+  /// )
+  /// ```
+  const BlocSignalListener.debounce({
+    required Duration duration,
+    required void Function(BuildContext context, S state) listener,
+    this.child = const SizedBox.shrink(),
+    this.bloc,
+    this.listenWhen,
+    this.take,
+    this.takeWhile,
+    super.key,
+  })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        debounce = duration,
+        throttle = null,
+        _listener = listener,
+        _transitionListener = null;
+
+  /// Creates a [BlocSignalListener] that throttles state emissions by
+  /// [duration], invoking [listener] immediately on the leading edge and
+  /// suppressing subsequent emissions until [duration] elapses.
+  ///
+  /// Example:
+  /// ```dart
+  /// BlocSignalListener<ScrollBloc, ScrollState>.throttle(
+  ///   duration: const Duration(milliseconds: 200),
+  ///   listener: (context, state) => trackScroll(state),
+  ///   child: const ScrollView(),
+  /// )
+  /// ```
+  const BlocSignalListener.throttle({
+    required Duration duration,
+    required void Function(BuildContext context, S state) listener,
+    this.child = const SizedBox.shrink(),
+    this.bloc,
+    this.listenWhen,
+    this.take,
+    this.takeWhile,
+    super.key,
+  })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        debounce = null,
+        throttle = duration,
         _listener = listener,
         _transitionListener = null;
 
@@ -72,8 +133,14 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S> extends StatefulWidget
     this.listenWhen,
     this.take,
     this.takeWhile,
+    this.debounce,
+    this.throttle,
     super.key,
   })  : assert(take == null || take >= 0, 'take must be non-negative.'),
+        assert(
+          debounce == null || throttle == null,
+          'Cannot specify both debounce and throttle.',
+        ),
         _listener = null,
         _transitionListener = listener;
 
@@ -110,6 +177,19 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S> extends StatefulWidget
   /// invoking [listener] for that emission or any subsequent emissions.
   final bool Function(S state)? takeWhile;
 
+  /// Optional trailing-edge debounce duration.
+  ///
+  /// When set, [listener] is invoked only after matching emissions pause for
+  /// [debounce]. Mutually exclusive with [throttle].
+  final Duration? debounce;
+
+  /// Optional leading-edge throttle duration.
+  ///
+  /// When set, [listener] is invoked immediately on the first matching
+  /// emission, then subsequent emissions are suppressed until [throttle]
+  /// elapses. Mutually exclusive with [debounce].
+  final Duration? throttle;
+
   /// The child widget subtree.
   final Widget child;
 
@@ -124,6 +204,8 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S> extends StatefulWidget
         listenWhen: listenWhen,
         take: take,
         takeWhile: takeWhile,
+        debounce: debounce,
+        throttle: throttle,
         child: child,
       );
     }
@@ -134,6 +216,8 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S> extends StatefulWidget
       listenWhen: listenWhen,
       take: take,
       takeWhile: takeWhile,
+      debounce: debounce,
+      throttle: throttle,
       child: child,
     );
   }
@@ -159,6 +243,12 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S> extends StatefulWidget
           'takeWhile',
           takeWhile,
         ),
+      )
+      ..add(
+        DiagnosticsProperty<Duration>('debounce', debounce, defaultValue: null),
+      )
+      ..add(
+        DiagnosticsProperty<Duration>('throttle', throttle, defaultValue: null),
       );
   }
 }
@@ -168,14 +258,78 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
   T? _bloc;
   S? _previousState;
   EffectCleanup? _cleanup;
+  Timer? _rateLimitTimer;
+  S? _pendingPrevious;
+  S? _pendingCurrent;
+  bool _hasPendingTrailing = false;
   int _invocationCount = 0;
   bool _isDetached = false;
   bool _detachedByTakeWhile = false;
 
+  void _validateDurations() {
+    if (widget.debounce != null && widget.debounce!.isNegative) {
+      throw ArgumentError.value(
+        widget.debounce,
+        'debounce',
+        'must be non-negative',
+      );
+    }
+    if (widget.throttle != null && widget.throttle!.isNegative) {
+      throw ArgumentError.value(
+        widget.throttle,
+        'throttle',
+        'must be non-negative',
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _validateDurations();
+  }
+
+  void _cancelRateLimit() {
+    _rateLimitTimer?.cancel();
+    _rateLimitTimer = null;
+    _hasPendingTrailing = false;
+    _pendingPrevious = null;
+    _pendingCurrent = null;
+  }
+
   void _detach() {
     _isDetached = true;
+    _cancelRateLimit();
     _cleanup?.call();
     _cleanup = null;
+  }
+
+  void _dispatch(S previous, S current, {Duration? throttleDuration}) {
+    if (widget.takeWhile != null && !widget.takeWhile!(current)) {
+      _detachedByTakeWhile = true;
+      _detach();
+      return;
+    }
+    _invocationCount++;
+    if (widget.take != null && _invocationCount >= widget.take!) {
+      _detach();
+    }
+    if (mounted && !_isDetached && throttleDuration != null) {
+      _rateLimitTimer?.cancel();
+      late final Timer timer;
+      timer = Timer(throttleDuration, () {
+        if (identical(_rateLimitTimer, timer)) {
+          _rateLimitTimer = null;
+        }
+      });
+      _rateLimitTimer = timer;
+    }
+    final transitionListener = widget._transitionListener;
+    if (transitionListener != null) {
+      transitionListener(context, previous, current);
+    } else {
+      widget._listener!(context, current);
+    }
   }
 
   void _subscribe() {
@@ -204,21 +358,39 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
 
           if (widget.listenWhen == null ||
               widget.listenWhen!(previous, currentState)) {
-            if (widget.takeWhile != null && !widget.takeWhile!(currentState)) {
-              _detachedByTakeWhile = true;
-              _detach();
+            final debounceDuration = widget.debounce;
+            if (debounceDuration != null) {
+              _rateLimitTimer?.cancel();
+              if (!_hasPendingTrailing) {
+                _pendingPrevious = previous;
+                _hasPendingTrailing = true;
+              }
+              _pendingCurrent = currentState;
+              _rateLimitTimer = Timer(debounceDuration, () {
+                _rateLimitTimer = null;
+                if (!mounted || _isDetached || !_hasPendingTrailing) return;
+                final pendingPrev = _pendingPrevious as S;
+                final pendingCurr = _pendingCurrent as S;
+                _hasPendingTrailing = false;
+                _pendingPrevious = null;
+                _pendingCurrent = null;
+                _dispatch(pendingPrev, pendingCurr);
+              });
               return;
             }
-            _invocationCount++;
-            if (widget.take != null && _invocationCount >= widget.take!) {
-              _detach();
+
+            final throttleDuration = widget.throttle;
+            if (throttleDuration != null) {
+              if (_rateLimitTimer?.isActive ?? false) return;
+              _dispatch(
+                previous,
+                currentState,
+                throttleDuration: throttleDuration,
+              );
+              return;
             }
-            final transitionListener = widget._transitionListener;
-            if (transitionListener != null) {
-              transitionListener(context, previous, currentState);
-            } else {
-              widget._listener!(context, currentState);
-            }
+
+            _dispatch(previous, currentState);
           }
         }
       },
@@ -232,6 +404,7 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
     final effectiveBloc =
         widget.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     if (!identical(_bloc, effectiveBloc)) {
+      _cancelRateLimit();
       _bloc = effectiveBloc;
       _invocationCount = 0;
       _isDetached = false;
@@ -243,15 +416,22 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
   @override
   void didUpdateWidget(BlocSignalListener<T, S> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _validateDurations();
     final effectiveBloc =
         widget.bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     if (!identical(_bloc, effectiveBloc)) {
+      _cancelRateLimit();
       _bloc = effectiveBloc;
       _invocationCount = 0;
       _isDetached = false;
       _detachedByTakeWhile = false;
       _subscribe();
       return;
+    }
+
+    if (widget.debounce != oldWidget.debounce ||
+        widget.throttle != oldWidget.throttle) {
+      _cancelRateLimit();
     }
 
     final takeWhileRemoved =

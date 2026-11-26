@@ -1,5 +1,6 @@
 ## Unreleased
 
+- **Feat (flutter)**: Add `debounce` and `throttle` rate-limiting parameters and `BlocSignalListener.debounce` / `BlocSignalListener.throttle` constructors to `BlocSignalListener` and `BlocSignalConsumer` (#391).
 - **Feat (flutter)**: Add `retentionPeriod` and `clearRetained()` to `BlocSignalProvider` for graceful deferred disposal (#392).
 - **Feat (flutter)**: add fluent zero-allocation `.build` and `.build.child` widget builder extensions on `ReadonlySignal` and `BlocSignalBase` (#393).
 - **Feat (flutter)**: Add `BlocSignalProvider.maybeOf`, `context.maybeRead`, `context.maybeWatch`, structured `BlocSignalProviderNotFoundError` (extending `FlutterError`), `BlocSignalListener.transition` / `BlocSignalConsumer.transition`, `context.select(..., equals:)`, `debugFillProperties` on all 7 widgets, and `EffectOptions(name: ...)` on `BlocSignalBuilder` and `BlocSignalListener` (#481).

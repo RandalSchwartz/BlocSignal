@@ -15,12 +15,14 @@ class const Footer({super.key}) extends StatelessComponent {
           a(
             href: 'https://pub.dev/packages/bloc_signals',
             target: Target.blank,
+            attributes: const {'rel': 'noopener noreferrer'},
             [Component.text('pub.dev')],
           ),
           Component.text(' • '),
           a(
             href: 'https://github.com/RandalSchwartz/BlocSignal',
             target: Target.blank,
+            attributes: const {'rel': 'noopener noreferrer'},
             [Component.text('GitHub')],
           ),
           Component.text(' • '),

@@ -138,6 +138,7 @@ on<PostsFetched>((event, emit) async {
               a(
                 href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/infinite_scroll',
                 target: Target.blank,
+                attributes: const {'rel': 'noopener noreferrer'},
                 classes: 'docs-inline-link',
                 [Component.text('examples/infinite_scroll ↗')],
               ),

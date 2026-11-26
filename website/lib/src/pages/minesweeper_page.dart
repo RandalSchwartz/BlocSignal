@@ -31,12 +31,14 @@ class const MinesweeperPage({super.key}) extends StatelessComponent {
               a(
                 href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/mine_sweeper',
                 target: Target.blank,
+                attributes: const {'rel': 'noopener noreferrer'},
                 classes: 'btn-primary btn-github-source',
                 [Component.text('⭐ View Live Source Code on GitHub ↗')],
               ),
               a(
                 href: 'https://pub.dev/packages/bloc_signals',
                 target: Target.blank,
+                attributes: const {'rel': 'noopener noreferrer'},
                 classes: 'btn-secondary btn-pub',
                 [Component.text('📦 View on pub.dev ↗')],
               ),
@@ -148,6 +150,7 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
                 a(
                   href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/mine_sweeper',
                   target: Target.blank,
+                  attributes: const {'rel': 'noopener noreferrer'},
                   classes: 'card-link',
                   [Component.text('View Full Flutter Example Repository ↗')],
                 ),
@@ -155,6 +158,7 @@ class MinesweeperCubit extends CubitSignal<MinesweeperState> {
                 a(
                   href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/website/lib/src/components/minesweeper',
                   target: Target.blank,
+                  attributes: const {'rel': 'noopener noreferrer'},
                   classes: 'card-link',
                   [Component.text('View Web Jaspr Component Source ↗')],
                 ),

@@ -127,6 +127,7 @@ class const ExamplesSection({super.key}) extends StatelessComponent {
                   href:
                       'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.path}',
                   target: Target.blank,
+                  attributes: const {'rel': 'noopener noreferrer'},
                   classes: 'card-link',
                   [Component.text('View Source & Tests ↗')],
                 ),

@@ -83,6 +83,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals')],
                   ),
@@ -100,6 +101,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_flutter',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_flutter')],
                   ),
@@ -117,6 +119,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_jaspr',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_jaspr')],
                   ),
@@ -134,6 +137,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_test',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_test')],
                   ),
@@ -151,6 +155,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_lint',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_lint')],
                   ),
@@ -168,6 +173,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_hydrate',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_hydrate')],
                   ),
@@ -185,6 +191,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_replay',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_replay')],
                   ),
@@ -202,6 +209,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_riverpod',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_riverpod')],
                   ),
@@ -219,6 +227,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_bloc',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_bloc')],
                   ),
@@ -236,6 +245,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_otel',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_otel')],
                   ),
@@ -253,6 +263,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_devtools',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_devtools')],
                   ),
@@ -270,6 +281,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_genui',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_genui')],
                   ),
@@ -287,6 +299,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_genui_flutter',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_genui_flutter')],
                   ),
@@ -304,6 +317,7 @@ class const DocsInstallationPage({super.key}) extends StatelessComponent {
                   a(
                     href: 'https://pub.dev/packages/bloc_signals_genui_jaspr',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'docs-table-link',
                     [Component.text('bloc_signals_genui_jaspr')],
                   ),

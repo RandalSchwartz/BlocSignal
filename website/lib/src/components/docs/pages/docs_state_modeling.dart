@@ -212,6 +212,7 @@ class TodoCubit extends CubitSignal<IList<String>> {
           a(
             href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/fic_shopping_cart',
             target: Target.blank,
+            attributes: const {'rel': 'noopener noreferrer'},
             [Component.text('FIC Shopping Cart Example')],
           ),
           Component.text('.'),

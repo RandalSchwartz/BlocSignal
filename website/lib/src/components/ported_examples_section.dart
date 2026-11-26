@@ -259,6 +259,7 @@ class const PortedExamplesSection({super.key}) extends StatelessComponent {
                     href:
                         'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.localPath}',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'card-link',
                     [Component.text('BlocSignal Source →')],
                   ),
@@ -266,6 +267,7 @@ class const PortedExamplesSection({super.key}) extends StatelessComponent {
                   a(
                     href: ex.upstreamUrl,
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'card-link upstream-link',
                     [Component.text('Original Source ↗')],
                   ),
@@ -307,6 +309,7 @@ class const PortedExamplesSection({super.key}) extends StatelessComponent {
                     href:
                         'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.localPath}',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'card-link',
                     [Component.text('BlocSignal Source →')],
                   ),
@@ -314,6 +317,7 @@ class const PortedExamplesSection({super.key}) extends StatelessComponent {
                   a(
                     href: ex.upstreamUrl,
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'card-link upstream-link',
                     [Component.text('Original Source ↗')],
                   ),
@@ -353,6 +357,7 @@ class const PortedExamplesSection({super.key}) extends StatelessComponent {
                     href:
                         'https://github.com/RandalSchwartz/BlocSignal/tree/main/${ex.localPath}',
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'card-link',
                     [Component.text('BlocSignal Source →')],
                   ),
@@ -360,6 +365,7 @@ class const PortedExamplesSection({super.key}) extends StatelessComponent {
                   a(
                     href: ex.upstreamUrl,
                     target: Target.blank,
+                    attributes: const {'rel': 'noopener noreferrer'},
                     classes: 'card-link upstream-link',
                     [Component.text('Original Source ↗')],
                   ),

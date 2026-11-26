@@ -1,5 +1,6 @@
 ## Unreleased
 
+- **Feat (concurrency)**: Expose cooperative cancellation token (`CancellationToken`, `isCanceled`, `onCancel`) to `restartable()` event handlers and `close()` lifecycle (#498).
 - **Feat (concurrency)**: Add `concurrent`, `debounce`, and `throttle` event transformers (#480).
 - **Fix (core)**: Throw `StateError` naming `initCubitSignal` in all build modes when `CubitSignalMixin.emit()` is called before `initCubitSignal()` (#479).
 - **Feat (core)**: Deduplicate identical observer instances in `BlocSignalObserver.addObserver` and `CompositeBlocSignalObserver.add`, and export `typedef MultiBlocSignalObserver = CompositeBlocSignalObserver` (#479).

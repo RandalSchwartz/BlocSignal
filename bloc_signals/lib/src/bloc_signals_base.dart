@@ -286,6 +286,18 @@ void emitContainerTelemetry(
   bloc.emitTelemetry(name, event: event, metadata: metadata);
 }
 
+/// Internal helper to forward isolated callback errors to [bloc]'s
+/// [BlocSignalBase.onError] without exposing `@protected` access outside
+/// `bloc_signals_base.dart`.
+@internal
+void reportContainerError(
+  BlocSignalBase<dynamic> bloc,
+  Object error,
+  StackTrace stackTrace,
+) {
+  bloc.onError(error, stackTrace);
+}
+
 /// A base contract for all reactive state containers.
 ///
 /// Manages the state signal, provides lifecycle hooks, and manages disposal.
@@ -335,6 +347,11 @@ abstract class BlocSignalBase<StateType> {
   /// invocation across `onEvent`, handler execution, `onError`, `onTelemetry`,
   /// and `onEventCompleted`.
   static final Object ambientZoneDispatchTokenKey = Object();
+
+  /// Canonical zone key used to track the active cancellation token or
+  /// internal cancellation slot for cooperative cancellation in
+  /// `restartable()` event handlers.
+  static final Object ambientZoneCancellationTokenKey = Object();
 
   /// Internal zone key used to track the causing event of a transition.
   @protected

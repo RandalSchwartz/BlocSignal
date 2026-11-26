@@ -317,7 +317,7 @@ Available built-in transformers & concurrency utilities:
 - `concurrent()`: Processes incoming events concurrently without queueing, dropping, or superseding.
 - `droppable()`: Drops incoming events if a handler for that event type is currently executing.
 - `sequential()`: Queues incoming events in FIFO order using a `Mutex` lock.
-- `restartable()`: Allows new incoming events to supersede previous in-flight handler executions.
+- `restartable()`: Allows new incoming events to supersede previous in-flight handler executions, exposing cooperative `CancellationToken.current`, `isCanceled`, and LIFO `onCancel(...)` cleanup hooks (also triggered on `close()`).
 - `debounce(Duration)`: Delays handler execution until a quiet period of `duration` elapses, coalescing bursts (`event_dropped` with `reason: 'coalesced'`) and cancelling pending timers on `close()`.
 - `throttle(Duration, {bool trailing = false})`: Rate-limits execution to once per `duration` window (`trailing: false` drops mid-cooldown events with `reason: 'throttled'`; `trailing: true` coalesces and runs the latest event on cooldown expiry).
 - `Mutex`: A zero-dependency async lock (`protect(() => ...)`) for custom synchronization.

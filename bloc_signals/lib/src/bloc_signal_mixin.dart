@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc_signals/src/bloc_signals_base.dart';
+import 'package:bloc_signals/src/concurrency/cancellation_token.dart';
 import 'package:bloc_signals/src/concurrency/event_transformers.dart';
 import 'package:bloc_signals/src/cubit_signal_mixin.dart';
 import 'package:meta/meta.dart';
@@ -117,6 +118,7 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
         zoneEventKey: event,
         zoneBlocKey: this,
         BlocSignalBase.ambientZoneDispatchTokenKey: dispatchToken,
+        BlocSignalBase.ambientZoneCancellationTokenKey: CancellationTokenSlot(),
       },
     );
   }
@@ -247,7 +249,8 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
   /// Can be overridden to customize event routing or behavior.
   @mustCallSuper
   FutureOr<void> onEvent(Event event) {
-    final matched = _handlers.where((h) => h.isType(event));
+    final matched =
+        _handlers.where((h) => h.isType(event)).toList(growable: false);
     if (_handlers.isNotEmpty && matched.isEmpty) {
       throw StateError(
         'add(${event.runtimeType}) was called without a registered event '
@@ -255,9 +258,18 @@ mixin BlocSignalMixin<Event, StateType> on BlocSignalBase<StateType> {
         'on<${event.runtimeType}>((event, emit) {...}) in the constructor.',
       );
     }
+    if (matched.length == 1) {
+      return matched[0].handler(event, emit);
+    }
     List<Future<dynamic>>? futures;
     for (final registry in matched) {
-      final result = registry.handler(event, emit) as dynamic;
+      final result = runZoned(
+        () => registry.handler(event, emit) as dynamic,
+        zoneValues: {
+          BlocSignalBase.ambientZoneCancellationTokenKey:
+              CancellationTokenSlot(),
+        },
+      );
       if (result is Future) {
         (futures ??= []).add(result);
       }

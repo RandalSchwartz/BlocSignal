@@ -169,6 +169,23 @@ BlocSignalListener<CounterBloc, int>.transition(
 )
 ```
 
+Use `take` and `takeWhile` on `BlocSignalListener` or `BlocSignalConsumer` to cap listener
+execution automatically. `take` detaches the listener after invoking it `N` times (emissions
+filtered out by `listenWhen` do not consume the `take` budget, and `take: 0` registers no active
+subscription), while `takeWhile` evaluates the current state after `listenWhen` and detaches
+permanently on the first `false` result:
+
+```dart
+BlocSignalListener<AuthBloc, AuthState>(
+  take: 1,
+  listenWhen: (_, current) => current.isAuthenticated,
+  listener: (context, state) {
+    Navigator.of(context).pushReplacementNamed('/home');
+  },
+  child: const LoginForm(),
+)
+```
+
 An unrelated parent rebuild does not restart the effect. When `bloc:` is omitted, the listener
 looks up its provider with `listen: true` during `didChangeDependencies`, so if an ancestor provider replaces
 its container instance, the listener automatically rebinds and continues observing state transitions seamlessly.

@@ -35,6 +35,7 @@ class const DocsToc({
           href:
               'https://github.com/RandalSchwartz/BlocSignal/tree/main/$sourcePath',
           target: Target.blank,
+          attributes: const {'rel': 'noopener noreferrer'},
           classes: 'docs-toc-meta-link',
           [
             span(classes: 'docs-toc-meta-icon', [Component.text('✏️')]),
@@ -44,6 +45,7 @@ class const DocsToc({
         a(
           href: 'https://github.com/RandalSchwartz/BlocSignal/issues/new',
           target: Target.blank,
+          attributes: const {'rel': 'noopener noreferrer'},
           classes: 'docs-toc-meta-link',
           [
             span(classes: 'docs-toc-meta-icon', [Component.text('💬')]),

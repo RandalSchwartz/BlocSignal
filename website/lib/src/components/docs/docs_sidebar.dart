@@ -144,6 +144,7 @@ class const DocsSidebar({super.key}) extends StatelessComponent {
             a(
               href: 'https://pub.dev/packages/bloc_signals',
               target: Target.blank,
+              attributes: const {'rel': 'noopener noreferrer'},
               classes: 'docs-footer-link',
               [
                 span([Component.text('📦 pub.dev ↗')]),
@@ -152,6 +153,7 @@ class const DocsSidebar({super.key}) extends StatelessComponent {
             a(
               href: 'https://github.com/RandalSchwartz/BlocSignal',
               target: Target.blank,
+              attributes: const {'rel': 'noopener noreferrer'},
               classes: 'docs-footer-link',
               [
                 span([Component.text('⭐️ GitHub ↗')]),

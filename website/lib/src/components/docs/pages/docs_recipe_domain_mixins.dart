@@ -325,6 +325,7 @@ void main() {
           a(
             href: 'https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/fic_shopping_cart',
             target: Target.blank,
+            attributes: const {'rel': 'noopener noreferrer'},
             [
               Component.text('FIC Shopping Cart reference app ('),
               code([Component.text('examples/fic_shopping_cart')]),

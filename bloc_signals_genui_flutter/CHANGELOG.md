@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui_flutter` will be documented in this file.
 
+## Unreleased
+
+- **Fix (genui_flutter)**: Bound numeric props (`elevation`, `thickness`, `height`, `width`, `size`, `weight`) and `TextField` `maxLength`; enforce `SvgPathParser` length, command-count, and coordinate-range limits; guard `CupertinoChoicePicker` and `CupertinoTabs` against degenerate option/tab counts; isolate modal render budgets via `buildIsolatedChild`; and catch `NodeAction` `Future` `Exception` rejections in `triggerAction` (#478).
+
 ## 2.1.2
 
 - **Fix (genui_flutter)**: Re-export shared hardened `A2uiImageUrlPolicy` from `bloc_signals_genui` for SSRF parser-differential and private/CGNAT/ULA/NAT64 range protection (#463).

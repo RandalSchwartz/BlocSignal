@@ -67,7 +67,7 @@ class _A2uiModalState extends State<A2uiModal> {
             display: Display.inlineBlock,
             cursor: hasContent ? Cursor.pointer : Cursor.defaultCursor,
           ),
-          [component.componentContext.buildChild(triggerId)],
+          [component.componentContext.buildIsolatedChild(triggerId)],
         ),
         if (_isOpen && hasContent)
           div(
@@ -125,7 +125,7 @@ class _A2uiModalState extends State<A2uiModal> {
                   ),
                   div(
                     classes: 'a2ui-modal-content',
-                    [component.componentContext.buildChild(contentId)],
+                    [component.componentContext.buildIsolatedChild(contentId)],
                   ),
                 ],
               ),

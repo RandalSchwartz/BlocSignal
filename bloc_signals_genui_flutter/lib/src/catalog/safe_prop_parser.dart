@@ -85,6 +85,43 @@ bool asBool(dynamic value, {bool defaultValue = false}) {
   return defaultValue;
 }
 
+/// Safely converts a dynamic [value] to a non-negative finite [double],
+/// clamping negative values to `0.0` and falling back to [defaultValue]
+/// (clamped to `>= 0.0`) when [value] is null, non-finite, or unparseable.
+double asNonNegativeDouble(dynamic value, [double defaultValue = 0.0]) {
+  final safeDefault =
+      defaultValue.isFinite && defaultValue >= 0 ? defaultValue : 0.0;
+  final parsed = asDouble(value, safeDefault);
+  if (!parsed.isFinite || parsed < 0) return 0;
+  return parsed;
+}
+
+/// Safely converts a dynamic [value] to a finite [double] clamped to
+/// `[min, max]`.
+double asBoundedDouble(
+  dynamic value, {
+  required double min,
+  required double max,
+  required double defaultValue,
+}) {
+  final safeDefault = defaultValue.clamp(min, max);
+  final parsed = asDouble(value, safeDefault);
+  if (!parsed.isFinite) return safeDefault;
+  return parsed.clamp(min, max);
+}
+
+/// Safely converts a dynamic [value] to an [int] clamped to `[min, max]`.
+int asBoundedInt(
+  dynamic value, {
+  required int min,
+  required int max,
+  required int defaultValue,
+}) {
+  final safeDefault = defaultValue.clamp(min, max);
+  final parsed = asInt(value, safeDefault);
+  return parsed.clamp(min, max);
+}
+
 /// Safely extracts a child component ID from diverse payload formats (for
 /// example [ComponentNode], [ChildNode], `Map` with an `'id'` key,
 /// [ResolvedBinding], or direct string).

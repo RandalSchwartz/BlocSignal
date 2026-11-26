@@ -17,10 +17,20 @@ Component buildA2uiDivider(
 ) {
   final props = componentContext.props;
   final axis = asString(props['axis'], 'horizontal');
-  final thickness = asDouble(props['thickness'], 1);
+  final thickness = asBoundedDouble(
+    props['thickness'],
+    min: 0,
+    max: 64,
+    defaultValue: 1,
+  );
 
   if (axis == 'vertical') {
-    final dividerHeight = asDouble(props['height'] ?? props['width'], 16);
+    final dividerHeight = asBoundedDouble(
+      props['height'] ?? props['width'],
+      min: 0,
+      max: 512,
+      defaultValue: 16,
+    );
     return div(
       classes: 'a2ui-divider a2ui-divider-vertical',
       styles: Styles(
@@ -33,7 +43,12 @@ Component buildA2uiDivider(
     );
   }
 
-  final dividerSpacing = asDouble(props['height'], 16);
+  final dividerSpacing = asBoundedDouble(
+    props['height'],
+    min: 0,
+    max: 512,
+    defaultValue: 16,
+  );
   return hr(
     classes: 'a2ui-divider a2ui-divider-horizontal',
     styles: Styles(

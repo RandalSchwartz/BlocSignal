@@ -53,6 +53,24 @@ class _A2uiCupertinoTabsState extends State<A2uiCupertinoTabs> {
     final activeIndex = _selectedIndex.clamp(0, tabs.length - 1);
     final activeTab = tabs[activeIndex];
 
+    if (tabs.length < 2) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            activeTab.title,
+            style: CupertinoTheme.of(context).textTheme.textStyle.copyWith(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+          ),
+          const SizedBox(height: 12),
+          widget.componentContext.buildChild(activeTab.childId),
+        ],
+      );
+    }
+
     final segmentedChildren = <int, Widget>{
       for (var i = 0; i < tabs.length; i++)
         i: Padding(

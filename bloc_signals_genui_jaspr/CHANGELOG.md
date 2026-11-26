@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Fix (genui_jaspr)**: Add bounded numeric helpers (`asNonNegativeDouble`, `asBoundedDouble`, `asBoundedInt`), validate SVG icon paths, enforce `TextField` `maxlength`, scope `ChoicePicker` radio names by surface/dataPath/sibling, propagate `siblingDisambiguator` through `A2uiSurfaceView`, isolate `A2uiModal` render budgets via `buildIsolatedChild`, and catch `NodeAction` `Future` `Exception` rejections in `triggerAction` (#478).
+
 ## 2.1.0
 
 - **Feat (genui_jaspr)**: Re-export shared hardened `A2uiImageUrlPolicy` from `bloc_signals_genui` and enforce it in `buildA2uiImage`, `registerStandardComponents`, and `A2uiJasprCatalog.standard` via `{A2uiImageUrlPolicy imagePolicy = const A2uiImageUrlPolicy()}` (#463).

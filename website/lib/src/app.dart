@@ -3,6 +3,7 @@ import 'package:jaspr/jaspr.dart';
 
 import 'cubits/navigation_cubit.dart';
 import 'models/app_route.dart';
+import 'models/app_route_builder.dart';
 
 class const App({super.key}) extends StatelessComponent {
   @override

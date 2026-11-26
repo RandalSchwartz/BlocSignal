@@ -18,17 +18,32 @@ Widget buildA2uiDivider(
 ) {
   final props = componentContext.props;
   final axis = asString(props['axis'], 'horizontal');
-  final thickness = asDouble(props['thickness'], 1);
+  final thickness = asBoundedDouble(
+    props['thickness'],
+    min: 0,
+    max: 64,
+    defaultValue: 1,
+  );
 
   if (axis == 'vertical') {
-    final width = asDouble(props['width'] ?? props['height'], 16);
+    final width = asBoundedDouble(
+      props['width'] ?? props['height'],
+      min: 0,
+      max: 512,
+      defaultValue: 16,
+    );
     return VerticalDivider(
       width: width,
       thickness: thickness,
     );
   }
 
-  final height = asDouble(props['height'], 16);
+  final height = asBoundedDouble(
+    props['height'],
+    min: 0,
+    max: 512,
+    defaultValue: 16,
+  );
   return Divider(
     height: height,
     thickness: thickness,

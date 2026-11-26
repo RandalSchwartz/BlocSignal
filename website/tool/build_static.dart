@@ -22,6 +22,8 @@ Future<void> main() async {
     'compile',
     'js',
     'lib/main.dart',
+    '--csp',
+    '-O2',
     '-o',
     'build/www/main.dart.js',
   ], workingDirectory: websiteDir.path);

@@ -74,10 +74,13 @@ void main() {
       expect(csp, contains("default-src 'self'"));
       expect(
         csp,
-        contains(
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com",
-        ),
+        contains("script-src 'self' https://www.googletagmanager.com"),
       );
+      final scriptSrcMatch = RegExp('script-src[^;]+').firstMatch(csp);
+      expect(scriptSrcMatch, isNotNull);
+      final scriptSrc = scriptSrcMatch!.group(0)!;
+      expect(scriptSrc, isNot(contains("'unsafe-inline'")));
+      expect(scriptSrc, isNot(contains("'unsafe-eval'")));
       expect(
         csp,
         contains(
@@ -131,6 +134,45 @@ void main() {
         equals('camera=(), microphone=(), geolocation=()'),
       );
     });
+
+    test(
+      '(Issue #478) website/web/index.html has no inline scripts, '
+      'gtag-init.js exists, and build_static.dart compiles with --csp -O2',
+      () {
+        final indexHtml = _resolveRepoFile('website/web/index.html');
+        expect(indexHtml.existsSync(), isTrue);
+        final html = indexHtml.readAsStringSync();
+
+        final scriptMatches = RegExp(
+          r'<script\b([^>]*)>([\s\S]*?)</script>',
+          caseSensitive: false,
+        ).allMatches(html);
+        expect(scriptMatches, isNotEmpty);
+        for (final match in scriptMatches) {
+          final attrs = match.group(1) ?? '';
+          final body = (match.group(2) ?? '').trim();
+          expect(
+            attrs,
+            contains('src='),
+            reason: 'All <script> tags in index.html must load external src',
+          );
+          expect(
+            body,
+            isEmpty,
+            reason: 'Inline <script> bodies violate strict CSP',
+          );
+        }
+
+        final gtagInit = _resolveRepoFile('website/web/gtag-init.js');
+        expect(gtagInit.existsSync(), isTrue);
+
+        final buildStatic = _resolveRepoFile('website/tool/build_static.dart');
+        expect(buildStatic.existsSync(), isTrue);
+        final buildSource = buildStatic.readAsStringSync();
+        expect(buildSource, contains("'--csp'"));
+        expect(buildSource, contains("'-O2'"));
+      },
+    );
 
     test('(Issue #426: F03) external Target.blank links across modified files '
         'include rel="noopener noreferrer"', () {

@@ -77,6 +77,35 @@ void main(List<String> args) {
     } else {
       print('✅ Passed package $pkg\n');
     }
+
+    if (isWebsite) {
+      const vmTestArgs = [
+        'test',
+        '-p',
+        'vm',
+        'test/navigation_cubit_test.dart',
+      ];
+      print(
+        '➡️ Running VM SSR tests in $pkg ($executable ${vmTestArgs.join(' ')})',
+      );
+      final vmProcess = Process.runSync(
+        executable,
+        vmTestArgs,
+        workingDirectory: Directory(pkg).absolute.path,
+      );
+      if (vmProcess.stdout.toString().isNotEmpty) {
+        stdout.write(vmProcess.stdout);
+      }
+      if (vmProcess.stderr.toString().isNotEmpty) {
+        stderr.write(vmProcess.stderr);
+      }
+      if (vmProcess.exitCode != 0) {
+        print('❌ VM SSR test failure in package $pkg');
+        failed = true;
+      } else {
+        print('✅ Passed VM SSR tests in $pkg\n');
+      }
+    }
   }
 
   print(

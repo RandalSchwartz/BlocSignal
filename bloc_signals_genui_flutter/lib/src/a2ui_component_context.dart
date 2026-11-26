@@ -20,6 +20,7 @@ class A2uiComponentContext {
     required this.buildChildCallback,
     required this.buildChildrenCallback,
     required this.surfaceId,
+    this.buildIsolatedChildCallback,
     this.rawProps = const {},
     this.node,
     this.dataPath = '/',
@@ -70,6 +71,10 @@ class A2uiComponentContext {
 
   /// Internal callback to recursively render a list of child component IDs.
   final List<Widget> Function(List<String> childIds) buildChildrenCallback;
+
+  /// Optional callback to render a child component with an isolated render
+  /// budget (for example inside a modal dialog).
+  final Widget Function(String childId)? buildIsolatedChildCallback;
 
   /// Whether this component currently passes all attached `CheckRule`
   /// validations.
@@ -184,12 +189,25 @@ class A2uiComponentContext {
   /// Recursively renders a child component with the specified [childId].
   Widget buildChild(String childId) => buildChildCallback(childId);
 
+  /// Recursively renders a child component with the specified [childId] inside
+  /// an isolated render budget when [buildIsolatedChildCallback] is provided,
+  /// falling back to [buildChild].
+  ///
+  /// ```dart
+  /// final dialogChild = componentContext.buildIsolatedChild(contentId);
+  /// ```
+  Widget buildIsolatedChild(String childId) =>
+      buildIsolatedChildCallback != null
+          ? buildIsolatedChildCallback!(childId)
+          : buildChildCallback(childId);
+
   /// Recursively renders a list of child components with [childIds].
   List<Widget> buildChildren(List<String> childIds) =>
       buildChildrenCallback(childIds);
 
   /// Recursively renders [childIds] and wraps any child declaring a positive
-  /// finite `weight` in a [Flexible] with `flex: max(1, weight.round())`.
+  /// finite `weight` in a [Flexible] with
+  /// `flex: weight.round().clamp(1, 1000)`.
   ///
   /// Intended exclusively for `Row` and `Column` containers so [Flexible] is
   /// always a direct child of a [Flex] widget.
@@ -241,7 +259,7 @@ class A2uiComponentContext {
   Widget _wrapWithWeight(Widget child, Object? rawWeight) {
     if (rawWeight is num && rawWeight.isFinite && rawWeight > 0) {
       return Flexible(
-        flex: math.max(1, rawWeight.round()),
+        flex: math.max(1, math.min(1000, rawWeight.round())),
         child: child,
       );
     }
@@ -260,7 +278,15 @@ class A2uiComponentContext {
     final modelAction = component.properties['action'];
 
     if (rawAction is NodeAction) {
-      unawaited(rawAction());
+      unawaited(
+        rawAction().then<void>(
+          (_) {},
+          onError: (Object error, StackTrace stackTrace) {
+            if (error is Exception) return;
+            Error.throwWithStackTrace(error, stackTrace);
+          },
+        ),
+      );
       final isFunctionCall = modelAction is Map &&
           (modelAction['functionCall'] is Map || modelAction['call'] != null);
       if (!isFunctionCall && (modelAction is Map || modelAction is String)) {

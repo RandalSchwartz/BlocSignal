@@ -476,21 +476,24 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
     Set<String> ancestorPath, {
     required int depth,
     required _RenderBudget budget,
+    String? siblingDisambiguator,
   }) {
+    final disambigSuffix =
+        siblingDisambiguator == null ? '' : '_$siblingDisambiguator';
     switch (node.state) {
       case NodeState.pending:
         return div(
-          key: ValueKey('missing_${node.componentId}'),
+          key: ValueKey('missing_${node.componentId}$disambigSuffix'),
           const [],
         );
       case NodeState.cyclic:
         return div(
-          key: ValueKey('circular_ref_${node.componentId}'),
+          key: ValueKey('circular_ref_${node.componentId}$disambigSuffix'),
           const [],
         );
       case NodeState.unknownType:
         return div(
-          key: ValueKey('a2ui_error_${node.componentId}'),
+          key: ValueKey('a2ui_error_${node.componentId}$disambigSuffix'),
           [
             _buildComponentErrorFallback(
               context,
@@ -502,7 +505,7 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
       case NodeState.resolved:
         if (depth > budget.maxDepth) {
           return div(
-            key: ValueKey('a2ui_error_${node.componentId}'),
+            key: ValueKey('a2ui_error_${node.componentId}$disambigSuffix'),
             [
               _buildComponentErrorFallback(
                 context,
@@ -516,7 +519,7 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
         }
         if (++budget.visitedNodes > budget.nodeBudget) {
           return div(
-            key: ValueKey('a2ui_error_${node.componentId}'),
+            key: ValueKey('a2ui_error_${node.componentId}$disambigSuffix'),
             [
               _buildComponentErrorFallback(
                 context,
@@ -529,11 +532,12 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
           );
         }
         return _ResolvedNodeComponent(
-          key: ValueKey('a2ui_node_${node.instanceId}'),
+          key: ValueKey('a2ui_node_${node.instanceId}$disambigSuffix'),
           node: node,
           ancestorPath: ancestorPath,
           depth: depth,
           budget: budget,
+          siblingDisambiguator: siblingDisambiguator,
           catalog: component.catalog,
           bloc: component.bloc,
           surfaceId: component.surfaceReady.surfaceId,
@@ -551,13 +555,16 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
     required _RenderBudget budget,
     String dataPath = '/',
     int? index,
+    String? siblingDisambiguator,
   }) {
     final pathKey = dataPath == '/' || dataPath.isEmpty
         ? componentId
         : '$componentId-[$dataPath]';
+    final disambigSuffix =
+        siblingDisambiguator == null ? '' : '_$siblingDisambiguator';
     if (ancestorPath.contains(pathKey) || ancestorPath.contains(componentId)) {
       return div(
-        key: ValueKey('circular_ref_$componentId'),
+        key: ValueKey('circular_ref_$componentId$disambigSuffix'),
         const [],
       );
     }
@@ -566,14 +573,14 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
     final comp = surface.componentsModel.get(componentId);
     if (comp == null) {
       return div(
-        key: ValueKey('missing_$componentId'),
+        key: ValueKey('missing_$componentId$disambigSuffix'),
         const [],
       );
     }
 
     if (depth > budget.maxDepth) {
       return div(
-        key: ValueKey('a2ui_error_$componentId'),
+        key: ValueKey('a2ui_error_$componentId$disambigSuffix'),
         [
           _buildComponentErrorFallback(
             context,
@@ -587,7 +594,7 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
     }
     if (++budget.visitedNodes > budget.nodeBudget) {
       return div(
-        key: ValueKey('a2ui_error_$componentId'),
+        key: ValueKey('a2ui_error_$componentId$disambigSuffix'),
         [
           _buildComponentErrorFallback(
             context,
@@ -604,11 +611,12 @@ class _SurfaceTreeRendererState extends State<_SurfaceTreeRenderer> {
         ? _binders[componentId]
         : _createScopedBinder(surface, comp, dataPath, index);
     return _BoundComponent(
-      key: ValueKey('a2ui_bound_$pathKey'),
+      key: ValueKey('a2ui_bound_$pathKey$disambigSuffix'),
       componentModel: comp,
       binder: binder,
       ownsBinder: dataPath != '/' && dataPath.isNotEmpty,
       dataPath: dataPath,
+      siblingDisambiguator: siblingDisambiguator,
       ancestorPath: ancestorPath,
       depth: depth,
       budget: budget,
@@ -849,6 +857,7 @@ class _ResolvedNodeComponent extends StatefulComponent {
     required this.buildNodeCallback,
     required this.buildComponentCallback,
     required this.errorFallbackBuilder,
+    this.siblingDisambiguator,
     super.key,
   });
 
@@ -856,6 +865,7 @@ class _ResolvedNodeComponent extends StatefulComponent {
   final Set<String> ancestorPath;
   final int depth;
   final _RenderBudget budget;
+  final String? siblingDisambiguator;
   final A2uiJasprCatalog catalog;
   final A2uiSurfaceBloc bloc;
   final String surfaceId;
@@ -864,6 +874,7 @@ class _ResolvedNodeComponent extends StatefulComponent {
     Set<String> ancestorPath, {
     required int depth,
     required _RenderBudget budget,
+    String? siblingDisambiguator,
   }) buildNodeCallback;
   final Component Function(
     String componentId,
@@ -872,6 +883,7 @@ class _ResolvedNodeComponent extends StatefulComponent {
     required _RenderBudget budget,
     String dataPath,
     int? index,
+    String? siblingDisambiguator,
   }) buildComponentCallback;
   final Component Function(
     BuildContext context,
@@ -971,22 +983,35 @@ class _ResolvedNodeComponentState extends State<_ResolvedNodeComponent> {
         : component.budget;
     _isSelfRebuild = false;
 
-    Component buildSingleChild(String childId) {
+    Component buildSingleChild(
+      String childId, {
+      String? siblingDisambiguator,
+      _RenderBudget? budgetOverride,
+    }) {
+      final targetBudget = budgetOverride ?? activeBudget;
+      final selfDisambiguator = component.siblingDisambiguator ??
+          (node.instanceId != node.componentId ? node.instanceId : null);
+      final effectiveDisambiguator = _composeDisambiguator(
+        selfDisambiguator,
+        siblingDisambiguator,
+      );
       final childNode = childNodes[childId];
       if (childNode != null) {
         return component.buildNodeCallback(
           childNode,
           nextPath,
           depth: component.depth + 1,
-          budget: activeBudget,
+          budget: targetBudget,
+          siblingDisambiguator: effectiveDisambiguator,
         );
       }
       return component.buildComponentCallback(
         childId,
         nextPath,
         depth: component.depth + 1,
-        budget: activeBudget,
+        budget: targetBudget,
         dataPath: node.dataPath,
+        siblingDisambiguator: effectiveDisambiguator,
       );
     }
 
@@ -996,22 +1021,45 @@ class _ResolvedNodeComponentState extends State<_ResolvedNodeComponent> {
       rawProps: rawProps,
       node: node,
       dataPath: node.dataPath,
+      siblingDisambiguator: component.siblingDisambiguator,
       surfaceBloc: component.bloc,
       surfaceId: component.surfaceId,
       buildChildCallback: buildSingleChild,
-      buildChildrenCallback: (ids) => ids.map(buildSingleChild).toList(),
+      buildIsolatedChildCallback: (childId) => buildSingleChild(
+        childId,
+        budgetOverride: _RenderBudget(
+          maxDepth: component.budget.maxDepth,
+          nodeBudget: component.budget.nodeBudget,
+        ),
+      ),
+      buildChildrenCallback: (ids) {
+        final seen = <String>{};
+        return [
+          for (var i = 0; i < ids.length; i++)
+            buildSingleChild(
+              ids[i],
+              siblingDisambiguator: seen.add(ids[i]) ? null : '$i',
+            ),
+        ];
+      },
     );
 
+    final keySuffix = component.siblingDisambiguator == null
+        ? instanceId
+        : '${instanceId}_${component.siblingDisambiguator}';
     try {
       final builtChild = component.catalog.build(context, componentCtx);
       return _wrapWithAccessibilityAndKey(
         builtChild,
         resolvedProps,
-        'a2ui_$instanceId',
+        'a2ui_$keySuffix',
       );
     } on Object catch (error) {
+      final disambigSuffix = component.siblingDisambiguator == null
+          ? ''
+          : '_${component.siblingDisambiguator}';
       return div(
-        key: ValueKey('a2ui_error_$componentId'),
+        key: ValueKey('a2ui_error_$componentId$disambigSuffix'),
         [component.errorFallbackBuilder(context, componentId, error)],
       );
     }
@@ -1033,6 +1081,7 @@ class _BoundComponent extends StatefulComponent {
     required this.errorFallbackBuilder,
     this.ownsBinder = false,
     this.dataPath = '/',
+    this.siblingDisambiguator,
     super.key,
   });
 
@@ -1040,6 +1089,7 @@ class _BoundComponent extends StatefulComponent {
   final GenericBinder? binder;
   final bool ownsBinder;
   final String dataPath;
+  final String? siblingDisambiguator;
   final Set<String> ancestorPath;
   final int depth;
   final _RenderBudget budget;
@@ -1054,6 +1104,7 @@ class _BoundComponent extends StatefulComponent {
     required _RenderBudget budget,
     String dataPath,
     int? index,
+    String? siblingDisambiguator,
   }) buildComponentCallback;
   final Component Function(
     BuildContext context,
@@ -1133,10 +1184,13 @@ class _BoundComponentState extends State<_BoundComponent> {
   @override
   Component build(BuildContext context) {
     final componentId = component.componentModel.id;
-    final keySuffix = component.dataPath == '/' || component.dataPath.isEmpty
+    final pathKey = component.dataPath == '/' || component.dataPath.isEmpty
         ? componentId
         : '$componentId-[${component.dataPath}]';
-    final nextPath = <String>{...component.ancestorPath, keySuffix};
+    final keySuffix = component.siblingDisambiguator == null
+        ? pathKey
+        : '${pathKey}_${component.siblingDisambiguator}';
+    final nextPath = <String>{...component.ancestorPath, pathKey};
     final rawProps = component.binder?.resolvedProps.value ??
         component.componentModel.properties;
     final resolvedProps = <String, dynamic>{
@@ -1157,6 +1211,7 @@ class _BoundComponentState extends State<_BoundComponent> {
       props: resolvedProps,
       rawProps: rawProps,
       dataPath: component.dataPath,
+      siblingDisambiguator: component.siblingDisambiguator,
       surfaceBloc: component.bloc,
       surfaceId: component.surfaceId,
       buildChildCallback: (childId) => component.buildComponentCallback(
@@ -1165,6 +1220,18 @@ class _BoundComponentState extends State<_BoundComponent> {
         depth: component.depth + 1,
         budget: activeBudget,
         dataPath: component.dataPath,
+        siblingDisambiguator: component.siblingDisambiguator,
+      ),
+      buildIsolatedChildCallback: (childId) => component.buildComponentCallback(
+        childId,
+        nextPath,
+        depth: component.depth + 1,
+        budget: _RenderBudget(
+          maxDepth: component.budget.maxDepth,
+          nodeBudget: component.budget.nodeBudget,
+        ),
+        dataPath: component.dataPath,
+        siblingDisambiguator: component.siblingDisambiguator,
       ),
       buildChildrenCallback: (ids) {
         if (templateChildNodes.length == ids.length &&
@@ -1178,20 +1245,25 @@ class _BoundComponentState extends State<_BoundComponent> {
                 budget: activeBudget,
                 dataPath: templateChildNodes[i].basePath,
                 index: templateChildNodes[i].index,
+                siblingDisambiguator: component.siblingDisambiguator,
               ),
           ];
         }
-        return ids
-            .map(
-              (childId) => component.buildComponentCallback(
-                childId,
-                nextPath,
-                depth: component.depth + 1,
-                budget: activeBudget,
-                dataPath: component.dataPath,
+        final seen = <String>{};
+        return [
+          for (var i = 0; i < ids.length; i++)
+            component.buildComponentCallback(
+              ids[i],
+              nextPath,
+              depth: component.depth + 1,
+              budget: activeBudget,
+              dataPath: component.dataPath,
+              siblingDisambiguator: _composeDisambiguator(
+                component.siblingDisambiguator,
+                seen.add(ids[i]) ? null : '$i',
               ),
-            )
-            .toList();
+            ),
+        ];
       },
     );
 
@@ -1203,8 +1275,11 @@ class _BoundComponentState extends State<_BoundComponent> {
         'a2ui_$keySuffix',
       );
     } on Object catch (error) {
+      final disambigSuffix = component.siblingDisambiguator == null
+          ? ''
+          : '_${component.siblingDisambiguator}';
       return div(
-        key: ValueKey('a2ui_error_$componentId'),
+        key: ValueKey('a2ui_error_$componentId$disambigSuffix'),
         [component.errorFallbackBuilder(context, componentId, error)],
       );
     }
@@ -1242,4 +1317,9 @@ Component _wrapWithAccessibilityAndKey(
     key: ValueKey(keyValue),
     [builtChild],
   );
+}
+
+String? _composeDisambiguator(String? parent, String? child) {
+  if (parent == null) return child;
+  return '${parent}_${child ?? '0'}';
 }

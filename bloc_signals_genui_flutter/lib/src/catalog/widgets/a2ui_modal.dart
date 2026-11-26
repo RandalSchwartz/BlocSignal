@@ -41,7 +41,7 @@ Widget buildA2uiModal(
                 builder: (dialogContext) => Dialog(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: componentContext.buildChild(contentId),
+                    child: componentContext.buildIsolatedChild(contentId),
                   ),
                 ),
               ),

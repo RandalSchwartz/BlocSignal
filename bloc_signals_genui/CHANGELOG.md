@@ -2,6 +2,10 @@
 
 All notable changes to `bloc_signals_genui` will be documented in this file.
 
+## Unreleased
+
+- **Fix (genui)**: Verify surface identity after async `resolveActionAsync` in `_onSubmitAction` before dispatching responses, and cancel pending surface RPC calls via `cancelSurfaceCalls` on eviction, recreation, reset, and close (#478).
+
 ## 2.1.0
 
 - **Feat (genui)**: Move and export shared `A2uiImageUrlPolicy` in `bloc_signals_genui` with nullable `isAllowed(String? rawUrl)`, `allowPrivateNetworks` (default `false`), strict 4-octet decimal IPv4 parsing, SSRF parser-differential host rejection (octal, shorthand, hex, 32-bit int), private/CGNAT/ULA/NAT64 range screening, and strict embedded IPv4 validation in IPv6 literals (#463).

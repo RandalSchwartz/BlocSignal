@@ -82,6 +82,10 @@ class _A2uiTextFieldState extends State<A2uiTextField> {
     );
     final obscureText = variant == 'obscured';
     final maxLines = variant == 'longText' ? null : 1;
+    final rawMaxLength = props['maxLength'];
+    final maxLength = rawMaxLength != null
+        ? asBoundedInt(rawMaxLength, min: 1, max: 10000, defaultValue: 10000)
+        : null;
     final keyboardType = switch (variant) {
       'longText' => TextInputType.multiline,
       'number' => TextInputType.number,
@@ -96,6 +100,7 @@ class _A2uiTextFieldState extends State<A2uiTextField> {
         onChanged: _onChanged,
         obscureText: obscureText,
         maxLines: maxLines,
+        maxLength: maxLength,
         keyboardType: keyboardType,
         decoration: InputDecoration(
           labelText: label,

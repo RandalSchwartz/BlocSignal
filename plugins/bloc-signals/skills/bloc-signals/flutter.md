@@ -185,6 +185,20 @@ Give the selected type meaningful equality and avoid mutating a selected object 
 selector is reinitialized when its bloc or selector callback changes. It cleans up its
 effect and rebinds automatically when its bloc instance or selector changes.
 
+To avoid rebuilding an expensive static subtree on every state or selection change, use the `.child`
+named constructors (`BlocSignalBuilder.child`, `BlocSignalSelector.child`, and
+`BlocSignalConsumer.child`), which accept an optional `child` widget and pass it as the third
+argument to `builder(context, state, child)`:
+
+```dart
+BlocSignalBuilder<CounterBloc, int>.child(
+  child: const ExpensiveStaticHeader(),
+  builder: (context, count, child) => Column(
+    children: [if (child != null) child, Text('$count')],
+  ),
+)
+```
+
 `MultiBlocSignalListener` nests several listeners around one child via the typed `List<BlocSignalListenerSingleChildWidget>` contract. Individual listeners do not require a placeholder `child` parameter:
 
 ```dart

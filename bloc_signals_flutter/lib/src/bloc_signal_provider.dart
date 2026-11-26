@@ -84,10 +84,18 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
     extends StatefulWidget implements BlocSignalProviderSingleChildWidget {
   /// Creates a [BlocSignalProvider] that manages the lifecycle of a new
   /// [BlocSignal] returned by [create].
+  ///
+  /// When [retentionPeriod] is non-null and greater than [Duration.zero],
+  /// unmounting this provider defers calling `close()` on the owned
+  /// [BlocSignal] for [retentionPeriod] instead of closing it immediately.
+  /// If a matching `BlocSignalProvider<T>` with the same [key] remounts before
+  /// the timer expires, the retained instance and its state are reclaimed
+  /// without re-invoking [create].
   const BlocSignalProvider({
     required T Function(BuildContext context) this.create,
     this.child = const SizedBox.shrink(),
     this.lazy = true,
+    this.retentionPeriod,
     super.key,
   }) : value = null;
 
@@ -98,7 +106,8 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
     this.child = const SizedBox.shrink(),
     super.key,
   })  : create = null,
-        lazy = false;
+        lazy = false,
+        retentionPeriod = null;
 
   /// The factory function to create a new [BlocSignal] instance.
   final T Function(BuildContext context)? create;
@@ -111,8 +120,64 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
   /// Defaults to `true`.
   final bool lazy;
 
+  /// Optional grace period to keep the owned [BlocSignal] alive after this
+  /// provider unmounts.
+  ///
+  /// When `null` or [Duration.zero], the owned [BlocSignal] is closed
+  /// immediately on `dispose`. When positive, the [BlocSignal] is stored in an
+  /// internal `(T, key)` retention pool for [retentionPeriod] and reclaimed if
+  /// a matching `BlocSignalProvider<T>` with the same [key] remounts before
+  /// the timer expires.
+  ///
+  /// Ignored by [BlocSignalProvider.value], which never owns or retains its
+  /// provided instance.
+  ///
+  /// Example:
+  /// ```dart
+  /// BlocSignalProvider<CounterBloc>(
+  ///   create: (_) => CounterBloc(),
+  ///   retentionPeriod: const Duration(seconds: 5),
+  ///   child: const CounterPage(),
+  /// )
+  /// ```
+  final Duration? retentionPeriod;
+
   /// The widget subtree that will have access to the provided [BlocSignal].
   final Widget child;
+
+  /// Cancels all active retention timers, clears the internal retention pool,
+  /// and closes any retained [BlocSignal] instances that are still open.
+  ///
+  /// Useful during global session resets (such as user logout) and in test
+  /// `tearDown` hooks to prevent pending retention timers.
+  ///
+  /// In `flutter_test` `testWidgets`, `FakeAsync` checks for pending timers
+  /// before `tearDown` runs, so call `await BlocSignalProvider.clearRetained()`
+  /// (or pump past [retentionPeriod]) inside the `testWidgets` body before
+  /// the test callback completes, and keep it in `tearDown` to clean up
+  /// across tests if a test fails early.
+  ///
+  /// Example:
+  /// ```dart
+  /// await BlocSignalProvider.clearRetained();
+  /// ```
+  static Future<void> clearRetained() async {
+    if (_retentionPool.isEmpty) return;
+    final entries = _retentionPool.values.toList();
+    _retentionPool.clear();
+    for (final entry in entries) {
+      entry.timer.cancel();
+    }
+    final futures = <Future<void>>[];
+    for (final entry in entries) {
+      if (!entry.bloc.isClosed) {
+        futures.add(entry.bloc.close());
+      }
+    }
+    if (futures.isNotEmpty) {
+      await Future.wait<void>(futures);
+    }
+  }
 
   /// Looks up the closest [BlocSignal] of type [T] in the widget tree,
   /// returning `null` if no matching [BlocSignalProvider] ancestor is found.
@@ -161,6 +226,7 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
       return BlocSignalProvider<T>(
         create: create!,
         lazy: lazy,
+        retentionPeriod: retentionPeriod,
         key: key,
         child: child,
       );
@@ -194,9 +260,44 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
           ifTrue: 'lazy',
           ifFalse: 'eager',
         ),
+      )
+      ..add(
+        DiagnosticsProperty<Duration?>(
+          'retentionPeriod',
+          retentionPeriod,
+          defaultValue: null,
+        ),
       );
   }
 }
+
+@immutable
+class _RetentionPoolKey {
+  const _RetentionPoolKey(this.type, this.widgetKey);
+
+  final Type type;
+  final Key? widgetKey;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _RetentionPoolKey &&
+          type == other.type &&
+          widgetKey == other.widgetKey;
+
+  @override
+  int get hashCode => Object.hash(type, widgetKey);
+}
+
+class _RetainedEntry {
+  _RetainedEntry({required this.bloc, required this.timer});
+
+  final BlocSignalBase<dynamic> bloc;
+  final Timer timer;
+}
+
+final Map<_RetentionPoolKey, _RetainedEntry> _retentionPool =
+    <_RetentionPoolKey, _RetainedEntry>{};
 
 class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
     extends State<BlocSignalProvider<T>> {
@@ -204,6 +305,26 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
   bool _isInitialized = false;
   (Object, StackTrace)? _error;
   int _providerGeneration = 0;
+
+  _RetentionPoolKey get _poolKey => _RetentionPoolKey(T, widget.key);
+
+  void _validateRetentionPeriod(Duration? retention) {
+    if (retention != null && retention.isNegative) {
+      throw ArgumentError.value(
+        retention,
+        'retentionPeriod',
+        'Must not be negative',
+      );
+    }
+  }
+
+  T? _reclaimFromPool() {
+    final entry = _retentionPool.remove(_poolKey);
+    if (entry == null) return null;
+    entry.timer.cancel();
+    if (entry.bloc.isClosed) return null;
+    return entry.bloc as T;
+  }
 
   void _initBloc() {
     try {
@@ -236,14 +357,22 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
   @override
   void initState() {
     super.initState();
-    if (!widget.lazy && widget.create != null) {
-      _initBloc();
+    _validateRetentionPeriod(widget.retentionPeriod);
+    if (widget.create != null) {
+      final reclaimed = _reclaimFromPool();
+      if (reclaimed != null) {
+        _bloc = reclaimed;
+        _isInitialized = true;
+      } else if (!widget.lazy) {
+        _initBloc();
+      }
     }
   }
 
   @override
   void didUpdateWidget(BlocSignalProvider<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _validateRetentionPeriod(widget.retentionPeriod);
     if (oldWidget.create != null && widget.value != null) {
       if (_bloc != null) {
         unawaited(_bloc!.close());
@@ -257,18 +386,57 @@ class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
       _isInitialized = false;
       _error = null;
       _providerGeneration++;
-      if (!widget.lazy) {
+      final reclaimed = _reclaimFromPool();
+      if (reclaimed != null) {
+        _bloc = reclaimed;
+        _isInitialized = true;
+      } else if (!widget.lazy) {
         _initBloc();
       }
     } else if (widget.create != null && !widget.lazy && !_isInitialized) {
-      _initBloc();
+      final reclaimed = _reclaimFromPool();
+      if (reclaimed != null) {
+        _bloc = reclaimed;
+        _isInitialized = true;
+      } else {
+        _initBloc();
+      }
     }
   }
 
   @override
   void dispose() {
-    if (_bloc != null) {
-      unawaited(_bloc!.close());
+    final bloc = _bloc;
+    final retention = widget.retentionPeriod;
+    if (bloc != null) {
+      if (widget.create != null &&
+          !bloc.isClosed &&
+          retention != null &&
+          retention > Duration.zero) {
+        final key = _poolKey;
+        final existing = _retentionPool.remove(key);
+        if (existing != null) {
+          existing.timer.cancel();
+          if (!identical(existing.bloc, bloc) && !existing.bloc.isClosed) {
+            unawaited(existing.bloc.close());
+          }
+        }
+        late final _RetainedEntry entry;
+        entry = _RetainedEntry(
+          bloc: bloc,
+          timer: Timer(retention, () {
+            if (identical(_retentionPool[key], entry)) {
+              _retentionPool.remove(key);
+            }
+            if (!bloc.isClosed) {
+              unawaited(bloc.close());
+            }
+          }),
+        );
+        _retentionPool[key] = entry;
+      } else {
+        unawaited(bloc.close());
+      }
     }
     super.dispose();
   }

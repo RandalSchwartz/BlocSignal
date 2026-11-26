@@ -449,9 +449,79 @@ abstract class BlocSignalBase<StateType> {
     void Function()? onDispose,
   });
 
-  /// Shuts down all internal effects registered via [createEffect].
+  /// Shuts down all internal effects registered via [createEffect] and
+  /// disposes all managed resources registered via [manageResource].
   @mustCallSuper
   Future<void> close();
+
+  /// Registers a [resource] with a cleanup callback [onDispose] to be invoked
+  /// automatically in reverse (LIFO) registration order when [close] is
+  /// called, and returns [resource] for inline initialization.
+  ///
+  /// `CubitSignalMixin` (and therefore `CubitSignal` and `BlocSignal`)
+  /// provides automatic lifecycle tracking and post-close immediate disposal.
+  /// Direct [BlocSignalBase] subclasses that do not mix in `CubitSignalMixin`
+  /// must override [manageResource] if they want automatic resource disposal;
+  /// the default implementation returns [resource] unchanged.
+  ///
+  /// If this container is already closed, [onDispose] is invoked immediately.
+  ///
+  /// ```dart
+  /// class PollingCubit extends CubitSignal<int> {
+  ///   PollingCubit(Stream<int> ticks) : super(initialState: 0) {
+  ///     manageResource<StreamSubscription<int>>(
+  ///       ticks.listen(emit),
+  ///       (sub) => sub.cancel(),
+  ///     );
+  ///   }
+  /// }
+  /// ```
+  @protected
+  R manageResource<R>(
+    R resource,
+    FutureOr<void> Function(R resource) onDispose,
+  ) =>
+      resource;
+
+  /// Registers a [StreamSubscription] to be automatically cancelled when
+  /// [close] is called, and returns [subscription] for inline initialization.
+  ///
+  /// If this container is already closed, [subscription] is cancelled
+  /// immediately.
+  ///
+  /// ```dart
+  /// class StreamCounterCubit extends CubitSignal<int> {
+  ///   StreamCounterCubit(Stream<int> source) : super(initialState: 0) {
+  ///     manageStreamSubscription(source.listen(emit));
+  ///   }
+  /// }
+  /// ```
+  @protected
+  StreamSubscription<S> manageStreamSubscription<S>(
+    StreamSubscription<S> subscription,
+  ) =>
+      manageResource<StreamSubscription<S>>(
+        subscription,
+        (sub) => sub.cancel(),
+      );
+
+  /// Registers a [Timer] to be automatically cancelled when [close] is called,
+  /// and returns [timer] for inline initialization.
+  ///
+  /// If this container is already closed, [timer] is cancelled immediately.
+  ///
+  /// ```dart
+  /// class HeartbeatCubit extends CubitSignal<int> {
+  ///   HeartbeatCubit() : super(initialState: 0) {
+  ///     manageTimer(
+  ///       Timer.periodic(const Duration(seconds: 1), (_) => emit(value + 1)),
+  ///     );
+  ///   }
+  /// }
+  /// ```
+  @protected
+  Timer manageTimer(Timer timer) =>
+      manageResource<Timer>(timer, (t) => t.cancel());
 
   /// Registers a [callback] to be invoked when this container is closed.
   ///

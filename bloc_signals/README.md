@@ -211,6 +211,21 @@ final userBloc = api.fetchUser(id).toBlocSignal(initialState: User.anonymous());
 final asyncUserBloc = api.fetchUser(id).toAsyncBlocSignal();
 ```
 
+### 8. Managed Resource Cleanup (`manageResource`, `manageStreamSubscription`, `manageTimer`)
+
+Register subscriptions, timers, and custom disposable handles inline so `close()` disposes them automatically in reverse (LIFO) registration order:
+
+```dart
+class TickerCubit extends CubitSignal<int> {
+  TickerCubit(Stream<int> externalTicks) : super(initialState: 0) {
+    manageStreamSubscription(externalTicks.listen(emit));
+    manageTimer(
+      Timer.periodic(const Duration(seconds: 1), (_) => emit(value + 1)),
+    );
+  }
+}
+```
+
 ---
 
 ## 🏷️ Debug Names, Signal Options & Custom Equality

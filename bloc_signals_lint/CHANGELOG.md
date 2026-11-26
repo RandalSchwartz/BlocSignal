@@ -4,6 +4,7 @@
 
 - **Feat (lint)**: Add 6 safety rules (`require_child_outside_multi_bloc_signal`, `require_hydrated_storage_prefix`, `require_hydrated_mixin_init`, `avoid_signal_creation_in_build`, `avoid_context_select_outside_build`, `avoid_unmanaged_signal_subscription`) and 9 automated IDE quick-fixes (`AddHydratedStoragePrefixFix`, `AddHydratedMixinInitFix`, `ReplaceContextSelectOutsideBuildFix`, `FixContextSelectGenericsFix`, `InsertToStreamForTransformerFix`, `BindUnusedSelectResultFix`, `RemoveManualCloseOnProvidedBlocFix`, `RemoveDuplicateEventHandlerFix`, `ReplaceContextWatchWithValueFix`), bringing `bloc_signals_lint` to 28 rules and 17 quick-fixes (#482).
 - **Feat (lint)**: Add `avoid_bridging_in_build` warning rule and `avoid_emit_or_add_in_computed` error rule (#500).
+- **Feat (lint)**: Extend `avoid_bridging_in_build` to all official adapter constructors (`StreamBlocSignal`, `FutureBlocSignal`, `SignalBlocSignal`, `ClassicBlocSignal`, `ClassicCubitSignal`, `BlocSignalToClassicBloc`, `BlocSignalToClassicCubit`, `RiverpodBlocSignal`, `RiverpodNotifierBlocSignal`), `.toClassicBloc()`, `.toClassicCubit()`, and `.toStream()`, and generalize `BlocContainerUtils.isUiComponentOrState` to support `State` / `Component` / `Widget` `MixinDeclaration`s across `avoid_bridging_in_build`, `avoid_signal_creation_in_build`, and `avoid_unmanaged_signal_effects` (#505).
 
 ## 2.0.0
 

@@ -54,7 +54,7 @@ class _Visitor extends SimpleAstVisitor<void> {
     if (node.target != null) return;
 
     final enclosing = BlocContainerUtils.nearestContainerDeclaration(node);
-    if (enclosing is! ClassDeclaration ||
+    if (enclosing == null ||
         !BlocContainerUtils.isUiComponentOrState(enclosing)) {
       return;
     }

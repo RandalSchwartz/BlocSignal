@@ -475,7 +475,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                 ]),
                 td([
                   Component.text(
-                    'Flags .toBlocSignal(), .toAsyncBlocSignal(), .toValueListenable(), and ListenableBlocSignal calls directly inside UI build() methods.',
+                    'Flags .toBlocSignal(), .toAsyncBlocSignal(), .toValueListenable(), .toClassicBloc(), .toClassicCubit(), .toStream(), and official adapter constructors (for example ListenableBlocSignal, StreamBlocSignal, FutureBlocSignal, SignalBlocSignal, ClassicBlocSignal, ClassicCubitSignal, BlocSignalToClassicBloc, BlocSignalToClassicCubit, RiverpodBlocSignal, and RiverpodNotifierBlocSignal) directly inside UI build() methods (including State mixins).',
                   ),
                 ]),
               ]),

@@ -123,5 +123,36 @@ class MyWidget extends StatelessWidget {
       final lints = await runLintRule(AvoidSignalCreationInBuild(), code);
       expect(lints, isEmpty);
     });
+
+    test('(Issue #505) flags signal(), computed(), and effect() inside State '
+        'mixin build() while ignoring non-UI mixins', () async {
+      const code = '''
+import 'package:bloc_signals/bloc_signals.dart';
+import 'package:flutter/widgets.dart';
+
+mixin MyStateMixin<T extends StatefulWidget> on State<T> {
+  @override
+  Widget build(BuildContext context) {
+    final s = signal(0);
+    final c = computed(() => 1);
+    final e = effect(() {});
+    return Container();
+  }
+}
+
+mixin PlainMixin {
+  Widget build(BuildContext context) {
+    final s = signal(0);
+    return Container();
+  }
+}
+''';
+      final lints = await runLintRule(AvoidSignalCreationInBuild(), code);
+      expect(lints, hasLength(3));
+      expect(
+        lints.map((l) => l.lexeme),
+        containsAll(['signal', 'computed', 'effect']),
+      );
+    });
   });
 }

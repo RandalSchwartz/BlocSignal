@@ -77,22 +77,8 @@ class _Visitor extends SimpleAstVisitor<void> {
       return;
     }
 
-    if (_isDirectInUiBuild(node)) {
+    if (BlocContainerUtils.isDirectInUiBuild(node)) {
       rule.reportAtNode(node.methodName, arguments: [methodName]);
     }
-  }
-
-  static bool _isDirectInUiBuild(AstNode node) {
-    if (node.thisOrAncestorOfType<FunctionExpression>() != null) {
-      return false;
-    }
-    final enclosingMethod = node.thisOrAncestorOfType<MethodDeclaration>();
-    if (enclosingMethod == null || enclosingMethod.name.lexeme != 'build') {
-      return false;
-    }
-    final enclosingClass = enclosingMethod
-        .thisOrAncestorOfType<ClassDeclaration>();
-    return enclosingClass != null &&
-        BlocContainerUtils.isUiComponentOrState(enclosingClass);
   }
 }

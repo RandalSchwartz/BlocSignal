@@ -89,6 +89,13 @@ final class UpdateFormField extends A2uiSurfaceEvent {
 
 /// Submits an action from an active component (such as a submit button) on
 /// the surface, packaging current form data into an [A2uiActionResponse].
+///
+/// When the target component's action is a local `functionCall`,
+/// `A2uiSurfaceBloc` evaluates it without transitioning to `SurfaceSubmitting`
+/// and emits an operational telemetry event named `'function_call_evaluated'`
+/// with `surface_id`, `source_component_id`, optional `call`, `latency_ms`,
+/// `status` (`'ok'` or `'error'`), and `error_type` (on failure), omitting
+/// `args` and raw error messages.
 final class SubmitAction extends A2uiSurfaceEvent {
   /// Creates a [SubmitAction] event.
   const SubmitAction({

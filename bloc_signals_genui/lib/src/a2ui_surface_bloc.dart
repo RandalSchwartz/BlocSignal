@@ -58,6 +58,14 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// [patternValidator] optionally overrides the built-in ReDoS safety check
   /// for component validation `pattern` and `validationRegexp` strings.
   ///
+  /// When [SubmitAction] targets a local `functionCall` action, this bloc
+  /// emits an operational telemetry event named `'function_call_evaluated'` via
+  /// [emitTelemetry] with `event` set to the [SubmitAction] and `metadata`
+  /// containing `surface_id`, `source_component_id`, optional `call` (from
+  /// `call` or `@call`), `latency_ms`, `status` (`'ok'` or `'error'`), and
+  /// `error_type` (on failure). Sensitive `args` payloads and raw error messages
+  /// are omitted.
+  ///
   /// ```dart
   /// final bloc = A2uiSurfaceBloc(
   ///   maxSurfaces: 10,
@@ -808,10 +816,7 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
             ? rawAction['functionCall']
             : rawAction;
         if (fc is Map && dataContext.isFunctionCall(fc)) {
-          return dataContext
-              .withUserActivation()
-              .evaluateFunctionCall(Map<String, dynamic>.from(fc))
-              .then((_) {});
+          return _evaluateFunctionCall(dataContext, fc, event, surfaceId);
         }
       }
     }
@@ -903,6 +908,48 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
       if (ctx is Map) return Map<String, dynamic>.from(ctx);
     }
     return null;
+  }
+
+  Future<void> _evaluateFunctionCall(
+    DataContext dataContext,
+    Map<dynamic, dynamic> fc,
+    SubmitAction event,
+    String surfaceId,
+  ) async {
+    final stopwatch = Stopwatch()..start();
+    final Object? callName = fc['call'] ?? fc['@call'];
+
+    void emitOutcome({required String status, String? errorType}) {
+      stopwatch.stop();
+      if (isClosed || _isClosing) return;
+      emitTelemetry(
+        'function_call_evaluated',
+        event: event,
+        metadata: <String, dynamic>{
+          'surface_id': surfaceId,
+          'source_component_id': event.sourceComponentId,
+          if (callName is String && callName.isNotEmpty) 'call': callName,
+          'latency_ms': stopwatch.elapsedMilliseconds,
+          'status': status,
+          if (errorType != null) 'error_type': errorType,
+        },
+      );
+    }
+
+    try {
+      await dataContext
+          .withUserActivation()
+          .evaluateFunctionCall(Map<String, dynamic>.from(fc));
+    } on Object catch (error) {
+      // SCAR-ERR-02: Justified exception: record failure telemetry before rethrowing.
+      emitOutcome(
+        status: 'error',
+        errorType: error.runtimeType.toString(),
+      );
+      rethrow;
+    }
+
+    emitOutcome(status: 'ok');
   }
 
   void _onCancelSubmission(

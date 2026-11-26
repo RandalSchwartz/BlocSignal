@@ -227,6 +227,17 @@ surfaceBloc.add(
 surfaceBloc.add(const CompleteAction());''',
         ),
         const DocsCallout(
+          type: CalloutType.note,
+          title: 'Local functionCall Operational Telemetry',
+          children: [
+            p([
+              Component.text(
+                'When SubmitAction targets a local functionCall action, A2uiSurfaceBloc evaluates it without transitioning to SurfaceSubmitting and emits a function_call_evaluated telemetry event with surface_id, source_component_id, optional call, latency_ms, status (ok or error), and error_type (on failure), omitting args and raw error messages.',
+              ),
+            ]),
+          ],
+        ),
+        const DocsCallout(
           type: CalloutType.warning,
           title: 'Zero-Chunk Stream Rollback (SCAR-GENUI-3)',
           children: [

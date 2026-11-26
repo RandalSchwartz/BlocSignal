@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **Feat (jaspr)**: Add `BlocSignalProvider.maybeOf`, `context.maybeRead`, `context.maybeWatch`, structured `BlocSignalProviderNotFoundError` (extending `StateError`), `BlocSignalListener.transition` / `BlocSignalConsumer.transition`, `context.select(..., equals:)` with `Computed` memoization and `SCAR-JASPR-01` pre-evaluation liveness gate, and replace `_NullComponent` with `const Component.empty()` (#481).
+
 ## 1.3.1
 
 - **Fix (jaspr)**: Track `_previousState` independently from rendered `_state` in `BlocSignalBuilder`, suppress initial-pass callbacks for non-reflexive `equals` and add `mounted` guards in `BlocSignalBuilder`, `BlocSignalListener`, and `BlocSignalSelector`, use `!identical()` for container swap checks, and handle `create:`/`.value` and `lazy` transitions in `BlocSignalProvider.didUpdateComponent` (#476).

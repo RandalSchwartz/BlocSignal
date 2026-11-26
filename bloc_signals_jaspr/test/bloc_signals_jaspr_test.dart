@@ -1910,7 +1910,6 @@ class _ValueEqualJasprListenerLeaf extends StatelessComponent {
   Component build(BuildContext context) {
     return const BlocSignalListener<_ValueEqualJasprCubit, int>(
       listener: _listen,
-      child: Component.empty(),
     );
   }
 }
@@ -2074,7 +2073,6 @@ class _CounterJasprListenerLeaf extends StatelessComponent {
   Component build(BuildContext context) {
     return const BlocSignalListener<CounterCubit, int>(
       listener: _listen,
-      child: Component.empty(),
     );
   }
 }

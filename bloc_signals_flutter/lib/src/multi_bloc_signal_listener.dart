@@ -1,4 +1,5 @@
 import 'package:bloc_signals_flutter/src/bloc_signal_listener.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 /// A widget that merges multiple [BlocSignalListener]s into a single linear
@@ -40,5 +41,16 @@ class MultiBlocSignalListener extends StatelessWidget {
       current = listener.copyWith(current);
     }
     return current;
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(
+      IterableProperty<BlocSignalListenerSingleChildWidget>(
+        'listeners',
+        listeners,
+      ),
+    );
   }
 }

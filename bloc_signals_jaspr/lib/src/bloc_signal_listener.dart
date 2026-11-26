@@ -3,13 +3,6 @@ import 'package:bloc_signals_jaspr/src/bloc_signal_provider.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:signals_core/signals_core.dart';
 
-class _NullComponent extends StatelessComponent {
-  const _NullComponent();
-
-  @override
-  Component build(BuildContext context) => const Component.empty();
-}
-
 /// An interface for [BlocSignalListener] components that can be merged by
 /// `MultiBlocSignalListener` into a single linear component hierarchy.
 ///
@@ -65,18 +58,48 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S>
     implements BlocSignalListenerSingleChildComponent {
   /// Creates a [BlocSignalListener] component.
   const BlocSignalListener({
-    required this.listener,
-    this.child = const _NullComponent(),
+    required void Function(BuildContext context, S state) listener,
+    this.child = const Component.empty(),
     this.bloc,
     this.listenWhen,
     super.key,
-  });
+  })  : _listener = listener,
+        _transitionListener = null;
+
+  /// Creates a [BlocSignalListener] whose [listener] receives both the
+  /// `previous` and `current` state on each transition.
+  ///
+  /// Example:
+  /// ```dart
+  /// BlocSignalListener<CounterBloc, int>.transition(
+  ///   listener: (context, previous, current) {
+  ///     // Perform side effect with previous and current
+  ///   },
+  ///   child: const CounterView(),
+  /// )
+  /// ```
+  const BlocSignalListener.transition({
+    required void Function(BuildContext context, S previous, S current)
+        listener,
+    this.child = const Component.empty(),
+    this.bloc,
+    this.listenWhen,
+    super.key,
+  })  : _listener = null,
+        _transitionListener = listener;
 
   /// The bloc to listen to. If null, it is looked up from the component tree.
   final T? bloc;
 
+  final void Function(BuildContext context, S state)? _listener;
+
+  final void Function(BuildContext context, S previous, S current)?
+      _transitionListener;
+
   /// The callback that runs whenever the state changes.
-  final void Function(BuildContext context, S state) listener;
+  void Function(BuildContext context, S state) get listener =>
+      _listener ??
+      (context, state) => _transitionListener!(context, state, state);
 
   /// A function that determines whether the [listener] should be called.
   ///
@@ -90,10 +113,19 @@ class BlocSignalListener<T extends BlocSignalBase<S>, S>
   /// Clones this listener with a new child component.
   @override
   BlocSignalListener<T, S> copyWith(Component child) {
+    if (_transitionListener != null) {
+      return BlocSignalListener<T, S>.transition(
+        key: key,
+        bloc: bloc,
+        listener: _transitionListener,
+        listenWhen: listenWhen,
+        child: child,
+      );
+    }
     return BlocSignalListener<T, S>(
       key: key,
       bloc: bloc,
-      listener: listener,
+      listener: _listener!,
       listenWhen: listenWhen,
       child: child,
     );
@@ -130,7 +162,12 @@ class _BlocSignalListenerState<T extends BlocSignalBase<S>, S>
 
           if (component.listenWhen == null ||
               component.listenWhen!(previous, currentState)) {
-            component.listener(context, currentState);
+            final transitionListener = component._transitionListener;
+            if (transitionListener != null) {
+              transitionListener(context, previous, currentState);
+            } else {
+              component._listener!(context, currentState);
+            }
           }
         }
       },

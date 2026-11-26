@@ -121,6 +121,41 @@ abstract final class BlocContainerUtils {
     );
   }
 
+  /// Returns the nearest enclosing [ClassDeclaration], [MixinDeclaration], or
+  /// [ExtensionDeclaration] containing [node], or `null` if none exists.
+  static AstNode? nearestContainerOrExtensionDeclaration(AstNode node) {
+    return node.thisOrAncestorMatching(
+      (n) =>
+          n is ClassDeclaration ||
+          n is MixinDeclaration ||
+          n is ExtensionDeclaration,
+    );
+  }
+
+  /// Returns `true` if [declaration] is a `BlocSignalBase`, `BlocSignal`,
+  /// `CubitSignal`, container-mixin host, or an `ExtensionDeclaration` on one.
+  static bool isBlocContainerOrExtension(AstNode declaration) {
+    if (declaration is ExtensionDeclaration) {
+      const checkers = [
+        blocSignalBaseChecker,
+        blocSignalMixinChecker,
+        cubitSignalMixinChecker,
+      ];
+      return _matchesExtension(declaration, checkers, _allContainerNames);
+    }
+    return isBlocContainerDeclaration(declaration);
+  }
+
+  /// Returns `true` if [declaration] is a `BlocSignal`, `BlocSignalMixin`
+  /// host, or an `ExtensionDeclaration` on one.
+  static bool isBlocSignalOrExtensionHost(AstNode declaration) {
+    if (declaration is ExtensionDeclaration) {
+      const checkers = [blocSignalChecker, blocSignalMixinChecker];
+      return _matchesExtension(declaration, checkers, _blocHostNames);
+    }
+    return isBlocSignalHost(declaration);
+  }
+
   /// Returns `true` if [declaration] is a `BlocSignalBase`, `BlocSignal`,
   /// `CubitSignal`, or container-mixin host (`ClassDeclaration` or
   /// `MixinDeclaration`).
@@ -279,6 +314,18 @@ abstract final class BlocContainerUtils {
       }
     }
 
+    return false;
+  }
+
+  static bool _matchesExtension(
+    ExtensionDeclaration declaration,
+    List<TypeChecker> checkers,
+    Set<String> exactFallbackNames,
+  ) {
+    final extendedType = declaration.onClause?.extendedType;
+    if (extendedType is NamedType) {
+      return _matchesNamedType(extendedType, checkers, exactFallbackNames);
+    }
     return false;
   }
 

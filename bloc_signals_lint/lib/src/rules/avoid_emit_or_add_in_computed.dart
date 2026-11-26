@@ -8,7 +8,8 @@ import 'package:analyzer/error/error.dart';
 import 'package:bloc_signals_lint/src/utils/bloc_container_utils.dart';
 
 /// A lint rule that flags `emit()` or `add()` state container mutations
-/// inside `computed()` callbacks.
+/// inside `computed()`, `Computed()`, or `computedFrom()` callbacks, including
+/// inside container extension methods.
 class AvoidEmitOrAddInComputed extends AnalysisRule {
   /// Creates an [AvoidEmitOrAddInComputed] lint rule.
   new()
@@ -16,16 +17,18 @@ class AvoidEmitOrAddInComputed extends AnalysisRule {
         name: 'avoid_emit_or_add_in_computed',
         description:
             'Avoid calling emit() or add() on state containers inside '
-            'computed() callbacks.',
+            'computed(), Computed(), or computedFrom() callbacks.',
       );
 
   /// The diagnostic code reported by this rule.
   static const LintCode code = LintCode(
     'avoid_emit_or_add_in_computed',
-    'Avoid calling "{0}()" inside a computed() callback.',
+    'Avoid calling "{0}()" inside a computed(), Computed(), or '
+        'computedFrom() callback.',
     correctionMessage:
-        'computed() callbacks must be pure derivations. Move state mutations '
-        'to an effect(), event handler, or method.',
+        'Computed callbacks (computed(), Computed(), and computedFrom(), '
+        'including in container extensions) must be pure derivations. Move '
+        'state mutations to an effect(), event handler, or method.',
     severity: DiagnosticSeverity.ERROR,
   );
 
@@ -71,8 +74,12 @@ class _Visitor extends SimpleAstVisitor<void> {
     while (current != null) {
       if (current is MethodDeclaration ||
           current is ConstructorDeclaration ||
+          current is FunctionDeclaration ||
           current is ClassDeclaration ||
-          current is MixinDeclaration) {
+          current is MixinDeclaration ||
+          current is ExtensionDeclaration ||
+          current is EnumDeclaration ||
+          current is ExtensionTypeDeclaration) {
         return false;
       }
       if (current is FunctionExpression) {
@@ -80,8 +87,13 @@ class _Visitor extends SimpleAstVisitor<void> {
         if (parent is ArgumentList) {
           final grandParent = parent.parent;
           if (grandParent is MethodInvocation &&
-              grandParent.methodName.name == 'computed' &&
+              (grandParent.methodName.name == 'computed' ||
+                  grandParent.methodName.name == 'computedFrom') &&
               _isSignalComputedInvocation(grandParent)) {
+            return true;
+          }
+          if (grandParent is InstanceCreationExpression &&
+              _isSignalComputedCreation(grandParent)) {
             return true;
           }
         }
@@ -97,7 +109,17 @@ class _Visitor extends SimpleAstVisitor<void> {
         (target is! SimpleIdentifier || target.element is! PrefixElement)) {
       return false;
     }
-    final libraryUri = invocation.methodName.element?.library?.uri;
+    return _isSignalPackageUri(invocation.methodName.element?.library?.uri);
+  }
+
+  static bool _isSignalComputedCreation(InstanceCreationExpression creation) {
+    final constructorElement = creation.constructorName.element;
+    if (constructorElement == null) return false;
+    if (constructorElement.enclosingElement.name != 'Computed') return false;
+    return _isSignalPackageUri(constructorElement.library.uri);
+  }
+
+  static bool _isSignalPackageUri(Uri? libraryUri) {
     return libraryUri != null &&
         libraryUri.isScheme('package') &&
         AvoidEmitOrAddInComputed._signalPackages.contains(
@@ -111,11 +133,12 @@ class _Visitor extends SimpleAstVisitor<void> {
   ) {
     final target = node.realTarget;
     if (BlocContainerUtils.isSelfOrUnqualifiedTarget(target)) {
-      final enclosing = BlocContainerUtils.nearestContainerDeclaration(node);
+      final enclosing =
+          BlocContainerUtils.nearestContainerOrExtensionDeclaration(node);
       if (enclosing == null) return false;
       return methodName == 'emit'
-          ? BlocContainerUtils.isBlocContainerDeclaration(enclosing)
-          : BlocContainerUtils.isBlocSignalHost(enclosing);
+          ? BlocContainerUtils.isBlocContainerOrExtension(enclosing)
+          : BlocContainerUtils.isBlocSignalOrExtensionHost(enclosing);
     }
 
     final targetType = target!.staticType;

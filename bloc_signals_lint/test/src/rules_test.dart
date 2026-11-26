@@ -142,6 +142,23 @@ class NotABloc {
       },
     );
 
+    test('(Issue #506) RequireSuperOnEvent ignores extension onEvent on '
+        'BlocSignal', () async {
+      const goodCode = '''
+sealed class CounterEvent {}
+
+class CounterBloc extends BlocSignal<CounterEvent, int> {
+  CounterBloc() : super(initialState: 0);
+}
+
+extension CounterBlocX on CounterBloc {
+  void onEvent(CounterEvent event) {}
+}
+''';
+      final lints = await runLintRule(RequireSuperOnEvent(), goodCode);
+      expect(lints, isEmpty);
+    });
+
     test(
       'AvoidStreamTransformersOnBlocSignal detects invalid transformer calls',
       () async {
@@ -431,6 +448,25 @@ class MyCubit extends CubitSignal<int> {
 class MyCubit extends CubitSignal<int> {
   MyCubit() : super(initialState: 0) {
     createEffect(() {
+      print(stateValue);
+    });
+  }
+}
+''';
+      final lints = await runLintRule(AvoidRawSignalEffectsInBloc(), goodCode);
+      expect(lints, isEmpty);
+    });
+
+    test('(Issue #506) AvoidRawSignalEffectsInBloc ignores effect() inside '
+        'extension on CubitSignal', () async {
+      const goodCode = '''
+class MyCubit extends CubitSignal<int> {
+  MyCubit() : super(initialState: 0);
+}
+
+extension MyCubitX on MyCubit {
+  void bind() {
+    effect(() {
       print(stateValue);
     });
   }

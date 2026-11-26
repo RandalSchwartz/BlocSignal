@@ -59,7 +59,7 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 | **`avoid_multiple_synchronous_emits`** | Warning | Flags multiple synchronous `emit()` calls along the same linear execution path without an intervening `await`. | — |
 | **`avoid_primitive_event_types`** | Warning | Flags `BlocSignal<Event, State>` or `BlocSignalMixin` using primitive or untyped types (`int`, `String`, `bool`, `dynamic`, etc.) as event types. | — |
 | **`avoid_pseudo_events_in_telemetry`** | Warning | Flags `emitTelemetry('...')` calls inside `CubitSignal` where the name matches UI event action patterns (`Pressed`, `Clicked`, `Submitted`, etc.). | — |
-| **`avoid_emit_or_add_in_computed`** | Error | Flags `emit()` or `add()` calls on state containers inside `computed()` callbacks. | — |
+| **`avoid_emit_or_add_in_computed`** | Error | Flags `emit()` or `add()` calls on state containers inside `computed()`, `Computed()`, or `computedFrom()` callbacks (including inside container extension methods). | — |
 | **`require_hydrated_storage_prefix`** | Warning | Requires concrete `HydratedCubitSignal`, `HydratedBlocSignal`, and `HydratedMixin` classes to override `storagePrefix`. | `Cmd+.` -> Add `@override String get storagePrefix` |
 | **`require_hydrated_mixin_init`** | Warning | Requires classes mixing in `HydratedMixin` with `CubitSignalMixin` or `BlocSignalMixin` to call `hydrate()` in constructors. | `Cmd+.` -> Add `hydrate();` |
 | **`avoid_unmanaged_signal_subscription`** | Warning | Flags discarded `ReadonlySignal.subscribe(...)` calls whose cleanup closure is not retained. | — |

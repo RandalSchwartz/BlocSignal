@@ -5,6 +5,35 @@ import 'package:test/test.dart';
 import '../tool/validate_agent_plugin.dart' as validator;
 
 void main() {
+  group('(Issue #483) requiredSkillFiles completeness', () {
+    test('requires all 17 markdown skill files and agents/openai.yaml', () {
+      expect(
+        validator.requiredSkillFiles,
+        containsAll(<String>[
+          'SKILL.md',
+          'agents/openai.yaml',
+          'core.md',
+          'decision_matrix.md',
+          'devtools.md',
+          'flutter.md',
+          'genui.md',
+          'hydration.md',
+          'interoperability.md',
+          'jaspr.md',
+          'lint.md',
+          'migration.md',
+          'migration_bridge.md',
+          'otel.md',
+          'replay.md',
+          'riverpod_migration.md',
+          'scars.md',
+          'testing.md',
+        ]),
+      );
+      expect(validator.requiredSkillFiles, hasLength(18));
+    });
+  });
+
   group('validation path filtering', () {
     test('recognizes generated directories with Windows separators', () {
       expect(

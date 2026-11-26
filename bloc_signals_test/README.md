@@ -43,10 +43,11 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 
 ## ⚡ Key Features
 
-- 🎯 **Declarative Assertions**: Verify emitted states in exact order using `expect`.
+- 🎯 **Declarative Assertions**: Verify emitted states in exact order using `expect`, seed initial states with `seed`, and assert derived signals with `expectComputed`.
 - ⏱️ **Async & Virtual-Time Support**: Await asynchronous event handlers or timers using `wait`, or opt into `fakeAsync: true` with `elapse()` and `flushMicrotasks()` for zero-wall-clock-latency timer testing.
 - ⏭️ **State Skipping**: Skip initial emissions using `skip`.
 - 🚨 **Error Testing**: Verify exceptions reported to `onError`, rethrown `Error` subtypes (for example `StateError` or `ArgumentError`), and direct `CubitSignal` method throws using `errors`.
+- 📡 **Telemetry Matchers**: Assert telemetry records with `expectTelemetry` and `isTelemetry(..., metadata: ...)` supporting literal values, `Matcher` predicates, and collection matchers.
 - 🧹 **Automatic Cleanup**: Guarantees observer restoration and `bloc.close()` post-test.
 
 ---
@@ -78,6 +79,16 @@ void main() {
       build: CounterCubit.new,
       act: (cubit) => cubit.increment(),
       expect: () => [1],
+    );
+    blocSignalTest<CounterCubit, int>(
+      'emits [11] when seeded and asserts computed signals',
+      build: CounterCubit.new,
+      seed: () => 10,
+      act: (cubit) => cubit.increment(),
+      expect: () => [11],
+      expectComputed: (cubit) => {
+        cubit.doubled: greaterThanOrEqualTo(22),
+      },
     );
   });
 }

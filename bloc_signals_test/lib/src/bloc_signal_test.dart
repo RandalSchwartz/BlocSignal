@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:meta/meta.dart';
+import 'package:signals_core/signals_core.dart';
 import 'package:test/test.dart' as test_pkg;
 
 final Object _fakeAsyncZoneKey = Object();
@@ -85,6 +86,10 @@ void flushMicrotasks() =>
 /// [setUp] is an optional callback invoked prior to building the state
 /// container.
 ///
+/// [seed] is an optional callback returning an initial state to emit onto the
+/// built container before state-change recording begins, without recording the
+/// seeded state as an emitted transition.
+///
 /// [act] is an optional callback invoked after construction to trigger
 /// events or methods.
 ///
@@ -126,12 +131,18 @@ void flushMicrotasks() =>
 /// [expectTelemetry] is an optional callback returning an [Iterable] or
 /// [test_pkg.Matcher] of expected telemetry records (such as [isTelemetry]).
 ///
+/// [expectComputed] is an optional callback receiving the built container and
+/// returning a map of [ReadonlySignal] instances to expected literal values or
+/// [test_pkg.Matcher]s, asserted after [expect], [errors], and
+/// [expectTelemetry].
+///
 /// [tearDown] is an optional callback invoked after test completion.
 @isTest
 void blocSignalTest<B extends BlocSignalBase<State>, State>(
   String description, {
   required B Function() build,
   FutureOr<void> Function()? setUp,
+  State Function()? seed,
   FutureOr<void> Function(B bloc)? act,
   Duration? wait,
   bool fakeAsync = false,
@@ -140,6 +151,7 @@ void blocSignalTest<B extends BlocSignalBase<State>, State>(
   FutureOr<void> Function(B bloc)? verify,
   Object? Function()? errors,
   Object? Function()? expectTelemetry,
+  Map<ReadonlySignal<Object?>, Object?> Function(B bloc)? expectComputed,
   FutureOr<void> Function()? tearDown,
   dynamic tags,
 }) {
@@ -148,6 +160,7 @@ void blocSignalTest<B extends BlocSignalBase<State>, State>(
     () => runBlocSignalTest<B, State>(
       build: build,
       setUp: setUp,
+      seed: seed,
       act: act,
       wait: wait,
       fakeAsync: fakeAsync,
@@ -156,6 +169,7 @@ void blocSignalTest<B extends BlocSignalBase<State>, State>(
       verify: verify,
       errors: errors,
       expectTelemetry: expectTelemetry,
+      expectComputed: expectComputed,
       tearDown: tearDown,
     ),
     tags: tags,
@@ -176,6 +190,7 @@ void blocSignalTest<B extends BlocSignalBase<State>, State>(
 Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
   required B Function() build,
   FutureOr<void> Function()? setUp,
+  State Function()? seed,
   FutureOr<void> Function(B bloc)? act,
   Duration? wait,
   bool fakeAsync = false,
@@ -184,45 +199,47 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
   FutureOr<void> Function(B bloc)? verify,
   Object? Function()? errors,
   Object? Function()? expectTelemetry,
+  Map<ReadonlySignal<Object?>, Object?> Function(B bloc)? expectComputed,
   FutureOr<void> Function()? tearDown,
 }) async {
   final baselineObserver = BlocSignalObserver.observer;
-  await setUp?.call();
-  final activeObserver = BlocSignalObserver.observer;
   final states = <State>[];
   final caughtErrors = <Object>[];
   final caughtTelemetry = <BlocTelemetryEntry>[];
   B? bloc;
-
-  final initialErrors = <(Object, Object)>[];
-  final initialTelemetry = <(Object, BlocTelemetryEntry)>[];
-
-  final testObserver = _TestBlocSignalObserver(
-    parent: activeObserver,
-    onErrorCallback: (b, error, stackTrace) {
-      if (bloc == null) {
-        initialErrors.add((b, error));
-      } else if (identical(b, bloc)) {
-        caughtErrors.add(error);
-      }
-    },
-    onTelemetryCallback: (b, name, {event, metadata}) {
-      final entry = BlocTelemetryEntry(
-        name: name,
-        event: event,
-        metadata: metadata,
-      );
-      if (bloc == null) {
-        initialTelemetry.add((b, entry));
-      } else if (identical(b, bloc)) {
-        caughtTelemetry.add(entry);
-      }
-    },
-  );
-  BlocSignalObserver.observer = testObserver;
-
   void Function()? disposeListener;
+
   try {
+    await setUp?.call();
+    final activeObserver = BlocSignalObserver.observer;
+
+    final initialErrors = <(Object, Object)>[];
+    final initialTelemetry = <(Object, BlocTelemetryEntry)>[];
+
+    final testObserver = _TestBlocSignalObserver(
+      parent: activeObserver,
+      onErrorCallback: (b, error, stackTrace) {
+        if (bloc == null) {
+          initialErrors.add((b, error));
+        } else if (identical(b, bloc)) {
+          caughtErrors.add(error);
+        }
+      },
+      onTelemetryCallback: (b, name, {event, metadata}) {
+        final entry = BlocTelemetryEntry(
+          name: name,
+          event: event,
+          metadata: metadata,
+        );
+        if (bloc == null) {
+          initialTelemetry.add((b, entry));
+        } else if (identical(b, bloc)) {
+          caughtTelemetry.add(entry);
+        }
+      },
+    );
+    BlocSignalObserver.observer = testObserver;
+
     B prepareBloc() {
       final built = build();
       bloc = built;
@@ -235,6 +252,14 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
         if (identical(pair.$1, built)) {
           caughtTelemetry.add(pair.$2);
         }
+      }
+
+      if (seed != null) {
+        // Intentional `invalid_use_of_protected_member` and
+        // `invalid_use_of_visible_for_testing_member`: apply seeded state
+        // before subscribing so it is not recorded as an emission.
+        // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
+        built.emit(seed());
       }
 
       var initialSkipped = false;
@@ -301,7 +326,20 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
         completer.complete();
       }
     } else {
-      final targetBloc = prepareBloc();
+      var pendingMicrotasks = 0;
+      final microtaskSpec = ZoneSpecification(
+        scheduleMicrotask: (self, parent, zone, f) {
+          pendingMicrotasks++;
+          parent.scheduleMicrotask(zone, () {
+            pendingMicrotasks--;
+            f();
+          });
+        },
+      );
+      final targetBloc = runZoned(
+        prepareBloc,
+        zoneSpecification: microtaskSpec,
+      );
       unawaited(
         runZonedGuarded(
           () async {
@@ -319,16 +357,20 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
                 }
               }
 
-              await Future<void>.delayed(Duration.zero);
-
               if (wait != null) {
+                await Future<void>.delayed(Duration.zero);
                 await Future<void>.delayed(wait);
+              } else {
+                while (pendingMicrotasks > 0) {
+                  await Future<void>.microtask(() {});
+                }
               }
             } finally {
               completer.complete();
             }
           },
           recordError,
+          zoneSpecification: microtaskSpec,
         ),
       );
       await completer.future;
@@ -355,6 +397,13 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
     if (expectTelemetry != null) {
       final expectedTelemetry = expectTelemetry();
       test_pkg.expect(caughtTelemetry, expectedTelemetry);
+    }
+
+    if (expectComputed != null) {
+      final expectedComputed = expectComputed(targetBloc);
+      for (final entry in expectedComputed.entries) {
+        test_pkg.expect(entry.key.value, entry.value);
+      }
     }
 
     if (verify != null) {
@@ -479,13 +528,15 @@ class BlocTelemetryEntry {
 /// [name], and optional [event] or [metadata].
 ///
 /// When [metadata] is provided, the actual telemetry metadata must contain all
-/// key-value pairs specified in [metadata] (subset match).
+/// keys specified in [metadata] (subset match). Each metadata value can be
+/// either a literal value or any [test_pkg.Matcher] predicate (including
+/// collection matchers such as `contains` or `greaterThanOrEqualTo`).
 ///
 /// ```dart
 /// expectTelemetry: () => [
 ///   isTelemetry(
 ///     'event_dropped',
-///     metadata: {'reason': 'in_flight'},
+///     metadata: {'reason': 'in_flight', 'count': greaterThanOrEqualTo(1)},
 ///   ),
 /// ];
 /// ```
@@ -503,28 +554,60 @@ class _IsTelemetryMatcher extends test_pkg.Matcher {
     this.metadata,
   });
 
+  static final Object _mismatchKey = Object();
+  static final Object _nestedMatcherKey = Object();
+  static final Object _nestedActualKey = Object();
+  static final Object _nestedStateKey = Object();
+
   final String name;
   final Object? event;
   final Map<String, dynamic>? metadata;
 
   @override
   bool matches(dynamic item, Map<dynamic, dynamic> matchState) {
-    if (item is! BlocTelemetryEntry) return false;
-    if (item.name != name) return false;
+    if (item is! BlocTelemetryEntry) {
+      matchState[_mismatchKey] =
+          'is not a BlocTelemetryEntry (actual type: ${item.runtimeType})';
+      return false;
+    }
+    if (item.name != name) {
+      matchState[_mismatchKey] = 'has name "${item.name}" instead of "$name"';
+      return false;
+    }
 
     final expectedEvent = event;
     if (expectedEvent != null) {
       final eventMatcher = test_pkg.wrapMatcher(expectedEvent);
-      if (!eventMatcher.matches(item.event, matchState)) return false;
+      final eventState = <dynamic, dynamic>{};
+      if (!eventMatcher.matches(item.event, eventState)) {
+        matchState[_mismatchKey] = 'has mismatched event';
+        matchState[_nestedMatcherKey] = eventMatcher;
+        matchState[_nestedActualKey] = item.event;
+        matchState[_nestedStateKey] = eventState;
+        return false;
+      }
     }
 
     final expectedMeta = metadata;
     if (expectedMeta != null) {
       final actualMeta = item.metadata;
-      if (actualMeta == null) return false;
+      if (actualMeta == null) {
+        matchState[_mismatchKey] = 'has null metadata';
+        return false;
+      }
       for (final entry in expectedMeta.entries) {
-        if (!actualMeta.containsKey(entry.key) ||
-            actualMeta[entry.key] != entry.value) {
+        if (!actualMeta.containsKey(entry.key)) {
+          matchState[_mismatchKey] = 'is missing metadata key "${entry.key}"';
+          return false;
+        }
+        final valueMatcher = test_pkg.wrapMatcher(entry.value);
+        final valueState = <dynamic, dynamic>{};
+        final actualValue = actualMeta[entry.key];
+        if (!valueMatcher.matches(actualValue, valueState)) {
+          matchState[_mismatchKey] = 'has mismatched metadata["${entry.key}"]';
+          matchState[_nestedMatcherKey] = valueMatcher;
+          matchState[_nestedActualKey] = actualValue;
+          matchState[_nestedStateKey] = valueState;
           return false;
         }
       }
@@ -539,5 +622,33 @@ class _IsTelemetryMatcher extends test_pkg.Matcher {
     if (event != null) description.add(', event: $event');
     if (metadata != null) description.add(', metadata: $metadata');
     return description.add(')');
+  }
+
+  @override
+  test_pkg.Description describeMismatch(
+    dynamic item,
+    test_pkg.Description mismatchDescription,
+    Map<dynamic, dynamic> matchState,
+    bool verbose,
+  ) {
+    final reason = matchState[_mismatchKey] as String?;
+    if (reason != null) {
+      mismatchDescription.add(reason);
+      final nestedMatcher = matchState[_nestedMatcherKey] as test_pkg.Matcher?;
+      if (nestedMatcher != null) {
+        final nestedState =
+            matchState[_nestedStateKey]! as Map<dynamic, dynamic>;
+        mismatchDescription.add(': ');
+        nestedMatcher.describeMismatch(
+          matchState[_nestedActualKey],
+          mismatchDescription,
+          nestedState,
+          verbose,
+        );
+      }
+      return mismatchDescription;
+    }
+    return super
+        .describeMismatch(item, mismatchDescription, matchState, verbose);
   }
 }

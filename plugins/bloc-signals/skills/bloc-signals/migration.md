@@ -784,11 +784,12 @@ In `BlocSignal`, declarative unit tests use `blocSignalTest<B, S>` from `package
 
 1. **Synchronous Execution & Frame Latency**:
    In classic BLoC, state emissions route through Dart streams and microtask queues, often requiring microtask flushing or pump cycles. In `BlocSignal`, state changes propagate **synchronously in 0ms**. Test expectations evaluate immediately upon `act` completion unless testing an explicitly asynchronous operation (which uses `wait:`).
-2. **State Seeding via Constructor Injection**:
-   Classic `blocTest` provides a `seed: () => State` hook because classic BLoC constructors usually hardcode initial states with positional parameters (`: super(0)`).
-   Because `BlocSignal` enforces the named parameter standard (`initialState:`), you seed state directly in the `build:` closure:
+2. **State Seeding via Constructor Injection or `seed:`**:
+   `blocSignalTest` supports both `seed: () => State` (applied before subscription without recording an emission) and constructor injection via `initialState:` in the `build:` closure:
    ```dart
    build: () => CounterBloc(initialState: 10),
+   // or:
+   seed: () => 10,
    ```
 3. **Automatic Observer Isolation**:
    `blocSignalTest` automatically isolates `BlocSignalObserver.observer` during test execution. It sets up an isolated test observer before invoking `build()`, capturing `onCreate`, `onEvent`, `onTransition`, `onChange`, and `onError` without cross-test leakage.

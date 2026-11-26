@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **Feat (test)**: Support `Matcher` predicates and collection matchers in `isTelemetry` metadata with detailed `describeMismatch` diagnostics (#483).
+- **Feat (test)**: Add `seed` and `expectComputed` parameters to `blocSignalTest` and `runBlocSignalTest` (#483).
+- **Fix (test)**: Move `setUp` inside `try/finally` in `runBlocSignalTest` so `tearDown` and `BlocSignalObserver.observer` restoration run even when `setUp` throws (#483).
+- **Perf (test)**: Drain microtasks with `Future.microtask` instead of allocating a `Timer` on synchronous `blocSignalTest` runs without `wait` (#483).
+- **Dependencies**: Add direct dependency on `signals_core: ^7.0.0` (#483).
 - **Feat (test)**: Add opt-in `fakeAsync` virtual-time `wait`, `elapse`, and `flushMicrotasks` support to `blocSignalTest` (#499).
 - **Dependencies**: Add direct dependency on `fake_async: ^1.3.0` (#499).
 

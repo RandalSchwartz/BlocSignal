@@ -184,6 +184,7 @@ void main() {
         'enforces --per-package-min and --min thresholds', () {
       final coverageScriptContent = File('tool/calculate_coverage.dart')
           .readAsStringSync();
+      expect(coverageScriptContent, contains("'bloc_signals_genui_jaspr'"));
       expect(coverageScriptContent, contains("Directory('examples')"));
       expect(coverageScriptContent, contains('/pubspec.yaml'));
       expect(coverageScriptContent, contains('/coverage'));

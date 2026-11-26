@@ -8,6 +8,28 @@ const _pluginSkillPath = '$_pluginPath/skills/bloc-signals';
 const _legacyAgentSkillPath = '.agents/skills/bloc-signals';
 const _ignoredValidationDirectories = {'.git', '.dart_tool', 'build'};
 
+/// All required files in the `bloc-signals` skill bundle.
+const requiredSkillFiles = <String>{
+  'SKILL.md',
+  'agents/openai.yaml',
+  'core.md',
+  'decision_matrix.md',
+  'devtools.md',
+  'flutter.md',
+  'genui.md',
+  'hydration.md',
+  'interoperability.md',
+  'jaspr.md',
+  'lint.md',
+  'migration.md',
+  'migration_bridge.md',
+  'otel.md',
+  'replay.md',
+  'riverpod_migration.md',
+  'scars.md',
+  'testing.md',
+};
+
 final List<String> _errors = [];
 
 void main() {
@@ -208,18 +230,7 @@ void _validateSkill(Directory root) {
   }
 
   final pluginFiles = _relativeFiles(pluginSkill);
-  const requiredFiles = {
-    'SKILL.md',
-    'agents/openai.yaml',
-    'core.md',
-    'flutter.md',
-    'genui.md',
-    'migration.md',
-    'riverpod_migration.md',
-    'otel.md',
-    'testing.md',
-  };
-  final missingFiles = requiredFiles.difference(pluginFiles.keys.toSet());
+  final missingFiles = requiredSkillFiles.difference(pluginFiles.keys.toSet());
   if (missingFiles.isNotEmpty) {
     _errors.add('Plugin skill is missing: ${missingFiles.join(', ')}.');
   }

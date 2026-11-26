@@ -239,13 +239,13 @@ If evaluating state persistence approaches, `bloc_signals_hydrate` and `signals.
 
 ### Interoperability: Bridging `PersistentSignal` into `BlocSignal`
 
-If you already use `PersistentSignal` from `package:signals`, you can easily bridge it into a `CubitSignal` using an `effect()`:
+If you already use `PersistentSignal` from `package:signals`, you can easily bridge it into a `CubitSignal` using `createEffect()`:
 
 ```dart
 class CounterCubit extends CubitSignal<int> {
   CounterCubit(this.persistent) : super(initialState: persistent.value) {
     // Sync updates from PersistentSignal into Cubit state
-    effect(() => emit(persistent.value));
+    createEffect(() => emit(persistent.value));
   }
 
   final PersistentSignal<int> persistent;

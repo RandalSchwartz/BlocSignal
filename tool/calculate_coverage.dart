@@ -68,6 +68,7 @@ void main(List<String> args) {
       'bloc_signals_devtools',
       'bloc_signals_genui',
       'bloc_signals_genui_flutter',
+      'bloc_signals_genui_jaspr',
     ];
 
     final exampleDirs = Directory('examples').existsSync()

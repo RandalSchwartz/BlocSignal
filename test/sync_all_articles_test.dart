@@ -316,5 +316,17 @@ void main() {
         );
       },
     );
+
+    test('(Issue #483) parseValidArticleId accepts positive ints and rejects '
+        'non-int or non-positive ids', () {
+      expect(sync_tool.parseValidArticleId(1), equals(1));
+      expect(sync_tool.parseValidArticleId(42), equals(42));
+      expect(sync_tool.parseValidArticleId(null), isNull);
+      expect(sync_tool.parseValidArticleId(0), isNull);
+      expect(sync_tool.parseValidArticleId(-5), isNull);
+      expect(sync_tool.parseValidArticleId('123'), isNull);
+      expect(sync_tool.parseValidArticleId(12.5), isNull);
+      expect(sync_tool.parseValidArticleId(true), isNull);
+    });
   });
 }

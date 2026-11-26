@@ -199,6 +199,11 @@ Future<({int statusCode, String body, String? retryAfter})> _getJsonResponse(
   );
 }
 
+/// Validates that [rawId] is a positive integer DEV.to article ID, returning
+/// the validated `int` or `null` when invalid.
+int? parseValidArticleId(Object? rawId) =>
+    rawId is int && rawId > 0 ? rawId : null;
+
 /// Script to download all published DEV.to articles for `@randalschwartz`
 /// into `doc/articles/` as canonical markdown backups.
 Future<void> main() async {
@@ -247,9 +252,11 @@ Future<void> main() async {
         continue;
       }
 
-      final id = article['id'];
+      final id = parseValidArticleId(article['id']);
       if (id == null) {
-        stderr.writeln('⚠️ Skipping article without id.');
+        stderr.writeln(
+          '⚠️ Skipping article with invalid id: ${article['id']}.',
+        );
         continue;
       }
 

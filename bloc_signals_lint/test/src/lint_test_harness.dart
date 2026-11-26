@@ -101,6 +101,12 @@ AnalysisContextCollection _getOrCreateCollection() {
       "languageVersion": "3.5"
     },
     {
+      "name": "signals_core",
+      "rootUri": "../signals_core",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
       "name": "bloc_signals",
       "rootUri": "../bloc_signals",
       "packageUri": "lib/",
@@ -182,11 +188,41 @@ class ReadonlySignal<T> {
 
 class Signal<T> extends ReadonlySignal<T> {}
 
-class Computed<T> extends ReadonlySignal<T> {}
+class Computed<T> extends ReadonlySignal<T> {
+  Computed([T Function()? fn]);
+}
 
 void Function() effect(void Function() cb) => () {};
 Computed<T> computed<T>(T Function() cb) => Computed<T>();
 Signal<T> signal<T>(T initial) => Signal<T>();
+''');
+
+  final signalsCoreLibDir = Directory(
+    _joinPath([rootPath, 'signals_core', 'lib']),
+  )..createSync(recursive: true);
+  File(_joinPath([signalsCoreLibDir.path, 'signals_core.dart']))
+      .writeAsStringSync('''
+import 'dart:async';
+
+import 'package:preact_signals/preact_signals.dart';
+
+export 'package:preact_signals/preact_signals.dart'
+    show Computed, ReadonlySignal, Signal, computed, effect, signal;
+
+class AsyncSignalOptions<T> {
+  const AsyncSignalOptions();
+}
+
+class FutureSignal<T> extends ReadonlySignal<T> {}
+
+FutureSignal<T> computedFrom<T, A>(
+  List<ReadonlySignal<A>> signals,
+  FutureOr<T> Function(List<A> args) fn, {
+  AsyncSignalOptions<T>? options,
+}) => FutureSignal<T>();
+
+T batch<T>(T Function() fn) => fn();
+T untracked<T>(T Function() fn) => fn();
 ''');
 
   final blocSignalsLibDir = Directory(
@@ -671,6 +707,11 @@ extension BlocSignalValueListenableX<T> on BlocSignalBase<T> {
   );
 }
 
+bool _hasPackageImport(String sourceCode) =>
+    sourceCode.contains("import 'package:bloc_signals") ||
+    sourceCode.contains("import 'package:signals_core/") ||
+    sourceCode.contains("import 'package:preact_signals/");
+
 /// Runs [rule] against the semantically resolved AST of [sourceCode] and
 /// returns all diagnostics reported via [DiagnosticReporter].
 Future<List<ReportedLint>> runLintRule(
@@ -686,7 +727,7 @@ Future<List<ReportedLint>> runLintRule(
   ]);
   final testFile = File(testFilePath);
 
-  final hasImports = sourceCode.contains("import 'package:bloc_signals");
+  final hasImports = _hasPackageImport(sourceCode);
   final prefix = hasImports ? '' : _defaultPreamble;
   final fullSource = '$prefix$sourceCode';
 
@@ -742,7 +783,7 @@ Future<String> runLintFix(
   ]);
   final testFile = File(testFilePath);
 
-  final hasImports = sourceCode.contains("import 'package:bloc_signals");
+  final hasImports = _hasPackageImport(sourceCode);
   final prefix = hasImports ? '' : _defaultPreamble;
   final fullSource = '$prefix$sourceCode';
 

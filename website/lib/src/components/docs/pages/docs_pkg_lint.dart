@@ -262,7 +262,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
                 ]),
                 td([
                   Component.text(
-                    'Flags emit() or add() calls on state containers inside computed() callbacks to keep derived signals pure.',
+                    'Flags emit() or add() calls on state containers inside computed(), Computed(), or computedFrom() callbacks (including inside container extension methods) to keep derived signals pure.',
                   ),
                 ]),
               ]),

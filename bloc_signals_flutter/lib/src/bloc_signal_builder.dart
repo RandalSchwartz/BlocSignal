@@ -19,11 +19,43 @@ class BlocSignalBuilder<T extends BlocSignalBase<S>, S> extends StatefulWidget {
   /// If [bloc] is null, it is looked up from the widget tree
   /// via [BlocSignalProvider].
   const BlocSignalBuilder({
-    required this.builder,
+    required Widget Function(BuildContext context, S state) builder,
     super.key,
     this.bloc,
     this.buildWhen,
-  });
+  })  : _builder = builder,
+        child = null,
+        _childBuilder = null;
+
+  /// Creates a [BlocSignalBuilder] that preserves a static [child] subtree
+  /// across state rebuilds.
+  ///
+  /// The [child] widget is built once by the parent and passed into [builder]
+  /// on every state-driven rebuild without reconstructing the static subtree.
+  ///
+  /// Example:
+  /// ```dart
+  /// BlocSignalBuilder<CounterBloc, int>.child(
+  ///   child: const Icon(Icons.add),
+  ///   builder: (context, state, child) {
+  ///     return Row(
+  ///       children: [
+  ///         Text('Count: $state'),
+  ///         if (child != null) child,
+  ///       ],
+  ///     );
+  ///   },
+  /// )
+  /// ```
+  const BlocSignalBuilder.child({
+    required Widget Function(BuildContext context, S state, Widget? child)
+        builder,
+    super.key,
+    this.bloc,
+    this.buildWhen,
+    this.child,
+  })  : _builder = null,
+        _childBuilder = builder;
 
   /// The [BlocSignal] to listen to. If null, it is retrieved from the context.
   final T? bloc;
@@ -32,8 +64,18 @@ class BlocSignalBuilder<T extends BlocSignalBase<S>, S> extends StatefulWidget {
   /// and determines whether to rebuild the widget.
   final bool Function(S previous, S current)? buildWhen;
 
+  final Widget Function(BuildContext context, S state)? _builder;
+
   /// The builder function that creates the widget tree given the current state.
-  final Widget Function(BuildContext context, S state) builder;
+  Widget Function(BuildContext context, S state) get builder =>
+      _builder ?? (context, state) => _childBuilder!(context, state, child);
+
+  /// An optional static child widget passed through to the `builder` callback
+  /// in [BlocSignalBuilder.child].
+  final Widget? child;
+
+  final Widget Function(BuildContext context, S state, Widget? child)?
+      _childBuilder;
 
   @override
   State<BlocSignalBuilder<T, S>> createState() =>
@@ -103,6 +145,10 @@ class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
 
   @override
   Widget build(BuildContext context) {
+    final childBuilder = widget._childBuilder;
+    if (childBuilder != null) {
+      return childBuilder(context, _state as S, widget.child);
+    }
     return widget.builder(context, _state as S);
   }
 }

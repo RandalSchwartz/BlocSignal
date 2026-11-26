@@ -106,6 +106,47 @@ BlocSignalBuilder<CounterCubit, int>(
 )
 ''',
         ),
+        p([
+          Component.text('Use '),
+          code([Component.text('BlocSignalBuilder.child')]),
+          Component.text(
+            ' when part of the subtree is static and should not be reconstructed '
+            'across state-driven rebuilds. The parent constructs ',
+          ),
+          code([Component.text('child')]),
+          Component.text(' once and passes it into '),
+          code([Component.text('builder')]),
+          Component.text(':'),
+        ]),
+        const DocsCodeBlock(
+          title: 'Preserving a Static Subtree with .child',
+          dart313Code: '''
+BlocSignalBuilder<CounterCubit, int>.child(
+  child: const Icon(Icons.add),
+  builder: (context, count, child) {
+    return Row(
+      children: [
+        if (child != null) child,
+        Text('Count: \$count'),
+      ],
+    );
+  },
+)
+''',
+          dart35Code: '''
+BlocSignalBuilder<CounterCubit, int>.child(
+  child: const Icon(Icons.add),
+  builder: (BuildContext context, int count, Widget? child) {
+    return Row(
+      children: <Widget>[
+        if (child != null) child,
+        Text('Count: \$count'),
+      ],
+    );
+  },
+)
+''',
+        ),
       ]),
 
       section(id: 'listener', classes: 'docs-section', [
@@ -222,6 +263,54 @@ BlocSignalConsumer<CartBloc, CartState>(
 )
 ''',
         ),
+        p([
+          Component.text('Use '),
+          code([Component.text('BlocSignalConsumer.child')]),
+          Component.text(' to preserve a static '),
+          code([Component.text('child')]),
+          Component.text(
+            ' subtree across state rebuilds while listening for side effects:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          title: 'BlocSignalConsumer.child Static Subtree',
+          dart313Code: '''
+BlocSignalConsumer<CartBloc, CartState>.child(
+  listener: (context, state) {
+    if (state is CartCheckoutSuccess) {
+      Navigator.of(context).pushNamed('/order-confirmation');
+    }
+  },
+  child: const CartHeaderBanner(),
+  builder: (context, state, child) {
+    return Column(
+      children: [
+        if (child != null) child,
+        CartItemsList(items: state.items),
+      ],
+    );
+  },
+)
+''',
+          dart35Code: '''
+BlocSignalConsumer<CartBloc, CartState>.child(
+  listener: (BuildContext context, CartState state) {
+    if (state is CartCheckoutSuccess) {
+      Navigator.of(context).pushNamed('/order-confirmation');
+    }
+  },
+  child: const CartHeaderBanner(),
+  builder: (BuildContext context, CartState state, Widget? child) {
+    return Column(
+      children: <Widget>[
+        if (child != null) child,
+        CartItemsList(items: state.items),
+      ],
+    );
+  },
+)
+''',
+        ),
       ]),
 
       section(id: 'selector', classes: 'docs-section', [
@@ -274,6 +363,48 @@ class UserAvatarHeader extends StatelessWidget {
     );
   }
 }
+''',
+        ),
+        p([
+          Component.text('Use '),
+          code([Component.text('BlocSignalSelector.child')]),
+          Component.text(' to pass a pre-built static '),
+          code([Component.text('child')]),
+          Component.text(' widget into '),
+          code([Component.text('builder')]),
+          Component.text(
+            ' without rebuilding it when the selected value changes:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          title: 'BlocSignalSelector.child Static Subtree',
+          dart313Code: '''
+BlocSignalSelector<UserBloc, UserState, String>.child(
+  selector: (state) => state.username,
+  child: const Icon(Icons.person),
+  builder: (context, username, child) {
+    return Row(
+      children: [
+        if (child != null) child,
+        Text('Username: \$username'),
+      ],
+    );
+  },
+)
+''',
+          dart35Code: '''
+BlocSignalSelector<UserBloc, UserState, String>.child(
+  selector: (UserState state) => state.username,
+  child: const Icon(Icons.person),
+  builder: (BuildContext context, String username, Widget? child) {
+    return Row(
+      children: <Widget>[
+        if (child != null) child,
+        Text('Username: \$username'),
+      ],
+    );
+  },
+)
 ''',
         ),
       ]),

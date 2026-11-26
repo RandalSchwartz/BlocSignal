@@ -1955,7 +1955,681 @@ void main() {
       },
     );
   });
+
+  group('(Issue #497: Static child subtree preservation)', () {
+    testWidgets(
+      'BlocSignalBuilder.child builds static child once across state emissions',
+      (tester) async {
+        final cubit = CounterCubit();
+        addTearDown(cubit.close);
+        var childBuilds = 0;
+        var builderCalls = 0;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocSignalBuilder<CounterCubit, int>.child(
+              bloc: cubit,
+              child: _BuildCounterWidget(
+                label: 'static-builder-child',
+                onBuild: () => childBuilds++,
+              ),
+              builder: (context, state, child) {
+                builderCalls++;
+                return Column(
+                  children: [
+                    Text('Count: $state'),
+                    if (child != null) child,
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+
+        expect(find.text('Count: 0'), findsOneWidget);
+        expect(find.text('static-builder-child'), findsOneWidget);
+        expect(childBuilds, equals(1));
+        expect(builderCalls, equals(1));
+
+        cubit.increment();
+        await tester.pump();
+        cubit.increment();
+        await tester.pump();
+
+        expect(find.text('Count: 2'), findsOneWidget);
+        expect(find.text('static-builder-child'), findsOneWidget);
+        expect(childBuilds, equals(1));
+        expect(builderCalls, equals(3));
+      },
+    );
+
+    testWidgets(
+      'BlocSignalBuilder.child supports null child and buildWhen gating',
+      (tester) async {
+        final cubit = CounterCubit();
+        addTearDown(cubit.close);
+        var childBuilds = 0;
+        var builderCalls = 0;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Column(
+              children: [
+                BlocSignalBuilder<CounterCubit, int>.child(
+                  bloc: cubit,
+                  builder: (context, state, child) {
+                    expect(child, isNull);
+                    return Text('NullChild: $state');
+                  },
+                ),
+                BlocSignalBuilder<CounterCubit, int>.child(
+                  bloc: cubit,
+                  buildWhen: (previous, current) => current.isEven,
+                  child: _BuildCounterWidget(
+                    label: 'gated-child',
+                    onBuild: () => childBuilds++,
+                  ),
+                  builder: (context, state, child) {
+                    builderCalls++;
+                    return Column(
+                      children: [
+                        Text('EvenCount: $state'),
+                        if (child != null) child,
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+
+        expect(find.text('NullChild: 0'), findsOneWidget);
+        expect(find.text('EvenCount: 0'), findsOneWidget);
+        expect(childBuilds, equals(1));
+        expect(builderCalls, equals(1));
+
+        cubit.increment(); // 1 (odd -> buildWhen false)
+        await tester.pump();
+        expect(find.text('NullChild: 1'), findsOneWidget);
+        expect(find.text('EvenCount: 0'), findsOneWidget);
+        expect(childBuilds, equals(1));
+        expect(builderCalls, equals(1));
+
+        cubit.increment(); // 2 (even -> buildWhen true)
+        await tester.pump();
+        expect(find.text('NullChild: 2'), findsOneWidget);
+        expect(find.text('EvenCount: 2'), findsOneWidget);
+        expect(childBuilds, equals(1));
+        expect(builderCalls, equals(2));
+      },
+    );
+
+    testWidgets(
+      'BlocSignalSelector.child builds static child once across selected '
+      'changes',
+      (tester) async {
+        final cubit = _LabelCubit();
+        addTearDown(cubit.close);
+        var childBuilds = 0;
+        var builderCalls = 0;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocSignalSelector<_LabelCubit, String, String>.child(
+              bloc: cubit,
+              selector: (state) => state,
+              child: _BuildCounterWidget(
+                label: 'static-selector-child',
+                onBuild: () => childBuilds++,
+              ),
+              builder: (context, value, child) {
+                builderCalls++;
+                return Column(
+                  children: [
+                    Text('Label: $value'),
+                    if (child != null) child,
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+
+        expect(find.text('Label: initial'), findsOneWidget);
+        expect(find.text('static-selector-child'), findsOneWidget);
+        expect(childBuilds, equals(1));
+        expect(builderCalls, equals(1));
+
+        cubit.setLabel('updated');
+        await tester.pump();
+        expect(find.text('Label: updated'), findsOneWidget);
+        expect(childBuilds, equals(1));
+        expect(builderCalls, equals(2));
+      },
+    );
+
+    testWidgets(
+      'BlocSignalSelector.child supports null child, equals, and options',
+      (tester) async {
+        final cubit = _LabelCubit();
+        addTearDown(cubit.close);
+        var builderCalls = 0;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocSignalSelector<_LabelCubit, String, String>.child(
+              bloc: cubit,
+              selector: (state) => state,
+              options: const ComputedOptions<String>(
+                name: 'CaseInsensitiveLabel',
+              ),
+              equals: (previous, current) =>
+                  previous.toLowerCase() == current.toLowerCase(),
+              builder: (context, value, child) {
+                builderCalls++;
+                expect(child, isNull);
+                return Text('Selected: $value');
+              },
+            ),
+          ),
+        );
+
+        expect(find.text('Selected: initial'), findsOneWidget);
+        expect(builderCalls, equals(1));
+
+        // Case-only change should be suppressed by custom equals.
+        cubit.setLabel('INITIAL');
+        await tester.pump();
+        expect(find.text('Selected: initial'), findsOneWidget);
+        expect(builderCalls, equals(1));
+
+        // Distinct value should rebuild.
+        cubit.setLabel('changed');
+        await tester.pump();
+        expect(find.text('Selected: changed'), findsOneWidget);
+        expect(builderCalls, equals(2));
+
+        // Verify ReadonlySignalOptions is also accepted by .child.
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocSignalSelector<_LabelCubit, String, String>.child(
+              bloc: cubit,
+              selector: (state) => state,
+              options: const ReadonlySignalOptions<String>(name: 'Readonly'),
+              builder: (context, value, child) => Text('RO: $value'),
+            ),
+          ),
+        );
+        expect(find.text('RO: changed'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'BlocSignalConsumer.child preserves static child while listener and '
+      'builder fire',
+      (tester) async {
+        final cubit = CounterCubit();
+        addTearDown(cubit.close);
+        var childBuilds = 0;
+        var builderCalls = 0;
+        final listened = <int>[];
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocSignalConsumer<CounterCubit, int>.child(
+              bloc: cubit,
+              listenWhen: (previous, current) => current.isOdd,
+              listener: (context, state) => listened.add(state),
+              buildWhen: (previous, current) => current.isEven,
+              child: _BuildCounterWidget(
+                label: 'static-consumer-child',
+                onBuild: () => childBuilds++,
+              ),
+              builder: (context, state, child) {
+                builderCalls++;
+                return Column(
+                  children: [
+                    Text('Consumer: $state'),
+                    if (child != null) child,
+                  ],
+                );
+              },
+            ),
+          ),
+        );
+
+        expect(find.text('Consumer: 0'), findsOneWidget);
+        expect(find.text('static-consumer-child'), findsOneWidget);
+        expect(childBuilds, equals(1));
+        expect(builderCalls, equals(1));
+        expect(listened, isEmpty);
+
+        cubit.increment(); // 1 (odd -> listener fires, builder gated)
+        await tester.pump();
+        expect(listened, equals([1]));
+        expect(find.text('Consumer: 0'), findsOneWidget);
+        expect(childBuilds, equals(1));
+        expect(builderCalls, equals(1));
+
+        cubit.increment(); // 2 (even -> builder fires, listener gated)
+        await tester.pump();
+        expect(listened, equals([1]));
+        expect(find.text('Consumer: 2'), findsOneWidget);
+        expect(childBuilds, equals(1));
+        expect(builderCalls, equals(2));
+      },
+    );
+
+    testWidgets(
+      'BlocSignalConsumer.child supports null child',
+      (tester) async {
+        final cubit = CounterCubit();
+        addTearDown(cubit.close);
+        final listened = <int>[];
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocSignalConsumer<CounterCubit, int>.child(
+              bloc: cubit,
+              listener: (context, state) => listened.add(state),
+              builder: (context, state, child) {
+                expect(child, isNull);
+                return Text('NullConsumer: $state');
+              },
+            ),
+          ),
+        );
+
+        expect(find.text('NullConsumer: 0'), findsOneWidget);
+        cubit.increment();
+        await tester.pump();
+        expect(listened, equals([1]));
+        expect(find.text('NullConsumer: 1'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '(Issue #497: BLOCKER-2) BlocSignalSelector.child asserts on invalid '
+      'options and accepts SignalOptions',
+      (tester) async {
+        final cubit = _LabelCubit();
+        addTearDown(cubit.close);
+
+        expect(
+          () => BlocSignalSelector<_LabelCubit, String, String>.child(
+            bloc: cubit,
+            selector: (state) => state,
+            options: 'invalid',
+            builder: (context, value, child) => Text(value),
+          ),
+          throwsAssertionError,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocSignalSelector<_LabelCubit, String, String>.child(
+              bloc: cubit,
+              selector: (state) => state,
+              options: const SignalOptions<String>(name: 'SignalOpts'),
+              builder: (context, value, child) => Text('SigOpts: $value'),
+            ),
+          ),
+        );
+
+        expect(find.text('SigOpts: initial'), findsOneWidget);
+        cubit.setLabel('next');
+        await tester.pump();
+        expect(find.text('SigOpts: next'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '(Issue #497: BLOCKER-3) .child widgets support bloc: null, provider '
+      'swaps, and child updates without rebuilding unchanged static child',
+      (tester) async {
+        final c1 = CounterCubit();
+        final c2 = CounterCubit()..increment(); // 1
+        addTearDown(() async {
+          await c1.close();
+          await c2.close();
+        });
+
+        _constSwapBuilderChildBuilds = 0;
+        _constSwapSelectorChildBuilds = 0;
+        _constSwapConsumerChildBuilds = 0;
+        _constSwapConsumerListened.clear();
+        addTearDown(_constSwapConsumerListened.clear);
+
+        var activeCubit = c1;
+        late StateSetter setSwapHostState;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: StatefulBuilder(
+              builder: (context, setState) {
+                setSwapHostState = setState;
+                return BlocSignalProvider<CounterCubit>.value(
+                  value: activeCubit,
+                  child: const _ConstChildSwapSubtree(),
+                );
+              },
+            ),
+          ),
+        );
+
+        expect(find.text('B:0'), findsOneWidget);
+        expect(find.text('S:0'), findsOneWidget);
+        expect(find.text('C:0'), findsOneWidget);
+        expect(find.text('b-const-child'), findsOneWidget);
+        expect(find.text('s-const-child'), findsOneWidget);
+        expect(find.text('c-const-child'), findsOneWidget);
+        expect(_constSwapBuilderChildBuilds, equals(1));
+        expect(_constSwapSelectorChildBuilds, equals(1));
+        expect(_constSwapConsumerChildBuilds, equals(1));
+
+        // State emission on c1 must not rebuild static children.
+        c1.increment();
+        await tester.pump();
+        expect(find.text('B:1'), findsOneWidget);
+        expect(find.text('S:1'), findsOneWidget);
+        expect(find.text('C:1'), findsOneWidget);
+        expect(_constSwapConsumerListened, equals([1]));
+        expect(_constSwapBuilderChildBuilds, equals(1));
+        expect(_constSwapSelectorChildBuilds, equals(1));
+        expect(_constSwapConsumerChildBuilds, equals(1));
+
+        // Swap ancestor provider from c1 to c2 under a const subtree so
+        // rebinding occurs strictly via InheritedWidget (listen: true).
+        c2.increment(); // 2
+        setSwapHostState(() {
+          activeCubit = c2;
+        });
+        await tester.pump();
+        expect(find.text('B:2'), findsOneWidget);
+        expect(find.text('S:2'), findsOneWidget);
+        expect(find.text('C:2'), findsOneWidget);
+        expect(_constSwapBuilderChildBuilds, equals(1));
+        expect(_constSwapSelectorChildBuilds, equals(1));
+        expect(_constSwapConsumerChildBuilds, equals(1));
+
+        // Old cubit emissions must no longer trigger updates.
+        c1.emit(99);
+        await tester.pump();
+        expect(find.text('B:2'), findsOneWidget);
+        expect(find.text('S:2'), findsOneWidget);
+        expect(find.text('C:2'), findsOneWidget);
+        expect(_constSwapConsumerListened, equals([1]));
+        expect(_constSwapBuilderChildBuilds, equals(1));
+        expect(_constSwapSelectorChildBuilds, equals(1));
+        expect(_constSwapConsumerChildBuilds, equals(1));
+
+        // New cubit emissions update all three .child widgets without
+        // rebuilding their static children.
+        c2.increment(); // 3
+        await tester.pump();
+        expect(find.text('B:3'), findsOneWidget);
+        expect(find.text('S:3'), findsOneWidget);
+        expect(find.text('C:3'), findsOneWidget);
+        expect(_constSwapConsumerListened, equals([1, 3]));
+        expect(_constSwapBuilderChildBuilds, equals(1));
+        expect(_constSwapSelectorChildBuilds, equals(1));
+        expect(_constSwapConsumerChildBuilds, equals(1));
+
+        // Separate didUpdateWidget child-A -> child-B replacement check.
+        var childLabel = 'child-A';
+        var didUpdateBuilderBuilds = 0;
+        var didUpdateSelectorBuilds = 0;
+        var didUpdateConsumerBuilds = 0;
+        late StateSetter setChildHostState;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: StatefulBuilder(
+              builder: (context, setState) {
+                setChildHostState = setState;
+                return BlocSignalProvider<CounterCubit>.value(
+                  value: c2,
+                  child: Column(
+                    children: [
+                      BlocSignalBuilder<CounterCubit, int>.child(
+                        child: _BuildCounterWidget(
+                          key: ValueKey('builder-$childLabel'),
+                          label: 'b-$childLabel',
+                          onBuild: () => didUpdateBuilderBuilds++,
+                        ),
+                        builder: (context, state, child) => Column(
+                          children: [
+                            Text('B:$state'),
+                            if (child != null) child,
+                          ],
+                        ),
+                      ),
+                      BlocSignalSelector<CounterCubit, int, int>.child(
+                        selector: (state) => state,
+                        child: _BuildCounterWidget(
+                          key: ValueKey('selector-$childLabel'),
+                          label: 's-$childLabel',
+                          onBuild: () => didUpdateSelectorBuilds++,
+                        ),
+                        builder: (context, value, child) => Column(
+                          children: [
+                            Text('S:$value'),
+                            if (child != null) child,
+                          ],
+                        ),
+                      ),
+                      BlocSignalConsumer<CounterCubit, int>.child(
+                        listener: (context, state) {},
+                        child: _BuildCounterWidget(
+                          key: ValueKey('consumer-$childLabel'),
+                          label: 'c-$childLabel',
+                          onBuild: () => didUpdateConsumerBuilds++,
+                        ),
+                        builder: (context, state, child) => Column(
+                          children: [
+                            Text('C:$state'),
+                            if (child != null) child,
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+
+        expect(find.text('b-child-A'), findsOneWidget);
+        expect(find.text('s-child-A'), findsOneWidget);
+        expect(find.text('c-child-A'), findsOneWidget);
+        expect(didUpdateBuilderBuilds, equals(1));
+        expect(didUpdateSelectorBuilds, equals(1));
+        expect(didUpdateConsumerBuilds, equals(1));
+
+        setChildHostState(() {
+          childLabel = 'child-B';
+        });
+        await tester.pump();
+        expect(find.text('b-child-B'), findsOneWidget);
+        expect(find.text('s-child-B'), findsOneWidget);
+        expect(find.text('c-child-B'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      '(Issue #497: BLOCKER-4) .child widgets stop invoking callbacks after '
+      'unmount',
+      (tester) async {
+        final cubit = CounterCubit();
+        addTearDown(cubit.close);
+        var builderCalls = 0;
+        var buildWhenCalls = 0;
+        var selectorCalls = 0;
+        var selectorBuilderCalls = 0;
+        var consumerListenerCalls = 0;
+        var consumerBuilderCalls = 0;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Column(
+              children: [
+                BlocSignalBuilder<CounterCubit, int>.child(
+                  bloc: cubit,
+                  buildWhen: (prev, curr) {
+                    buildWhenCalls++;
+                    return true;
+                  },
+                  child: const Text('b-child'),
+                  builder: (context, state, child) {
+                    builderCalls++;
+                    return Text('B:$state');
+                  },
+                ),
+                BlocSignalSelector<CounterCubit, int, int>.child(
+                  bloc: cubit,
+                  selector: (state) {
+                    selectorCalls++;
+                    return state;
+                  },
+                  child: const Text('s-child'),
+                  builder: (context, value, child) {
+                    selectorBuilderCalls++;
+                    return Text('S:$value');
+                  },
+                ),
+                BlocSignalConsumer<CounterCubit, int>.child(
+                  bloc: cubit,
+                  listener: (context, state) => consumerListenerCalls++,
+                  child: const Text('c-child'),
+                  builder: (context, state, child) {
+                    consumerBuilderCalls++;
+                    return Text('C:$state');
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+
+        final initialBuilderCalls = builderCalls;
+        final initialBuildWhenCalls = buildWhenCalls;
+        final initialSelectorCalls = selectorCalls;
+        final initialSelectorBuilderCalls = selectorBuilderCalls;
+        final initialConsumerListenerCalls = consumerListenerCalls;
+        final initialConsumerBuilderCalls = consumerBuilderCalls;
+
+        // Explicitly unmount all .child widgets.
+        await tester.pumpWidget(const SizedBox());
+
+        cubit.increment();
+        await tester.pump();
+        cubit.increment();
+        await tester.pump();
+
+        expect(builderCalls, equals(initialBuilderCalls));
+        expect(buildWhenCalls, equals(initialBuildWhenCalls));
+        expect(selectorCalls, equals(initialSelectorCalls));
+        expect(selectorBuilderCalls, equals(initialSelectorBuilderCalls));
+        expect(consumerListenerCalls, equals(initialConsumerListenerCalls));
+        expect(consumerBuilderCalls, equals(initialConsumerBuilderCalls));
+      },
+    );
+
+    testWidgets(
+      '(Issue #497: BLOCKER-5) .child throwing 3-arg builder surfaces '
+      'exceptions on initial build and reactive update',
+      (tester) async {
+        final cubit = CounterCubit();
+        addTearDown(cubit.close);
+
+        // InitialBuild -> BuildFailure
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocSignalBuilder<CounterCubit, int>.child(
+              bloc: cubit,
+              child: const Text('static'),
+              builder: (context, state, child) {
+                throw StateError('initial-build-failure');
+              },
+            ),
+          ),
+        );
+        expect(tester.takeException(), isA<StateError>());
+
+        // ReactiveUpdate -> BuildFailure
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BlocSignalBuilder<CounterCubit, int>.child(
+              bloc: cubit,
+              child: const Text('static'),
+              builder: (context, state, child) {
+                if (state > 0) {
+                  throw StateError('reactive-update-failure');
+                }
+                return Text('OK:$state');
+              },
+            ),
+          ),
+        );
+        expect(find.text('OK:0'), findsOneWidget);
+
+        cubit.increment();
+        await tester.pump();
+        expect(tester.takeException(), isA<StateError>());
+      },
+    );
+
+    testWidgets(
+      '(Issue #497: BLOCKER-6) .child supports const instantiation and '
+      'direct widget.builder getter fallback',
+      (tester) async {
+        const staticChild = Text('const-child');
+        const builderWidget = BlocSignalBuilder<CounterCubit, int>.child(
+          builder: _constChildBuilder,
+          child: staticChild,
+        );
+        const selectorWidget = BlocSignalSelector<CounterCubit, int, int>.child(
+          selector: _selectCounterState,
+          builder: _constChildBuilder,
+          child: staticChild,
+        );
+        const consumerWidget = BlocSignalConsumer<CounterCubit, int>.child(
+          listener: _constListener,
+          builder: _constChildBuilder,
+          child: staticChild,
+        );
+
+        await tester.pumpWidget(
+          const MaterialApp(
+            home: SizedBox.shrink(),
+          ),
+        );
+        final context = tester.element(find.byType(SizedBox));
+
+        final bResult = builderWidget.builder(context, 42);
+        final sResult = selectorWidget.builder(context, 7);
+        final cResult = consumerWidget.builder(context, 99);
+
+        expect(bResult, isA<Column>());
+        expect(sResult, isA<Column>());
+        expect(cResult, isA<Column>());
+      },
+    );
+  });
 }
+
+Widget _constChildBuilder(BuildContext context, int value, Widget? child) {
+  return Column(
+    children: [
+      Text('Val:$value'),
+      if (child != null) child,
+    ],
+  );
+}
+
+void _constListener(BuildContext context, int state) {}
 
 class _LabelCubit extends CubitSignal<String> {
   _LabelCubit() : super(initialState: 'initial');
@@ -2504,6 +3178,109 @@ class _ExplicitValueEqualSwapHostState
           ),
         ],
       ),
+    );
+  }
+}
+
+class _BuildCounterWidget extends StatelessWidget {
+  const _BuildCounterWidget({
+    required this.label,
+    required this.onBuild,
+    super.key,
+  });
+
+  final String label;
+  final VoidCallback onBuild;
+
+  @override
+  Widget build(BuildContext context) {
+    onBuild();
+    return Text(label);
+  }
+}
+
+int _constSwapBuilderChildBuilds = 0;
+int _constSwapSelectorChildBuilds = 0;
+int _constSwapConsumerChildBuilds = 0;
+final List<int> _constSwapConsumerListened = <int>[];
+
+class _ConstChildSwapSubtree extends StatelessWidget {
+  const _ConstChildSwapSubtree();
+
+  static void _onBuilderChildBuild() => _constSwapBuilderChildBuilds++;
+  static void _onSelectorChildBuild() => _constSwapSelectorChildBuilds++;
+  static void _onConsumerChildBuild() => _constSwapConsumerChildBuilds++;
+  static void _onConsumerListen(BuildContext context, int state) =>
+      _constSwapConsumerListened.add(state);
+  static int _selectState(int state) => state;
+
+  static Widget _buildBuilder(
+    BuildContext context,
+    int state,
+    Widget? child,
+  ) =>
+      Column(
+        children: [
+          Text('B:$state'),
+          if (child != null) child,
+        ],
+      );
+
+  static Widget _buildSelector(
+    BuildContext context,
+    int value,
+    Widget? child,
+  ) =>
+      Column(
+        children: [
+          Text('S:$value'),
+          if (child != null) child,
+        ],
+      );
+
+  static Widget _buildConsumer(
+    BuildContext context,
+    int state,
+    Widget? child,
+  ) =>
+      Column(
+        children: [
+          Text('C:$state'),
+          if (child != null) child,
+        ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return const Column(
+      children: [
+        BlocSignalBuilder<CounterCubit, int>.child(
+          builder: _buildBuilder,
+          child: _BuildCounterWidget(
+            key: ValueKey('const-builder-child'),
+            label: 'b-const-child',
+            onBuild: _onBuilderChildBuild,
+          ),
+        ),
+        BlocSignalSelector<CounterCubit, int, int>.child(
+          selector: _selectState,
+          builder: _buildSelector,
+          child: _BuildCounterWidget(
+            key: ValueKey('const-selector-child'),
+            label: 's-const-child',
+            onBuild: _onSelectorChildBuild,
+          ),
+        ),
+        BlocSignalConsumer<CounterCubit, int>.child(
+          listener: _onConsumerListen,
+          builder: _buildConsumer,
+          child: _BuildCounterWidget(
+            key: ValueKey('const-consumer-child'),
+            label: 'c-const-child',
+            onBuild: _onConsumerChildBuild,
+          ),
+        ),
+      ],
     );
   }
 }

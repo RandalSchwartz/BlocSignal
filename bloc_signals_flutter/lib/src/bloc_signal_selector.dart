@@ -25,12 +25,56 @@ class BlocSignalSelector<T extends BlocSignalBase<S>, S, V>
   /// Creates a [BlocSignalSelector] widget.
   const BlocSignalSelector({
     required this.selector,
-    required this.builder,
+    required Widget Function(BuildContext context, V value) builder,
     this.bloc,
     this.options,
     this.equals,
     super.key,
-  }) : assert(
+  })  : _builder = builder,
+        child = null,
+        _childBuilder = null,
+        assert(
+          options == null ||
+              options is ComputedOptions<V> ||
+              options is SignalOptions<V> ||
+              options is ReadonlySignalOptions<V>,
+          'options must be a ComputedOptions<$V>, SignalOptions<$V>, '
+          'or ReadonlySignalOptions<$V>.',
+        );
+
+  /// Creates a [BlocSignalSelector] that preserves a static [child] subtree
+  /// across selected-value rebuilds.
+  ///
+  /// The [child] widget is built once by the parent and passed into [builder]
+  /// whenever the selected value changes.
+  ///
+  /// Example:
+  /// ```dart
+  /// BlocSignalSelector<UserBloc, UserState, String>.child(
+  ///   selector: (state) => state.username,
+  ///   child: const Icon(Icons.person),
+  ///   builder: (context, username, child) {
+  ///     return Row(
+  ///       children: [
+  ///         if (child != null) child,
+  ///         Text('Username: $username'),
+  ///       ],
+  ///     );
+  ///   },
+  /// )
+  /// ```
+  const BlocSignalSelector.child({
+    required this.selector,
+    required Widget Function(BuildContext context, V value, Widget? child)
+        builder,
+    this.bloc,
+    this.options,
+    this.equals,
+    this.child,
+    super.key,
+  })  : _builder = null,
+        _childBuilder = builder,
+        assert(
           options == null ||
               options is ComputedOptions<V> ||
               options is SignalOptions<V> ||
@@ -57,8 +101,18 @@ class BlocSignalSelector<T extends BlocSignalBase<S>, S, V>
   /// The function that selects the sub-value from the state.
   final V Function(S state) selector;
 
+  final Widget Function(BuildContext context, V value)? _builder;
+
   /// The builder function that rebuilds when the selected value changes.
-  final Widget Function(BuildContext context, V value) builder;
+  Widget Function(BuildContext context, V value) get builder =>
+      _builder ?? (context, value) => _childBuilder!(context, value, child);
+
+  /// An optional static child widget passed through to the `builder` callback
+  /// in [BlocSignalSelector.child].
+  final Widget? child;
+
+  final Widget Function(BuildContext context, V value, Widget? child)?
+      _childBuilder;
 
   @override
   State<BlocSignalSelector<T, S, V>> createState() =>
@@ -189,6 +243,10 @@ class _BlocSignalSelectorState<T extends BlocSignalBase<S>, S, V>
 
   @override
   Widget build(BuildContext context) {
+    final childBuilder = widget._childBuilder;
+    if (childBuilder != null) {
+      return childBuilder(context, _selectedValue, widget.child);
+    }
     return widget.builder(context, _selectedValue);
   }
 }

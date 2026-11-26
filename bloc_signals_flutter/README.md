@@ -105,6 +105,22 @@ class CounterScreen extends StatelessWidget {
 }
 ```
 
+To avoid rebuilding an expensive static subtree on every state emission, use the `.child` constructor (`BlocSignalBuilder.child`, `BlocSignalConsumer.child`, or `BlocSignalSelector.child`):
+
+```dart
+BlocSignalBuilder<CounterBloc, int>.child(
+  child: const ExpensiveStaticHeader(),
+  builder: (context, state, child) {
+    return Column(
+      children: [
+        if (child != null) child,
+        Text('Count: $state'),
+      ],
+    );
+  },
+)
+```
+
 ### 2. Side-Effect Listener (`BlocSignalListener`)
 
 ```dart

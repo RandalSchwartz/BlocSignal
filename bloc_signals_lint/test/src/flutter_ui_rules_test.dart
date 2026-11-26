@@ -3,6 +3,7 @@ import 'package:bloc_signals_lint/src/rules/avoid_emit_in_build.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_invalid_context_select_generics.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_signal_creation_in_build.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_unmanaged_signal_effects.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_unused_select_result.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_bloc_signal_provider_read_in_callbacks.dart';
@@ -522,12 +523,16 @@ class MyJasprState extends State<StatefulComponent> {
 }
 ''';
       final jasprLints = await runLintRule(
-        AvoidUnmanagedSignalEffects(),
+        AvoidSignalCreationInBuild(),
         jasprCode,
       );
       // 2 in MyJasprStateless.build (stop = effect, c = computed) +
       // 1 in MyJasprState.build (effect)
       expect(jasprLints, hasLength(3));
+      expect(
+        await runLintRule(AvoidUnmanagedSignalEffects(), jasprCode),
+        isEmpty,
+      );
 
       const hooksAndSubclassCode = '''
 import 'package:bloc_signals/bloc_signals.dart';
@@ -558,12 +563,29 @@ class MyHookWidget extends HookWidget {
 }
 ''';
       final hooksLints = await runLintRule(
-        AvoidUnmanagedSignalEffects(),
+        AvoidSignalCreationInBuild(),
         hooksAndSubclassCode,
       );
       // 1 in SubWidget.build (effect) + 1 in MyHookWidget.build (computed);
       // useEffect callback allowed
       expect(hooksLints, hasLength(2));
+      expect(
+        await runLintRule(AvoidUnmanagedSignalEffects(), hooksAndSubclassCode),
+        isEmpty,
+      );
+    });
+
+    test('(Issue #482: Round 2 BLOCKER-14) AvoidUnmanagedSignalEffects allows '
+        'computed() field initializer inside Widget/State', () async {
+      const fieldCode = '''
+class MyState extends State<StatefulWidget> {
+  late final c = computed(() => 1);
+  @override
+  Widget build(BuildContext context) => Container();
+}
+''';
+      final lints = await runLintRule(AvoidUnmanagedSignalEffects(), fieldCode);
+      expect(lints, isEmpty);
     });
 
     test(

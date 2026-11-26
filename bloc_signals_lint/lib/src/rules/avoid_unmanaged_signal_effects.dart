@@ -59,12 +59,13 @@ class _Visitor extends SimpleAstVisitor<void> {
       return;
     }
 
-    if (methodName == 'effect' && node.parent is ExpressionStatement) {
-      rule.reportAtNode(node.methodName);
+    if (_isDirectBuildBodyAllocation(node)) {
+      // Handled by `avoid_signal_creation_in_build` to avoid duplicate
+      // diagnostics on direct `build()` allocations.
       return;
     }
 
-    if (_isDirectBuildBodyAllocation(node)) {
+    if (methodName == 'effect' && node.parent is ExpressionStatement) {
       rule.reportAtNode(node.methodName);
     }
   }

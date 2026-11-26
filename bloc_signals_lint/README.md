@@ -47,9 +47,9 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 
 | Rule | Default Severity | Description | Automated Fix |
 | :--- | :--- | :--- | :--- |
-| **`avoid_duplicate_event_handlers`** | Warning | Flags multiple `on<E>` registrations for the exact same event type `E` within a `BlocSignal` or `BlocSignalMixin` class or mixin declaration. | — |
+| **`avoid_duplicate_event_handlers`** | Warning | Flags multiple `on<E>` registrations for the exact same event type `E` within a `BlocSignal` or `BlocSignalMixin` class or mixin declaration. | `Cmd+.` -> Remove duplicate event handler |
 | **`require_super_on_event`** | Warning | Enforces calling `super.onEvent(event)` inside `onEvent` overrides to preserve Zone event context. | `Cmd+.` -> Add `super.onEvent(event);` |
-| **`avoid_stream_transformers_on_bloc_signal`** | Warning | Flags stream transformer invocations (for example `.transform()`, `.debounce()`, `.switchMap()`) directly on synchronous `BlocSignalBase` instances. | — |
+| **`avoid_stream_transformers_on_bloc_signal`** | Warning | Flags stream transformer invocations (for example `.transform()`, `.debounce()`, `.switchMap()`) directly on synchronous `BlocSignalBase` instances. | `Cmd+.` -> Insert `.toStream()` |
 | **`avoid_direct_signal_mutation_outside_bloc`** | Warning | Prevents external code outside the state container class from calling protected `emit()` or mutating internal signal state. | — |
 | **`avoid_top_level_bloc_signal_instances`** | Warning | Flags top-level variables and static fields declared directly as `BlocSignal` / `CubitSignal` instances. | — |
 | **`require_cubit_signal_mixin_init`** | Warning | Enforces calling `initCubitSignal(initialState: ...)` in constructors of classes mixing in `CubitSignalMixin` or `BlocSignalMixin`. | `Cmd+.` -> Add `initCubitSignal(initialState: ...);` |
@@ -60,6 +60,9 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 | **`avoid_primitive_event_types`** | Warning | Flags `BlocSignal<Event, State>` or `BlocSignalMixin` using primitive or untyped types (`int`, `String`, `bool`, `dynamic`, etc.) as event types. | — |
 | **`avoid_pseudo_events_in_telemetry`** | Warning | Flags `emitTelemetry('...')` calls inside `CubitSignal` where the name matches UI event action patterns (`Pressed`, `Clicked`, `Submitted`, etc.). | — |
 | **`avoid_emit_or_add_in_computed`** | Error | Flags `emit()` or `add()` calls on state containers inside `computed()` callbacks. | — |
+| **`require_hydrated_storage_prefix`** | Warning | Requires concrete `HydratedCubitSignal`, `HydratedBlocSignal`, and `HydratedMixin` classes to override `storagePrefix`. | `Cmd+.` -> Add `@override String get storagePrefix` |
+| **`require_hydrated_mixin_init`** | Warning | Requires classes mixing in `HydratedMixin` with `CubitSignalMixin` or `BlocSignalMixin` to call `hydrate()` in constructors. | `Cmd+.` -> Add `hydrate();` |
+| **`avoid_unmanaged_signal_subscription`** | Warning | Flags discarded `ReadonlySignal.subscribe(...)` calls whose cleanup closure is not retained. | — |
 
 ### Flutter UI Rules
 
@@ -67,14 +70,17 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 | Rule | Default Severity | Description | Automated Fix |
 | :--- | :--- | :--- | :--- |
 | **`avoid_emit_in_build`** | Warning | Flags calls to `emit()` or `add()` on state containers directly inside Flutter `Widget.build()` methods. | — |
-| **`avoid_unmanaged_signal_effects`** | Warning | Flags unmanaged `effect()` calls inside Flutter `Widget`/`HookWidget`/`State` or Jaspr `Component`/`State` methods, and direct `effect()`/`computed()` allocations inside `build()`. | — |
+| **`avoid_unmanaged_signal_effects`** | Warning | Flags unmanaged `effect()` calls inside Flutter `Widget`/`HookWidget`/`State` or Jaspr `Component`/`State` methods outside `build()`. | — |
 | **`prefer_bloc_signal_provider_read_in_callbacks`** | Warning | Warns when `context.watch<T>()` is used inside event callback closures (for example `onPressed`), suggesting `context.read<T>()`. | `Cmd+.` -> Replace `watch` with `read` |
 | **`avoid_providing_existing_instance_with_create`** | Warning | Flags passing existing variable references to `BlocSignalProvider(create: ...)` instead of `BlocSignalProvider.value(value: ...)`. | `Cmd+.` -> Replace `create:` with `value:` |
-| **`avoid_manual_close_on_provided_bloc`** | Warning | Flags calling `.close()` manually on state containers retrieved via `context.read<T>()` or `BlocSignalProvider.of(context)`. | — |
-| **`avoid_invalid_context_select_generics`** | Warning | Flags `context.select<B, R>` where generic parameters are omitted or invalid. | — |
-| **`avoid_context_watch_for_bloc_state`** | Warning | Flags `context.watch<T>()` on state containers inside `build()` methods to prevent missing state emission rebuilds. | `Cmd+.` -> Replace `watch` with `read` |
-| **`avoid_unused_select_result`** | Warning | Flags calling `context.select(...)` as an unused expression statement where the result is discarded. | — |
+| **`avoid_manual_close_on_provided_bloc`** | Warning | Flags calling `.close()` manually on state containers retrieved via `context.read<T>()` or `BlocSignalProvider.of(context)`. | `Cmd+.` -> Remove manual `close()` call |
+| **`avoid_invalid_context_select_generics`** | Warning | Flags `context.select<B, R>` where generic parameters are omitted or invalid. | `Cmd+.` -> Reduce type arguments to `<B, R>` |
+| **`avoid_context_watch_for_bloc_state`** | Warning | Flags `context.watch<T>()` on state containers inside `build()` methods to prevent missing state emission rebuilds. | `Cmd+.` -> Replace `watch` with `read` / `value<B, S>()` |
+| **`avoid_unused_select_result`** | Warning | Flags calling `context.select(...)` as an unused expression statement where the result is discarded. | `Cmd+.` -> Bind result to `final value` |
 | **`avoid_bridging_in_build`** | Warning | Flags `.toBlocSignal()`, `.toAsyncBlocSignal()`, `.toValueListenable()`, and `ListenableBlocSignal` calls directly inside UI `build()` methods. | — |
+| **`require_child_outside_multi_bloc_signal`** | Warning | Flags `BlocSignalProvider`, `BlocSignalProvider.value`, and `BlocSignalListener` omitting `child:` outside `MultiBlocSignalProvider` / `MultiBlocSignalListener`. | — |
+| **`avoid_signal_creation_in_build`** | Warning | Flags direct `signal()`, `computed()`, and `effect()` allocations inside `build()` methods. | — |
+| **`avoid_context_select_outside_build`** | Warning | Flags `context.select(...)` and `context.value(...)` calls outside `build()` (callbacks, closures, `computed`/`effect`, or non-`build` lifecycle methods). | `Cmd+.` -> Replace with `context.read<B>()` |
 
 ---
 

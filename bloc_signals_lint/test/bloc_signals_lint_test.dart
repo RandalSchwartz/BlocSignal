@@ -5,15 +5,25 @@ import 'package:analyzer/analysis_rule/analysis_rule.dart';
 import 'package:analyzer/error/error.dart';
 import 'package:bloc_signals_lint/bloc_signals_lint.dart';
 import 'package:bloc_signals_lint/main.dart' as main_entrypoint;
+import 'package:bloc_signals_lint/src/fixes/add_hydrated_mixin_init_fix.dart';
+import 'package:bloc_signals_lint/src/fixes/add_hydrated_storage_prefix_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/add_super_on_event_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/avoid_raw_signal_effects_in_bloc_fix.dart';
+import 'package:bloc_signals_lint/src/fixes/bind_unused_select_result_fix.dart';
+import 'package:bloc_signals_lint/src/fixes/fix_context_select_generics_fix.dart';
+import 'package:bloc_signals_lint/src/fixes/insert_to_stream_for_transformer_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/prefer_read_in_callbacks_fix.dart';
+import 'package:bloc_signals_lint/src/fixes/remove_duplicate_event_handler_fix.dart';
+import 'package:bloc_signals_lint/src/fixes/remove_manual_close_on_provided_bloc_fix.dart';
+import 'package:bloc_signals_lint/src/fixes/replace_context_select_outside_build_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/replace_context_watch_with_read_fix.dart';
+import 'package:bloc_signals_lint/src/fixes/replace_context_watch_with_value_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/replace_positional_replay_constructor_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/require_cubit_signal_mixin_init_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/require_emit_in_helper_name_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/use_provider_value_fix.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_bridging_in_build.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_context_select_outside_build.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_context_watch_for_bloc_state.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
@@ -26,14 +36,19 @@ import 'package:bloc_signals_lint/src/rules/avoid_primitive_event_types.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_providing_existing_instance_with_create.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_pseudo_events_in_telemetry.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_raw_signal_effects_in_bloc.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_signal_creation_in_build.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_stream_transformers_on_bloc_signal.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_top_level_bloc_signal_instances.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_unmanaged_signal_effects.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_unmanaged_signal_subscription.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_unused_select_result.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_bloc_signal_provider_read_in_callbacks.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_named_replay_constructor.dart';
+import 'package:bloc_signals_lint/src/rules/require_child_outside_multi_bloc_signal.dart';
 import 'package:bloc_signals_lint/src/rules/require_cubit_signal_mixin_init.dart';
 import 'package:bloc_signals_lint/src/rules/require_emit_in_helper_name.dart';
+import 'package:bloc_signals_lint/src/rules/require_hydrated_mixin_init.dart';
+import 'package:bloc_signals_lint/src/rules/require_hydrated_storage_prefix.dart';
 import 'package:bloc_signals_lint/src/rules/require_super_on_event.dart';
 import 'package:test/test.dart';
 
@@ -57,7 +72,7 @@ class _RecordingPluginRegistry implements PluginRegistry {
 
 void main() {
   group('bloc_signals_lint plugin entrypoint', () {
-    test('plugin exposes BlocSignalsPlugin with 22 rules and 8 fixes', () {
+    test('plugin exposes BlocSignalsPlugin with 28 rules and 17 fixes', () {
       expect(plugin, isA<Plugin>());
       expect(plugin, isA<BlocSignalsPlugin>());
       expect(identical(main_entrypoint.plugin, plugin), isTrue);
@@ -67,7 +82,7 @@ void main() {
       plugin.register(registry);
 
       final rules = registry.warningRules;
-      expect(rules, hasLength(22));
+      expect(rules, hasLength(28));
       expect(rules, contains(isA<AvoidDuplicateEventHandlers>()));
       expect(rules, contains(isA<RequireSuperOnEvent>()));
       expect(rules, contains(isA<AvoidStreamTransformersOnBlocSignal>()));
@@ -90,8 +105,19 @@ void main() {
       expect(rules, contains(isA<AvoidPseudoEventsInTelemetry>()));
       expect(rules, contains(isA<AvoidBridgingInBuild>()));
       expect(rules, contains(isA<AvoidEmitOrAddInComputed>()));
+      expect(rules, contains(isA<RequireChildOutsideMultiBlocSignal>()));
+      expect(rules, contains(isA<RequireHydratedStoragePrefix>()));
+      expect(rules, contains(isA<RequireHydratedMixinInit>()));
+      expect(rules, contains(isA<AvoidSignalCreationInBuild>()));
+      expect(rules, contains(isA<AvoidContextSelectOutsideBuild>()));
+      expect(rules, contains(isA<AvoidUnmanagedSignalSubscription>()));
 
-      expect(registry.fixes, hasLength(8));
+      expect(registry.fixes, hasLength(16));
+      final totalProducers = registry.fixes.values.fold<int>(
+        0,
+        (sum, list) => sum + list.length,
+      );
+      expect(totalProducers, equals(17));
     });
   });
 
@@ -278,6 +304,54 @@ void main() {
       );
       expect(rule.diagnosticCode.severity, equals(DiagnosticSeverity.ERROR));
     });
+
+    test('RequireChildOutsideMultiBlocSignal code is properly configured', () {
+      final rule = RequireChildOutsideMultiBlocSignal();
+      expect(
+        rule.diagnosticCode.lowerCaseName,
+        equals('require_child_outside_multi_bloc_signal'),
+      );
+    });
+
+    test('RequireHydratedStoragePrefix code is properly configured', () {
+      final rule = RequireHydratedStoragePrefix();
+      expect(
+        rule.diagnosticCode.lowerCaseName,
+        equals('require_hydrated_storage_prefix'),
+      );
+    });
+
+    test('RequireHydratedMixinInit code is properly configured', () {
+      final rule = RequireHydratedMixinInit();
+      expect(
+        rule.diagnosticCode.lowerCaseName,
+        equals('require_hydrated_mixin_init'),
+      );
+    });
+
+    test('AvoidSignalCreationInBuild code is properly configured', () {
+      final rule = AvoidSignalCreationInBuild();
+      expect(
+        rule.diagnosticCode.lowerCaseName,
+        equals('avoid_signal_creation_in_build'),
+      );
+    });
+
+    test('AvoidContextSelectOutsideBuild code is properly configured', () {
+      final rule = AvoidContextSelectOutsideBuild();
+      expect(
+        rule.diagnosticCode.lowerCaseName,
+        equals('avoid_context_select_outside_build'),
+      );
+    });
+
+    test('AvoidUnmanagedSignalSubscription code is properly configured', () {
+      final rule = AvoidUnmanagedSignalSubscription();
+      expect(
+        rule.diagnosticCode.lowerCaseName,
+        equals('avoid_unmanaged_signal_subscription'),
+      );
+    });
   });
 
   group('Rule Fix Association assertions', () {
@@ -318,6 +392,42 @@ void main() {
         expect(
           registry.fixes[RequireEmitInHelperName.code],
           contains(equals(RequireEmitInHelperNameFix.new)),
+        );
+        expect(
+          registry.fixes[AvoidContextWatchForBlocState.code],
+          contains(equals(ReplaceContextWatchWithValueFix.new)),
+        );
+        expect(
+          registry.fixes[RequireHydratedStoragePrefix.code],
+          contains(equals(AddHydratedStoragePrefixFix.new)),
+        );
+        expect(
+          registry.fixes[RequireHydratedMixinInit.code],
+          contains(equals(AddHydratedMixinInitFix.new)),
+        );
+        expect(
+          registry.fixes[AvoidContextSelectOutsideBuild.code],
+          contains(equals(ReplaceContextSelectOutsideBuildFix.new)),
+        );
+        expect(
+          registry.fixes[AvoidInvalidContextSelectGenerics.code],
+          contains(equals(FixContextSelectGenericsFix.new)),
+        );
+        expect(
+          registry.fixes[AvoidStreamTransformersOnBlocSignal.code],
+          contains(equals(InsertToStreamForTransformerFix.new)),
+        );
+        expect(
+          registry.fixes[AvoidUnusedSelectResult.code],
+          contains(equals(BindUnusedSelectResultFix.new)),
+        );
+        expect(
+          registry.fixes[AvoidManualCloseOnProvidedBloc.code],
+          contains(equals(RemoveManualCloseOnProvidedBlocFix.new)),
+        );
+        expect(
+          registry.fixes[AvoidDuplicateEventHandlers.code],
+          contains(equals(RemoveDuplicateEventHandlerFix.new)),
         );
       },
     );

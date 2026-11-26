@@ -44,7 +44,7 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 ## ⚡ Key Features
 
 - 🎯 **Declarative Assertions**: Verify emitted states in exact order using `expect`.
-- ⏱️ **Async Support**: Await asynchronous event handlers or timers using `wait`.
+- ⏱️ **Async & Virtual-Time Support**: Await asynchronous event handlers or timers using `wait`, or opt into `fakeAsync: true` with `elapse()` and `flushMicrotasks()` for zero-wall-clock-latency timer testing.
 - ⏭️ **State Skipping**: Skip initial emissions using `skip`.
 - 🚨 **Error Testing**: Verify exceptions reported to `onError`, rethrown `Error` subtypes (for example `StateError` or `ArgumentError`), and direct `CubitSignal` method throws using `errors`.
 - 🧹 **Automatic Cleanup**: Guarantees observer restoration and `bloc.close()` post-test.
@@ -98,7 +98,28 @@ blocSignalTest<DataBloc, DataState>(
 );
 ```
 
-### 3. Mocking & Faking for Widget & Golden Tests
+### 3. Virtual-Time Testing (`fakeAsync`, `elapse`, & `flushMicrotasks`)
+
+Pass `fakeAsync: true` to run `build`, `act`, and `wait` inside a `FakeAsync` zone so timers and delays complete instantaneously without wall-clock waiting:
+
+```dart
+blocSignalTest<SearchBloc, SearchState>(
+  'debounces search queries in virtual time',
+  build: SearchBloc.new,
+  act: (bloc) {
+    bloc.add(QueryChanged('da'));
+    elapse(const Duration(milliseconds: 200));
+    bloc.add(QueryChanged('dart'));
+    elapse(const Duration(milliseconds: 300));
+  },
+  fakeAsync: true,
+  expect: () => [const SearchResults('dart')],
+);
+```
+
+Use `wait: const Duration(...)` with `fakeAsync: true` to advance the virtual clock after `act`, or call `flushMicrotasks()` inside `act` to drain microtasks without advancing virtual time.
+
+### 4. Mocking & Faking for Widget & Golden Tests
 
 In `BlocSignal`, `cubit.state` is a reactive `ReadonlySignal<S>` (which `BlocSignalBuilder`, `BlocSignalListener`, `BlocSignalSelector`, and `context.select` subscribe to inside reactive effects and computeds), while `cubit.value` (and `cubit.stateValue`) returns the raw `S` snapshot. Attempting to stub `when(() => cubit.state).thenReturn(MyLoadedState())` with `mocktail` will fail because `MyLoadedState` is not a `ReadonlySignal<MyState>`.
 

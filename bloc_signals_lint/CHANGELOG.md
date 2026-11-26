@@ -6,6 +6,7 @@
 - **Feat (lint)**: Add `avoid_bridging_in_build` warning rule and `avoid_emit_or_add_in_computed` error rule (#500).
 - **Feat (lint)**: Extend `avoid_bridging_in_build` to all official adapter constructors (`StreamBlocSignal`, `FutureBlocSignal`, `SignalBlocSignal`, `ClassicBlocSignal`, `ClassicCubitSignal`, `BlocSignalToClassicBloc`, `BlocSignalToClassicCubit`, `RiverpodBlocSignal`, `RiverpodNotifierBlocSignal`), `.toClassicBloc()`, `.toClassicCubit()`, and `.toStream()`, and generalize `BlocContainerUtils.isUiComponentOrState` to support `State` / `Component` / `Widget` `MixinDeclaration`s across `avoid_bridging_in_build`, `avoid_signal_creation_in_build`, and `avoid_unmanaged_signal_effects` (#505).
 - **Fix (lint)**: Extend `avoid_emit_or_add_in_computed` to support `Computed(...)` constructors, `computedFrom(...)` invocations, `signals_core` imports, and `ExtensionDeclaration` hosts via `BlocContainerUtils.nearestContainerOrExtensionDeclaration` (#506).
+- **Fix (lint)**: Handle `ClassBody` (`EmptyClassBody` / `BlockClassBody`) exhaustively in `require_emit_in_helper_name`, `require_emit_in_helper_name_fix`, and `avoid_multiple_synchronous_emits`; align named `PrimaryConstructorDeclaration` + `EmptyClassBody` diagnostic tokens in `require_cubit_signal_mixin_init` and `require_hydrated_mixin_init`; and fix `EmptyFunctionBody` leading spacing (`this {` / `S() {`) in `require_cubit_signal_mixin_init_fix` (#489).
 
 ## 2.0.0
 

@@ -3,7 +3,11 @@ import 'package:analyzer/dart/ast/ast.dart';
 import 'package:bloc_signals_lint/src/rules/require_emit_in_helper_name.dart';
 import 'package:test/test.dart';
 
+import '../src/lint_test_harness.dart';
+
 void main() {
+  tearDownAll(disposeLintTestHarness);
+
   group('RequireEmitInHelperName AST Detection', () {
     test('rule metadata is properly configured', () {
       final rule = RequireEmitInHelperName();
@@ -230,5 +234,66 @@ class CounterCubit extends CubitSignal<int> {
         );
       },
     );
+
+    test('(Issue #489) handles EmptyClassBody classes/mixins and PrimaryConstructorBody', () async {
+      const emptyClassCode = '''
+class C() extends CubitSignal<int>;
+''';
+      expect(
+        await runLintRule(RequireEmitInHelperName(), emptyClassCode),
+        isEmpty,
+      );
+
+      const emptyMixinCode = '''
+mixin M on CubitSignal<int>;
+''';
+      expect(
+        await runLintRule(RequireEmitInHelperName(), emptyMixinCode),
+        isEmpty,
+      );
+
+      const primaryBodyWithHelper = '''
+class CounterCubit() extends CubitSignal<int> {
+  this : super(initialState: 0) {
+    _prune();
+  }
+
+  void _prune() {
+    emit(stateValue + 1);
+  }
+}
+''';
+      final lints = await runLintRule(
+        RequireEmitInHelperName(),
+        primaryBodyWithHelper,
+      );
+      expect(lints, hasLength(1));
+      expect(
+        lints.first.offset,
+        equals(primaryBodyWithHelper.indexOf('_prune() {')),
+      );
+
+      const primaryBodyDirectEmit = '''
+class CounterCubit() extends CubitSignal<int> {
+  this : super(initialState: 0) {
+    emit(stateValue + 1);
+  }
+}
+''';
+      expect(
+        await runLintRule(RequireEmitInHelperName(), primaryBodyDirectEmit),
+        isEmpty,
+      );
+
+      const primaryEmptyBody = '''
+class CounterCubit() extends CubitSignal<int> {
+  this : super(initialState: 0);
+}
+''';
+      expect(
+        await runLintRule(RequireEmitInHelperName(), primaryEmptyBody),
+        isEmpty,
+      );
+    });
   });
 }

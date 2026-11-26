@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:bloc_signals_lint/src/fixes/add_hydrated_mixin_init_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/replace_positional_replay_constructor_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/require_cubit_signal_mixin_init_fix.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_context_watch_for_bloc_state.dart';
@@ -17,6 +18,7 @@ import 'package:bloc_signals_lint/src/rules/avoid_unused_select_result.dart';
 import 'package:bloc_signals_lint/src/rules/prefer_named_replay_constructor.dart';
 import 'package:bloc_signals_lint/src/rules/require_cubit_signal_mixin_init.dart';
 import 'package:bloc_signals_lint/src/rules/require_emit_in_helper_name.dart';
+import 'package:bloc_signals_lint/src/rules/require_hydrated_mixin_init.dart';
 import 'package:bloc_signals_lint/src/rules/require_super_on_event.dart';
 import 'package:test/test.dart';
 
@@ -1587,8 +1589,111 @@ class S() with CubitSignalMixin<int> {
       );
       expect(
         fixedEmptyPrimaryBody,
-        contains('initCubitSignal(initialState: TODO_INITIAL_STATE);'),
+        contains(
+          'this {\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
+        ),
       );
+      expect(fixedEmptyPrimaryBody, isNot(contains('this{')));
+
+      const emptyPrimaryBodyWithInit = '''
+class S() with CubitSignalMixin<int> {
+  final int _x;
+  this : _x = 1;
+}
+''';
+      final fixedEmptyPrimaryBodyWithInit = await runLintFix(
+        RequireCubitSignalMixinInit(),
+        RequireCubitSignalMixinInitFix.new,
+        emptyPrimaryBodyWithInit,
+      );
+      expect(
+        fixedEmptyPrimaryBodyWithInit,
+        contains(
+          'this : _x = 1 {\n'
+          '    initCubitSignal(initialState: TODO_INITIAL_STATE);\n'
+          '  }',
+        ),
+      );
+
+      const emptyCtorBody = '''
+class S with CubitSignalMixin<int> {
+  S();
+}
+''';
+      final fixedEmptyCtorBody = await runLintFix(
+        RequireCubitSignalMixinInit(),
+        RequireCubitSignalMixinInitFix.new,
+        emptyCtorBody,
+      );
+      expect(
+        fixedEmptyCtorBody,
+        contains(
+          'S() {\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
+        ),
+      );
+      expect(fixedEmptyCtorBody, isNot(contains('S(){')));
+
+      const namedPrimaryEmptyClassBody = '''
+class S.named() with CubitSignalMixin<int>;
+''';
+      final namedPrimaryLints = await runLintRule(
+        RequireCubitSignalMixinInit(),
+        namedPrimaryEmptyClassBody,
+      );
+      expect(namedPrimaryLints, hasLength(1));
+      expect(
+        namedPrimaryLints.first.offset,
+        equals(namedPrimaryEmptyClassBody.indexOf('named')),
+      );
+      expect(namedPrimaryLints.first.length, equals('named'.length));
+
+      final fixedNamedPrimaryCubit = await runLintFix(
+        RequireCubitSignalMixinInit(),
+        RequireCubitSignalMixinInitFix.new,
+        namedPrimaryEmptyClassBody,
+      );
+      expect(
+        fixedNamedPrimaryCubit,
+        contains(
+          'class S.named() with CubitSignalMixin<int> {\n'
+          '  this {\n'
+          '    initCubitSignal(initialState: TODO_INITIAL_STATE);\n'
+          '  }\n'
+          '}',
+        ),
+      );
+      expect(fixedNamedPrimaryCubit, isNot(contains('S()')));
+
+      const namedPrimaryHydratedEmptyClassBody = '''
+class S.named() with CubitSignalMixin<int>, HydratedMixin<int>;
+''';
+      final namedHydratedLints = await runLintRule(
+        RequireHydratedMixinInit(),
+        namedPrimaryHydratedEmptyClassBody,
+      );
+      expect(namedHydratedLints, hasLength(1));
+      expect(
+        namedHydratedLints.first.offset,
+        equals(namedPrimaryHydratedEmptyClassBody.indexOf('named')),
+      );
+      expect(namedHydratedLints.first.length, equals('named'.length));
+
+      final fixedNamedPrimaryHydrated = await runLintFix(
+        RequireHydratedMixinInit(),
+        AddHydratedMixinInitFix.new,
+        namedPrimaryHydratedEmptyClassBody,
+      );
+      expect(
+        fixedNamedPrimaryHydrated,
+        contains(
+          'class S.named() with CubitSignalMixin<int>, HydratedMixin<int> {\n'
+          '  this {\n'
+          '    hydrate();\n'
+          '  }\n'
+          '}',
+        ),
+      );
+      expect(fixedNamedPrimaryHydrated, isNot(contains('S()')));
 
       const emptyClassBody = '''
 class S with CubitSignalMixin<int>;

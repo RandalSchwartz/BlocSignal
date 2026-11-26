@@ -84,17 +84,19 @@ class AvoidMultipleSynchronousEmits extends AnalysisRule {
   /// Identifies all AST nodes in [classNode] representing a secondary or
   /// subsequent synchronous state emission along the same linear path.
   static List<AstNode> findViolations(ClassDeclaration classNode) {
-    final body = classNode.body;
-    if (body is! BlockClassBody) return const [];
-    return _findMemberViolations(body.members);
+    return switch (classNode.body) {
+      EmptyClassBody() => const [],
+      BlockClassBody(:final members) => _findMemberViolations(members),
+    };
   }
 
   /// Identifies all AST nodes in [mixinNode] representing a secondary or
   /// subsequent synchronous state emission along the same linear path.
   static List<AstNode> findMixinViolations(MixinDeclaration mixinNode) {
-    final body = mixinNode.body;
-    if (body is! BlockClassBody) return const [];
-    return _findMemberViolations(body.members);
+    return switch (mixinNode.body) {
+      EmptyClassBody() => const [],
+      BlockClassBody(:final members) => _findMemberViolations(members),
+    };
   }
 
   static List<AstNode> _findMemberViolations(NodeList<ClassMember> members) {

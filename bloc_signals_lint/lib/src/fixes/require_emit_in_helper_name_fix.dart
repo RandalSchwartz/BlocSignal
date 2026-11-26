@@ -38,7 +38,11 @@ class RequireEmitInHelperNameFix extends ResolvedCorrectionProducer {
       MixinDeclaration(:final body) => body,
       _ => null,
     };
-    if (body is! BlockClassBody) return;
+    final members = switch (body) {
+      BlockClassBody(:final members) => members,
+      EmptyClassBody() || null => null,
+    };
+    if (members == null) return;
 
     final oldName = method.name.lexeme;
     final newName = '${oldName}AndEmit';
@@ -46,7 +50,7 @@ class RequireEmitInHelperNameFix extends ResolvedCorrectionProducer {
     await builder.addDartFileEdit(file, (builder) {
       builder.addSimpleReplacement(method.name.sourceRange, newName);
 
-      for (final member in body.members) {
+      for (final member in members) {
         member.visitChildren(
           _RenameInvocationVisitor(oldName, (invocation) {
             builder.addSimpleReplacement(
@@ -67,14 +71,18 @@ class RequireEmitInHelperNameFix extends ResolvedCorrectionProducer {
     MixinDeclaration? mixinDeclaration,
   }) {
     final body = classDeclaration?.body ?? mixinDeclaration?.body;
-    if (body is! BlockClassBody) return source;
+    final members = switch (body) {
+      BlockClassBody(:final members) => members,
+      EmptyClassBody() || null => null,
+    };
+    if (members == null) return source;
 
     final oldName = methodToRename.name.lexeme;
     final newName = '${oldName}AndEmit';
 
     final replacements = <SourceRange>[methodToRename.name.sourceRange];
 
-    for (final member in body.members) {
+    for (final member in members) {
       member.visitChildren(
         _RenameInvocationVisitor(oldName, (invocation) {
           replacements.add(invocation.methodName.sourceRange);

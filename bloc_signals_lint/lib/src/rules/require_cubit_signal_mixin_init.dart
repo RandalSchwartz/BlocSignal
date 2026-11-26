@@ -82,7 +82,9 @@ class RequireCubitSignalMixinInit extends AnalysisRule {
     if (body is! BlockClassBody) {
       return [
         (
-          token: namePart.typeName,
+          token: hasPrimaryConstructor
+              ? (namePart.constructorName?.name ?? namePart.typeName)
+              : namePart.typeName,
           mixinName: mixinName,
           expectedMethod: expectedMethod,
         ),

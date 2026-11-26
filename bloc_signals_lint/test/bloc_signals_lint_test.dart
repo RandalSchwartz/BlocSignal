@@ -13,10 +13,12 @@ import 'package:bloc_signals_lint/src/fixes/replace_positional_replay_constructo
 import 'package:bloc_signals_lint/src/fixes/require_cubit_signal_mixin_init_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/require_emit_in_helper_name_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/use_provider_value_fix.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_bridging_in_build.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_context_watch_for_bloc_state.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_emit_in_build.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_emit_or_add_in_computed.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_invalid_context_select_generics.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_multiple_synchronous_emits.dart';
@@ -55,7 +57,7 @@ class _RecordingPluginRegistry implements PluginRegistry {
 
 void main() {
   group('bloc_signals_lint plugin entrypoint', () {
-    test('plugin exposes BlocSignalsPlugin with 20 rules and 8 fixes', () {
+    test('plugin exposes BlocSignalsPlugin with 22 rules and 8 fixes', () {
       expect(plugin, isA<Plugin>());
       expect(plugin, isA<BlocSignalsPlugin>());
       expect(identical(main_entrypoint.plugin, plugin), isTrue);
@@ -65,7 +67,7 @@ void main() {
       plugin.register(registry);
 
       final rules = registry.warningRules;
-      expect(rules, hasLength(20));
+      expect(rules, hasLength(22));
       expect(rules, contains(isA<AvoidDuplicateEventHandlers>()));
       expect(rules, contains(isA<RequireSuperOnEvent>()));
       expect(rules, contains(isA<AvoidStreamTransformersOnBlocSignal>()));
@@ -86,6 +88,8 @@ void main() {
       expect(rules, contains(isA<AvoidMultipleSynchronousEmits>()));
       expect(rules, contains(isA<AvoidPrimitiveEventTypes>()));
       expect(rules, contains(isA<AvoidPseudoEventsInTelemetry>()));
+      expect(rules, contains(isA<AvoidBridgingInBuild>()));
+      expect(rules, contains(isA<AvoidEmitOrAddInComputed>()));
 
       expect(registry.fixes, hasLength(8));
     });
@@ -256,6 +260,23 @@ void main() {
         rule.diagnosticCode.lowerCaseName,
         equals('avoid_pseudo_events_in_telemetry'),
       );
+    });
+
+    test('AvoidBridgingInBuild code is properly configured', () {
+      final rule = AvoidBridgingInBuild();
+      expect(
+        rule.diagnosticCode.lowerCaseName,
+        equals('avoid_bridging_in_build'),
+      );
+    });
+
+    test('AvoidEmitOrAddInComputed code is properly configured', () {
+      final rule = AvoidEmitOrAddInComputed();
+      expect(
+        rule.diagnosticCode.lowerCaseName,
+        equals('avoid_emit_or_add_in_computed'),
+      );
+      expect(rule.diagnosticCode.severity, equals(DiagnosticSeverity.ERROR));
     });
   });
 

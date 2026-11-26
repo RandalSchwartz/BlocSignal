@@ -8,10 +8,12 @@ import 'package:bloc_signals_lint/src/fixes/replace_positional_replay_constructo
 import 'package:bloc_signals_lint/src/fixes/require_cubit_signal_mixin_init_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/require_emit_in_helper_name_fix.dart';
 import 'package:bloc_signals_lint/src/fixes/use_provider_value_fix.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_bridging_in_build.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_context_watch_for_bloc_state.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_direct_signal_mutation_outside_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_duplicate_event_handlers.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_emit_in_build.dart';
+import 'package:bloc_signals_lint/src/rules/avoid_emit_or_add_in_computed.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_invalid_context_select_generics.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_manual_close_on_provided_bloc.dart';
 import 'package:bloc_signals_lint/src/rules/avoid_multiple_synchronous_emits.dart';
@@ -63,6 +65,8 @@ class BlocSignalsPlugin extends Plugin {
       ..registerWarningRule(AvoidMultipleSynchronousEmits())
       ..registerWarningRule(AvoidPrimitiveEventTypes())
       ..registerWarningRule(AvoidPseudoEventsInTelemetry())
+      ..registerWarningRule(AvoidBridgingInBuild())
+      ..registerWarningRule(AvoidEmitOrAddInComputed())
       ..registerFixForRule(RequireSuperOnEvent.code, AddSuperOnEventFix.new)
       ..registerFixForRule(
         AvoidRawSignalEffectsInBloc.code,

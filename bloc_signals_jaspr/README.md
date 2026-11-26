@@ -38,8 +38,8 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 - **`MultiBlocSignalProvider`**: Combines multiple providers into a single linear component tree.
 - **`BuildContext` Extensions**: Read (`context.read<T>()`), watch (`context.watch<T>()`), selectively subscribe (`context.select<T, R>()`), subscribe to fine-grained state in build (`context.value<T, S>()`), and look up signals for composition (`context.state<T, S>()`) directly from `BuildContext`.
 - **`BlocSignalBuilder<T, S>`**: Rebuilds Jaspr components dynamically when state changes.
-- **`BlocSignalListener<T, S>`**: Executes side-effect callbacks on state changes with optional `listenWhen` filtering.
-- **`BlocSignalConsumer<T, S>`**: Combines `BlocSignalBuilder` and `BlocSignalListener`.
+- **`BlocSignalListener<T, S>`**: Executes side-effect callbacks on state changes with optional `listenWhen` filtering, `take` execution quotas, and `takeWhile` predicates.
+- **`BlocSignalConsumer<T, S>`**: Combines `BlocSignalBuilder` and `BlocSignalListener`, forwarding `take` and `takeWhile` quotas.
 - **`BlocSignalSelector<T, S, V>`**: Fine-grained component rebuild filtering using computed state slices.
 - **`MultiBlocSignalListener`**: Merges multiple listeners cleanly.
 

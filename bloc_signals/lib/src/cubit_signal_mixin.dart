@@ -38,6 +38,9 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
 
   late final Signal<StateType> _state;
   final Set<void Function()> _effectsToDispose = <void Function()>{};
+  final List<FutureOr<void> Function()> _managedResources =
+      <FutureOr<void> Function()>[];
+  Future<void>? _closeFuture;
   int _effectCounter = 0;
   int _historySuppressionDepth = 0;
 
@@ -344,19 +347,135 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   }
 
   @override
-  @mustCallSuper
-  Future<void> close() async {
-    if (_isClosed) return;
-    _isClosed = true;
-    final effects = _effectsToDispose.toList();
-    _effectsToDispose.clear();
-    for (final dispose in effects) {
-      dispose();
+  @protected
+  R manageResource<R>(
+    R resource,
+    FutureOr<void> Function(R resource) onDispose,
+  ) {
+    if (_isClosed) {
+      _disposeManagedResourceNow(() => onDispose(resource));
+      return resource;
     }
+    _managedResources.add(() => onDispose(resource));
+    return resource;
+  }
+
+  @override
+  @protected
+  StreamSubscription<S> manageStreamSubscription<S>(
+    StreamSubscription<S> subscription,
+  ) =>
+      manageResource<StreamSubscription<S>>(
+        subscription,
+        (sub) => sub.cancel(),
+      );
+
+  @override
+  @protected
+  Timer manageTimer(Timer timer) =>
+      manageResource<Timer>(timer, (t) => t.cancel());
+
+  void _disposeManagedResourceNow(FutureOr<void> Function() disposer) {
     try {
-      BlocSignalObserver.observer?.onClose(this);
+      final result = disposer();
+      if (result is Future<void>) {
+        unawaited(_awaitDisposer(result));
+      }
     } on Exception catch (e, stackTrace) {
       onError(e, stackTrace);
+    }
+  }
+
+  Future<void> _awaitDisposer(Future<void> future) async {
+    try {
+      await future;
+    } on Exception catch (e, stackTrace) {
+      onError(e, stackTrace);
+    }
+  }
+
+  @override
+  @mustCallSuper
+  Future<void> close() {
+    final inFlight = _closeFuture;
+    if (inFlight != null) return inFlight;
+    if (_isClosed) return Future<void>.value();
+    final completer = Completer<void>();
+    _closeFuture = completer.future;
+    _isClosed = true;
+    unawaited(_performClose(completer));
+    return completer.future;
+  }
+
+  Future<void> _performClose(Completer<void> completer) async {
+    Object? firstFatalError;
+    StackTrace? firstFatalStackTrace;
+
+    void reportException(Exception e, StackTrace st) {
+      try {
+        onError(e, st);
+      } on Object catch (error, errorSt) {
+        // SCAR-ERR-02: Justified exception: record fatal Error from onError
+        // so remaining teardown hooks still drain before rethrowing.
+        firstFatalError ??= error;
+        firstFatalStackTrace ??= errorSt;
+      }
+    }
+
+    try {
+      final effects = _effectsToDispose.toList(growable: false);
+      _effectsToDispose.clear();
+      for (final dispose in effects) {
+        try {
+          dispose();
+        } on Exception catch (e, stackTrace) {
+          reportException(e, stackTrace);
+        } on Object catch (error, stackTrace) {
+          // SCAR-ERR-02: Justified exception: record the first fatal Error so
+          // remaining effects, managed resources, and observer.onClose still
+          // drain before rethrowing.
+          firstFatalError ??= error;
+          firstFatalStackTrace ??= stackTrace;
+        }
+      }
+
+      final resources = _managedResources.reversed.toList(growable: false);
+      _managedResources.clear();
+      for (final disposer in resources) {
+        try {
+          final result = disposer();
+          if (result is Future<void>) {
+            await result;
+          }
+        } on Exception catch (e, stackTrace) {
+          reportException(e, stackTrace);
+        } on Object catch (error, stackTrace) {
+          // SCAR-ERR-02: Justified exception: record the first fatal Error so
+          // remaining managed resources and observer.onClose still drain before
+          // rethrowing.
+          firstFatalError ??= error;
+          firstFatalStackTrace ??= stackTrace;
+        }
+      }
+
+      try {
+        BlocSignalObserver.observer?.onClose(this);
+      } on Exception catch (e, stackTrace) {
+        reportException(e, stackTrace);
+      } on Object catch (error, stackTrace) {
+        // SCAR-ERR-02: Justified exception: record fatal Error from
+        // observer.onClose while clearing _closeFuture cleanly.
+        firstFatalError ??= error;
+        firstFatalStackTrace ??= stackTrace;
+      }
+    } finally {
+      _closeFuture = null;
+      final fatalError = firstFatalError;
+      if (fatalError != null) {
+        completer.completeError(fatalError, firstFatalStackTrace);
+      } else {
+        completer.complete();
+      }
     }
   }
 

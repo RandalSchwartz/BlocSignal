@@ -21,8 +21,11 @@ closure. `CubitSignal<State>` adds no dispatch API; subclasses expose methods th
 | `BlocSignalBase.ambientZoneDispatchTokenKey` | `static final Object` Zone key carrying a unique per-invocation dispatch token propagated by `BlocSignalMixin.add` across `onEvent`, transformer/handler execution, `onError`, and `onEventCompleted` for isolated concurrent telemetry correlation. |
 | `BlocSignalBase(..., options: ...)` | Accepts optional `SignalOptions<StateType>` to configure signal settings (such as debug `name`). Defaults debug name to `'$runtimeType.state'`. |
 | `createEffect(callback, options: ..., onDispose: ...)` | Creates an effect immediately, assigning `options?.name` (defaulting to `'$runtimeType.effect#N'`) and registering its disposer with the base. |
+| `@protected manageResource<R>(resource, onDispose)` | Registers `resource` with a sync or async `onDispose` callback invoked in reverse (LIFO) order on `close()` (or immediately if already closed), returning `resource`. |
+| `@protected manageStreamSubscription<S>(subscription)` | Registers a `StreamSubscription<S>` for automatic `.cancel()` on `close()` (or immediate cancellation if already closed), returning `subscription`. |
+| `@protected manageTimer(timer)` | Registers a `Timer` for automatic `.cancel()` on `close()` (or immediate cancellation if already closed), returning `timer`. |
 | `isClosed` | Reports whether `close()` has run. |
-| `close()` | Returns `Future<void>`, disposes registered effects, and is idempotent. |
+| `close()` | Returns `Future<void>`, disposes registered effects and managed resources in LIFO order, and is idempotent across sequential and concurrent calls. |
 | `@protected onReset()` | Lifecycle hook invoked when container state resets to baseline (for example during persistence clearing), allowing sibling mixins to clear auxiliary state (`super.onReset()`). |
 | `@protected isHistorySuppressed` | Reports whether auxiliary history recording (such as undo/redo stacks) is currently suppressed on this container instance. |
 | `@protected runWithoutHistory(action)` | Executes `action` with auxiliary history recording suppressed via a per-instance nesting counter. |
@@ -509,9 +512,11 @@ final class MirrorCubit extends CubitSignal<int> {
 `close` marks the container closed before it runs effect disposal callbacks. Do not emit from an
 `onDispose` callback. The emit will assert in debug mode and be dropped in release mode.
 
-Raw `effect`, `computed`, subscriptions, timers, and async operations are not registered by
-`createEffect`. Keep their owner and cleanup explicit. Override `close` when the container owns
-such resources, and always await `super.close()`:
+Raw `effect`, `computed`, subscriptions, timers, and custom disposable handles are not registered by
+`createEffect`. Register subscriptions with `manageStreamSubscription`, timers with `manageTimer`,
+and arbitrary sync or async handles with `manageResource` so `close()` disposes them automatically
+in reverse (LIFO) order. When a container requires custom teardown logic beyond registered
+resources, override `close` and always await `super.close()`:
 
 ```dart
 late final void Function() _disposeLog;
@@ -546,7 +551,7 @@ post-close emissions are safely dropped without crashing.
 - `onChange(BlocSignalBase<dynamic> bloc, Change<dynamic> change)` after the state write;
 - `onError(BlocSignalBase<dynamic> bloc, error, stackTrace)` for reported failures;
 - `onTelemetry(BlocSignalBase<dynamic> bloc, String name, {Object? event, Map<String, dynamic>? metadata})` for operational telemetry and concurrency diagnostics;
-- `onClose(BlocSignalBase<dynamic> bloc)` after owned effects are disposed.
+- `onClose(BlocSignalBase<dynamic> bloc)` after owned effects and managed resources are disposed.
 
 Use `CompositeBlocSignalObserver` or `BlocSignalObserver.addObserver()` when logging, DevTools,
 and telemetry must run together:

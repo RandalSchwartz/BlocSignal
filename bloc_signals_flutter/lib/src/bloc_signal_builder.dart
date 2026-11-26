@@ -1,5 +1,6 @@
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_flutter/src/bloc_signal_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -80,6 +81,19 @@ class BlocSignalBuilder<T extends BlocSignalBase<S>, S> extends StatefulWidget {
   @override
   State<BlocSignalBuilder<T, S>> createState() =>
       _BlocSignalBuilderState<T, S>();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+      ..add(DiagnosticsProperty<T>('bloc', bloc, defaultValue: null))
+      ..add(
+        ObjectFlagProperty<bool Function(S previous, S current)>.has(
+          'buildWhen',
+          buildWhen,
+        ),
+      );
+  }
 }
 
 class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
@@ -96,23 +110,26 @@ class _BlocSignalBuilderState<T extends BlocSignalBase<S>, S>
     _previousState = initialState;
     var isInitial = true;
 
-    _cleanup = effect(() {
-      final currentState = _bloc!.state.value;
-      if (isInitial) {
-        isInitial = false;
-        return;
-      }
-      if (!mounted) return;
-      final previous = _previousState as S;
-      if (!_bloc!.equals(previous, currentState)) {
-        _previousState = currentState;
-        if (widget.buildWhen == null ||
-            widget.buildWhen!(previous, currentState)) {
-          _state = currentState;
-          setState(() {});
+    _cleanup = effect(
+      () {
+        final currentState = _bloc!.state.value;
+        if (isInitial) {
+          isInitial = false;
+          return;
         }
-      }
-    });
+        if (!mounted) return;
+        final previous = _previousState as S;
+        if (!_bloc!.equals(previous, currentState)) {
+          _previousState = currentState;
+          if (widget.buildWhen == null ||
+              widget.buildWhen!(previous, currentState)) {
+            _state = currentState;
+            setState(() {});
+          }
+        }
+      },
+      options: EffectOptions(name: 'BlocSignalBuilder<$T, $S>.effect'),
+    );
   }
 
   @override

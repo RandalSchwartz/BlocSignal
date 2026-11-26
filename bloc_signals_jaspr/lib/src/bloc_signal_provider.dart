@@ -4,11 +4,53 @@ import 'package:bloc_signals/bloc_signals.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:signals_core/signals_core.dart';
 
-class _NullComponent extends StatelessComponent {
-  const _NullComponent();
+/// Error thrown when [BlocSignalProvider.of] (or `context.read` /
+/// `context.watch` / `context.select`) fails to find an ancestor
+/// [BlocSignalProvider] of type [T] in the component tree.
+///
+/// Extends [StateError] for backward compatibility with existing error
+/// handlers.
+class BlocSignalProviderNotFoundError<T extends BlocSignalBase<dynamic>>
+    extends StateError {
+  /// Creates a [BlocSignalProviderNotFoundError] for the given [context].
+  BlocSignalProviderNotFoundError(BuildContext context)
+      : super(_buildMessage<T>(context));
 
-  @override
-  Component build(BuildContext context) => const Component.empty();
+  static String _buildMessage<T extends BlocSignalBase<dynamic>>(
+    BuildContext context,
+  ) {
+    final callerType = switch (context) {
+      final Element element => element.component.runtimeType,
+    };
+    final buffer = StringBuffer()
+      ..writeln(
+        'BlocSignalProvider.of<$T>() called with a context ($callerType) that '
+        'does not contain a BlocSignalProvider<$T>.',
+      );
+    if (T == BlocSignalBase<dynamic>) {
+      buffer.writeln(
+        'Warning: The generic type argument was omitted (inferred as '
+        'BlocSignalBase<dynamic>). Specify the concrete bloc type explicitly, '
+        'for example BlocSignalProvider.of<MyBloc>(context) or '
+        'context.read<MyBloc>().',
+      );
+    }
+    buffer
+      ..writeln(
+        'No ancestor could be found starting from the context that was passed '
+        'to BlocSignalProvider.of<$T>().',
+      )
+      ..writeln(
+        'Hints:\n'
+        '- If you are trying to read the bloc in the same build method that '
+        'creates the BlocSignalProvider, wrap the consumer in a Builder to '
+        'obtain a descendant BuildContext.\n'
+        '- If you navigated to a new route using Navigator, provide the '
+        'existing bloc to the new route using '
+        'BlocSignalProvider.value(value: context.read<$T>(), child: ...).',
+      );
+    return buffer.toString();
+  }
 }
 
 /// An interface for [BlocSignalProvider] components that can be merged by
@@ -57,7 +99,7 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
   /// [BlocSignal] returned by [create].
   const BlocSignalProvider({
     required T Function(BuildContext context) this.create,
-    this.child = const _NullComponent(),
+    this.child = const Component.empty(),
     this.lazy = true,
     super.key,
   }) : value = null;
@@ -66,7 +108,7 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
   /// the tree, without managing its lifecycle (does not close it on dispose).
   const BlocSignalProvider.value({
     required T this.value,
-    this.child = const _NullComponent(),
+    this.child = const Component.empty(),
     super.key,
   })  : create = null,
         lazy = false;
@@ -85,8 +127,18 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
   /// The component subtree that will have access to the provided [BlocSignal].
   final Component child;
 
-  /// Looks up the closest [BlocSignal] of type [T] in the component tree.
-  static T of<T extends BlocSignalBase<dynamic>>(
+  /// Looks up the closest [BlocSignal] of type [T] in the component tree,
+  /// returning `null` if no matching [BlocSignalProvider] ancestor is found.
+  ///
+  /// When [listen] is `true`, registers a rebuild dependency on the ancestor
+  /// provider so the calling context rebuilds if the provided bloc instance
+  /// changes.
+  ///
+  /// Example:
+  /// ```dart
+  /// final bloc = BlocSignalProvider.maybeOf<CounterBloc>(context);
+  /// ```
+  static T? maybeOf<T extends BlocSignalBase<dynamic>>(
     BuildContext context, {
     bool listen = false,
   }) {
@@ -97,13 +149,22 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
             .getElementForInheritedComponentOfExactType<
                 _BlocSignalProviderInherited<T>>()
             ?.component as _BlocSignalProviderInherited<T>?;
-    if (provider == null) {
-      throw StateError(
-        'BlocSignalProvider.of() called with a context that does not contain '
-        'a BlocSignalProvider of type $T.',
-      );
+    return provider?.state.bloc;
+  }
+
+  /// Looks up the closest [BlocSignal] of type [T] in the component tree.
+  ///
+  /// Throws [BlocSignalProviderNotFoundError] if no matching
+  /// [BlocSignalProvider] ancestor is found.
+  static T of<T extends BlocSignalBase<dynamic>>(
+    BuildContext context, {
+    bool listen = false,
+  }) {
+    final bloc = maybeOf<T>(context, listen: listen);
+    if (bloc == null) {
+      throw BlocSignalProviderNotFoundError<T>(context);
     }
-    return provider.state.bloc;
+    return bloc;
   }
 
   /// Clones this provider with a new child component.
@@ -291,6 +352,16 @@ extension BlocSignalProviderExtension on BuildContext {
   /// ```
   T read<T extends BlocSignalBase<dynamic>>() => BlocSignalProvider.of<T>(this);
 
+  /// Reads a [BlocSignal] without listening for changes, returning `null` if
+  /// no matching [BlocSignalProvider] ancestor is found.
+  ///
+  /// Example:
+  /// ```dart
+  /// context.maybeRead<CounterBloc>()?.add(Increment());
+  /// ```
+  T? maybeRead<T extends BlocSignalBase<dynamic>>() =>
+      BlocSignalProvider.maybeOf<T>(this);
+
   /// Watches a [BlocSignalBase] and registers a rebuild dependency on the
   /// provider.
   ///
@@ -301,7 +372,21 @@ extension BlocSignalProviderExtension on BuildContext {
   T watch<T extends BlocSignalBase<dynamic>>() =>
       BlocSignalProvider.of<T>(this, listen: true);
 
+  /// Watches a [BlocSignalBase] and registers a rebuild dependency on the
+  /// provider, returning `null` if no matching [BlocSignalProvider] ancestor
+  /// is found.
+  ///
+  /// Example:
+  /// ```dart
+  /// final bloc = context.maybeWatch<CounterBloc>();
+  /// ```
+  T? maybeWatch<T extends BlocSignalBase<dynamic>>() =>
+      BlocSignalProvider.maybeOf<T>(this, listen: true);
+
   /// Listens to changes on a selected value of the [BlocSignal] state.
+  ///
+  /// An optional [equals] comparator can be provided to customize when changes
+  /// to the selected value trigger a rebuild.
   ///
   /// Example:
   /// ```dart
@@ -310,17 +395,15 @@ extension BlocSignalProviderExtension on BuildContext {
   /// );
   /// ```
   R select<T extends BlocSignalBase<dynamic>, R>(
-    R Function(T bloc) selector,
-  ) {
+    R Function(T bloc) selector, {
+    bool Function(R previous, R next)? equals,
+  }) {
     final element = this as Element;
     final inheritedElement = element.getElementForInheritedComponentOfExactType<
             _BlocSignalProviderInherited<T>>()
         as _BlocSignalProviderInheritedElement<T>?;
     if (inheritedElement == null) {
-      throw StateError(
-        'BlocSignalProvider.of() called with a context that does not contain '
-        'a BlocSignalProvider of type $T.',
-      );
+      throw BlocSignalProviderNotFoundError<T>(this);
     }
     element.dependOnInheritedElement(inheritedElement);
     final bloc = inheritedElement.bloc;
@@ -334,13 +417,14 @@ extension BlocSignalProviderExtension on BuildContext {
     if (currentIndex < selectorState.subscriptions.length) {
       subscription = (selectorState.subscriptions[currentIndex]
           as _SelectSubscription<T, R>)
-        ..update(bloc, selector, inheritedElement);
+        ..update(bloc, selector, inheritedElement, equals: equals);
     } else {
       subscription = _SelectSubscription<T, R>(
         bloc: bloc,
         selector: selector,
         element: element,
         inheritedElement: inheritedElement,
+        equals: equals,
       );
       selectorState.subscriptions.add(subscription);
       _selectFinalizer.attach(element, subscription, detach: subscription);
@@ -472,14 +556,33 @@ bool _isMountedUnderProvider(Element el, Element inherited) {
   return false;
 }
 
+const Object _inactiveSelectorSentinel = Object();
+
+@immutable
+class _SelectorSlot<R> {
+  const _SelectorSlot(this.value, this.customEquals);
+
+  final R value;
+  final bool Function(R previous, R next) customEquals;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _SelectorSlot<R> && customEquals(value, other.value);
+
+  @override
+  int get hashCode => value.hashCode;
+}
+
 class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   _SelectSubscription({
     required T bloc,
     required R Function(T) selector,
     required Element element,
     required _BlocSignalProviderInheritedElement<T> inheritedElement,
+    bool Function(R previous, R next)? equals,
   })  : _bloc = bloc,
         _selector = selector,
+        _equals = equals,
         _elementRef = WeakReference(element),
         _inheritedRef = WeakReference(inheritedElement) {
     _initSubscription();
@@ -487,8 +590,10 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
 
   T _bloc;
   R Function(T) _selector;
+  bool Function(R previous, R next)? _equals;
   final WeakReference<Element> _elementRef;
   WeakReference<_BlocSignalProviderInheritedElement<T>> _inheritedRef;
+  late Computed<Object?> _computed;
   late R _selectedValue;
   late void Function() _dispose;
   bool _isDisposed = false;
@@ -506,22 +611,55 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   }
 
   void _initSubscription() {
+    final customEquals = _equals;
+    var hasInitializedComputed = false;
+    _computed = computed<Object?>(
+      () {
+        // SCAR-JASPR-01: after initial dependency tracking, gate unmounted
+        // evaluations before invoking _selector(_bloc).
+        if (hasInitializedComputed && !_isActive()) {
+          return _inactiveSelectorSentinel;
+        }
+        hasInitializedComputed = true;
+        final next = _selector(_bloc);
+        return customEquals != null
+            ? _SelectorSlot<R>(next, customEquals)
+            : next;
+      },
+      options: ComputedOptions<Object?>(
+        name: 'context.select<$T, $R>.computed',
+      ),
+    );
+    final initial = _computed.value;
+    _selectedValue = customEquals != null
+        ? (initial! as _SelectorSlot<R>).value
+        : initial as R;
+
     var isInitial = true;
     _dispose = effect(
       () {
-        if (isInitial) {
-          isInitial = false;
-          _selectedValue = _selector(_bloc);
-          return;
-        }
-        if (!_isActive()) {
+        if (_isDisposed) return;
+        final val = _computed.value;
+        if (identical(val, _inactiveSelectorSentinel) || !_isActive()) {
           dispose();
           return;
         }
-        final newValue = _selector(_bloc);
-        if (newValue != _selectedValue) {
-          _selectedValue = newValue;
-          _elementRef.target?.markNeedsBuild();
+        if (isInitial) {
+          isInitial = false;
+          return;
+        }
+        if (customEquals != null) {
+          final nextSlot = val! as _SelectorSlot<R>;
+          if (!customEquals(_selectedValue, nextSlot.value)) {
+            _selectedValue = nextSlot.value;
+            _elementRef.target?.markNeedsBuild();
+          }
+        } else {
+          final newValue = val as R;
+          if (newValue != _selectedValue) {
+            _selectedValue = newValue;
+            _elementRef.target?.markNeedsBuild();
+          }
         }
       },
       options: EffectOptions(
@@ -533,14 +671,18 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   void update(
     T newBloc,
     R Function(T) newSelector,
-    _BlocSignalProviderInheritedElement<T> newInheritedElement,
-  ) {
+    _BlocSignalProviderInheritedElement<T> newInheritedElement, {
+    bool Function(R previous, R next)? equals,
+  }) {
     if (_isDisposed) return;
     _inheritedRef = WeakReference(newInheritedElement);
-    if (!identical(_bloc, newBloc) || _selector != newSelector) {
+    if (!identical(_bloc, newBloc) ||
+        _selector != newSelector ||
+        _equals != equals) {
       this
         .._bloc = newBloc
-        .._selector = newSelector;
+        .._selector = newSelector
+        .._equals = equals;
 
       _dispose();
       _initSubscription();

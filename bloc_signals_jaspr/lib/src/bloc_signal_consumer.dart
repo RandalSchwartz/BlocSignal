@@ -25,12 +25,36 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
   /// Creates a [BlocSignalConsumer] component.
   const BlocSignalConsumer({
     required this.builder,
-    required this.listener,
+    required void Function(BuildContext context, S state) listener,
     this.bloc,
     this.buildWhen,
     this.listenWhen,
     super.key,
-  });
+  })  : _listener = listener,
+        _transitionListener = null;
+
+  /// Creates a [BlocSignalConsumer] whose [listener] receives both the
+  /// `previous` and `current` state on each transition.
+  ///
+  /// Example:
+  /// ```dart
+  /// BlocSignalConsumer<CounterBloc, int>.transition(
+  ///   listener: (context, previous, current) {
+  ///     // Perform side effect with previous and current
+  ///   },
+  ///   builder: (context, state) => div([.text('Count: $state')]),
+  /// )
+  /// ```
+  const BlocSignalConsumer.transition({
+    required this.builder,
+    required void Function(BuildContext context, S previous, S current)
+        listener,
+    this.bloc,
+    this.buildWhen,
+    this.listenWhen,
+    super.key,
+  })  : _listener = null,
+        _transitionListener = listener;
 
   /// The bloc to listen and build from. If null, it is looked up from the
   /// component tree.
@@ -39,8 +63,15 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
   /// The builder function that rebuilds when the state changes.
   final Component Function(BuildContext context, S state) builder;
 
+  final void Function(BuildContext context, S state)? _listener;
+
+  final void Function(BuildContext context, S previous, S current)?
+      _transitionListener;
+
   /// The callback that runs whenever the state changes.
-  final void Function(BuildContext context, S state) listener;
+  void Function(BuildContext context, S state) get listener =>
+      _listener ??
+      (context, state) => _transitionListener!(context, state, state);
 
   /// An optional predicate function that determines whether [builder] should
   /// rebuild.
@@ -56,15 +87,24 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
   Component build(BuildContext context) {
     final effectiveBloc =
         bloc ?? BlocSignalProvider.of<T>(context, listen: true);
+    final child = BlocSignalBuilder<T, S>(
+      bloc: effectiveBloc,
+      buildWhen: buildWhen,
+      builder: builder,
+    );
+    if (_transitionListener != null) {
+      return BlocSignalListener<T, S>.transition(
+        bloc: effectiveBloc,
+        listener: _transitionListener,
+        listenWhen: listenWhen,
+        child: child,
+      );
+    }
     return BlocSignalListener<T, S>(
       bloc: effectiveBloc,
-      listener: listener,
+      listener: _listener!,
       listenWhen: listenWhen,
-      child: BlocSignalBuilder<T, S>(
-        bloc: effectiveBloc,
-        buildWhen: buildWhen,
-        builder: builder,
-      ),
+      child: child,
     );
   }
 }

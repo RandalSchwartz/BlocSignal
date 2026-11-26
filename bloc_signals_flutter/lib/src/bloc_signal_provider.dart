@@ -1,8 +1,58 @@
 import 'dart:async';
 
 import 'package:bloc_signals/bloc_signals.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:signals_flutter/signals_flutter.dart';
+
+/// Error thrown when [BlocSignalProvider.of] (or `context.read` /
+/// `context.watch` / `context.select`) fails to find an ancestor
+/// [BlocSignalProvider] of type [T] in the widget tree.
+///
+/// Extends [FlutterError] for backward compatibility with existing error
+/// handlers.
+class BlocSignalProviderNotFoundError<T extends BlocSignalBase<dynamic>>
+    extends FlutterError {
+  /// Creates a [BlocSignalProviderNotFoundError] for the given [context].
+  BlocSignalProviderNotFoundError(BuildContext context)
+      : super.fromParts(<DiagnosticsNode>[
+          ErrorSummary(_buildMessage<T>(context)),
+        ]);
+
+  static String _buildMessage<T extends BlocSignalBase<dynamic>>(
+    BuildContext context,
+  ) {
+    final callerType = context.widget.runtimeType;
+    final buffer = StringBuffer()
+      ..writeln(
+        'BlocSignalProvider.of<$T>() called with a context ($callerType) that '
+        'does not contain a BlocSignalProvider<$T>.',
+      );
+    if (T == BlocSignalBase<dynamic>) {
+      buffer.writeln(
+        'Warning: The generic type argument was omitted (inferred as '
+        'BlocSignalBase<dynamic>). Specify the concrete bloc type explicitly, '
+        'for example BlocSignalProvider.of<MyBloc>(context) or '
+        'context.read<MyBloc>().',
+      );
+    }
+    buffer
+      ..writeln(
+        'No ancestor could be found starting from the context that was passed '
+        'to BlocSignalProvider.of<$T>().',
+      )
+      ..writeln(
+        'Hints:\n'
+        '- If you are trying to read the bloc in the same build method that '
+        'creates the BlocSignalProvider, wrap the consumer in a Builder to '
+        'obtain a descendant BuildContext.\n'
+        '- If you navigated to a new route using Navigator, provide the '
+        'existing bloc to the new route using '
+        'BlocSignalProvider.value(value: context.read<$T>(), child: ...).',
+      );
+    return buffer.toString();
+  }
+}
 
 /// An interface for [BlocSignalProvider] widgets that can be merged by
 /// [MultiBlocSignalProvider] into a single linear widget hierarchy.
@@ -64,8 +114,18 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
   /// The widget subtree that will have access to the provided [BlocSignal].
   final Widget child;
 
-  /// Looks up the closest [BlocSignal] of type [T] in the widget tree.
-  static T of<T extends BlocSignalBase<dynamic>>(
+  /// Looks up the closest [BlocSignal] of type [T] in the widget tree,
+  /// returning `null` if no matching [BlocSignalProvider] ancestor is found.
+  ///
+  /// When [listen] is `true`, registers a rebuild dependency on the ancestor
+  /// provider so the calling context rebuilds if the provided bloc instance
+  /// changes.
+  ///
+  /// Example:
+  /// ```dart
+  /// final bloc = BlocSignalProvider.maybeOf<CounterBloc>(context);
+  /// ```
+  static T? maybeOf<T extends BlocSignalBase<dynamic>>(
     BuildContext context, {
     bool listen = false,
   }) {
@@ -76,13 +136,22 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
             .getElementForInheritedWidgetOfExactType<
                 _BlocSignalProviderInherited<T>>()
             ?.widget as _BlocSignalProviderInherited<T>?;
-    if (provider == null) {
-      throw FlutterError(
-        'BlocSignalProvider.of() called with a context that does not contain '
-        'a BlocSignalProvider of type $T.',
-      );
+    return provider?.state.bloc;
+  }
+
+  /// Looks up the closest [BlocSignal] of type [T] in the widget tree.
+  ///
+  /// Throws [BlocSignalProviderNotFoundError] if no matching
+  /// [BlocSignalProvider] ancestor is found.
+  static T of<T extends BlocSignalBase<dynamic>>(
+    BuildContext context, {
+    bool listen = false,
+  }) {
+    final bloc = maybeOf<T>(context, listen: listen);
+    if (bloc == null) {
+      throw BlocSignalProviderNotFoundError<T>(context);
     }
-    return provider.state.bloc;
+    return bloc;
   }
 
   /// Clones this provider with a new child widget.
@@ -106,6 +175,27 @@ class BlocSignalProvider<T extends BlocSignalBase<dynamic>>
 
   @override
   State<BlocSignalProvider<T>> createState() => _BlocSignalProviderState<T>();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+      ..add(DiagnosticsProperty<T>('value', value, defaultValue: null))
+      ..add(
+        ObjectFlagProperty<T Function(BuildContext context)>.has(
+          'create',
+          create,
+        ),
+      )
+      ..add(
+        FlagProperty(
+          'lazy',
+          value: lazy,
+          ifTrue: 'lazy',
+          ifFalse: 'eager',
+        ),
+      );
+  }
 }
 
 class _BlocSignalProviderState<T extends BlocSignalBase<dynamic>>
@@ -315,6 +405,16 @@ extension BlocSignalProviderExtension on BuildContext {
   /// ```
   T read<T extends BlocSignalBase<dynamic>>() => BlocSignalProvider.of<T>(this);
 
+  /// Reads a [BlocSignal] without listening for changes, returning `null` if
+  /// no matching [BlocSignalProvider] ancestor is found.
+  ///
+  /// Example:
+  /// ```dart
+  /// context.maybeRead<CounterBloc>()?.add(Increment());
+  /// ```
+  T? maybeRead<T extends BlocSignalBase<dynamic>>() =>
+      BlocSignalProvider.maybeOf<T>(this);
+
   /// Watches a [BlocSignalBase] and registers a rebuild dependency on the
   /// provider.
   ///
@@ -324,6 +424,17 @@ extension BlocSignalProviderExtension on BuildContext {
   /// ```
   T watch<T extends BlocSignalBase<dynamic>>() =>
       BlocSignalProvider.of<T>(this, listen: true);
+
+  /// Watches a [BlocSignalBase] and registers a rebuild dependency on the
+  /// provider, returning `null` if no matching [BlocSignalProvider] ancestor
+  /// is found.
+  ///
+  /// Example:
+  /// ```dart
+  /// final bloc = context.maybeWatch<CounterBloc>();
+  /// ```
+  T? maybeWatch<T extends BlocSignalBase<dynamic>>() =>
+      BlocSignalProvider.maybeOf<T>(this, listen: true);
 
   /// Listens to changes on a selected value of the [BlocSignal] state.
   ///
@@ -337,6 +448,9 @@ extension BlocSignalProviderExtension on BuildContext {
   /// The selector callback receives the **`bloc` instance** directly:
   /// `(bloc) => bloc.stateValue.property`.
   ///
+  /// An optional [equals] comparator can be provided to customize when changes
+  /// to the selected value trigger a rebuild.
+  ///
   /// Example:
   /// ```dart
   /// final username = context.select<UserBloc, String>(
@@ -344,8 +458,9 @@ extension BlocSignalProviderExtension on BuildContext {
   /// );
   /// ```
   R select<T extends BlocSignalBase<dynamic>, R>(
-    R Function(T bloc) selector,
-  ) {
+    R Function(T bloc) selector, {
+    bool Function(R previous, R next)? equals,
+  }) {
     final element = this as Element;
     final inheritedElement = element.getElementForInheritedWidgetOfExactType<
             _BlocSignalProviderInherited<T>>()
@@ -383,12 +498,13 @@ extension BlocSignalProviderExtension on BuildContext {
     if (currentIndex < selectorState.subscriptions.length) {
       subscription = (selectorState.subscriptions[currentIndex]
           as _SelectSubscription<T, R>)
-        ..update(bloc, selector);
+        ..update(bloc, selector, equals: equals);
     } else {
       subscription = _SelectSubscription<T, R>(
         bloc: bloc,
         selector: selector,
         element: element,
+        equals: equals,
       );
       selectorState.subscriptions.add(subscription);
       _selectFinalizer.attach(element, subscription, detach: subscription);
@@ -474,6 +590,17 @@ class MultiBlocSignalProvider extends StatelessWidget {
     }
     return current;
   }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties.add(
+      IterableProperty<BlocSignalProviderSingleChildWidget>(
+        'providers',
+        providers,
+      ),
+    );
+  }
 }
 
 final Expando<_SelectorState> _elementSelectors = Expando<_SelectorState>();
@@ -503,22 +630,68 @@ void _disposeSelectors(Element element) {
   }
 }
 
+@immutable
+class _SelectorSlot<R> {
+  const _SelectorSlot(this.value, this.customEquals);
+
+  final R value;
+  final bool Function(R previous, R next) customEquals;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _SelectorSlot<R> && customEquals(value, other.value);
+
+  @override
+  int get hashCode => value.hashCode;
+}
+
 class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
   _SelectSubscription({
     required T bloc,
     required R Function(T) selector,
     required Element element,
+    bool Function(R previous, R next)? equals,
   })  : _bloc = bloc,
         _selector = selector,
+        _equals = equals,
         _elementRef = WeakReference(element) {
-    _computed = computed(
-      () => _selector(_bloc),
-      options: ComputedOptions<R>(
-        name: 'context.select<$T, $R>.computed',
-      ),
-    );
-    _selectedValue = _computed.value;
+    _initSubscription();
+  }
 
+  T _bloc;
+  R Function(T) _selector;
+  bool Function(R previous, R next)? _equals;
+  final WeakReference<Element> _elementRef;
+  late Computed<Object?> _computed;
+  late R _selectedValue;
+  late VoidCallback _dispose;
+  bool _isDisposed = false;
+
+  R get value => _selectedValue;
+
+  void _initSubscription() {
+    final customEquals = _equals;
+    if (customEquals != null) {
+      final slotComputed = computed<_SelectorSlot<R>>(
+        () => _SelectorSlot<R>(_selector(_bloc), customEquals),
+        options: ComputedOptions<_SelectorSlot<R>>(
+          name: 'context.select<$T, $R>.computed',
+        ),
+      );
+      _computed = slotComputed;
+      _selectedValue = slotComputed.value.value;
+    } else {
+      final rawComputed = computed<R>(
+        () => _selector(_bloc),
+        options: ComputedOptions<R>(
+          name: 'context.select<$T, $R>.computed',
+        ),
+      );
+      _computed = rawComputed;
+      _selectedValue = rawComputed.value;
+    }
+
+    var isInitial = true;
     _dispose = effect(
       () {
         if (_isDisposed) return;
@@ -527,10 +700,23 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
           dispose();
           return;
         }
-        final newValue = _computed.value;
-        if (newValue != _selectedValue) {
-          _selectedValue = newValue;
-          el.markNeedsBuild();
+        final val = _computed.value;
+        if (isInitial) {
+          isInitial = false;
+          return;
+        }
+        if (customEquals != null) {
+          final nextSlot = val! as _SelectorSlot<R>;
+          if (!customEquals(_selectedValue, nextSlot.value)) {
+            _selectedValue = nextSlot.value;
+            el.markNeedsBuild();
+          }
+        } else {
+          final newValue = val as R;
+          if (newValue != _selectedValue) {
+            _selectedValue = newValue;
+            el.markNeedsBuild();
+          }
         }
       },
       options: EffectOptions(
@@ -539,49 +725,22 @@ class _SelectSubscription<T extends BlocSignalBase<dynamic>, R> {
     );
   }
 
-  T _bloc;
-  R Function(T) _selector;
-  final WeakReference<Element> _elementRef;
-  late Computed<R> _computed;
-  late R _selectedValue;
-  late VoidCallback _dispose;
-  bool _isDisposed = false;
-
-  R get value => _selectedValue;
-
-  void update(T newBloc, R Function(T) newSelector) {
+  void update(
+    T newBloc,
+    R Function(T) newSelector, {
+    bool Function(R previous, R next)? equals,
+  }) {
     if (_isDisposed) return;
-    if (!identical(_bloc, newBloc) || _selector != newSelector) {
+    if (!identical(_bloc, newBloc) ||
+        _selector != newSelector ||
+        _equals != equals) {
       this
         .._bloc = newBloc
-        .._selector = newSelector;
+        .._selector = newSelector
+        .._equals = equals;
 
       _dispose();
-      _computed = computed(
-        () => _selector(_bloc),
-        options: ComputedOptions<R>(
-          name: 'context.select<$T, $R>.computed',
-        ),
-      );
-      _selectedValue = _computed.value;
-      _dispose = effect(
-        () {
-          if (_isDisposed) return;
-          final el = _elementRef.target;
-          if (el == null || !el.mounted) {
-            dispose();
-            return;
-          }
-          final newValue = _computed.value;
-          if (newValue != _selectedValue) {
-            _selectedValue = newValue;
-            el.markNeedsBuild();
-          }
-        },
-        options: EffectOptions(
-          name: 'context.select<$T, $R>.effect',
-        ),
-      );
+      _initSubscription();
     }
   }
 

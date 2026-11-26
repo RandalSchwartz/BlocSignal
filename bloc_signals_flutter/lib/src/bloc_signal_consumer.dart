@@ -2,6 +2,7 @@ import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_flutter/src/bloc_signal_builder.dart';
 import 'package:bloc_signals_flutter/src/bloc_signal_listener.dart';
 import 'package:bloc_signals_flutter/src/bloc_signal_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 /// A widget that combines a [BlocSignalBuilder] and [BlocSignalListener]
@@ -25,12 +26,40 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
   /// Creates a [BlocSignalConsumer] widget.
   const BlocSignalConsumer({
     required Widget Function(BuildContext context, S state) builder,
-    required this.listener,
+    required void Function(BuildContext context, S state) listener,
     this.bloc,
     this.buildWhen,
     this.listenWhen,
     super.key,
   })  : _builder = builder,
+        _listener = listener,
+        _transitionListener = null,
+        child = null,
+        _childBuilder = null;
+
+  /// Creates a [BlocSignalConsumer] whose [listener] receives both the
+  /// `previous` and `current` state on each transition.
+  ///
+  /// Example:
+  /// ```dart
+  /// BlocSignalConsumer<CounterBloc, int>.transition(
+  ///   listener: (context, previous, current) {
+  ///     debugPrint('Changed from $previous to $current');
+  ///   },
+  ///   builder: (context, state) => Text('Count: $state'),
+  /// )
+  /// ```
+  const BlocSignalConsumer.transition({
+    required Widget Function(BuildContext context, S state) builder,
+    required void Function(BuildContext context, S previous, S current)
+        listener,
+    this.bloc,
+    this.buildWhen,
+    this.listenWhen,
+    super.key,
+  })  : _builder = builder,
+        _listener = null,
+        _transitionListener = listener,
         child = null,
         _childBuilder = null;
 
@@ -62,13 +91,15 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
   const BlocSignalConsumer.child({
     required Widget Function(BuildContext context, S state, Widget? child)
         builder,
-    required this.listener,
+    required void Function(BuildContext context, S state) listener,
     this.bloc,
     this.buildWhen,
     this.listenWhen,
     this.child,
     super.key,
   })  : _builder = null,
+        _listener = listener,
+        _transitionListener = null,
         _childBuilder = builder;
 
   /// The bloc to listen and build from. If null, it is looked up from the
@@ -81,8 +112,15 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
   Widget Function(BuildContext context, S state) get builder =>
       _builder ?? (context, state) => _childBuilder!(context, state, child);
 
+  final void Function(BuildContext context, S state)? _listener;
+
+  final void Function(BuildContext context, S previous, S current)?
+      _transitionListener;
+
   /// The callback that runs whenever the state changes.
-  final void Function(BuildContext context, S state) listener;
+  void Function(BuildContext context, S state) get listener =>
+      _listener ??
+      (context, state) => _transitionListener!(context, state, state);
 
   /// An optional predicate function that determines whether [builder] should
   /// rebuild.
@@ -106,23 +144,52 @@ class BlocSignalConsumer<T extends BlocSignalBase<S>, S>
     final effectiveBloc =
         bloc ?? BlocSignalProvider.of<T>(context, listen: true);
     final childBuilder = _childBuilder;
+    final builtChild = childBuilder != null
+        ? BlocSignalBuilder<T, S>.child(
+            bloc: effectiveBloc,
+            buildWhen: buildWhen,
+            builder: childBuilder,
+            child: child,
+          )
+        : BlocSignalBuilder<T, S>(
+            bloc: effectiveBloc,
+            buildWhen: buildWhen,
+            builder: builder,
+          );
+
+    if (_transitionListener != null) {
+      return BlocSignalListener<T, S>.transition(
+        bloc: effectiveBloc,
+        listener: _transitionListener,
+        listenWhen: listenWhen,
+        child: builtChild,
+      );
+    }
 
     return BlocSignalListener<T, S>(
       bloc: effectiveBloc,
-      listener: listener,
+      listener: _listener!,
       listenWhen: listenWhen,
-      child: childBuilder != null
-          ? BlocSignalBuilder<T, S>.child(
-              bloc: effectiveBloc,
-              buildWhen: buildWhen,
-              builder: childBuilder,
-              child: child,
-            )
-          : BlocSignalBuilder<T, S>(
-              bloc: effectiveBloc,
-              buildWhen: buildWhen,
-              builder: builder,
-            ),
+      child: builtChild,
     );
+  }
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+      ..add(DiagnosticsProperty<T>('bloc', bloc, defaultValue: null))
+      ..add(
+        ObjectFlagProperty<bool Function(S previous, S current)>.has(
+          'buildWhen',
+          buildWhen,
+        ),
+      )
+      ..add(
+        ObjectFlagProperty<bool Function(S previous, S current)>.has(
+          'listenWhen',
+          listenWhen,
+        ),
+      );
   }
 }

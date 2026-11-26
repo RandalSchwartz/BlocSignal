@@ -11,8 +11,8 @@
 | **`BlocSignalProvider<T>`** | Provides a `BlocSignal` or `CubitSignal` instance down the Jaspr component tree via `InheritedComponent`. Supports `lazy:` creation, `.value` injection, and `didUpdateComponent` `create:` ↔ `.value(...)` / `lazy` transitions. |
 | **`MultiBlocSignalProvider`** | Combines multiple `BlocSignalProvider` instances into a single linear component hierarchy via `List<BlocSignalProviderSingleChildComponent>` (alias `BlocSignalProviderSingleChildWidget`). |
 | **`BlocSignalBuilder<T, S>`** | Rebuilds Jaspr components dynamically whenever container state updates with optional `buildWhen` filtering (tracking consecutive `_previousState` pairs across suppressed rebuilds), non-reflexive `equals` initial-pass suppression, `mounted` guards, `!identical(...)` swap checks, and automatic subscription teardown. |
-| **`BlocSignalListener<T, S>`** | Fires side-effect callbacks (such as notifications or JS interop calls) on state updates with optional `listenWhen` predicate filtering, initial-pass non-reflexive `equals` and `mounted` guards, and `!identical(...)` provider swap rebinding. |
-| **`BlocSignalConsumer<T, S>`** | Combines `BlocSignalBuilder` and `BlocSignalListener`, supporting both `buildWhen` and `listenWhen`. |
+| **`BlocSignalListener<T, S>`** | Fires side-effect callbacks (such as notifications or JS interop calls) on state updates with optional `listenWhen` predicate filtering, `.transition` constructor for `(context, previous, current)` callbacks, initial-pass non-reflexive `equals` and `mounted` guards, and `!identical(...)` provider swap rebinding. |
+| **`BlocSignalConsumer<T, S>`** | Combines `BlocSignalBuilder` and `BlocSignalListener`, supporting `buildWhen`, `listenWhen`, and `.transition` for `(context, previous, current)` callbacks. |
 | **`BlocSignalSelector<T, S, V>`** | Subscribes to fine-grained computed state slices and rebuilds only when selection changes (with initial-pass non-reflexive `equals` suppression, `mounted` guards, and `!identical(...)` swap checks). |
 | **`MultiBlocSignalListener`** | Combines multiple `BlocSignalListener` instances cleanly via `List<BlocSignalListenerSingleChildComponent>` (alias `BlocSignalListenerSingleChildWidget`). |
 
@@ -20,9 +20,11 @@
 
 ## 💡 BuildContext Extensions
 
-- **`context.read<T>()`**: Reads container instance without registering a component rebuild dependency.
+- **`context.read<T>()`**: Reads container instance without registering a component rebuild dependency (throws `BlocSignalProviderNotFoundError<T>`, a `StateError` subclass, if absent).
+- **`context.maybeRead<T>()`**: Optional variant of `context.read<T>()` returning `null` when no matching `BlocSignalProvider<T>` ancestor is present.
 - **`context.watch<T>()`**: Listens to provider updates and rebuilds component on container reference swap.
-- **`context.select<T, R>(selector)`**: Subscribes to a computed state derivation and marks component dirty only when selection changes. Registers an inherited dependency (`listen: true`) so provider container swaps automatically rebind the subscription even above `const` component subtrees.
+- **`context.maybeWatch<T>()`**: Optional variant of `context.watch<T>()` returning `null` when no matching `BlocSignalProvider<T>` ancestor is present.
+- **`context.select<T, R>(selector, {equals})`**: Subscribes to a `Computed`-memoized state derivation with optional custom `equals` and marks component dirty only when selection changes. Registers an inherited dependency (`listen: true`) so provider container swaps automatically rebind the subscription even above `const` component subtrees.
 - **`context.value<T, S>()`**: Watches state emissions on `T` and returns current value `S`, registering an element rebuild dependency for component `build()` methods.
 - **`context.state<T, S>()`**: Looks up container `T` and returns underlying `ReadonlySignal<S>` without registering an element rebuild dependency, ideal for `computed()` or `effect()` signal graphs.
 

@@ -69,17 +69,21 @@ The provider and state widgets accept `BlocSignalBase`, so they work with `BlocS
 a replacement instance.
 
 `context.read<T>()` finds a provider without adding an inherited-widget dependency. Use it for
-commands:
+commands. Use `context.maybeRead<T>()` (or `BlocSignalProvider.maybeOf<T>(context)`) when the
+provider is optional and may be absent (`null` instead of throwing):
 
 ```dart
 context.read<CounterBloc>().add(Increment());
+context.maybeRead<AnalyticsBloc>()?.logEvent('increment');
 ```
 
-`context.watch<T>()` depends on the provider and rebuilds if the provided bloc instance changes.
-It does not subscribe to `bloc.state`. Do not replace a state-aware `BlocBuilder` with
-`context.watch<T>().stateValue`; use `BlocSignalBuilder` or a signals widget.
+`context.watch<T>()` (and optional `context.maybeWatch<T>()`) depends on the provider and rebuilds
+if the provided bloc instance changes. It does not subscribe to `bloc.state`. Do not replace a
+state-aware `BlocBuilder` with `context.watch<T>().stateValue`; use `BlocSignalBuilder` or a
+signals widget.
 
-Use `context.select<B, R>` inside `build` for a narrow state slice:
+Use `context.select<B, R>` inside `build` for a narrow state slice, optionally passing `equals:`
+to customize when changes trigger a rebuild:
 
 ```dart
 final isSubmitEnabled = context.select<FormCubit, bool>(
@@ -152,8 +156,20 @@ BlocSignalListener<AuthBloc, AuthState>(
 )
 ```
 
-The listener callback receives only the current state; `listenWhen` receives both values. An
-unrelated parent rebuild does not restart the effect. When `bloc:` is omitted, the listener
+The listener callback receives only the current state; `listenWhen` receives both values. When you
+need both `previous` and `current` in the listener callback itself, use
+`BlocSignalListener.transition` or `BlocSignalConsumer.transition`:
+
+```dart
+BlocSignalListener<CounterBloc, int>.transition(
+  listener: (context, previous, current) {
+    debugPrint('Changed from $previous to $current');
+  },
+  child: const CounterView(),
+)
+```
+
+An unrelated parent rebuild does not restart the effect. When `bloc:` is omitted, the listener
 looks up its provider with `listen: true` during `didChangeDependencies`, so if an ancestor provider replaces
 its container instance, the listener automatically rebinds and continues observing state transitions seamlessly.
 
@@ -704,7 +720,10 @@ Future<void> processLargeBatch(List<RawRecord> records) async {
 
 ## Missing-provider failures
 
-`BlocSignalProvider.of<T>` throws `FlutterError` when no exact provider type is found. Check that the
+`BlocSignalProvider.of<T>` throws `BlocSignalProviderNotFoundError<T>` (a subclass of
+`FlutterError`) when no exact provider type is found, naming `T`, the caller widget, and
+`Builder` / `Navigator` resolution hints. Use `BlocSignalProvider.maybeOf<T>`,
+`context.maybeRead<T>()`, or `context.maybeWatch<T>()` when the provider is optional. Check that the
 lookup context is below the provider and that the generic type matches the provided concrete bloc.
 Do not catch the error and construct a hidden fallback bloc.
 

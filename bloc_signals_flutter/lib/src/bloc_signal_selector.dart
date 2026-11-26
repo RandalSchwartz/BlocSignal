@@ -1,5 +1,6 @@
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_flutter/src/bloc_signal_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:signals_flutter/signals_flutter.dart';
 
@@ -117,6 +118,26 @@ class BlocSignalSelector<T extends BlocSignalBase<S>, S, V>
   @override
   State<BlocSignalSelector<T, S, V>> createState() =>
       _BlocSignalSelectorState<T, S, V>();
+
+  @override
+  void debugFillProperties(DiagnosticPropertiesBuilder properties) {
+    super.debugFillProperties(properties);
+    properties
+      ..add(DiagnosticsProperty<T>('bloc', bloc, defaultValue: null))
+      ..add(
+        DiagnosticsProperty<BlocSignalSelectorOptions<V>>(
+          'options',
+          options,
+          defaultValue: null,
+        ),
+      )
+      ..add(
+        ObjectFlagProperty<bool Function(V previous, V current)>.has(
+          'equals',
+          equals,
+        ),
+      );
+  }
 }
 
 @immutable

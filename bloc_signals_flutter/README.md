@@ -121,6 +121,24 @@ BlocSignalBuilder<CounterBloc, int>.child(
 )
 ```
 
+For inline reactive widgets on any `ReadonlySignal` (including `Signal` and `Computed`) or `BlocSignalBase` (`CubitSignal` and `BlocSignal`), use the zero-allocation `.build` and `.build.child` extensions:
+
+```dart
+// Direct signal or container builder:
+counterSignal.build((context, value) => Text('Count: $value'))
+
+// With static child preservation:
+counterCubit.build.child(
+  const ExpensiveStaticHeader(),
+  (context, state, child) => Column(
+    children: [
+      if (child != null) child,
+      Text('Count: $state'),
+    ],
+  ),
+)
+```
+
 ### 2. Side-Effect Listener (`BlocSignalListener`)
 
 ```dart

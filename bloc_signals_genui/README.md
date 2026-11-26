@@ -183,9 +183,9 @@ Future<void> sendTurn({
 
 ## 📊 Operational Telemetry
 
-When `SubmitAction` targets a local `functionCall` action, `A2uiSurfaceBloc` evaluates it without transitioning to `SurfaceSubmitting` and emits a `'function_call_evaluated'` telemetry event via `BlocSignalObserver.onTelemetry` with:
+When `SubmitAction` or a `NodeResolver`-bound `NodeAction` button in `bloc_signals_genui_flutter` / `bloc_signals_genui_jaspr` (bridged via `A2uiSurfaceBloc.recordFunctionCallTelemetry`) targets a local `functionCall`, `call`, or `@call` action, `A2uiSurfaceBloc` evaluates or records it without transitioning to `SurfaceSubmitting` and emits a `'function_call_evaluated'` telemetry event via `BlocSignalObserver.onTelemetry` (guarded by `!isClosed && !_isClosing`) with:
 
-- `event`: the triggering `SubmitAction`
+- `event`: the triggering `SubmitAction` (or `null` for `NodeAction` bridges)
 - `metadata`: `surface_id`, `source_component_id`, optional `call` (resolved from `call` or `@call`), `latency_ms`, `status` (`'ok'` or `'error'`), and `error_type` (on failure). Sensitive `args` payloads and raw error messages are omitted.
 
 ---

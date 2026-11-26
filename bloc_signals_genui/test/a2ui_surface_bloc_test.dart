@@ -5695,6 +5695,108 @@ void main() {
           isEmpty,
         );
       });
+
+      test(
+          '(Issue #514) recordFunctionCallTelemetry emits ok, error, @call, '
+          'and skips when bloc is closed', () async {
+        final previousObserver = BlocSignalObserver.observer;
+        final observer = _TelemetryRecordingObserver();
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc
+          ..recordFunctionCallTelemetry(
+            surfaceId: 'surf_bridge',
+            sourceComponentId: 'btn_ok',
+            callName: 'openUrl',
+            latencyMs: 12,
+            status: 'ok',
+          )
+          ..recordFunctionCallTelemetry(
+            surfaceId: 'surf_bridge',
+            sourceComponentId: 'btn_err',
+            callName: '',
+            latencyMs: 5,
+            status: 'error',
+            errorType: 'FormatException',
+          );
+
+        final events = observer.telemetry
+            .where((e) => e.name == 'function_call_evaluated')
+            .toList();
+        expect(events, hasLength(2));
+        expect(
+          events[0].metadata,
+          equals(<String, dynamic>{
+            'surface_id': 'surf_bridge',
+            'source_component_id': 'btn_ok',
+            'call': 'openUrl',
+            'latency_ms': 12,
+            'status': 'ok',
+          }),
+        );
+        expect(
+          events[1].metadata,
+          equals(<String, dynamic>{
+            'surface_id': 'surf_bridge',
+            'source_component_id': 'btn_err',
+            'latency_ms': 5,
+            'status': 'error',
+            'error_type': 'FormatException',
+          }),
+        );
+        expect(events[1].metadata!.containsKey('call'), isFalse);
+
+        await bloc.close();
+        bloc.recordFunctionCallTelemetry(
+          surfaceId: 'surf_bridge',
+          sourceComponentId: 'btn_closed',
+          callName: 'shouldSkip',
+          latencyMs: 0,
+          status: 'ok',
+        );
+        expect(
+          observer.telemetry.where((e) => e.name == 'function_call_evaluated'),
+          hasLength(2),
+        );
+      });
+
+      test(
+          '(Issue #514) recordFunctionCallTelemetry isolates onTelemetry '
+          'Exception to onError without throwing', () {
+        final previousObserver = BlocSignalObserver.observer;
+        final observer = _TelemetryRecordingObserver(
+          onTelemetryException: const FormatException('observer-boom'),
+        );
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.recordFunctionCallTelemetry(
+          surfaceId: 'surf_iso',
+          sourceComponentId: 'btn_iso',
+          callName: 'openUrl',
+          latencyMs: 3,
+          status: 'ok',
+          errorType: '',
+        );
+
+        expect(
+          observer.telemetry.where((e) => e.name == 'function_call_evaluated'),
+          hasLength(1),
+        );
+        expect(
+          observer.telemetry.single.metadata?.containsKey('error_type'),
+          isFalse,
+        );
+        expect(observer.errors, hasLength(1));
+        expect(observer.errors.single, isA<FormatException>());
+      });
     });
   });
 }

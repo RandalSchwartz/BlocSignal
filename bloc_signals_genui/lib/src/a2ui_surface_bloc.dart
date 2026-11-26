@@ -58,9 +58,11 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
   /// [patternValidator] optionally overrides the built-in ReDoS safety check
   /// for component validation `pattern` and `validationRegexp` strings.
   ///
-  /// When [SubmitAction] targets a local `functionCall` action, this bloc
-  /// emits an operational telemetry event named `'function_call_evaluated'` via
-  /// [emitTelemetry] with `event` set to the [SubmitAction] and `metadata`
+  /// When [SubmitAction] or a `NodeAction`-bound UI button (bridged via
+  /// [recordFunctionCallTelemetry]) targets a local `functionCall`, `call`, or
+  /// `@call` action, this bloc emits an operational telemetry event named
+  /// `'function_call_evaluated'` via [emitTelemetry] with `event` set to the
+  /// [SubmitAction] (or `null` for `NodeAction` bridges) and `metadata`
   /// containing `surface_id`, `source_component_id`, optional `call` (from
   /// `call` or `@call`), `latency_ms`, `status` (`'ok'` or `'error'`), and
   /// `error_type` (on failure). Sensitive `args` payloads and raw error messages
@@ -910,6 +912,63 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
     return null;
   }
 
+  /// Records operational telemetry (`'function_call_evaluated'`) for a local
+  /// `functionCall` action evaluated outside [SubmitAction] (for example,
+  /// via a [NodeAction] closure in Flutter or Jaspr).
+  ///
+  /// Drops the telemetry event silently when this bloc is closing or closed.
+  ///
+  /// ```dart
+  /// bloc.recordFunctionCallTelemetry(
+  ///   surfaceId: 'surface_1',
+  ///   sourceComponentId: 'btn_1',
+  ///   callName: 'openUrl',
+  ///   latencyMs: 4,
+  ///   status: 'ok',
+  /// );
+  /// ```
+  void recordFunctionCallTelemetry({
+    required String surfaceId,
+    required String sourceComponentId,
+    required int latencyMs,
+    required String status,
+    String? callName,
+    String? errorType,
+  }) {
+    _emitFunctionCallTelemetry(
+      surfaceId: surfaceId,
+      sourceComponentId: sourceComponentId,
+      callName: callName,
+      latencyMs: latencyMs,
+      status: status,
+      errorType: errorType,
+    );
+  }
+
+  void _emitFunctionCallTelemetry({
+    required String surfaceId,
+    required String sourceComponentId,
+    required int latencyMs,
+    required String status,
+    Object? callName,
+    Object? event,
+    String? errorType,
+  }) {
+    if (isClosed || _isClosing) return;
+    emitTelemetry(
+      'function_call_evaluated',
+      event: event,
+      metadata: <String, dynamic>{
+        'surface_id': surfaceId,
+        'source_component_id': sourceComponentId,
+        if (callName is String && callName.isNotEmpty) 'call': callName,
+        'latency_ms': latencyMs,
+        'status': status,
+        if (errorType != null && errorType.isNotEmpty) 'error_type': errorType,
+      },
+    );
+  }
+
   Future<void> _evaluateFunctionCall(
     DataContext dataContext,
     Map<dynamic, dynamic> fc,
@@ -921,18 +980,14 @@ class A2uiSurfaceBloc extends BlocSignal<A2uiSurfaceEvent, A2uiSurfaceState> {
 
     void emitOutcome({required String status, String? errorType}) {
       stopwatch.stop();
-      if (isClosed || _isClosing) return;
-      emitTelemetry(
-        'function_call_evaluated',
+      _emitFunctionCallTelemetry(
+        surfaceId: surfaceId,
+        sourceComponentId: event.sourceComponentId,
+        callName: callName,
+        latencyMs: stopwatch.elapsedMilliseconds,
+        status: status,
         event: event,
-        metadata: <String, dynamic>{
-          'surface_id': surfaceId,
-          'source_component_id': event.sourceComponentId,
-          if (callName is String && callName.isNotEmpty) 'call': callName,
-          'latency_ms': stopwatch.elapsedMilliseconds,
-          'status': status,
-          if (errorType != null) 'error_type': errorType,
-        },
+        errorType: errorType,
       );
     }
 

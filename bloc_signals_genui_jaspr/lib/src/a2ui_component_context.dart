@@ -287,6 +287,12 @@ class A2uiComponentContext {
   /// closures when present and preserving [SubmitAction] dispatch for event
   /// actions and raw `Map` / `String` payloads.
   ///
+  /// When a [NodeAction] targets a local `functionCall`, `call`, or `@call`
+  /// action, execution latency and outcome are bridged to
+  /// [A2uiSurfaceBloc.recordFunctionCallTelemetry]
+  /// (`'function_call_evaluated'`) while swallowing recoverable [Exception]s
+  /// and rethrowing fatal [Error]s.
+  ///
   /// ```dart
   /// componentContext.triggerAction();
   /// ```
@@ -295,6 +301,58 @@ class A2uiComponentContext {
     final modelAction = component.properties['action'];
 
     if (rawAction is NodeAction) {
+      final isFunctionCall = modelAction is Map &&
+          (modelAction['functionCall'] is Map ||
+              modelAction['call'] != null ||
+              modelAction['@call'] != null);
+      if (isFunctionCall) {
+        final fc = modelAction['functionCall'] is Map
+            ? modelAction['functionCall'] as Map
+            : modelAction;
+        final rawCallName = fc['call'] ?? fc['@call'];
+        final callName = rawCallName is String && rawCallName.isNotEmpty
+            ? rawCallName
+            : null;
+        final stopwatch = Stopwatch()..start();
+
+        void handleFailure(Object error, StackTrace stackTrace) {
+          stopwatch.stop();
+          surfaceBloc.recordFunctionCallTelemetry(
+            surfaceId: surfaceId,
+            sourceComponentId: component.id,
+            callName: callName,
+            latencyMs: stopwatch.elapsedMilliseconds,
+            status: 'error',
+            errorType: error.runtimeType.toString(),
+          );
+          if (error is Exception) return;
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+
+        try {
+          unawaited(
+            rawAction().then<void>(
+              (_) {
+                stopwatch.stop();
+                surfaceBloc.recordFunctionCallTelemetry(
+                  surfaceId: surfaceId,
+                  sourceComponentId: component.id,
+                  callName: callName,
+                  latencyMs: stopwatch.elapsedMilliseconds,
+                  status: 'ok',
+                );
+              },
+              onError: handleFailure,
+            ),
+          );
+        } on Object catch (error, stackTrace) {
+          // SCAR-ERR-02: Justified exception: record failure telemetry before
+          // swallowing recoverable Exception or rethrowing fatal Error.
+          handleFailure(error, stackTrace);
+        }
+        return;
+      }
+
       unawaited(
         rawAction().then<void>(
           (_) {},
@@ -304,9 +362,7 @@ class A2uiComponentContext {
           },
         ),
       );
-      final isFunctionCall = modelAction is Map &&
-          (modelAction['functionCall'] is Map || modelAction['call'] != null);
-      if (!isFunctionCall && (modelAction is Map || modelAction is String)) {
+      if (modelAction is Map || modelAction is String) {
         _dispatchParsedAction(modelAction);
       }
       return;

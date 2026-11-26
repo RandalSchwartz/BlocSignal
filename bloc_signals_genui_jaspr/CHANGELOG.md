@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Feat (genui_jaspr)**: Bridge `function_call_evaluated` operational telemetry for `NodeAction`-bound `functionCall`, `call`, and `@call` buttons in `A2uiComponentContext.triggerAction` (#514).
 - **Fix (genui_jaspr)**: Add bounded numeric helpers (`asNonNegativeDouble`, `asBoundedDouble`, `asBoundedInt`), validate SVG icon paths, enforce `TextField` `maxlength`, scope `ChoicePicker` radio names by surface/dataPath/sibling, propagate `siblingDisambiguator` through `A2uiSurfaceView`, isolate `A2uiModal` render budgets via `buildIsolatedChild`, and catch `NodeAction` `Future` `Exception` rejections in `triggerAction` (#478).
 
 ## 2.1.0

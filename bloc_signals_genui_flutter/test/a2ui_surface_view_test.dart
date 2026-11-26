@@ -1,3 +1,4 @@
+import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_genui_flutter/bloc_signals_genui_flutter.dart';
 import 'package:bloc_signals_genui_flutter/src/catalog/safe_prop_parser.dart';
@@ -2511,8 +2512,218 @@ void main() {
           );
         },
       );
+
+      testWidgets(
+        '(Issue #514) tapping NodeResolver-bound functionCall Button in '
+        'A2uiSurfaceView emits function_call_evaluated without '
+        'SurfaceSubmitting',
+        (tester) async {
+          final previousObserver = BlocSignalObserver.observer;
+          final observer = _SurfaceViewTelemetryObserver();
+          BlocSignalObserver.observer = observer;
+          addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+          var executedCalls = 0;
+          final customV09Catalog = StandardCatalog().copyWith(
+            functions: [
+              _TestFunctionImpl(
+                name: 'testCall',
+                onExecute: () => executedCalls++,
+              ),
+              ...BasicCatalog.v0_9().functions.values,
+            ],
+          );
+          final customV10Catalog = BasicCatalog.v1_0().copyWith(
+            functions: [
+              _TestFunctionImpl(
+                name: 'testAtCall',
+                onExecute: () => executedCalls++,
+              ),
+              ...BasicCatalog.v1_0().functions.values,
+            ],
+          );
+
+          final bloc = A2uiSurfaceBloc(
+            catalogs: [customV09Catalog, customV10Catalog],
+          );
+          addTearDown(bloc.close);
+
+          final submissions = <SurfaceSubmitting>[];
+          final unsub = bloc.state.subscribe((state) {
+            if (state is SurfaceSubmitting) {
+              submissions.add(state);
+            }
+          });
+          addTearDown(unsub);
+
+          bloc
+            ..add(
+              ProcessJsonMessage({
+                'version': 'v0.9',
+                'createSurface': {
+                  'surfaceId': 's_514_live',
+                  'catalogId': customV09Catalog.id,
+                },
+              }),
+            )
+            ..add(
+              const ProcessJsonMessage({
+                'version': 'v0.9',
+                'updateComponents': {
+                  'surfaceId': 's_514_live',
+                  'components': [
+                    {
+                      'id': 'root',
+                      'component': 'Column',
+                      'children': ['btn_call'],
+                    },
+                    {
+                      'id': 'btn_call',
+                      'component': 'Button',
+                      'child': 'txt_call',
+                      'action': {
+                        'functionCall': {
+                          'call': 'testCall',
+                          'args': <String, Object?>{},
+                        },
+                      },
+                    },
+                    {
+                      'id': 'txt_call',
+                      'component': 'Text',
+                      'text': 'Run Call',
+                    },
+                  ],
+                },
+              }),
+            );
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc,
+                  surfaceId: 's_514_live',
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(bloc.stateValue, isA<SurfaceReady>());
+          await tester.tap(find.text('Run Call'));
+          await tester.pump();
+
+          // Also verify A2UI 1.0 @call via NodeResolver.
+          bloc.add(
+            ProcessJsonMessage({
+              'version': '1.0',
+              'createSurface': {
+                'surfaceId': 's_514_v10',
+                'catalogId': customV10Catalog.id,
+                'components': const [
+                  {
+                    'id': 'root',
+                    'component': 'Column',
+                    'children': ['btn_at_call'],
+                  },
+                  {
+                    'id': 'btn_at_call',
+                    'component': 'Button',
+                    'child': 'txt_at_call',
+                    'action': {
+                      'functionCall': {
+                        '@call': 'testAtCall',
+                        'args': <String, Object?>{},
+                      },
+                    },
+                  },
+                  {
+                    'id': 'txt_at_call',
+                    'component': 'Text',
+                    'text': 'Run AtCall',
+                  },
+                ],
+              },
+            }),
+          );
+          await tester.pumpWidget(
+            MaterialApp(
+              home: Scaffold(
+                body: A2uiSurfaceView(
+                  bloc: bloc,
+                  surfaceId: 's_514_v10',
+                ),
+              ),
+            ),
+          );
+          await tester.pump();
+
+          expect(bloc.stateValue, isA<SurfaceReady>());
+          await tester.tap(find.text('Run AtCall'));
+          await tester.pump();
+
+          expect(executedCalls, equals(2));
+          expect(submissions, isEmpty);
+
+          final events = observer.telemetry
+              .where((e) => e.name == 'function_call_evaluated')
+              .toList();
+          expect(events, hasLength(2));
+          expect(events[0].metadata?['surface_id'], equals('s_514_live'));
+          expect(
+            events[0].metadata?['source_component_id'],
+            equals('btn_call'),
+          );
+          expect(events[0].metadata?['call'], equals('testCall'));
+          expect(events[0].metadata?['status'], equals('ok'));
+          expect(
+            events[1].metadata?['source_component_id'],
+            equals('btn_at_call'),
+          );
+          expect(events[1].metadata?['call'], equals('testAtCall'));
+          expect(events[1].metadata?['status'], equals('ok'));
+        },
+      );
     });
   });
+}
+
+class _SurfaceViewTelemetryObserver extends BlocSignalObserver {
+  final List<({String name, Map<String, dynamic>? metadata})> telemetry = [];
+
+  @override
+  void onTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {
+    super.onTelemetry(bloc, name, event: event, metadata: metadata);
+    telemetry.add((name: name, metadata: metadata));
+  }
+}
+
+class _TestFunctionImpl extends FunctionImplementation {
+  _TestFunctionImpl({
+    required super.name,
+    required this.onExecute,
+  }) : super(
+          returnType: A2uiReturnType.string,
+          argumentSchema: Schema.object(properties: <String, Schema>{}),
+        );
+
+  final void Function() onExecute;
+
+  @override
+  Object? execute(
+    Map<String, Object?> args,
+    DataContext context, [
+    CancellationSignal? cancellationSignal,
+  ]) {
+    onExecute();
+    return null;
+  }
 }
 
 extension on A2uiSurfaceBloc {

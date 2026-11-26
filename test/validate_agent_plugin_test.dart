@@ -32,6 +32,43 @@ void main() {
       );
       expect(validator.requiredSkillFiles, hasLength(18));
     });
+
+    test('(Issue #512: NBO-8) requiredSkillFiles matches actual files on disk '
+        'in plugins/bloc-signals/skills/bloc-signals/', () {
+      final skillDir = Directory('plugins/bloc-signals/skills/bloc-signals');
+      expect(skillDir.existsSync(), isTrue);
+      final actualFiles = skillDir
+          .listSync(recursive: true, followLinks: false)
+          .whereType<File>()
+          .where((file) => !file.path.endsWith('.DS_Store'))
+          .map((file) => file.path.substring(skillDir.path.length + 1))
+          .toSet();
+      expect(actualFiles, equals(validator.requiredSkillFiles));
+    });
+
+    test(
+      '(Issue #512: NBO-8) detects missing skill files in a temp directory',
+      () {
+        final root = Directory.systemTemp.createTempSync(
+          'blocsignal-validator-missing-skill-',
+        );
+        addTearDown(() => root.deleteSync(recursive: true));
+
+        final skillDir = Directory(
+          '${root.path}/plugins/bloc-signals/skills/bloc-signals',
+        )..createSync(recursive: true);
+        File('${skillDir.path}/SKILL.md').writeAsStringSync(
+          '---\nname: bloc-signals\ndescription: Test skill\n---\n',
+        );
+
+        final errors = validator.validateSkillBundle(root);
+        expect(
+          errors.any((e) => e.contains('Plugin skill is missing:')),
+          isTrue,
+        );
+        expect(errors.any((e) => e.contains('core.md')), isTrue);
+      },
+    );
   });
 
   group('validation path filtering', () {

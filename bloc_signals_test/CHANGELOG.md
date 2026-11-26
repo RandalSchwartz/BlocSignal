@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Fix (test)**: Consolidate `_IsTelemetryMatcher` mismatch state into a single `_TelemetryMismatch` record, format `describe()` with `addDescriptionOf`, and omit trailing `: ` on scalar mismatches (#512).
+- **Fix (test)**: Capture uncaught async errors spawned during `build()` in both `fakeAsync` and standard `runBlocSignalTest` zones without swallowing synchronous `build()` throws (#512).
+- **Fix (test)**: Guarantee `BlocSignalObserver.observer` restoration and `tearDown` execution even when `disposeListener` or `bloc.close()` throws (#512).
 - **Feat (test)**: Support `Matcher` predicates and collection matchers in `isTelemetry` metadata with detailed `describeMismatch` diagnostics (#483).
 - **Feat (test)**: Add `seed` and `expectComputed` parameters to `blocSignalTest` and `runBlocSignalTest` (#483).
 - **Fix (test)**: Move `setUp` inside `try/finally` in `runBlocSignalTest` so `tearDown` and `BlocSignalObserver.observer` restoration run even when `setUp` throws (#483).

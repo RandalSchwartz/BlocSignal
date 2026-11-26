@@ -326,6 +326,185 @@ void main() {
           expect(articles.last['id'], equals(102));
         },
       );
+
+      test(
+        '(Issue #512: NBO-7) throws HttpException on non-200 response',
+        () async {
+          final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+          addTearDown(() => server.close(force: true));
+
+          server.listen((request) async {
+            request.response
+              ..statusCode = 503
+              ..write('Service Unavailable');
+            await request.response.close();
+          });
+
+          await expectLater(
+            update_tool.fetchAllDevToArticles(
+              baseUri: Uri.parse('http://127.0.0.1:${server.port}/articles'),
+            ),
+            throwsA(isA<HttpException>()),
+          );
+        },
+      );
+
+      test(
+        '(Issue #512: NBO-7) sends api-key header when apiKey is provided',
+        () async {
+          String? receivedApiKey;
+          final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+          addTearDown(() => server.close(force: true));
+
+          server.listen((request) async {
+            receivedApiKey = request.headers.value('api-key');
+            request.response
+              ..statusCode = 200
+              ..headers.contentType = ContentType.json
+              ..write(jsonEncode(<Object>[]));
+            await request.response.close();
+          });
+
+          await update_tool.fetchAllDevToArticles(
+            apiKey: 'secret-devto-key',
+            baseUri: Uri.parse('http://127.0.0.1:${server.port}/articles'),
+          );
+
+          expect(receivedApiKey, equals('secret-devto-key'));
+        },
+      );
+
+      test('(Issue #512: NBO-7) deduplicates overlapping items across pages '
+          'and handles exact 100-item boundary', () async {
+        final requestedPages = <String?>[];
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(() => server.close(force: true));
+
+        server.listen((request) async {
+          final page = int.parse(request.uri.queryParameters['page'] ?? '1');
+          requestedPages.add('$page');
+          final items = switch (page) {
+            1 => List<Map<String, dynamic>>.generate(
+              100,
+              (i) => <String, dynamic>{
+                'id': i + 1,
+                'title': 'Article ${i + 1}',
+                'url': 'https://dev.to/gde/article-${i + 1}',
+              },
+            ),
+            2 => <Map<String, dynamic>>[
+              <String, dynamic>{
+                'id': 100,
+                'title': 'Article 100 duplicate',
+                'url': 'https://dev.to/gde/article-100',
+              },
+              <String, dynamic>{
+                'id': 101,
+                'title': 'Article 101',
+                'url': 'https://dev.to/gde/article-101',
+              },
+            ],
+            _ => <Map<String, dynamic>>[],
+          };
+          request.response
+            ..statusCode = 200
+            ..headers.contentType = ContentType.json
+            ..write(jsonEncode(items));
+          await request.response.close();
+        });
+
+        final articles = await update_tool.fetchAllDevToArticles(
+          baseUri: Uri.parse('http://127.0.0.1:${server.port}/articles'),
+        );
+
+        expect(requestedPages, equals(['1', '2']));
+        expect(articles, hasLength(101));
+      });
+
+      test('(Issue #512: NBO-7) stops on zero-new-keys page to prevent '
+          'infinite pagination loop', () async {
+        final requestedPages = <String?>[];
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(() => server.close(force: true));
+
+        server.listen((request) async {
+          requestedPages.add(request.uri.queryParameters['page']);
+          final items = List<Map<String, dynamic>>.generate(
+            100,
+            (i) => <String, dynamic>{
+              'id': i + 1,
+              'title': 'Article ${i + 1}',
+              'url': 'https://dev.to/gde/article-${i + 1}',
+            },
+          );
+          request.response
+            ..statusCode = 200
+            ..headers.contentType = ContentType.json
+            ..write(jsonEncode(items));
+          await request.response.close();
+        });
+
+        final articles = await update_tool.fetchAllDevToArticles(
+          baseUri: Uri.parse('http://127.0.0.1:${server.port}/articles'),
+        );
+
+        expect(requestedPages, equals(['1', '2']));
+        expect(articles, hasLength(100));
+      });
+
+      test('(Issue #512: NBO-7) stops after maxPages when every page returns '
+          '100 new items', () async {
+        final requestedPages = <String?>[];
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(() => server.close(force: true));
+
+        server.listen((request) async {
+          final page = int.parse(request.uri.queryParameters['page'] ?? '1');
+          requestedPages.add('$page');
+          final items = List<Map<String, dynamic>>.generate(
+            100,
+            (i) => <String, dynamic>{
+              'id': (page - 1) * 100 + i + 1,
+              'title': 'Article ${(page - 1) * 100 + i + 1}',
+              'url': 'https://dev.to/gde/article-${(page - 1) * 100 + i + 1}',
+            },
+          );
+          request.response
+            ..statusCode = 200
+            ..headers.contentType = ContentType.json
+            ..write(jsonEncode(items));
+          await request.response.close();
+        });
+
+        final articles = await update_tool.fetchAllDevToArticles(
+          baseUri: Uri.parse('http://127.0.0.1:${server.port}/articles'),
+          maxPages: 3,
+        );
+
+        expect(requestedPages, equals(['1', '2', '3']));
+        expect(articles, hasLength(300));
+      });
+
+      test('(Issue #512: NBO-7) throws FormatException on non-list JSON '
+          'response', () async {
+        final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(() => server.close(force: true));
+
+        server.listen((request) async {
+          request.response
+            ..statusCode = 200
+            ..headers.contentType = ContentType.json
+            ..write(jsonEncode(<String, dynamic>{'error': 'unexpected'}));
+          await request.response.close();
+        });
+
+        await expectLater(
+          update_tool.fetchAllDevToArticles(
+            baseUri: Uri.parse('http://127.0.0.1:${server.port}/articles'),
+          ),
+          throwsA(isA<FormatException>()),
+        );
+      });
     });
   });
 }

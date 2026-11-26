@@ -294,6 +294,10 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
           final targetBloc = runZoned(
             prepareBloc,
             zoneValues: <Object?, Object?>{_fakeAsyncZoneKey: async},
+            zoneSpecification: ZoneSpecification(
+              handleUncaughtError: (_, __, ___, error, stackTrace) =>
+                  recordError(error, stackTrace),
+            ),
           );
           runZonedGuarded(
             () {
@@ -336,44 +340,57 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
           });
         },
       );
-      final targetBloc = runZoned(
-        prepareBloc,
-        zoneSpecification: microtaskSpec,
-      );
-      unawaited(
-        runZonedGuarded(
-          () async {
-            try {
-              if (act != null) {
-                try {
-                  final actResult = act(targetBloc);
-                  if (actResult is Future) {
-                    await actResult;
+      try {
+        final targetBloc = runZoned(
+          prepareBloc,
+          zoneSpecification: ZoneSpecification(
+            scheduleMicrotask: microtaskSpec.scheduleMicrotask,
+            handleUncaughtError: (_, __, ___, error, stackTrace) =>
+                recordError(error, stackTrace),
+          ),
+        );
+        unawaited(
+          runZonedGuarded(
+            () async {
+              try {
+                if (act != null) {
+                  try {
+                    final actResult = act(targetBloc);
+                    if (actResult is Future) {
+                      await actResult;
+                    }
+                    // Intentional `on Object catch` (SCAR-ERR-02): capture
+                    // any throwable from `act` so `errors` matcher can assert
+                    // on it.
+                  } on Object catch (error, stackTrace) {
+                    recordError(error, stackTrace);
                   }
-                  // Intentional `on Object catch` (SCAR-ERR-02): capture any
-                  // throwable from `act` so `errors` matcher can assert on it.
-                } on Object catch (error, stackTrace) {
-                  recordError(error, stackTrace);
                 }
-              }
 
-              if (wait != null) {
-                await Future<void>.delayed(Duration.zero);
-                await Future<void>.delayed(wait);
-              } else {
-                while (pendingMicrotasks > 0) {
-                  await Future<void>.microtask(() {});
+                if (wait != null) {
+                  await Future<void>.delayed(Duration.zero);
+                  await Future<void>.delayed(wait);
+                } else {
+                  while (pendingMicrotasks > 0) {
+                    await Future<void>.microtask(() {});
+                  }
+                }
+              } finally {
+                if (!completer.isCompleted) {
+                  completer.complete();
                 }
               }
-            } finally {
-              completer.complete();
-            }
-          },
-          recordError,
-          zoneSpecification: microtaskSpec,
-        ),
-      );
-      await completer.future;
+            },
+            recordError,
+            zoneSpecification: microtaskSpec,
+          ),
+        );
+        await completer.future;
+      } finally {
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+      }
     }
 
     final targetBloc = bloc!;
@@ -413,13 +430,16 @@ Future<void> runBlocSignalTest<B extends BlocSignalBase<State>, State>({
       }
     }
   } finally {
-    disposeListener?.call();
-    final builtBloc = bloc;
-    if (builtBloc != null) {
-      await builtBloc.close();
+    try {
+      disposeListener?.call();
+      final builtBloc = bloc;
+      if (builtBloc != null) {
+        await builtBloc.close();
+      }
+    } finally {
+      BlocSignalObserver.observer = baselineObserver;
+      await tearDown?.call();
     }
-    BlocSignalObserver.observer = baselineObserver;
-    await tearDown?.call();
   }
 }
 
@@ -547,6 +567,13 @@ test_pkg.Matcher isTelemetry(
 }) =>
     _IsTelemetryMatcher(name: name, event: event, metadata: metadata);
 
+typedef _TelemetryMismatch = ({
+  String reason,
+  test_pkg.Matcher? nestedMatcher,
+  Object? nestedActual,
+  Map<dynamic, dynamic>? nestedState,
+});
+
 class _IsTelemetryMatcher extends test_pkg.Matcher {
   const _IsTelemetryMatcher({
     required this.name,
@@ -555,9 +582,6 @@ class _IsTelemetryMatcher extends test_pkg.Matcher {
   });
 
   static final Object _mismatchKey = Object();
-  static final Object _nestedMatcherKey = Object();
-  static final Object _nestedActualKey = Object();
-  static final Object _nestedStateKey = Object();
 
   final String name;
   final Object? event;
@@ -566,12 +590,22 @@ class _IsTelemetryMatcher extends test_pkg.Matcher {
   @override
   bool matches(dynamic item, Map<dynamic, dynamic> matchState) {
     if (item is! BlocTelemetryEntry) {
-      matchState[_mismatchKey] =
-          'is not a BlocTelemetryEntry (actual type: ${item.runtimeType})';
+      matchState[_mismatchKey] = (
+        reason:
+            'is not a BlocTelemetryEntry (actual type: ${item.runtimeType})',
+        nestedMatcher: null,
+        nestedActual: null,
+        nestedState: null,
+      );
       return false;
     }
     if (item.name != name) {
-      matchState[_mismatchKey] = 'has name "${item.name}" instead of "$name"';
+      matchState[_mismatchKey] = (
+        reason: 'has name "${item.name}" instead of "$name"',
+        nestedMatcher: null,
+        nestedActual: null,
+        nestedState: null,
+      );
       return false;
     }
 
@@ -580,10 +614,12 @@ class _IsTelemetryMatcher extends test_pkg.Matcher {
       final eventMatcher = test_pkg.wrapMatcher(expectedEvent);
       final eventState = <dynamic, dynamic>{};
       if (!eventMatcher.matches(item.event, eventState)) {
-        matchState[_mismatchKey] = 'has mismatched event';
-        matchState[_nestedMatcherKey] = eventMatcher;
-        matchState[_nestedActualKey] = item.event;
-        matchState[_nestedStateKey] = eventState;
+        matchState[_mismatchKey] = (
+          reason: 'has mismatched event',
+          nestedMatcher: eventMatcher,
+          nestedActual: item.event,
+          nestedState: eventState,
+        );
         return false;
       }
     }
@@ -592,22 +628,34 @@ class _IsTelemetryMatcher extends test_pkg.Matcher {
     if (expectedMeta != null) {
       final actualMeta = item.metadata;
       if (actualMeta == null) {
-        matchState[_mismatchKey] = 'has null metadata';
+        matchState[_mismatchKey] = (
+          reason: 'has null metadata',
+          nestedMatcher: null,
+          nestedActual: null,
+          nestedState: null,
+        );
         return false;
       }
       for (final entry in expectedMeta.entries) {
         if (!actualMeta.containsKey(entry.key)) {
-          matchState[_mismatchKey] = 'is missing metadata key "${entry.key}"';
+          matchState[_mismatchKey] = (
+            reason: 'is missing metadata key "${entry.key}"',
+            nestedMatcher: null,
+            nestedActual: null,
+            nestedState: null,
+          );
           return false;
         }
         final valueMatcher = test_pkg.wrapMatcher(entry.value);
         final valueState = <dynamic, dynamic>{};
         final actualValue = actualMeta[entry.key];
         if (!valueMatcher.matches(actualValue, valueState)) {
-          matchState[_mismatchKey] = 'has mismatched metadata["${entry.key}"]';
-          matchState[_nestedMatcherKey] = valueMatcher;
-          matchState[_nestedActualKey] = actualValue;
-          matchState[_nestedStateKey] = valueState;
+          matchState[_mismatchKey] = (
+            reason: 'has mismatched metadata["${entry.key}"]',
+            nestedMatcher: valueMatcher,
+            nestedActual: actualValue,
+            nestedState: valueState,
+          );
           return false;
         }
       }
@@ -619,8 +667,16 @@ class _IsTelemetryMatcher extends test_pkg.Matcher {
   @override
   test_pkg.Description describe(test_pkg.Description description) {
     description.add('BlocTelemetryEntry(name: $name');
-    if (event != null) description.add(', event: $event');
-    if (metadata != null) description.add(', metadata: $metadata');
+    if (event != null) {
+      description
+        ..add(', event: ')
+        ..addDescriptionOf(event);
+    }
+    if (metadata != null) {
+      description
+        ..add(', metadata: ')
+        ..addDescriptionOf(metadata);
+    }
     return description.add(')');
   }
 
@@ -631,20 +687,23 @@ class _IsTelemetryMatcher extends test_pkg.Matcher {
     Map<dynamic, dynamic> matchState,
     bool verbose,
   ) {
-    final reason = matchState[_mismatchKey] as String?;
-    if (reason != null) {
-      mismatchDescription.add(reason);
-      final nestedMatcher = matchState[_nestedMatcherKey] as test_pkg.Matcher?;
+    final mismatch = matchState[_mismatchKey] as _TelemetryMismatch?;
+    if (mismatch != null) {
+      mismatchDescription.add(mismatch.reason);
+      final nestedMatcher = mismatch.nestedMatcher;
       if (nestedMatcher != null) {
-        final nestedState =
-            matchState[_nestedStateKey]! as Map<dynamic, dynamic>;
-        mismatchDescription.add(': ');
+        final nestedDescription = test_pkg.StringDescription();
         nestedMatcher.describeMismatch(
-          matchState[_nestedActualKey],
-          mismatchDescription,
-          nestedState,
+          mismatch.nestedActual,
+          nestedDescription,
+          mismatch.nestedState!,
           verbose,
         );
+        if (nestedDescription.length > 0) {
+          mismatchDescription
+            ..add(': ')
+            ..add(nestedDescription.toString());
+        }
       }
       return mismatchDescription;
     }

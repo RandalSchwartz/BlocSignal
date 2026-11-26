@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_genui/bloc_signals_genui.dart';
 import 'package:bloc_signals_test/bloc_signals_test.dart';
+import 'package:json_schema_builder/json_schema_builder.dart'
+    hide ValidationResult;
 import 'package:test/test.dart';
 
 class _TrackingMultiSurfaceBloc extends A2uiSurfaceBloc {
@@ -5031,6 +5034,668 @@ void main() {
         }
       });
     });
+
+    group('(Issue #445) local functionCall operational telemetry', () {
+      test(
+          'emits function_call_evaluated telemetry once on v0.9 call success '
+          'without transitioning to SurfaceSubmitting and omits args',
+          () async {
+        final previousObserver = BlocSignalObserver.observer;
+        final observer = _TelemetryRecordingObserver();
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'createSurface': {
+              'surfaceId': 'surf_fc_ok',
+              'catalogId':
+                  'https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json',
+            },
+          }),
+        );
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': 'v0.9',
+            'updateComponents': {
+              'surfaceId': 'surf_fc_ok',
+              'components': [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': ['btn_fn'],
+                },
+                {
+                  'id': 'btn_fn',
+                  'component': 'Button',
+                  'child': 'txt_fn',
+                  'action': {
+                    'functionCall': {
+                      'call': 'formatString',
+                      'args': {'value': 'secret-arg-payload'},
+                    },
+                  },
+                },
+                {
+                  'id': 'txt_fn',
+                  'component': 'Text',
+                  'text': 'Run',
+                },
+              ],
+            },
+          }),
+        );
+
+        bloc.add(
+          const SubmitAction(
+            actionName: 'runLocal',
+            sourceComponentId: 'btn_fn',
+            surfaceId: 'surf_fc_ok',
+          ),
+        );
+
+        await pumpEventQueue();
+
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        expect(bloc.stateValue, isNot(isA<SurfaceSubmitting>()));
+        expect(observer.errors, isEmpty);
+
+        final events = observer.telemetry
+            .where((e) => e.name == 'function_call_evaluated')
+            .toList();
+        expect(events, hasLength(1));
+
+        final record = events.single;
+        expect(record.event, isA<SubmitAction>());
+        final meta = record.metadata!;
+        expect(meta['surface_id'], equals('surf_fc_ok'));
+        expect(meta['source_component_id'], equals('btn_fn'));
+        expect(meta['call'], equals('formatString'));
+        expect(meta['status'], equals('ok'));
+        expect(meta['latency_ms'], isA<int>());
+        expect(meta['latency_ms'] as int, greaterThanOrEqualTo(0));
+        expect(meta.containsKey('error_type'), isFalse);
+        expect(meta.containsKey('args'), isFalse);
+        expect(meta.toString(), isNot(contains('secret-arg-payload')));
+      });
+
+      test(
+          'emits function_call_evaluated telemetry with call resolved from '
+          'v1.0 @call key', () async {
+        final previousObserver = BlocSignalObserver.observer;
+        final observer = _TelemetryRecordingObserver();
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final bloc = A2uiSurfaceBloc();
+        addTearDown(bloc.close);
+
+        bloc.add(
+          const ProcessJsonMessage({
+            'version': '1.0',
+            'createSurface': {
+              'surfaceId': 'surf_fc_v1',
+              'catalogId':
+                  'https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json',
+              'components': [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': ['btn_fn_v1'],
+                },
+                {
+                  'id': 'btn_fn_v1',
+                  'component': 'Button',
+                  'child': 'txt_fn_v1',
+                  'action': {
+                    'functionCall': {
+                      '@call': 'formatString',
+                      'args': {'value': 'secret-v1-arg'},
+                    },
+                  },
+                },
+                {
+                  'id': 'txt_fn_v1',
+                  'component': 'Text',
+                  'text': 'Run v1',
+                },
+              ],
+            },
+          }),
+        );
+
+        bloc.add(
+          const SubmitAction(
+            actionName: 'runLocalV1',
+            sourceComponentId: 'btn_fn_v1',
+            surfaceId: 'surf_fc_v1',
+          ),
+        );
+
+        await pumpEventQueue();
+
+        expect(bloc.stateValue, isA<SurfaceReady>());
+        expect(observer.errors, isEmpty);
+
+        final events = observer.telemetry
+            .where((e) => e.name == 'function_call_evaluated')
+            .toList();
+        expect(events, hasLength(1));
+
+        final meta = events.single.metadata!;
+        expect(meta['surface_id'], equals('surf_fc_v1'));
+        expect(meta['source_component_id'], equals('btn_fn_v1'));
+        expect(meta['call'], equals('formatString'));
+        expect(meta['status'], equals('ok'));
+        expect(meta.containsKey('args'), isFalse);
+        expect(meta.toString(), isNot(contains('secret-v1-arg')));
+      });
+
+      test(
+          'emits function_call_evaluated telemetry with status error and '
+          'error_type on StateError failure and propagates to observer and zone',
+          () async {
+        final previousObserver = BlocSignalObserver.observer;
+        final observer = _TelemetryRecordingObserver();
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final customCatalog = StandardCatalog().copyWith(
+          functions: [
+            _DeferredFunction(
+              name: 'throwingFn',
+              handler: () => Future<Object?>.error(
+                StateError('simulated functionCall failure'),
+              ),
+            ),
+            ...BasicCatalog.v0_9().functions.values,
+          ],
+        );
+
+        final bloc = A2uiSurfaceBloc(catalogs: [customCatalog]);
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_fc_err',
+              catalogId: customCatalog.id,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_fc_err',
+              components: const [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': ['btn_fail'],
+                },
+                {
+                  'id': 'btn_fail',
+                  'component': 'Button',
+                  'child': 'txt_fail',
+                  'action': {
+                    'functionCall': {
+                      'call': 'throwingFn',
+                      'args': {'secret': 'do-not-leak'},
+                    },
+                  },
+                },
+                {
+                  'id': 'txt_fail',
+                  'component': 'Text',
+                  'text': 'Fail',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        final uncaught = <Object>[];
+        await runZonedGuarded(
+          () async {
+            bloc.add(
+              const SubmitAction(
+                actionName: 'runFail',
+                sourceComponentId: 'btn_fail',
+                surfaceId: 'surf_fc_err',
+              ),
+            );
+            await pumpEventQueue();
+          },
+          (error, _) => uncaught.add(error),
+        );
+
+        final events = observer.telemetry
+            .where((e) => e.name == 'function_call_evaluated')
+            .toList();
+        expect(events, hasLength(1));
+
+        final record = events.single;
+        expect(record.event, isA<SubmitAction>());
+        final meta = record.metadata!;
+        expect(meta['surface_id'], equals('surf_fc_err'));
+        expect(meta['source_component_id'], equals('btn_fail'));
+        expect(meta['call'], equals('throwingFn'));
+        expect(meta['status'], equals('error'));
+        expect(meta['error_type'], equals('StateError'));
+        expect(meta['latency_ms'], isA<int>());
+        expect(meta['latency_ms'] as int, greaterThanOrEqualTo(0));
+        expect(meta.containsKey('args'), isFalse);
+        expect(meta.toString(), isNot(contains('do-not-leak')));
+        expect(
+          meta.toString(),
+          isNot(contains('simulated functionCall failure')),
+        );
+
+        expect(observer.errors, contains(isA<StateError>()));
+        expect(uncaught, contains(isA<StateError>()));
+      });
+
+      test(
+          'emits function_call_evaluated telemetry with status error on '
+          'recoverable Exception failure without leaking to zone', () async {
+        final previousObserver = BlocSignalObserver.observer;
+        final observer = _TelemetryRecordingObserver();
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final customCatalog = StandardCatalog().copyWith(
+          functions: [
+            _DeferredFunction(
+              name: 'exceptionFn',
+              handler: () => Future<Object?>.error(
+                const FormatException('recoverable-secret-details'),
+              ),
+            ),
+            ...BasicCatalog.v0_9().functions.values,
+          ],
+        );
+
+        final bloc = A2uiSurfaceBloc(catalogs: [customCatalog]);
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_fc_exc',
+              catalogId: customCatalog.id,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_fc_exc',
+              components: const [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': ['btn_exc'],
+                },
+                {
+                  'id': 'btn_exc',
+                  'component': 'Button',
+                  'child': 'txt_exc',
+                  'action': {
+                    'functionCall': {'call': 'exceptionFn'},
+                  },
+                },
+                {
+                  'id': 'txt_exc',
+                  'component': 'Text',
+                  'text': 'Exc',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        final uncaught = <Object>[];
+        await runZonedGuarded(
+          () async {
+            bloc.add(
+              const SubmitAction(
+                actionName: 'runExc',
+                sourceComponentId: 'btn_exc',
+                surfaceId: 'surf_fc_exc',
+              ),
+            );
+            await pumpEventQueue();
+          },
+          (error, _) => uncaught.add(error),
+        );
+
+        final events = observer.telemetry
+            .where((e) => e.name == 'function_call_evaluated')
+            .toList();
+        expect(events, hasLength(1));
+
+        final meta = events.single.metadata!;
+        expect(meta['status'], equals('error'));
+        expect(meta['error_type'], equals('FormatException'));
+        expect(meta.toString(), isNot(contains('recoverable-secret-details')));
+        expect(observer.errors, contains(isA<FormatException>()));
+        expect(uncaught, isEmpty);
+      });
+
+      test(
+          'handles synchronous execute throw caught by a2ui_core DataContext '
+          'and emits ok telemetry once', () async {
+        final previousObserver = BlocSignalObserver.observer;
+        final observer = _TelemetryRecordingObserver();
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final customCatalog = StandardCatalog().copyWith(
+          functions: [
+            _DeferredFunction(
+              name: 'syncThrowFn',
+              handler: () => throw StateError('sync throw'),
+            ),
+            ...BasicCatalog.v0_9().functions.values,
+          ],
+        );
+
+        final bloc = A2uiSurfaceBloc(catalogs: [customCatalog]);
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_fc_sync',
+              catalogId: customCatalog.id,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_fc_sync',
+              components: const [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': ['btn_sync'],
+                },
+                {
+                  'id': 'btn_sync',
+                  'component': 'Button',
+                  'child': 'txt_sync',
+                  'action': {
+                    'functionCall': {'call': 'syncThrowFn'},
+                  },
+                },
+                {
+                  'id': 'txt_sync',
+                  'component': 'Text',
+                  'text': 'Sync',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        bloc.add(
+          const SubmitAction(
+            actionName: 'runSync',
+            sourceComponentId: 'btn_sync',
+            surfaceId: 'surf_fc_sync',
+          ),
+        );
+        await pumpEventQueue();
+
+        final events = observer.telemetry
+            .where((e) => e.name == 'function_call_evaluated')
+            .toList();
+        expect(events, hasLength(1));
+        expect(events.single.metadata!['status'], equals('ok'));
+      });
+
+      test(
+          '#ObserverIsolatedError isolates onTelemetry Exception on both '
+          'success and failure paths without masking original outcome',
+          () async {
+        final previousObserver = BlocSignalObserver.observer;
+        final observer = _TelemetryRecordingObserver(
+          onTelemetryException: const FormatException('observer-boom'),
+        );
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final customCatalog = StandardCatalog().copyWith(
+          functions: [
+            _DeferredFunction(
+              name: 'failingFn',
+              handler: () => Future<Object?>.error(
+                StateError('original-fn-error'),
+              ),
+            ),
+            ...BasicCatalog.v0_9().functions.values,
+          ],
+        );
+
+        final bloc = A2uiSurfaceBloc(catalogs: [customCatalog]);
+        addTearDown(bloc.close);
+
+        bloc.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_obs_iso',
+              catalogId: customCatalog.id,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_obs_iso',
+              components: const [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': ['btn_ok', 'btn_fail'],
+                },
+                {
+                  'id': 'btn_ok',
+                  'component': 'Button',
+                  'child': 'txt_ok',
+                  'action': {
+                    'functionCall': {
+                      'call': 'formatString',
+                      'args': {'value': 'hi'},
+                    },
+                  },
+                },
+                {
+                  'id': 'txt_ok',
+                  'component': 'Text',
+                  'text': 'Ok',
+                },
+                {
+                  'id': 'btn_fail',
+                  'component': 'Button',
+                  'child': 'txt_fail',
+                  'action': {
+                    'functionCall': {'call': 'failingFn'},
+                  },
+                },
+                {
+                  'id': 'txt_fail',
+                  'component': 'Text',
+                  'text': 'Fail',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        // 1. Success path with throwing onTelemetry observer
+        bloc.add(
+          const SubmitAction(
+            actionName: 'runOk',
+            sourceComponentId: 'btn_ok',
+            surfaceId: 'surf_obs_iso',
+          ),
+        );
+        await pumpEventQueue();
+
+        expect(
+          observer.telemetry.where((e) => e.name == 'function_call_evaluated'),
+          hasLength(1),
+        );
+        expect(observer.errors, hasLength(1));
+        expect(observer.errors.single, isA<FormatException>());
+
+        // 2. Failure path with throwing onTelemetry observer
+        final uncaught = <Object>[];
+        await runZonedGuarded(
+          () async {
+            bloc.add(
+              const SubmitAction(
+                actionName: 'runFail',
+                sourceComponentId: 'btn_fail',
+                surfaceId: 'surf_obs_iso',
+              ),
+            );
+            await pumpEventQueue();
+          },
+          (error, _) => uncaught.add(error),
+        );
+
+        final events = observer.telemetry
+            .where((e) => e.name == 'function_call_evaluated')
+            .toList();
+        expect(events, hasLength(2));
+        expect(events.last.metadata!['status'], equals('error'));
+        expect(events.last.metadata!['error_type'], equals('StateError'));
+        expect(observer.errors, contains(isA<FormatException>()));
+        expect(observer.errors, contains(isA<StateError>()));
+        expect(uncaught, contains(isA<StateError>()));
+      });
+
+      test(
+          'suppresses function_call_evaluated telemetry when bloc is closed '
+          'before async functionCall resolves or rejects', () async {
+        final previousObserver = BlocSignalObserver.observer;
+        final observer = _TelemetryRecordingObserver();
+        BlocSignalObserver.observer = observer;
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final resolveCompleter = Completer<Object?>();
+        final rejectCompleter = Completer<Object?>();
+
+        final customCatalog = StandardCatalog().copyWith(
+          functions: [
+            _DeferredFunction(
+              name: 'resolveLateFn',
+              handler: () => resolveCompleter.future,
+            ),
+            _DeferredFunction(
+              name: 'rejectLateFn',
+              handler: () => rejectCompleter.future,
+            ),
+            ...BasicCatalog.v0_9().functions.values,
+          ],
+        );
+
+        final bloc1 = A2uiSurfaceBloc(catalogs: [customCatalog]);
+        bloc1.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_close_ok',
+              catalogId: customCatalog.id,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_close_ok',
+              components: const [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': ['btn_late'],
+                },
+                {
+                  'id': 'btn_late',
+                  'component': 'Button',
+                  'child': 'txt_late',
+                  'action': {
+                    'functionCall': {'call': 'resolveLateFn'},
+                  },
+                },
+                {
+                  'id': 'txt_late',
+                  'component': 'Text',
+                  'text': 'Late',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        bloc1.add(
+          const SubmitAction(
+            actionName: 'runLate',
+            sourceComponentId: 'btn_late',
+            surfaceId: 'surf_close_ok',
+          ),
+        );
+        await bloc1.close();
+        resolveCompleter.complete('done');
+        await pumpEventQueue();
+
+        final bloc2 = A2uiSurfaceBloc(catalogs: [customCatalog]);
+        bloc2.add(
+          ProcessMessages([
+            CreateSurfaceMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_close_err',
+              catalogId: customCatalog.id,
+            ),
+            UpdateComponentsMessage(
+              version: 'v0.9',
+              surfaceId: 'surf_close_err',
+              components: const [
+                {
+                  'id': 'root',
+                  'component': 'Column',
+                  'children': ['btn_late_err'],
+                },
+                {
+                  'id': 'btn_late_err',
+                  'component': 'Button',
+                  'child': 'txt_late_err',
+                  'action': {
+                    'functionCall': {'call': 'rejectLateFn'},
+                  },
+                },
+                {
+                  'id': 'txt_late_err',
+                  'component': 'Text',
+                  'text': 'LateErr',
+                },
+              ],
+            ),
+          ]),
+        );
+
+        bloc2.add(
+          const SubmitAction(
+            actionName: 'runLateErr',
+            sourceComponentId: 'btn_late_err',
+            surfaceId: 'surf_close_err',
+          ),
+        );
+        await bloc2.close();
+        rejectCompleter.completeError(const FormatException('late-fail'));
+        await pumpEventQueue();
+
+        expect(
+          observer.telemetry.where((e) => e.name == 'function_call_evaluated'),
+          isEmpty,
+        );
+      });
+    });
   });
 }
 
@@ -5078,4 +5743,70 @@ class _CustomCancelSubscription<T> implements StreamSubscription<T> {
 
   @override
   void resume() {}
+}
+
+class _TelemetryRecord {
+  const _TelemetryRecord({
+    required this.name,
+    this.event,
+    this.metadata,
+  });
+
+  final String name;
+  final Object? event;
+  final Map<String, dynamic>? metadata;
+}
+
+class _TelemetryRecordingObserver extends BlocSignalObserver {
+  _TelemetryRecordingObserver({this.onTelemetryException});
+
+  final Exception? onTelemetryException;
+  final List<_TelemetryRecord> telemetry = <_TelemetryRecord>[];
+  final List<Object> errors = <Object>[];
+
+  @override
+  void onTelemetry(
+    BlocSignalBase<dynamic> bloc,
+    String name, {
+    Object? event,
+    Map<String, dynamic>? metadata,
+  }) {
+    super.onTelemetry(bloc, name, event: event, metadata: metadata);
+    telemetry
+        .add(_TelemetryRecord(name: name, event: event, metadata: metadata));
+    if (onTelemetryException != null) {
+      throw onTelemetryException!;
+    }
+  }
+
+  @override
+  void onError(
+    BlocSignalBase<dynamic> bloc,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    super.onError(bloc, error, stackTrace);
+    errors.add(error);
+  }
+}
+
+class _DeferredFunction extends FunctionImplementation {
+  _DeferredFunction({
+    required super.name,
+    required this.handler,
+  }) : super(
+          returnType: A2uiReturnType.string,
+          argumentSchema: Schema.object(properties: {}),
+        );
+
+  final FutureOr<Object?> Function() handler;
+
+  @override
+  Object? execute(
+    Map<String, Object?> args,
+    DataContext context, [
+    CancellationSignal? cancellationSignal,
+  ]) {
+    return handler();
+  }
 }

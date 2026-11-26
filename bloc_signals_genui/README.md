@@ -181,6 +181,15 @@ Future<void> sendTurn({
 
 ---
 
+## 📊 Operational Telemetry
+
+When `SubmitAction` targets a local `functionCall` action, `A2uiSurfaceBloc` evaluates it without transitioning to `SurfaceSubmitting` and emits a `'function_call_evaluated'` telemetry event via `BlocSignalObserver.onTelemetry` with:
+
+- `event`: the triggering `SubmitAction`
+- `metadata`: `surface_id`, `source_component_id`, optional `call` (resolved from `call` or `@call`), `latency_ms`, `status` (`'ok'` or `'error'`), and `error_type` (on failure). Sensitive `args` payloads and raw error messages are omitted.
+
+---
+
 ## 💻 CLI Showcase (`agy-cli` Style)
 
 Explore the interactive terminal client in [`examples/genui_tui_agent`](https://github.com/RandalSchwartz/BlocSignal/tree/main/examples/genui_tui_agent):

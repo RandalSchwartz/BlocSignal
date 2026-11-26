@@ -314,9 +314,12 @@ on<SearchQuery>(
 ```
 
 Available built-in transformers & concurrency utilities:
+- `concurrent()`: Processes incoming events concurrently without queueing, dropping, or superseding.
 - `droppable()`: Drops incoming events if a handler for that event type is currently executing.
 - `sequential()`: Queues incoming events in FIFO order using a `Mutex` lock.
 - `restartable()`: Allows new incoming events to supersede previous in-flight handler executions.
+- `debounce(Duration)`: Delays handler execution until a quiet period of `duration` elapses, coalescing bursts (`event_dropped` with `reason: 'coalesced'`) and cancelling pending timers on `close()`.
+- `throttle(Duration, {bool trailing = false})`: Rate-limits execution to once per `duration` window (`trailing: false` drops mid-cooldown events with `reason: 'throttled'`; `trailing: true` coalesces and runs the latest event on cooldown expiry).
 - `Mutex`: A zero-dependency async lock (`protect(() => ...)`) for custom synchronization.
 
 #### Writing Custom Event Transformers
@@ -324,17 +327,35 @@ Available built-in transformers & concurrency utilities:
 Custom transformers wrap `handler(event, emit)` using standard Dart primitives without Rx stream pipelines:
 
 ```dart
-/// Debounces event handling by [duration] using a Timer.
-EventTransformer<E, S> debounce<E, S>(Duration duration) {
+/// Custom timed transformer that delays execution and tracks completion
+/// with a Completer so errors route to `onError` without leaking spans.
+EventTransformer<E, S> customDebounce<E, S>(Duration duration) {
   Timer? timer;
+  Completer<void>? pendingCompleter;
   return (event, handler, emit) {
-    timer?.cancel();
-    timer = Timer(duration, () {
-      final result = handler(event, emit);
-      if (result is Future) {
-        unawaited(result);
+    if (timer?.isActive ?? false) {
+      timer?.cancel();
+      final prev = pendingCompleter;
+      pendingCompleter = null;
+      if (prev != null && !prev.isCompleted) {
+        prev.complete();
+      }
+    }
+    final completer = Completer<void>();
+    pendingCompleter = completer;
+    timer = Timer(duration, () async {
+      timer = null;
+      if (identical(pendingCompleter, completer)) {
+        pendingCompleter = null;
+      }
+      try {
+        await handler(event, emit);
+        completer.complete();
+      } on Object catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
       }
     });
+    return completer.future;
   };
 }
 

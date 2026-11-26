@@ -1028,7 +1028,92 @@ void main() {
         expect(outerBloc.stateValue, equals('hold'));
       },
     );
+
+    test(
+      '(Issue #480: BLOCKER-2) OtelBlocSignalObserver marks only coalesced '
+      'event span with bloc.contention while surviving event receives '
+      'transition',
+      () async {
+        final debouncedBloc = _DebouncedOtelBloc();
+        debouncedBloc.add('first');
+        debouncedBloc.add('second');
+
+        await Future<void>.delayed(const Duration(milliseconds: 80));
+        expect(debouncedBloc.stateValue, equals('second'));
+        await debouncedBloc.close();
+
+        final eventSpans = exporter.spans
+            .where((s) => s.name.contains('add(String)'))
+            .toList();
+        expect(eventSpans, hasLength(2));
+
+        final contentionSpans = eventSpans
+            .where((s) => s.attributes.getBool('bloc.contention') == true)
+            .toList();
+        final normalSpans = eventSpans
+            .where((s) => s.attributes.getBool('bloc.contention') != true)
+            .toList();
+
+        expect(contentionSpans, hasLength(1));
+        expect(normalSpans, hasLength(1));
+        expect(
+          normalSpans.first.spanEvents!.any((e) => e.name == 'transition'),
+          isTrue,
+        );
+        expect(
+          contentionSpans.first.spanEvents!.any((e) => e.name == 'transition'),
+          isFalse,
+        );
+
+        harness.clear();
+        final throttledBloc = _TrailingThrottledOtelBloc();
+        throttledBloc.add('lead');
+        throttledBloc.add('mid');
+        throttledBloc.add('trail');
+
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        expect(throttledBloc.stateValue, equals('trail'));
+        await throttledBloc.close();
+
+        final tSpans = exporter.spans
+            .where((s) => s.name.contains('add(String)'))
+            .toList();
+        expect(tSpans, hasLength(3));
+        expect(
+          tSpans.where((s) => s.attributes.getBool('bloc.contention') == true),
+          hasLength(1),
+        );
+        final executedTSpans = tSpans
+            .where((s) => s.attributes.getBool('bloc.contention') != true)
+            .toList();
+        expect(executedTSpans, hasLength(2));
+        for (final span in executedTSpans) {
+          expect(
+            span.spanEvents!.any((e) => e.name == 'transition'),
+            isTrue,
+          );
+        }
+      },
+    );
   });
+}
+
+class _DebouncedOtelBloc extends BlocSignal<String, String> {
+  _DebouncedOtelBloc() : super(initialState: 'init') {
+    on<String>(
+      (event, emit) => emit(event),
+      transformer: debounce(const Duration(milliseconds: 25)),
+    );
+  }
+}
+
+class _TrailingThrottledOtelBloc extends BlocSignal<String, String> {
+  _TrailingThrottledOtelBloc() : super(initialState: 'init') {
+    on<String>(
+      (event, emit) => emit(event),
+      transformer: throttle(const Duration(milliseconds: 30), trailing: true),
+    );
+  }
 }
 
 class _RestartableConstQueueBloc extends BlocSignal<Increment, int> {

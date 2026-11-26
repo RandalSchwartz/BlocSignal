@@ -334,6 +334,16 @@ mixin CubitSignalMixin<StateType> implements BlocSignalBase<StateType> {
   }
 
   @override
+  @internal
+  void registerCloseCallback(void Function() callback) {
+    if (_isClosed) {
+      callback();
+      return;
+    }
+    _effectsToDispose.add(callback);
+  }
+
+  @override
   @mustCallSuper
   Future<void> close() async {
     if (_isClosed) return;

@@ -14,6 +14,76 @@ const _restartablePreemptedMetadata = <String, dynamic>{
   'reason': 'superseded',
 };
 
+const _debounceCoalescedMetadata = <String, dynamic>{
+  'transformer': 'debounce',
+  'reason': 'coalesced',
+};
+
+const _throttleDroppedMetadata = <String, dynamic>{
+  'transformer': 'throttle',
+  'reason': 'throttled',
+};
+
+const _throttleCoalescedMetadata = <String, dynamic>{
+  'transformer': 'throttle',
+  'reason': 'coalesced',
+};
+
+BlocSignalBase<dynamic>? _resolveHost(BlocSignalBase<dynamic>? bloc) =>
+    bloc ??
+    (Zone.current[BlocSignalBase.ambientZoneBlocKey]
+        as BlocSignalBase<dynamic>?);
+
+void Function(StateType) _guardedEmit<StateType>(
+  BlocSignalBase<dynamic>? host,
+  void Function(StateType) emit,
+) {
+  return (state) {
+    if (host != null && host.isClosed) return;
+    emit(state);
+  };
+}
+
+void _executeAndSettle<E, StateType>({
+  required E event,
+  required EventHandler<E, StateType> handler,
+  required void Function(StateType) emit,
+  required BlocSignalBase<dynamic>? host,
+  required Zone zone,
+  required Completer<void> completer,
+}) {
+  zone.run(() {
+    try {
+      final result = handler(event, _guardedEmit(host, emit));
+      if (result is Future) {
+        unawaited(
+          result.then<void>(
+            (_) {
+              if (!completer.isCompleted) {
+                completer.complete();
+              }
+            },
+            onError: (Object error, StackTrace stackTrace) {
+              if (!completer.isCompleted) {
+                completer.completeError(error, stackTrace);
+              }
+            },
+          ),
+        );
+      } else if (!completer.isCompleted) {
+        completer.complete();
+      }
+      // Intentional `on Object catch` (SCAR-ERR-02): forward synchronous
+      // handler throwables to the tracked Completer so `BlocSignalMixin`
+      // routes them to `onError` and `onEventCompleted`.
+    } on Object catch (error, stackTrace) {
+      if (!completer.isCompleted) {
+        completer.completeError(error, stackTrace);
+      }
+    }
+  });
+}
+
 /// A function handler signature for processing event [E] and emitting state
 /// updates.
 ///
@@ -40,24 +110,6 @@ typedef EventHandler<E, StateType> = FutureOr<void> Function(
 /// Custom transformers wrap the invocation of `handler(event, emit)` using
 /// standard Dart primitives such as [Timer], [Mutex], or conditional guards.
 ///
-/// #### Debounce Transformer
-/// Delays handler execution until a quiet period of the given duration has
-/// passed:
-/// ```dart
-/// EventTransformer<E, S> debounce<E, S>(Duration duration) {
-///   Timer? timer;
-///   return (event, handler, emit) {
-///     timer?.cancel();
-///     timer = Timer(duration, () {
-///       final result = handler(event, emit);
-///       if (result is Future) {
-///         unawaited(result);
-///       }
-///     });
-///   };
-/// }
-/// ```
-///
 /// #### Filter / Predicate Transformer
 /// Executes the handler only when a given condition on [event] is satisfied:
 /// ```dart
@@ -70,10 +122,33 @@ typedef EventHandler<E, StateType> = FutureOr<void> Function(
 /// }
 /// ```
 ///
+/// #### Sample / Delay Transformer
+/// Delays handler execution by a fixed `duration` while tracking completion
+/// via a [Completer] so asynchronous errors route to `onError`:
+/// ```dart
+/// EventTransformer<E, S> delayEvents<E, S>(Duration duration) {
+///   return (event, handler, emit) {
+///     final completer = Completer<void>();
+///     Timer(duration, () async {
+///       try {
+///         await handler(event, emit);
+///         completer.complete();
+///       } on Object catch (error, stackTrace) {
+///         completer.completeError(error, stackTrace);
+///       }
+///     });
+///     return completer.future;
+///   };
+/// }
+/// ```
+///
 /// See also:
+/// - [concurrent], which processes incoming events concurrently.
 /// - [droppable], which ignores new events while a handler is in-flight.
 /// - [sequential], which processes events in FIFO order using a [Mutex].
 /// - [restartable], which supersedes in-flight handler executions.
+/// - [debounce], which delays execution until a quiet period elapses.
+/// - [throttle], which rate-limits execution to at most once per window.
 typedef EventTransformer<E, StateType> = FutureOr<void> Function(
   E event,
   EventHandler<E, StateType> handler,
@@ -358,5 +433,325 @@ EventTransformer<E, StateType> restartable<E, StateType>({
       onComplete();
       rethrow;
     }
+  };
+}
+
+/// Returns an [EventTransformer] that processes incoming events concurrently
+/// without queueing, dropping, or superseding in-flight executions.
+///
+/// Each incoming event dispatches immediately to its handler. Emissions after
+/// the host container is closed are safely suppressed.
+///
+/// Optionally accepts an explicit host [bloc] reference; if omitted, ambient
+/// zone resolution is used.
+///
+/// ### Example
+/// ```dart
+/// class NotificationBloc
+///     extends BlocSignal<NotificationEvent, List<String>> {
+///   NotificationBloc() : super(initialState: const []) {
+///     on<FetchNotification>(
+///       (event, emit) async {
+///         final item = await api.fetch(event.id);
+///         emit([...stateValue, item]);
+///       },
+///       transformer: concurrent(),
+///     );
+///   }
+/// }
+/// ```
+EventTransformer<E, StateType> concurrent<E, StateType>({
+  BlocSignalBase<dynamic>? bloc,
+}) {
+  return (event, handler, emit) {
+    final host = _resolveHost(bloc);
+    if (host != null && host.isClosed) {
+      return null;
+    }
+    return handler(event, _guardedEmit(host, emit));
+  };
+}
+
+/// Returns an [EventTransformer] that delays processing incoming events until
+/// [duration] has elapsed without another event arriving.
+///
+/// Rapid bursts are coalesced so only the latest event executes. Superseded
+/// events emit [BlocTelemetryKeys.eventDropped] with `reason: 'coalesced'` and
+/// complete cleanly. Pending timers are automatically cancelled when the host
+/// container closes.
+///
+/// Optionally accepts an explicit host [bloc] reference; if omitted, ambient
+/// zone resolution is used.
+///
+/// ### Example
+/// ```dart
+/// class SearchBloc extends BlocSignal<SearchEvent, SearchState> {
+///   SearchBloc() : super(initialState: SearchInitial()) {
+///     on<SearchQueryChanged>(
+///       (event, emit) async {
+///         final results = await api.search(event.query);
+///         emit(SearchLoaded(results));
+///       },
+///       transformer: debounce(const Duration(milliseconds: 300)),
+///     );
+///   }
+/// }
+/// ```
+EventTransformer<E, StateType> debounce<E, StateType>(
+  Duration duration, {
+  BlocSignalBase<dynamic>? bloc,
+}) {
+  Timer? timer;
+  Completer<void>? pendingCompleter;
+  E? pendingEvent;
+  Zone? pendingZone;
+  final registeredHosts = Expando<bool>();
+
+  void cancelPending() {
+    timer?.cancel();
+    timer = null;
+    pendingEvent = null;
+    pendingZone = null;
+    final completer = pendingCompleter;
+    pendingCompleter = null;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete();
+    }
+  }
+
+  return (event, handler, emit) {
+    final host = _resolveHost(bloc);
+    if (host != null && host.isClosed) {
+      return null;
+    }
+    if (host != null && registeredHosts[host] == null) {
+      registeredHosts[host] = true;
+      host.registerCloseCallback(cancelPending);
+    }
+
+    while (timer?.isActive ?? false) {
+      timer?.cancel();
+      timer = null;
+      final prevEvent = pendingEvent;
+      final prevZone = pendingZone;
+      final prevCompleter = pendingCompleter;
+      pendingEvent = null;
+      pendingZone = null;
+      pendingCompleter = null;
+
+      if (prevCompleter != null && !prevCompleter.isCompleted) {
+        prevCompleter.complete();
+      }
+      if (host != null && BlocSignalObserver.observer != null) {
+        (prevZone ?? Zone.current).run(() {
+          emitContainerTelemetry(
+            host,
+            BlocTelemetryKeys.eventDropped,
+            event: prevEvent,
+            metadata: _debounceCoalescedMetadata,
+          );
+        });
+      }
+      if (host != null && host.isClosed) {
+        return null;
+      }
+    }
+
+    final eventZone = Zone.current;
+    final completer = Completer<void>();
+    pendingCompleter = completer;
+    pendingEvent = event;
+    pendingZone = eventZone;
+
+    timer = Timer(duration, () {
+      timer = null;
+      pendingEvent = null;
+      pendingZone = null;
+      if (identical(pendingCompleter, completer)) {
+        pendingCompleter = null;
+      }
+      if (host != null && host.isClosed) {
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+        return;
+      }
+      _executeAndSettle(
+        event: event,
+        handler: handler,
+        emit: emit,
+        host: host,
+        zone: eventZone,
+        completer: completer,
+      );
+    });
+
+    return completer.future;
+  };
+}
+
+/// Returns an [EventTransformer] that rate-limits incoming events to execute
+/// at most once per [duration] window.
+///
+/// By default (`trailing: false`), the first event executes immediately and any
+/// events arriving during the cooldown [duration] are dropped with
+/// [BlocTelemetryKeys.eventDropped] (`reason: 'throttled'`).
+///
+/// When [trailing] is `true`, events arriving during the cooldown window
+/// coalesce into a single trailing slot (superseding any prior queued trailing
+/// event with `reason: 'coalesced'`) and the latest queued event executes when
+/// the cooldown expires. Active cooldown timers are cancelled automatically
+/// when the host container closes.
+///
+/// Optionally accepts an explicit host [bloc] reference; if omitted, ambient
+/// zone resolution is used.
+///
+/// ### Example
+/// ```dart
+/// class ScrollBloc extends BlocSignal<ScrollEvent, ScrollState> {
+///   ScrollBloc() : super(initialState: ScrollInitial()) {
+///     on<ScrollUpdated>(
+///       (event, emit) => emit(ScrollState(offset: event.offset)),
+///       transformer: throttle(
+///         const Duration(milliseconds: 100),
+///         trailing: true,
+///       ),
+///     );
+///   }
+/// }
+/// ```
+EventTransformer<E, StateType> throttle<E, StateType>(
+  Duration duration, {
+  bool trailing = false,
+  BlocSignalBase<dynamic>? bloc,
+}) {
+  Timer? cooldownTimer;
+  Completer<void>? trailingCompleter;
+  E? trailingEvent;
+  EventHandler<E, StateType>? trailingHandler;
+  void Function(StateType)? trailingEmit;
+  BlocSignalBase<dynamic>? trailingHost;
+  Zone? trailingZone;
+  final registeredHosts = Expando<bool>();
+
+  void cancelPending() {
+    cooldownTimer?.cancel();
+    cooldownTimer = null;
+    trailingEvent = null;
+    trailingHandler = null;
+    trailingEmit = null;
+    trailingHost = null;
+    trailingZone = null;
+    final completer = trailingCompleter;
+    trailingCompleter = null;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete();
+    }
+  }
+
+  void startCooldown() {
+    void onExpired() {
+      cooldownTimer = null;
+      final completer = trailingCompleter;
+      if (completer == null) {
+        return;
+      }
+      final event = trailingEvent as E;
+      final handler = trailingHandler!;
+      final emit = trailingEmit!;
+      final host = trailingHost;
+      final zone = trailingZone!;
+      trailingEvent = null;
+      trailingHandler = null;
+      trailingEmit = null;
+      trailingHost = null;
+      trailingZone = null;
+      trailingCompleter = null;
+
+      if (host != null && host.isClosed) {
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
+        return;
+      }
+
+      cooldownTimer = zone.run(() => Timer(duration, onExpired));
+      _executeAndSettle(
+        event: event,
+        handler: handler,
+        emit: emit,
+        host: host,
+        zone: zone,
+        completer: completer,
+      );
+    }
+
+    cooldownTimer = Timer(duration, onExpired);
+  }
+
+  return (event, handler, emit) {
+    final host = _resolveHost(bloc);
+    if (host != null && host.isClosed) {
+      return null;
+    }
+    if (host != null && registeredHosts[host] == null) {
+      registeredHosts[host] = true;
+      host.registerCloseCallback(cancelPending);
+    }
+
+    if (cooldownTimer?.isActive ?? false) {
+      if (!trailing) {
+        if (host != null && BlocSignalObserver.observer != null) {
+          emitContainerTelemetry(
+            host,
+            BlocTelemetryKeys.eventDropped,
+            event: event,
+            metadata: _throttleDroppedMetadata,
+          );
+        }
+        return null;
+      }
+
+      while (trailingCompleter != null) {
+        final prevEvent = trailingEvent;
+        final prevZone = trailingZone;
+        final prevCompleter = trailingCompleter!;
+        trailingEvent = null;
+        trailingHandler = null;
+        trailingEmit = null;
+        trailingHost = null;
+        trailingZone = null;
+        trailingCompleter = null;
+
+        if (!prevCompleter.isCompleted) {
+          prevCompleter.complete();
+        }
+        if (host != null && BlocSignalObserver.observer != null) {
+          (prevZone ?? Zone.current).run(() {
+            emitContainerTelemetry(
+              host,
+              BlocTelemetryKeys.eventDropped,
+              event: prevEvent,
+              metadata: _throttleCoalescedMetadata,
+            );
+          });
+        }
+        if (host != null && host.isClosed) {
+          return null;
+        }
+      }
+
+      final completer = Completer<void>();
+      trailingCompleter = completer;
+      trailingEvent = event;
+      trailingHandler = handler;
+      trailingEmit = emit;
+      trailingHost = host;
+      trailingZone = Zone.current;
+      return completer.future;
+    }
+
+    startCooldown();
+    return handler(event, _guardedEmit(host, emit));
   };
 }

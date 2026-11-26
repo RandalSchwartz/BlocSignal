@@ -51,6 +51,36 @@ Use `.value` only when another owner already controls the bloc's lifetime. Closi
 both the provider and its original owner is an ownership bug even though the current `close` method
 is idempotent.
 
+### Graceful retention (`retentionPeriod` and `clearRetained()`)
+
+Pass `retentionPeriod` to `BlocSignalProvider` to keep an owned bloc alive briefly after the
+provider unmounts (for example during transient route transitions or tab switches):
+
+```dart
+BlocSignalProvider<CounterBloc>(
+  create: (_) => CounterBloc(),
+  retentionPeriod: const Duration(seconds: 5),
+  child: const CounterPage(),
+)
+```
+
+- **Pool keying**: Retained instances are keyed by `(T, widget.key)`. A remounting
+  `BlocSignalProvider<T>` with the same `key` within `retentionPeriod` cancels the pending
+  disposal timer and reclaims the live instance with its state intact (for both `lazy: true` and
+  `lazy: false`) without re-invoking `create`.
+- **Timer expiration & external close**: When `retentionPeriod` expires, `bloc.close()` is called
+  and the pool entry is removed. If the bloc was closed externally while retained, it is not
+  reclaimed.
+- **Zero / negative / `.value` rules**: `null` and `Duration.zero` close immediately on `dispose`.
+  Negative durations throw `ArgumentError`. `BlocSignalProvider.value` never retains or closes its
+  external bloc, and transitioning from `create:` to `.value` closes the owned bloc immediately.
+- **Global reset / test teardown**: Call `await BlocSignalProvider.clearRetained()` to cancel all
+  active retention timers, close all retained blocs, and empty the pool (for example on logout or in
+  `tearDown`). In `flutter_test` `testWidgets`, `FakeAsync` checks for pending timers before
+  `tearDown` runs, so call `await BlocSignalProvider.clearRetained()` (or pump past
+  `retentionPeriod`) before the `testWidgets` callback completes, and keep it in `tearDown` to
+  clean up across tests on failure.
+
 ## State rebuilds
 
 `BlocSignalBuilder` reads a supplied bloc or finds one from the nearest matching provider. Its

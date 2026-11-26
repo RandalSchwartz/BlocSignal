@@ -48,7 +48,7 @@ class RequireCubitSignalMixinInitFix extends ResolvedCorrectionProducer {
         } else if (body is EmptyFunctionBody) {
           builder.addSimpleReplacement(
             body.sourceRange,
-            '{\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
+            ' {\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
           );
         }
       });
@@ -67,7 +67,7 @@ class RequireCubitSignalMixinInitFix extends ResolvedCorrectionProducer {
         } else if (body is EmptyFunctionBody) {
           builder.addSimpleReplacement(
             body.sourceRange,
-            '{\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
+            ' {\n    initCubitSignal(initialState: TODO_INITIAL_STATE);\n  }',
           );
         }
       });

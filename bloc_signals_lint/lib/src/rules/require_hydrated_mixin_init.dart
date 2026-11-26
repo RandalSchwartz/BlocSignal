@@ -97,7 +97,14 @@ class RequireHydratedMixinInit extends AnalysisRule {
     final hasPrimaryConstructor = namePart is PrimaryConstructorDeclaration;
 
     if (body is! BlockClassBody) {
-      return [(token: namePart.typeName, signalMixinName: signalMixinName)];
+      return [
+        (
+          token: hasPrimaryConstructor
+              ? (namePart.constructorName?.name ?? namePart.typeName)
+              : namePart.typeName,
+          signalMixinName: signalMixinName,
+        ),
+      ];
     }
 
     final violations = <({Token token, String signalMixinName})>[];

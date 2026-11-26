@@ -78,5 +78,97 @@ class CounterCubit extends CubitSignal<int> {
         expect(transformed, isNot(contains('void _prune()')));
       },
     );
+
+    test('(Issue #489) safely no-ops on EmptyClassBody and renames calls in '
+        'PrimaryConstructorBody', () async {
+      const emptyClassCode = '''
+class C() extends CubitSignal<int>;
+''';
+      final emptyParseResult = parseString(content: emptyClassCode);
+      final emptyClassDecl = emptyParseResult.unit.declarations
+          .whereType<ClassDeclaration>()
+          .first;
+      const dummySource = '''
+class Dummy extends CubitSignal<int> {
+  void _prune() {}
+}
+''';
+      final dummyMethod =
+          (parseString(content: dummySource).unit.declarations.first
+                      as ClassDeclaration)
+                  .body
+              as BlockClassBody;
+      expect(
+        RequireEmitInHelperNameFix.computeRename(
+          source: emptyClassCode,
+          classDeclaration: emptyClassDecl,
+          methodToRename: dummyMethod.members
+              .whereType<MethodDeclaration>()
+              .first,
+        ),
+        equals(emptyClassCode),
+      );
+
+      const primaryBodySource = '''
+class CounterCubit() extends CubitSignal<int> {
+  this : super(initialState: 0) {
+    _prune();
+    this._prune();
+  }
+
+  void _prune() {
+    emit(stateValue + 1);
+  }
+}
+''';
+      final transformedBody = await runLintFix(
+        RequireEmitInHelperName(),
+        RequireEmitInHelperNameFix.new,
+        primaryBodySource,
+      );
+      expect(transformedBody, contains('void _pruneAndEmit()'));
+      expect(transformedBody, contains('_pruneAndEmit();'));
+      expect(transformedBody, contains('this._pruneAndEmit();'));
+      expect(transformedBody, isNot(contains('void _prune()')));
+
+      const primaryInitSource = '''
+class CounterCubit() extends CubitSignal<int> {
+  this : assert(_prune()), super(initialState: 0) {
+    _prune();
+  }
+
+  bool _prune() {
+    emit(stateValue + 1);
+    return true;
+  }
+}
+''';
+      final transformedInit = await runLintFix(
+        RequireEmitInHelperName(),
+        RequireEmitInHelperNameFix.new,
+        primaryInitSource,
+      );
+      expect(transformedInit, contains('bool _pruneAndEmit()'));
+      expect(transformedInit, contains('assert(_pruneAndEmit())'));
+      expect(transformedInit, contains('{\n    _pruneAndEmit();\n  }'));
+    });
+
+    test(
+      '(Issue #489) safely no-ops when nearestContainerDeclaration is null',
+      () async {
+        const extensionSource = '''
+extension CounterExt on int {
+  void _prune() {}
+}
+''';
+        final transformed = await runLintFix(
+          RequireEmitInHelperName(),
+          RequireEmitInHelperNameFix.new,
+          extensionSource,
+          selectionOffset: extensionSource.indexOf('_prune'),
+        );
+        expect(transformed, equals(extensionSource));
+      },
+    );
   });
 }

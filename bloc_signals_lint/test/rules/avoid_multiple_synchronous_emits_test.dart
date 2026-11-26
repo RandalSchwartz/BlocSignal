@@ -940,5 +940,62 @@ class CounterCubit extends CubitSignal<int> {
       }
       expect(flagged, hasLength(1));
     });
+
+    test('(Issue #489) handles EmptyClassBody class/mixin and PrimaryConstructorBody initializer closure', () async {
+      const emptyClassCode = '''
+class C() extends CubitSignal<int>;
+''';
+      expect(
+        await runLintRule(AvoidMultipleSynchronousEmits(), emptyClassCode),
+        isEmpty,
+      );
+
+      const emptyMixinCode = '''
+mixin M on CubitSignal<int>;
+''';
+      expect(
+        await runLintRule(AvoidMultipleSynchronousEmits(), emptyMixinCode),
+        isEmpty,
+      );
+
+      const primaryInitClosureBadCode = '''
+class CounterCubit() extends CubitSignal<int> {
+  this : assert(() { emit(1); emit(2); return true; }()), super(initialState: 0);
+}
+''';
+      final lints = await runLintRule(
+        AvoidMultipleSynchronousEmits(),
+        primaryInitClosureBadCode,
+      );
+      expect(lints, hasLength(1));
+
+      const primaryEmptyBodyGoodCode = '''
+class CounterCubit() extends CubitSignal<int> {
+  this : super(initialState: 0);
+}
+''';
+      expect(
+        await runLintRule(
+          AvoidMultipleSynchronousEmits(),
+          primaryEmptyBodyGoodCode,
+        ),
+        isEmpty,
+      );
+
+      const primarySingleEmitGoodCode = '''
+class CounterCubit() extends CubitSignal<int> {
+  this : super(initialState: 0) {
+    emit(1);
+  }
+}
+''';
+      expect(
+        await runLintRule(
+          AvoidMultipleSynchronousEmits(),
+          primarySingleEmitGoodCode,
+        ),
+        isEmpty,
+      );
+    });
   });
 }

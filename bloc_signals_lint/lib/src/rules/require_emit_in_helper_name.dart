@@ -93,13 +93,19 @@ class _Visitor extends SimpleAstVisitor<void> {
   }
 
   void _checkBody(AstNode declaration, ClassBody body) {
-    if (body is! BlockClassBody) return;
-    if (!BlocContainerUtils.isBlocContainerDeclaration(declaration)) return;
+    switch (body) {
+      case EmptyClassBody():
+        return;
+      case BlockClassBody(:final members):
+        if (!BlocContainerUtils.isBlocContainerDeclaration(declaration)) {
+          return;
+        }
 
-    for (final member in body.members.whereType<MethodDeclaration>()) {
-      if (RequireEmitInHelperName.isFlaggedHelper(member)) {
-        rule.reportAtToken(member.name, arguments: [member.name.lexeme]);
-      }
+        for (final member in members.whereType<MethodDeclaration>()) {
+          if (RequireEmitInHelperName.isFlaggedHelper(member)) {
+            rule.reportAtToken(member.name, arguments: [member.name.lexeme]);
+          }
+        }
     }
   }
 }

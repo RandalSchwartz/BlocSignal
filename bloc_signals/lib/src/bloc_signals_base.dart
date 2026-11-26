@@ -30,6 +30,8 @@ abstract class BlocSignalObserver {
     final current = BlocSignalObserver.observer;
     if (current == null) {
       BlocSignalObserver.observer = observer;
+    } else if (identical(current, observer)) {
+      return;
     } else if (current is CompositeBlocSignalObserver) {
       current.add(observer);
     } else {
@@ -124,17 +126,26 @@ abstract class BlocSignalObserver {
 /// [BlocSignalBase.onError]. Fatal Dart [Error] subtypes (such as
 /// [AssertionError] or [StateError]) are not caught and fail fast.
 class CompositeBlocSignalObserver extends BlocSignalObserver {
-  /// Creates a [CompositeBlocSignalObserver] with the provided [observers].
+  /// Creates a [CompositeBlocSignalObserver] with the provided [observers],
+  /// deduplicating identical instances in registration order.
   CompositeBlocSignalObserver([Iterable<BlocSignalObserver>? observers])
-      : _observers = List<BlocSignalObserver>.from(observers ?? const []);
+      : _observers = <BlocSignalObserver>[] {
+    if (observers != null) {
+      observers.forEach(add);
+    }
+  }
 
   final List<BlocSignalObserver> _observers;
 
   /// An unmodifiable view of the currently registered observers.
   List<BlocSignalObserver> get observers => List.unmodifiable(_observers);
 
-  /// Registers an [observer] at the end of the composite pipeline.
+  /// Registers an [observer] at the end of the composite pipeline if it is not
+  /// already present (checked via [identical]).
   void add(BlocSignalObserver observer) {
+    if (_observers.any((existing) => identical(existing, observer))) {
+      return;
+    }
     _observers.add(observer);
   }
 
@@ -256,6 +267,9 @@ class CompositeBlocSignalObserver extends BlocSignalObserver {
     }
   }
 }
+
+/// A backward- and ecosystem-friendly alias for [CompositeBlocSignalObserver].
+typedef MultiBlocSignalObserver = CompositeBlocSignalObserver;
 
 /// Emits operational telemetry diagnostics on [bloc] from custom or built-in
 /// concurrency transformers.

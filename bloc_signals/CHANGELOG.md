@@ -1,3 +1,8 @@
+## Unreleased
+
+- **Fix (core)**: Throw `StateError` naming `initCubitSignal` in all build modes when `CubitSignalMixin.emit()` is called before `initCubitSignal()` (#479).
+- **Feat (core)**: Deduplicate identical observer instances in `BlocSignalObserver.addObserver` and `CompositeBlocSignalObserver.add`, and export `typedef MultiBlocSignalObserver = CompositeBlocSignalObserver` (#479).
+
 ## 1.9.0
 
 - **Feat (core)**: Guard `CubitSignalMixin.toString()` when uninitialized (`<uninitialized>`) and add `@protected describeState(StateType state)` for customizable state formatting (#474).

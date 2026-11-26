@@ -121,14 +121,32 @@ mixin ReplayMixin<State> on BlocSignalBase<State> {
     final oldState = stateValue;
     batch(() {
       if (!_isReplaying && !isHistorySuppressed) {
-        _changeStack.add(
-          _Change<State>(
-            oldState,
-            newState,
-            () => onRedo(() => emit(newState)),
-            (val) => onUndo(() => emit(val)),
-          ),
-        );
+        final last = _changeStack.lastChange;
+        if (last != null &&
+            shouldCoalesce(last._oldValue, oldState, newState)) {
+          if (equals(last._oldValue, newState)) {
+            _changeStack.dropLast();
+          } else {
+            final coalescedOld = last._oldValue;
+            _changeStack.replaceLast(
+              _Change<State>(
+                coalescedOld,
+                newState,
+                () => onRedo(() => emit(newState)),
+                (val) => onUndo(() => emit(val)),
+              ),
+            );
+          }
+        } else {
+          _changeStack.add(
+            _Change<State>(
+              oldState,
+              newState,
+              () => onRedo(() => emit(newState)),
+              (val) => onUndo(() => emit(val)),
+            ),
+          );
+        }
       }
       super.emit(newState);
     });
@@ -227,6 +245,24 @@ mixin ReplayMixin<State> on BlocSignalBase<State> {
   /// This is called at the time the state is being restored.
   /// By default [shouldReplay] always returns `true`.
   bool shouldReplay(State state) => true;
+
+  /// Determines whether an incoming transition from [currentState] to
+  /// [nextState] should be coalesced into the previous undo entry whose
+  /// starting state was [previousState].
+  ///
+  /// Override this hook to merge continuous gestures (such as slider drags,
+  /// freehand drawing strokes, or rapid text edits) into a single undoable
+  /// step. When this returns `true` and `equals(previousState, nextState)` is
+  /// also `true`, the no-op undo entry is dropped automatically.
+  ///
+  /// Defaults to `false`.
+  @protected
+  bool shouldCoalesce(
+    State previousState,
+    State currentState,
+    State nextState,
+  ) =>
+      false;
 }
 
 /// A mixin which enables `undo` and `redo` operations for [BlocSignalBase] and

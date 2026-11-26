@@ -46,6 +46,23 @@ class _ChangeStack<T> {
   bool get canRedo => _redos.any((c) => _shouldReplay(c._newValue));
   bool get canUndo => _history.any((c) => _shouldReplay(c._oldValue));
 
+  _Change<T>? get lastChange => _history.isEmpty ? null : _history.last;
+
+  void replaceLast(_Change<T> change) {
+    _history
+      ..removeLast()
+      ..addLast(change);
+    _redos.clear();
+    _bumpRevision();
+  }
+
+  void dropLast() {
+    if (_history.isEmpty) return;
+    _history.removeLast();
+    _redos.clear();
+    _bumpRevision();
+  }
+
   void add(_Change<T> change) {
     if (_limit != null && _limit! <= 0) return;
 

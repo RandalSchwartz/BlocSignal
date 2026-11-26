@@ -107,6 +107,10 @@ class SelectiveCubit extends ReplayCubit<MyState> {
 - **Atomic Rollback on Traversal Exhaustion**: If no candidate state satisfies `shouldReplay`, skipped changes are not drained into the opposite stack; the traversal cleanly preserves the existing queues without modifying the container's state.
 - **Symmetric Traversal Across Intermediate Skips**: Undoing across multiple filtered states and subsequently redoing restores corresponding states symmetrically.
 
+### Continuous-Gesture Coalescing (`shouldCoalesce`)
+
+Override `@protected bool shouldCoalesce(State previousState, State currentState, State nextState)` to merge continuous transitions (such as slider drags or rapid text edits) into a single undo/redo step. If coalescing returns `true` and `equals(previousState, nextState)` is `true`, the net no-op entry is dropped from the undo stack automatically.
+
 ---
 
 ## 🛡️ Replay Execution Protection & Lifecycle Gating

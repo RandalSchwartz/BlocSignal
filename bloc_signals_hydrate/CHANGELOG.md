@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Feat (hydrate)**: Add synchronous `HydratedCipher` encryption/integrity verification hook (`cipher`), UTF-8 `maxPayloadBytes` write cap enforcement, and `storageVersion` + `migrate(json, fromVersion)` schema evolution support on `HydratedMixin` (#479).
+
 ## 1.1.3
 
 - **Fix (hydrate)**: Suppress history recording during `HydratedMixin.hydrate()` and `HydratedMixin.clear()` via `runWithoutHistory()`, and invoke `onReset()` inside `batch()` on `clear()` so composed `ReplayMixin` stacks do not pollute undo history on cold boot or resurrect wiped state after logout (#471).

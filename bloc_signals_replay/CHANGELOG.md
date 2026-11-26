@@ -1,3 +1,7 @@
+## Unreleased
+
+- **Feat (replay)**: Add `@protected bool shouldCoalesce(previousState, currentState, nextState)` on `ReplayMixin` to merge continuous transitions into a single undo/redo step and drop net no-op entries (#479).
+
 ## 1.4.1
 
 - **Fix (replay)**: Mint a per-invocation `BlocSignalBase.ambientZoneDispatchTokenKey` in `ReplayBlocMixin._runReplayEvent` and wrap `_notifyReplayEvent`, `action`, and `_notifyReplayEventCompleted` inside `runZoned` so nested `undo()`/`redo()` calls isolate their telemetry and OpenTelemetry spans from enclosing `add()` handlers (#475).

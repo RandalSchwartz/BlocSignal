@@ -317,7 +317,7 @@ class ModernProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
+    return BlocSignalProvider(
       create: (context) => api.fetchUserProfile(userId).toAsyncBlocSignal(),
       child: BlocSignalBuilder<BlocSignalBase<AsyncState<UserProfile>>, AsyncState<UserProfile>>(
         builder: (context, state) => switch (state) {

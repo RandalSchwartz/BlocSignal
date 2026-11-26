@@ -5,39 +5,86 @@ import 'package:blocsignal_website/src/models/publication_generator.dart';
 
 export 'package:blocsignal_website/src/models/publication_generator.dart';
 
+/// Fetches all published DEV.to articles by paginating `per_page=100`
+/// across pages until a page returns fewer than `100` items.
+Future<List<Map<String, dynamic>>> fetchAllDevToArticles({
+  String? apiKey,
+  Uri? baseUri,
+}) async {
+  const perPage = 100;
+  final endpoint =
+      baseUri ??
+      Uri.parse('https://dev.to/api/articles?username=randalschwartz');
+  final articles = <Map<String, dynamic>>[];
+  final seenKeys = <Object>{};
+  final client = HttpClient();
+
+  try {
+    var page = 1;
+    while (true) {
+      final pageUri = endpoint.replace(
+        queryParameters: <String, String>{
+          ...endpoint.queryParameters,
+          'per_page': '$perPage',
+          'page': '$page',
+        },
+      );
+
+      final request = await client.getUrl(pageUri);
+      request.headers.set(
+        HttpHeaders.userAgentHeader,
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      );
+      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      if (apiKey != null && apiKey.isNotEmpty) {
+        request.headers.add('api-key', apiKey);
+      }
+
+      final response = await request.close();
+      final jsonString = await response.transform(utf8.decoder).join();
+
+      if (response.statusCode != 200) {
+        throw HttpException(
+          'Failed to fetch DEV.to API: HTTP ${response.statusCode}',
+          uri: pageUri,
+        );
+      }
+
+      final rawArticles = jsonDecode(jsonString) as List<dynamic>;
+      final pageArticles = rawArticles.cast<Map<String, dynamic>>();
+      for (final article in pageArticles) {
+        final key = article['id'] ?? article['canonical_url'] ?? article['url'];
+        if (key == null || seenKeys.add(key)) {
+          articles.add(article);
+        }
+      }
+
+      if (pageArticles.length < perPage) {
+        break;
+      }
+      page++;
+    }
+  } finally {
+    client.close();
+  }
+
+  return articles;
+}
+
 /// Automated tool to fetch the latest DEV.to articles for @randalschwartz
 /// and regenerate `website/lib/src/models/publications_data.g.dart`.
 Future<void> main() async {
   final apiKey = Platform.environment['DEVTO_API_KEY'];
-  final client = HttpClient();
-
-  final Uri uri = Uri.parse(
-    'https://dev.to/api/articles?username=randalschwartz&per_page=50',
-  );
 
   print('📡 Fetching latest DEV.to articles for @randalschwartz...');
 
-  final request = await client.getUrl(uri);
-  request.headers.set(
-    HttpHeaders.userAgentHeader,
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  );
-  request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-  if (apiKey != null && apiKey.isNotEmpty) {
-    request.headers.add('api-key', apiKey);
-  }
-
-  final response = await request.close();
-  final jsonString = await response.transform(utf8.decoder).join();
-  client.close();
-
-  if (response.statusCode != 200) {
-    print('❌ Failed to fetch DEV.to API: HTTP ${response.statusCode}');
+  final List<Map<String, dynamic>> articles;
+  try {
+    articles = await fetchAllDevToArticles(apiKey: apiKey);
+  } on HttpException catch (error) {
+    print('❌ ${error.message}');
     exit(1);
   }
-
-  final List<dynamic> rawArticles = jsonDecode(jsonString) as List<dynamic>;
-  final articles = rawArticles.cast<Map<String, dynamic>>();
 
   // Check if latest symmetry of state article is present; if not, prepend it
   const symmetryArticleUrl =

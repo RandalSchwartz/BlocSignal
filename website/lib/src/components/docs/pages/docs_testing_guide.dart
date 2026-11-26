@@ -13,7 +13,7 @@ class const DocsTestingGuidePage({super.key}) extends StatelessComponent {
     TocHeading(title: '1. Declarative Testing Overview', anchor: 'overview'),
     TocHeading(title: '2. Testing CubitSignal', anchor: 'cubit-testing'),
     TocHeading(
-      title: '3. State Seeding Best Practice',
+      title: '3. State Seeding & Computed Assertions',
       anchor: 'state-seeding',
     ),
     TocHeading(
@@ -129,44 +129,59 @@ void main() {
       ]),
 
       section(id: 'state-seeding', classes: 'docs-section', [
-        h2([Component.text('3. State Seeding Best Practice')]),
+        h2([Component.text('3. State Seeding & Computed Assertions')]),
         p([
           Component.text(
-            'In BlocSignal, state seeding is performed directly in the ',
+            'You can seed initial state either via constructor parameters in ',
           ),
           code([Component.text('build:')]),
+          Component.text(' or using the '),
+          code([Component.text('seed:')]),
           Component.text(
-            ' closure via constructor parameters, rather than mutating private state after creation.',
+            ' parameter (which applies the state before subscription without recording it as an emission). Use ',
           ),
+          code([Component.text('expectComputed:')]),
+          Component.text(
+            ' to assert derived signals on the container using literal values or ',
+          ),
+          code([Component.text('Matcher')]),
+          Component.text(' predicates.'),
         ]),
         const DocsCallout(
           type: CalloutType.tip,
-          title: 'Explicit Constructor Seeding',
+          title: 'Constructor & seed: Parity',
           children: [
             p([
               Component.text(
-                'Passing initialState into the container constructor makes your architecture '
-                'transparent, testable, and aligns directly with pure Dart functional principles.',
+                'Use constructor parameters when the container exposes initialState, or pass seed: () => state when testing intermediate states without adding extra constructors. Combine with expectComputed: and isTelemetry(..., metadata: {key: matcher}) for complete verification.',
               ),
             ]),
           ],
         ),
         const DocsCodeBlock(
-          title: 'Seeding Initial State in build',
+          title: 'Seeding Initial State & Asserting Computed Signals',
           dart313Code: '''
 blocSignalTest<CounterCubit, int>(
   'emits [11] when increment is called on seeded cubit',
-  build: () => CounterCubit(initialState: 10),
+  build: CounterCubit.new,
+  seed: () => 10,
   act: (cubit) => cubit.increment(),
   expect: () => [11],
+  expectComputed: (cubit) => {
+    cubit.doubled: greaterThanOrEqualTo(22),
+  },
 );
 ''',
           dart35Code: '''
 blocSignalTest<CounterCubit, int>(
   'emits [11] when increment is called on seeded cubit',
-  build: () => CounterCubit(initialState: 10),
+  build: CounterCubit.new,
+  seed: () => 10,
   act: (CounterCubit cubit) => cubit.increment(),
   expect: () => <int>[11],
+  expectComputed: (CounterCubit cubit) => <ReadonlySignal<Object?>, Object?>{
+    cubit.doubled: greaterThanOrEqualTo(22),
+  },
 );
 ''',
         ),

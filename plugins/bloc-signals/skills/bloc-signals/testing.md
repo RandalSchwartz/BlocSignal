@@ -22,10 +22,14 @@ void main() {
     );
 
     blocSignalTest<CounterCubit, int>(
-      'supports state seeding directly in constructor',
-      build: () => CounterCubit(initialState: 10),
+      'supports state seeding via seed or constructor',
+      build: CounterCubit.new,
+      seed: () => 10,
       act: (cubit) => cubit.increment(),
       expect: () => [11],
+      expectComputed: (cubit) => {
+        cubit.doubled: greaterThanOrEqualTo(22),
+      },
     );
   });
 }
@@ -35,7 +39,8 @@ void main() {
 * **Observer Setup Timing**: `blocSignalTest` automatically sets up `BlocSignalObserver.observer` **before** invoking `build()` so `onCreate` lifecycle events are captured cleanly.
 * **Automatic De-duplication**: `BlocSignal` automatically suppresses duplicate state emissions using `==` equality. Re-emitting an identical state will not produce a test emission.
 * **Exceptions & Error Routing**: Use `errors: () => [isA<MyException>()]` to assert operational exceptions reported to `onError`, rethrown `Error` subtypes (such as `StateError` or `ArgumentError`), and direct synchronous or asynchronous throws from `CubitSignal` methods during `act` and `wait` (deduplicated by object identity so `onError` + rethrow produces a single entry). When `errors:` is omitted, unhandled errors are rethrown to fail the test immediately.
-* **Telemetry & Concurrency Assertions**: Use `expectTelemetry: () => [isTelemetry('event_name', metadata: {'key': 'val'})]` to assert operational telemetry emitted via `emitTelemetry` and concurrency transformers (`BlocTelemetryKeys`). Matchers support partial metadata matching.
+* **Telemetry & Concurrency Assertions**: Use `expectTelemetry: () => [isTelemetry('event_name', metadata: {'key': 'val'})]` to assert operational telemetry emitted via `emitTelemetry` and concurrency transformers (`BlocTelemetryKeys`). `isTelemetry` supports partial metadata subset matching as well as `Matcher` predicates and collection matchers (for example `greaterThanOrEqualTo(0)` or `contains('tag')`) in `metadata`.
+* **Derived Signals (`expectComputed`)**: Use `expectComputed: (bloc) => {bloc.myComputed: expectedOrMatcher}` to assert `ReadonlySignal` values owned by the built container against literal values or `Matcher`s.
 * **Virtual-Time Testing (`fakeAsync: true`)**: Pass `fakeAsync: true` to `blocSignalTest` to run `build`, `act`, and `wait` inside a `FakeAsync` zone with zero wall-clock delay. Use `wait: const Duration(...)` to advance the virtual clock after `act`, or call `elapse(Duration)` and `flushMicrotasks()` inside `act` for multi-step debounce, throttle, or timer flows:
 
 ```dart

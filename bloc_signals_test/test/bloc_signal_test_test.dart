@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bloc_signals/bloc_signals.dart';
 import 'package:bloc_signals_test/bloc_signals_test.dart';
+import 'package:signals_core/signals_core.dart';
 import 'package:test/test.dart';
 
 // Sample Cubit for testing
@@ -359,6 +360,89 @@ void main() {
         ).describe(description);
         expect(description.toString(), contains('event_dropped'));
       });
+
+      test(
+        '(Issue #483) isTelemetry matches Matcher predicates and collection '
+        'matchers in metadata and describes mismatches clearly',
+        () {
+          const entry = BlocTelemetryEntry(
+            name: 'batch_processed',
+            event: 'sync_event',
+            metadata: {
+              'count': 5,
+              'tags': ['alpha', 'beta'],
+            },
+          );
+
+          expect(
+            entry,
+            isTelemetry(
+              'batch_processed',
+              metadata: {
+                'count': greaterThanOrEqualTo(5),
+                'tags': contains('beta'),
+              },
+            ),
+          );
+
+          String mismatchFor(Matcher matcher, Object? actual) {
+            final matchState = <dynamic, dynamic>{};
+            expect(matcher.matches(actual, matchState), isFalse);
+            final desc = StringDescription();
+            matcher.describeMismatch(actual, desc, matchState, false);
+            return desc.toString();
+          }
+
+          expect(
+            mismatchFor(isTelemetry('batch_processed'), 'not_an_entry'),
+            contains('BlocTelemetryEntry'),
+          );
+          expect(
+            mismatchFor(isTelemetry('other_name'), entry),
+            contains('name'),
+          );
+          expect(
+            mismatchFor(
+              isTelemetry('batch_processed', event: 'other_event'),
+              entry,
+            ),
+            contains('event'),
+          );
+          expect(
+            mismatchFor(
+              isTelemetry('batch_processed', metadata: {'missing': 1}),
+              entry,
+            ),
+            contains('missing'),
+          );
+          expect(
+            mismatchFor(
+              isTelemetry('batch_processed', metadata: {'count': 1}),
+              const BlocTelemetryEntry(name: 'batch_processed'),
+            ),
+            contains('metadata'),
+          );
+          expect(
+            mismatchFor(
+              isTelemetry(
+                'batch_processed',
+                metadata: {'count': greaterThan(10)},
+              ),
+              entry,
+            ),
+            contains('count'),
+          );
+
+          final fallbackDesc = StringDescription();
+          isTelemetry('batch_processed').describeMismatch(
+            'raw_item',
+            fallbackDesc,
+            <dynamic, dynamic>{},
+            false,
+          );
+          expect(fallbackDesc.toString(), isEmpty);
+        },
+      );
       blocSignalTest<_ConstructorTelemetryCubit, int>(
         'captures telemetry emitted during build construction',
         build: _ConstructorTelemetryCubit.new,
@@ -913,7 +997,190 @@ void main() {
         ],
       );
     });
+    group('(Issue #483) lifecycle, seed, expectComputed, and sync fast-path',
+        () {
+      test(
+        'restores baselineObserver and runs tearDown when setUp throws',
+        () async {
+          final baselineObserver = TrackingObserver();
+          final setupObserver = TrackingObserver();
+          BlocSignalObserver.observer = baselineObserver;
+          addTearDown(() => BlocSignalObserver.observer = null);
+
+          var tearDownCalled = false;
+
+          await expectLater(
+            runBlocSignalTest<CounterCubit, int>(
+              setUp: () {
+                BlocSignalObserver.observer = setupObserver;
+                throw StateError('setUp failed');
+              },
+              build: CounterCubit.new,
+              tearDown: () {
+                tearDownCalled = true;
+              },
+            ),
+            throwsA(isA<StateError>()),
+          );
+
+          expect(tearDownCalled, isTrue);
+          expect(BlocSignalObserver.observer, same(baselineObserver));
+        },
+      );
+
+      blocSignalTest<CounterCubit, int>(
+        'seed injects initial state before subscription without recording it',
+        build: CounterCubit.new,
+        seed: () => 10,
+        act: (cubit) => cubit.increment(),
+        expect: () => [11],
+      );
+
+      blocSignalTest<CounterCubit, int>(
+        'seed does not record an emission when act is omitted',
+        build: CounterCubit.new,
+        seed: () => 42,
+        expect: () => <int>[],
+        verify: (cubit) {
+          expect(cubit.stateValue, equals(42));
+        },
+      );
+
+      blocSignalTest<_ComputedCounterCubit, int>(
+        'expectComputed asserts computed signals with literal values and '
+        'Matchers',
+        build: _ComputedCounterCubit.new,
+        act: (cubit) => cubit.increment(),
+        expect: () => [1],
+        expectComputed: (cubit) => <ReadonlySignal<Object?>, Object?>{
+          cubit.doubled: 2,
+          cubit.label: contains('1'),
+        },
+      );
+
+      test(
+        'synchronous blocSignalTest without wait drains microtasks without '
+        'allocating a Timer',
+        () async {
+          var timerAllocated = false;
+          await runZoned(
+            () => runBlocSignalTest<CounterCubit, int>(
+              build: CounterCubit.new,
+              act: (cubit) {
+                unawaited(Future<void>.microtask(cubit.increment));
+              },
+              expect: () => [1],
+            ),
+            zoneSpecification: ZoneSpecification(
+              createTimer: (self, parent, zone, duration, f) {
+                timerAllocated = true;
+                return parent.createTimer(zone, duration, f);
+              },
+              createPeriodicTimer: (self, parent, zone, period, f) {
+                timerAllocated = true;
+                return parent.createPeriodicTimer(zone, period, f);
+              },
+            ),
+          );
+
+          expect(timerAllocated, isFalse);
+        },
+      );
+
+      blocSignalTest<_SequentialAsyncBloc, int>(
+        'drains sequential() back-to-back async events without wait',
+        build: _SequentialAsyncBloc.new,
+        act: (bloc) {
+          bloc
+            ..add(const _SeqAddEvent(1))
+            ..add(const _SeqAddEvent(1));
+        },
+        expect: () => [1, 2],
+      );
+
+      blocSignalTest<_MultiHopErrorBloc, int>(
+        'captures multi-hop async BlocSignal handler throw without wait '
+        'or parentZone leak',
+        build: _MultiHopErrorBloc.new,
+        act: (bloc) => bloc.add(const _BoomEvent()),
+        expect: () => <int>[],
+        errors: () => [
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'toString()',
+            contains('boom'),
+          ),
+        ],
+      );
+
+      blocSignalTest<BlocSignalBase<AsyncState<String>>, AsyncState<String>>(
+        'drains Future.value().toAsyncBlocSignal() microtasks initiated in '
+        'build without wait',
+        build: () => Future<String>.value('Alice').toAsyncBlocSignal(),
+        expect: () => <Object>[const AsyncData<String>('Alice')],
+      );
+
+      blocSignalTest<_ConstructorSequentialBloc, int>(
+        'drains constructor-dispatched sequential() events without wait',
+        build: _ConstructorSequentialBloc.new,
+        expect: () => [1, 2],
+      );
+    });
   });
+}
+
+class _ConstructorSequentialBloc extends BlocSignal<_SeqAddEvent, int> {
+  _ConstructorSequentialBloc() : super(initialState: 0) {
+    on<_SeqAddEvent>(
+      (event, emit) async {
+        await Future<void>.value();
+        emit(stateValue + event.delta);
+      },
+      transformer: sequential(),
+    );
+    add(const _SeqAddEvent(1));
+    add(const _SeqAddEvent(1));
+  }
+}
+
+class _SeqAddEvent {
+  const _SeqAddEvent(this.delta);
+  final int delta;
+}
+
+class _SequentialAsyncBloc extends BlocSignal<_SeqAddEvent, int> {
+  _SequentialAsyncBloc() : super(initialState: 0) {
+    on<_SeqAddEvent>(
+      (event, emit) async {
+        await Future<void>.value();
+        emit(stateValue + event.delta);
+      },
+      transformer: sequential(),
+    );
+  }
+}
+
+class _BoomEvent {
+  const _BoomEvent();
+}
+
+class _MultiHopErrorBloc extends BlocSignal<_BoomEvent, int> {
+  _MultiHopErrorBloc() : super(initialState: 0) {
+    on<_BoomEvent>((event, emit) async {
+      await Future<void>.value();
+      await Future<void>.value();
+      throw Exception('boom');
+    });
+  }
+}
+
+class _ComputedCounterCubit extends CubitSignal<int> {
+  _ComputedCounterCubit() : super(initialState: 0);
+
+  late final Computed<int> doubled = computed(() => stateValue * 2);
+  late final Computed<String> label = computed(() => 'count:$stateValue');
+
+  void increment() => emit(stateValue + 1);
 }
 
 class _TelemetryTestCubit extends CubitSignal<int> {

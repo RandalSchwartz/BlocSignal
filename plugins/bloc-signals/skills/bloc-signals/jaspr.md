@@ -48,7 +48,7 @@
   3. **Resource Retain**: The subscription handle returned by `.subscribe()` must be captured and cancelled in `dispose()`.
 
 * **Idiomatic Approach**:
-  Use `BlocSignalBuilder` or `BlocSignalBuilder.value` to let the framework manage subscription lifecycle and dirty flags automatically:
+  Use `BlocSignalBuilder` to let the framework manage subscription lifecycle and dirty flags automatically:
   ```dart
   // ✅ RECOMMENDED: Declarative binding with automatic lifecycle teardown
   @override

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:test/test.dart';
 
 import '../website/tool/update_publications.dart' as update_tool;
@@ -267,6 +270,62 @@ void main() {
         expect(code, contains(r"type: 'Special\'Type\$val',"));
         expect(code, contains(r"tags: const ['tag\'1', '\$tag2', 'tag\n3'],"));
       });
+    });
+
+    group('fetchAllDevToArticles pagination (Issue #483)', () {
+      test(
+        'paginates per_page=100 across multiple pages until a short page',
+        () async {
+          final requestedPages = <String?>[];
+          final requestedPerPages = <String?>[];
+          final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+          addTearDown(() => server.close(force: true));
+
+          server.listen((request) async {
+            requestedPages.add(request.uri.queryParameters['page']);
+            requestedPerPages.add(request.uri.queryParameters['per_page']);
+            final page = int.parse(request.uri.queryParameters['page'] ?? '1');
+            final items = switch (page) {
+              1 => List<Map<String, dynamic>>.generate(
+                100,
+                (i) => <String, dynamic>{
+                  'id': i + 1,
+                  'title': 'Article ${i + 1}',
+                  'url': 'https://dev.to/gde/article-${i + 1}',
+                },
+              ),
+              2 => <Map<String, dynamic>>[
+                <String, dynamic>{
+                  'id': 101,
+                  'title': 'Article 101',
+                  'url': 'https://dev.to/gde/article-101',
+                },
+                <String, dynamic>{
+                  'id': 102,
+                  'title': 'Article 102',
+                  'url': 'https://dev.to/gde/article-102',
+                },
+              ],
+              _ => <Map<String, dynamic>>[],
+            };
+            request.response
+              ..statusCode = 200
+              ..headers.contentType = ContentType.json
+              ..write(jsonEncode(items));
+            await request.response.close();
+          });
+
+          final articles = await update_tool.fetchAllDevToArticles(
+            baseUri: Uri.parse('http://127.0.0.1:${server.port}/articles'),
+          );
+
+          expect(requestedPages, equals(['1', '2']));
+          expect(requestedPerPages, equals(['100', '100']));
+          expect(articles, hasLength(102));
+          expect(articles.first['id'], equals(1));
+          expect(articles.last['id'], equals(102));
+        },
+      );
     });
   });
 }

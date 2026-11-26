@@ -211,9 +211,10 @@ class const DocsMigrationBlocPage({super.key}) extends StatelessComponent {
               td([
                 apiLink(
                   DocSymbol.blocSignalTest,
-                  label:
-                      'blocSignalTest<B, S>(build: () => B(initialState: ...))',
+                  label: 'blocSignalTest<B, S>(seed: ...)',
                 ),
+                Component.text(' or '),
+                code([Component.text('build: () => B(initialState: ...)')]),
               ]),
             ]),
           ]),
@@ -330,7 +331,7 @@ BlocSignalBuilder<CounterCubit, int>(
         h2([Component.text('Unit Test Migration')]),
         p([
           Component.text(
-            'In bloc_signals_test, state seeding is performed directly in the build constructor closure rather than through a separate seed parameter:',
+            'bloc_signals_test supports both constructor seeding in build and a dedicated seed: parameter, plus expectComputed: for derived signals and Matcher predicates in isTelemetry:',
           ),
         ]),
         const DocsCodeBlock(
@@ -348,8 +349,9 @@ blocTest<CounterCubit, int>(
 
 // --- AFTER: bloc_signals_test ---
 blocSignalTest<CounterCubit, int>(
-  'emits [11] when increment is called with initial state 10',
-  build: () => CounterCubit(initialState: 10),
+  'emits [11] when increment is called with seed 10',
+  build: CounterCubit.new,
+  seed: () => 10,
   act: (cubit) => cubit.increment(),
   expect: () => [11],
 );''',

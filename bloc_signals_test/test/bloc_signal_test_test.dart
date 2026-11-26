@@ -1126,7 +1126,219 @@ void main() {
         expect: () => [1, 2],
       );
     });
+
+    group('(Issue #512) matcher formatting, build async errors, and teardown',
+        () {
+      test(
+        '(Issue #512: NBO-3) isTelemetry describe() formats Matchers via '
+        'addDescriptionOf and describeMismatch() omits trailing colon for '
+        'scalar _Equals',
+        () {
+          final matcher = isTelemetry(
+            'op',
+            event: equals('expected_event'),
+            metadata: {'count': greaterThan(3)},
+          );
+          final desc = StringDescription();
+          matcher.describe(desc);
+          expect(desc.toString(), contains("'expected_event'"));
+          expect(desc.toString(), contains('a value greater than <3>'));
+          expect(desc.toString(), isNot(contains('Instance of')));
+
+          const scalarEntry = BlocTelemetryEntry(
+            name: 'op',
+            event: 7,
+            metadata: {'count': 1},
+          );
+
+          final eventState = <dynamic, dynamic>{};
+          final eventMatcher = isTelemetry('op', event: 42);
+          expect(eventMatcher.matches(scalarEntry, eventState), isFalse);
+          final eventMismatch = StringDescription();
+          eventMatcher.describeMismatch(
+            scalarEntry,
+            eventMismatch,
+            eventState,
+            false,
+          );
+          expect(eventMismatch.toString(), equals('has mismatched event'));
+          expect(eventMismatch.toString(), isNot(endsWith(': ')));
+
+          final metaState = <dynamic, dynamic>{};
+          final metaMatcher = isTelemetry('op', metadata: {'count': 99});
+          expect(metaMatcher.matches(scalarEntry, metaState), isFalse);
+          final metaMismatch = StringDescription();
+          metaMatcher.describeMismatch(
+            scalarEntry,
+            metaMismatch,
+            metaState,
+            false,
+          );
+          expect(
+            metaMismatch.toString(),
+            equals('has mismatched metadata["count"]'),
+          );
+          expect(metaMismatch.toString(), isNot(endsWith(': ')));
+
+          final emptyStateDesc = StringDescription();
+          eventMatcher.describeMismatch(
+            scalarEntry,
+            emptyStateDesc,
+            <dynamic, dynamic>{},
+            false,
+          );
+          expect(emptyStateDesc.toString(), isEmpty);
+        },
+      );
+
+      blocSignalTest<CounterCubit, int>(
+        '(Issue #512: NBO-5) captures async error spawned during build() '
+        'in normal mode when errors is provided',
+        build: () {
+          unawaited(
+            Future<void>.microtask(
+              () => throw StateError('async build error'),
+            ),
+          );
+          return CounterCubit();
+        },
+        expect: () => <int>[],
+        errors: () => [
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'async build error',
+          ),
+        ],
+      );
+
+      blocSignalTest<CounterCubit, int>(
+        '(Issue #512: NBO-5) captures async error spawned during build() '
+        'under fakeAsync when errors is provided',
+        build: () {
+          Timer(
+            const Duration(seconds: 1),
+            () => throw StateError('fakeAsync build timer error'),
+          );
+          return CounterCubit();
+        },
+        fakeAsync: true,
+        wait: const Duration(seconds: 1),
+        expect: () => <int>[],
+        errors: () => [
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'fakeAsync build timer error',
+          ),
+        ],
+      );
+
+      test(
+        '(Issue #512: NBO-5) does not swallow synchronous build() throws',
+        () async {
+          await expectLater(
+            runBlocSignalTest<CounterCubit, int>(
+              build: () => throw StateError('sync build error'),
+              errors: () => <Object>[],
+            ),
+            throwsA(isA<StateError>()),
+          );
+
+          await expectLater(
+            runBlocSignalTest<CounterCubit, int>(
+              build: () => throw StateError('sync fakeAsync build error'),
+              fakeAsync: true,
+              errors: () => <Object>[],
+            ),
+            throwsA(isA<StateError>()),
+          );
+        },
+      );
+
+      test(
+        '(Issue #512: NBO-6) restores baselineObserver and runs tearDown '
+        'even when bloc.close() throws',
+        () async {
+          final baselineObserver = TrackingObserver();
+          BlocSignalObserver.observer = baselineObserver;
+          addTearDown(() => BlocSignalObserver.observer = null);
+
+          var tearDownCalled = false;
+
+          await expectLater(
+            runBlocSignalTest<_ThrowingCloseCubit, int>(
+              build: _ThrowingCloseCubit.new,
+              tearDown: () {
+                tearDownCalled = true;
+              },
+            ),
+            throwsA(
+              isA<StateError>().having(
+                (e) => e.message,
+                'message',
+                'close failed',
+              ),
+            ),
+          );
+
+          expect(tearDownCalled, isTrue);
+          expect(BlocSignalObserver.observer, same(baselineObserver));
+        },
+      );
+
+      test(
+        '(Issue #512: BLOCKER-1) forwards async error scheduled in build() to '
+        'parentZone.handleUncaughtError when build() throws synchronously in '
+        'non-fakeAsync mode',
+        () async {
+          final lateErrors = <Object>[];
+          final lateCompleter = Completer<void>();
+
+          await runZonedGuarded(
+            () async {
+              await expectLater(
+                runBlocSignalTest<CounterCubit, int>(
+                  build: () {
+                    unawaited(
+                      Future<void>.microtask(
+                        () => throw ArgumentError('orphaned build async error'),
+                      ),
+                    );
+                    throw StateError('sync build failure');
+                  },
+                ),
+                throwsA(isA<StateError>()),
+              );
+            },
+            (error, stackTrace) {
+              lateErrors.add(error);
+              if (!lateCompleter.isCompleted) {
+                lateCompleter.complete();
+              }
+            },
+          );
+
+          await lateCompleter.future.timeout(const Duration(milliseconds: 200));
+          expect(lateErrors, [
+            isA<ArgumentError>().having(
+              (e) => e.message,
+              'message',
+              'orphaned build async error',
+            ),
+          ]);
+        },
+      );
+    });
   });
+}
+
+class _ThrowingCloseCubit extends CounterCubit {
+  @override
+  Future<void> close() async {
+    await super.close();
+    throw StateError('close failed');
+  }
 }
 
 class _ConstructorSequentialBloc extends BlocSignal<_SeqAddEvent, int> {

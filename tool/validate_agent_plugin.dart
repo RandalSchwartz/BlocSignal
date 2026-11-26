@@ -222,18 +222,32 @@ void _validateManifests(
   }
 }
 
-void _validateSkill(Directory root) {
+/// Validates the `bloc-signals` skill bundle under [root] and returns any
+/// validation error messages.
+List<String> validateSkillBundle(Directory root) {
+  final errors = <String>[];
   final pluginSkill = Directory('${root.path}/$_pluginSkillPath');
   if (!pluginSkill.existsSync()) {
-    _errors.add('Missing $_pluginSkillPath.');
-    return;
+    errors.add('Missing $_pluginSkillPath.');
+    return errors;
   }
 
   final pluginFiles = _relativeFiles(pluginSkill);
   final missingFiles = requiredSkillFiles.difference(pluginFiles.keys.toSet());
   if (missingFiles.isNotEmpty) {
-    _errors.add('Plugin skill is missing: ${missingFiles.join(', ')}.');
+    errors.add('Plugin skill is missing: ${missingFiles.join(', ')}.');
   }
+  return errors;
+}
+
+void _validateSkill(Directory root) {
+  _errors.addAll(validateSkillBundle(root));
+  final pluginSkill = Directory('${root.path}/$_pluginSkillPath');
+  if (!pluginSkill.existsSync()) {
+    return;
+  }
+
+  final pluginFiles = _relativeFiles(pluginSkill);
 
   final skillFile = pluginFiles['SKILL.md'];
   if (skillFile == null) {

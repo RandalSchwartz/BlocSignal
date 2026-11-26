@@ -10,6 +10,7 @@ export 'package:blocsignal_website/src/models/publication_generator.dart';
 Future<List<Map<String, dynamic>>> fetchAllDevToArticles({
   String? apiKey,
   Uri? baseUri,
+  int maxPages = 50,
 }) async {
   const perPage = 100;
   final endpoint =
@@ -50,16 +51,24 @@ Future<List<Map<String, dynamic>>> fetchAllDevToArticles({
         );
       }
 
-      final rawArticles = jsonDecode(jsonString) as List<dynamic>;
-      final pageArticles = rawArticles.cast<Map<String, dynamic>>();
+      final decoded = jsonDecode(jsonString);
+      if (decoded is! List<dynamic>) {
+        throw FormatException(
+          'Expected a JSON list from DEV.to API on page $page, '
+          'got ${decoded.runtimeType}.',
+        );
+      }
+      final pageArticles = decoded.cast<Map<String, dynamic>>();
+      final previousSeenCount = seenKeys.length;
       for (final article in pageArticles) {
         final key = article['id'] ?? article['canonical_url'] ?? article['url'];
         if (key == null || seenKeys.add(key)) {
           articles.add(article);
         }
       }
+      final addedNewKeys = seenKeys.length > previousSeenCount;
 
-      if (pageArticles.length < perPage) {
+      if (pageArticles.length < perPage || !addedNewKeys || page >= maxPages) {
         break;
       }
       page++;
@@ -196,6 +205,6 @@ Future<void> main() async {
   }
 
   print(
-    '🎉 Done! Run `dart compile js lib/main.dart --csp -O2 -o build/www/main.dart.js` to build static site.',
+    '🎉 Done! Run `dart run website/tool/build_static.dart` to build static site.',
   );
 }

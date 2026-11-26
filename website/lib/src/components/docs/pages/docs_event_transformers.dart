@@ -180,8 +180,19 @@ on<SyncDatabaseRecord>((event, emit) async {
         p([
           apiLink(DocSymbol.restartable),
           Component.text(
-            ' abandons prior in-flight emissions when a newer event of the same type arrives. '
-            'Ideal for search typeaheads and autocomplete fields where only the latest query result matters.',
+            ' abandons prior in-flight emissions when a newer event of the same type arrives and signals cooperative cancellation via ',
+          ),
+          code([Component.text('isCanceled')]),
+          Component.text(' and '),
+          code([Component.text('onCancel')]),
+          Component.text(' (plus '),
+          code([Component.text('CancellationToken.current')]),
+          Component.text(
+            '). Registered cleanup callbacks run synchronously in LIFO order inside the superseded handler Zone on preemption or ',
+          ),
+          code([Component.text('close()')]),
+          Component.text(
+            '. Ideal for search typeaheads and autocomplete fields where only the latest query result matters.',
           ),
         ]),
         const DocsCodeBlock(
@@ -189,14 +200,20 @@ on<SyncDatabaseRecord>((event, emit) async {
           dart313Code: '''
 on<SearchQueryChanged>((event, emit) async {
   emit(const SearchLoading());
-  final results = await searchService.query(event.text);
+  final client = HttpClient();
+  onCancel(() => client.close(force: true));
+  final results = await searchService.query(event.text, client: client);
+  if (isCanceled) return;
   emit(SearchResults(results));
 }, transformer: restartable());
 ''',
           dart35Code: '''
 on<SearchQueryChanged>((event, emit) async {
   emit(const SearchLoading());
-  final results = await _searchService.query(event.text);
+  final client = HttpClient();
+  onCancel(() => client.close(force: true));
+  final results = await _searchService.query(event.text, client: client);
+  if (isCanceled) return;
   emit(SearchResults(results));
 }, transformer: restartable());
 ''',

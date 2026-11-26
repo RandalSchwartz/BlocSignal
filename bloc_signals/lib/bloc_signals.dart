@@ -13,9 +13,10 @@ import 'package:bloc_signals/src/cubit_signal_mixin.dart';
 
 export 'package:preact_signals/preact_signals.dart' show SignalEquality;
 export 'src/bloc_signal_mixin.dart';
-export 'src/bloc_signals_base.dart';
+export 'src/bloc_signals_base.dart' hide reportContainerError;
 export 'src/bloc_telemetry_keys.dart';
 export 'src/change.dart';
+export 'src/concurrency/cancellation_token.dart' hide CancellationTokenSlot;
 export 'src/concurrency/event_transformers.dart';
 export 'src/concurrency/mutex.dart';
 export 'src/cubit_signal_mixin.dart';

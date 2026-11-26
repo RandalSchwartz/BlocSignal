@@ -156,6 +156,18 @@ class AsyncDataBloc extends BlocSignal<DataEvent, DataState> {
       },
       transformer: droppable(),
     );
+
+    // Supersede in-flight queries and clean up cooperatively via onCancel/isCanceled
+    on<SearchQueryChanged>(
+      (event, emit) async {
+        final client = HttpClient();
+        onCancel(() => client.close(force: true));
+        final results = await repo.search(event.query, client: client);
+        if (isCanceled) return;
+        emit(SearchLoaded(results));
+      },
+      transformer: restartable(),
+    );
   }
 }
 ```

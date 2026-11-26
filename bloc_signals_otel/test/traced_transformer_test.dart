@@ -868,7 +868,120 @@ void main() {
         );
       },
     );
+
+    test(
+      '(Issue #498) traced(restartable()) runs onCancel in superseded '
+      'otel.Context and closes preempted spans via OtelBlocSignalObserver',
+      () async {
+        final previousObserver = BlocSignalObserver.observer;
+        BlocSignalObserver.observer = OtelBlocSignalObserver(tracer: tracer);
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final gate1 = Completer<void>();
+        final gate2 = Completer<void>();
+        final handlerSpans = <String, otel.APISpan?>{};
+        final cancelSpans = <String, otel.APISpan?>{};
+
+        final bloc = _RestartableTracedContextBloc(
+          tracer: tracer,
+          gates: {'first': gate1, 'second': gate2},
+          onHandlerSpan: (key, span) => handlerSpans[key] = span,
+          onCancelSpan: (key, span) => cancelSpans[key] = span,
+        );
+
+        bloc.add(DoWorkEvent('first'));
+        await Future<void>.microtask(() {});
+        expect(handlerSpans['first'], isNotNull);
+
+        bloc.add(DoWorkEvent('second'));
+        await Future<void>.microtask(() {});
+
+        // Superseded handler's onCancel ran in its own captured otel.Context.
+        expect(cancelSpans['first'], isNotNull);
+        expect(
+          cancelSpans['first']!.spanContext.spanId,
+          equals(handlerSpans['first']!.spanContext.spanId),
+        );
+        expect(
+          cancelSpans['first']!.spanContext.spanId,
+          isNot(equals(handlerSpans['second']?.spanContext.spanId)),
+        );
+
+        gate1.complete();
+        gate2.complete();
+        await Future<void>.microtask(() {});
+        await bloc.close();
+
+        expect(bloc.stateValue, equals('done:second'));
+        final contentionSpans = exporter.spans
+            .where((s) => s.attributes.getBool('bloc.contention') == true)
+            .toList();
+        expect(contentionSpans, isNotEmpty);
+        for (final span in exporter.spans) {
+          expect(span.isEnded, isTrue);
+        }
+      },
+    );
+
+    test(
+      '(Issue #498) close() cancels active traced(restartable()) handler '
+      'without span leaks',
+      () async {
+        final previousObserver = BlocSignalObserver.observer;
+        BlocSignalObserver.observer = OtelBlocSignalObserver(tracer: tracer);
+        addTearDown(() => BlocSignalObserver.observer = previousObserver);
+
+        final gate = Completer<void>();
+        final cancelSpans = <String, otel.APISpan?>{};
+        final bloc = _RestartableTracedContextBloc(
+          tracer: tracer,
+          gates: {'only': gate},
+          onHandlerSpan: (_, __) {},
+          onCancelSpan: (key, span) => cancelSpans[key] = span,
+        );
+
+        bloc.add(DoWorkEvent('only'));
+        await Future<void>.microtask(() {});
+
+        await bloc.close();
+        expect(cancelSpans['only'], isNotNull);
+
+        gate.complete();
+        await Future<void>.microtask(() {});
+
+        expect(bloc.stateValue, equals('idle'));
+        expect(exporter.spans, isNotEmpty);
+        for (final span in exporter.spans) {
+          expect(span.isEnded, isTrue);
+        }
+      },
+    );
   });
+}
+
+class _RestartableTracedContextBloc extends BlocSignal<TraceTestEvent, String> {
+  _RestartableTracedContextBloc({
+    required otel.APITracer tracer,
+    required Map<String, Completer<void>> gates,
+    required void Function(String key, otel.APISpan? span) onHandlerSpan,
+    required void Function(String key, otel.APISpan? span) onCancelSpan,
+  }) : super(initialState: 'idle') {
+    on<DoWorkEvent>(
+      (event, emit) async {
+        onHandlerSpan(event.payload, otel.Context.current.span);
+        onCancel(() {
+          onCancelSpan(event.payload, otel.Context.current.span);
+        });
+        await gates[event.payload]!.future;
+        if (isCanceled) return;
+        emit('done:${event.payload}');
+      },
+      blocTransformer: traced(
+        restartable(),
+        tracer: tracer,
+      ),
+    );
+  }
 }
 
 class _TracedTrailingContextBloc extends BlocSignal<TraceTestEvent, String> {

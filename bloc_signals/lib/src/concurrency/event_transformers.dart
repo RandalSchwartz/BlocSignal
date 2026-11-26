@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:bloc_signals/src/bloc_signals_base.dart';
 import 'package:bloc_signals/src/bloc_telemetry_keys.dart';
+import 'package:bloc_signals/src/concurrency/cancellation_token.dart';
 import 'package:bloc_signals/src/concurrency/mutex.dart';
 
 const _droppableDroppedMetadata = <String, dynamic>{
@@ -358,11 +359,18 @@ EventTransformer<E, StateType> sequential<E, StateType>({
 
 /// Returns an [EventTransformer] that allows new incoming events to supersede
 /// previous in-flight handler executions, dropping state emissions from older
-/// executions.
+/// executions and signaling cooperative cancellation.
 ///
-/// When a new event arrives, an internal generation token is incremented.
-/// State emissions produced by earlier, in-flight handlers whose generation
-/// token does not match the latest token are discarded automatically.
+/// When a new event arrives, an internal generation token is incremented and
+/// any active [CancellationToken] from the previous execution is canceled in
+/// LIFO order inside its captured [Zone]. State emissions produced by earlier,
+/// in-flight handlers whose generation token does not match the latest token
+/// (or whose token has been canceled) are discarded automatically.
+///
+/// Handlers can poll [isCanceled] (or `CancellationToken.current?.isCanceled`)
+/// across `await` boundaries and register cleanup callbacks via [onCancel] (or
+/// `CancellationToken.current?.onCancel`). Calling `close()` on the host
+/// container also cancels any currently active handler.
 ///
 /// Optionally accepts an explicit host [bloc] reference to emit operational
 /// telemetry ([BlocTelemetryKeys.taskPreempted]) when an in-flight execution is
@@ -376,6 +384,7 @@ EventTransformer<E, StateType> sequential<E, StateType>({
 ///       (event, emit) async {
 ///         emit(AutocompleteLoading());
 ///         final suggestions = await api.fetchSuggestions(event.query);
+///         if (isCanceled) return;
 ///         emit(AutocompleteLoaded(suggestions));
 ///       },
 ///       transformer: restartable(),
@@ -389,40 +398,100 @@ EventTransformer<E, StateType> restartable<E, StateType>({
   var executionToken = 0;
   int? activeExecutionToken;
   E? activeEvent;
+  CancellationToken? activeCancellationToken;
+  final registeredHosts = Expando<bool>();
+
+  void cancelActive() {
+    final token = activeCancellationToken;
+    activeExecutionToken = null;
+    activeEvent = null;
+    activeCancellationToken = null;
+    token?.cancel();
+  }
+
   return (event, handler, emit) {
-    if (activeExecutionToken != null && BlocSignalObserver.observer != null) {
-      final host = bloc ??
-          (Zone.current[BlocSignalBase.ambientZoneBlocKey]
-              as BlocSignalBase<dynamic>?);
-      if (host != null) {
+    final host = _resolveHost(bloc);
+    if (host != null && host.isClosed) {
+      return null;
+    }
+    if (host != null && registeredHosts[host] == null) {
+      registeredHosts[host] = true;
+      host.registerCloseCallback(cancelActive);
+    }
+
+    while (activeExecutionToken != null) {
+      final prevEvent = activeEvent;
+      final prevToken = activeCancellationToken;
+      activeExecutionToken = null;
+      activeEvent = null;
+      activeCancellationToken = null;
+
+      if (host != null && BlocSignalObserver.observer != null) {
         emitContainerTelemetry(
           host,
           BlocTelemetryKeys.taskPreempted,
-          event: activeEvent,
+          event: prevEvent,
           metadata: _restartablePreemptedMetadata,
         );
       }
+      prevToken?.cancel();
+      if (host != null && host.isClosed) {
+        return null;
+      }
     }
+
     final currentToken = ++executionToken;
     activeExecutionToken = currentToken;
     activeEvent = event;
+    final currentCancellationToken = CancellationToken(
+      host: host,
+      zone: Zone.current,
+    );
+    activeCancellationToken = currentCancellationToken;
+
+    final existingSlot =
+        Zone.current[BlocSignalBase.ambientZoneCancellationTokenKey];
+    final canReuseSlot =
+        existingSlot is CancellationTokenSlot && existingSlot.token == null;
+    if (canReuseSlot) {
+      existingSlot.token = currentCancellationToken;
+    }
 
     void onComplete() {
       if (activeExecutionToken == currentToken) {
         activeExecutionToken = null;
         activeEvent = null;
+        activeCancellationToken = null;
+      }
+      if (canReuseSlot &&
+          identical(existingSlot.token, currentCancellationToken)) {
+        existingSlot.token = null;
       }
     }
 
+    void guardedEmit(StateType state) {
+      if (currentToken == executionToken &&
+          !currentCancellationToken.isCanceled &&
+          !(host?.isClosed ?? false)) {
+        emit(state);
+      }
+    }
+
+    FutureOr<void> invokeHandler() => handler(event, guardedEmit);
+
     try {
-      final result = handler(
-        event,
-        (state) {
-          if (currentToken == executionToken) {
-            emit(state);
-          }
-        },
-      );
+      final result = canReuseSlot
+          ? invokeHandler()
+          : runZoned(
+              () {
+                currentCancellationToken.bindZone(Zone.current);
+                return invokeHandler();
+              },
+              zoneValues: {
+                BlocSignalBase.ambientZoneCancellationTokenKey:
+                    currentCancellationToken,
+              },
+            );
       if (result is Future) {
         return result.whenComplete(onComplete);
       }

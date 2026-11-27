@@ -218,6 +218,141 @@ class LoginScreen extends StatelessWidget {
 }
 ''',
         ),
+        h3([Component.text('Execution Quotas (take and takeWhile)')]),
+        p([
+          Component.text('Use '),
+          code([Component.text('take')]),
+          Component.text(' and '),
+          code([Component.text('takeWhile')]),
+          Component.text(' on '),
+          apiLink(DocSymbol.blocSignalListener),
+          Component.text(
+            ' (default, .debounce, .throttle, and .transition) to cap listener execution automatically:',
+          ),
+        ]),
+        ul(classes: 'docs-list', [
+          li([
+            code([Component.text('listenWhen')]),
+            Component.text(' and rate-limiting ('),
+            code([Component.text('debounce')]),
+            Component.text(' / '),
+            code([Component.text('throttle')]),
+            Component.text(') filter emissions before quota evaluation.'),
+          ]),
+          li([
+            code([Component.text('takeWhile(current)')]),
+            Component.text(
+              ' is evaluated before incrementing the invocation count; returning ',
+            ),
+            code([Component.text('false')]),
+            Component.text(' permanently detaches without calling '),
+            code([Component.text('listener')]),
+            Component.text('.'),
+          ]),
+          li([
+            code([Component.text('take')]),
+            Component.text(
+              ' increments and detaches synchronously before invoking ',
+            ),
+            code([Component.text('listener')]),
+            Component.text(' (preventing reentrant over-fires); '),
+            code([Component.text('take: 0')]),
+            Component.text(' skips effect registration.'),
+          ]),
+          li([
+            Component.text('Swapping '),
+            code([Component.text('bloc')]),
+            Component.text(' resets counters; '),
+            code([Component.text('takeWhile')]),
+            Component.text(' detachment persists across rebuilds unless '),
+            code([Component.text('takeWhile')]),
+            Component.text(' becomes '),
+            code([Component.text('null')]),
+            Component.text(' or '),
+            code([Component.text('bloc')]),
+            Component.text(' swaps.'),
+          ]),
+        ]),
+        const DocsCodeBlock(
+          title: 'One-Shot Listener (take & listenWhen)',
+          dart313Code: '''
+class OnboardingBanner extends StatelessWidget {
+  const OnboardingBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSignalListener<AuthBloc, AuthState>(
+      take: 1,
+      listenWhen: (_, current) => current is AuthSuccess,
+      listener: (context, state) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Welcome!')),
+        );
+      },
+      child: const DashboardView(),
+    );
+  }
+}
+''',
+          dart35Code: '''
+class OnboardingBanner extends StatelessWidget {
+  const OnboardingBanner({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSignalListener<AuthBloc, AuthState>(
+      take: 1,
+      listenWhen: (AuthState _, AuthState current) => current is AuthSuccess,
+      listener: (BuildContext context, AuthState state) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Welcome!')),
+        );
+      },
+      child: const DashboardView(),
+    );
+  }
+}
+''',
+        ),
+        const DocsCodeBlock(
+          title: 'Predicate-Bounded Listener (takeWhile)',
+          dart313Code: '''
+class SessionFeedbackListener extends StatelessWidget {
+  const SessionFeedbackListener({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSignalListener<AuthBloc, AuthState>(
+      takeWhile: (current) => current is! AuthLoggedOut,
+      listener: (context, state) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Auth update: \$state')),
+        );
+      },
+      child: const DashboardView(),
+    );
+  }
+}
+''',
+          dart35Code: '''
+class SessionFeedbackListener extends StatelessWidget {
+  const SessionFeedbackListener({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSignalListener<AuthBloc, AuthState>(
+      takeWhile: (AuthState current) => current is! AuthLoggedOut,
+      listener: (BuildContext context, AuthState state) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Auth update: \$state')),
+        );
+      },
+      child: const DashboardView(),
+    );
+  }
+}
+''',
+        ),
       ]),
 
       section(id: 'consumer', classes: 'docs-section', [
@@ -311,6 +446,26 @@ BlocSignalConsumer<CartBloc, CartState>.child(
 )
 ''',
         ),
+        p([
+          apiLink(DocSymbol.blocSignalConsumer),
+          Component.text(' (default, .transition, and .child) also supports '),
+          code([Component.text('take')]),
+          Component.text(' and '),
+          code([Component.text('takeWhile')]),
+          Component.text(
+            ' with the same filtering, synchronous detachment, and ',
+          ),
+          code([Component.text('bloc')]),
+          Component.text('-swap / rebuild semantics. Quotas cap only '),
+          code([Component.text('listener')]),
+          Component.text(' while '),
+          code([Component.text('builder')]),
+          Component.text(
+            ' continues rebuilding on every state change (subject to ',
+          ),
+          code([Component.text('buildWhen')]),
+          Component.text(').'),
+        ]),
       ]),
 
       section(id: 'selector', classes: 'docs-section', [

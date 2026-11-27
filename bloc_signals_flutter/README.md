@@ -154,6 +154,41 @@ BlocSignalListener<AuthBloc, AuthState>(
 )
 ```
 
+Use `take` and `takeWhile` on `BlocSignalListener` (default, `.debounce`, `.throttle`, and `.transition`) to cap listener execution automatically.
+
+One-shot `take` with `listenWhen`:
+
+```dart
+BlocSignalListener<AuthBloc, AuthState>(
+  take: 1,
+  listenWhen: (_, current) => current is AuthSuccess,
+  listener: (context, state) {
+    Navigator.of(context).pushReplacementNamed('/home');
+  },
+  child: const LoginForm(),
+)
+```
+
+Predicate-bounded `takeWhile` (without `listenWhen` shadowing the terminating state):
+
+```dart
+BlocSignalListener<AuthBloc, AuthState>(
+  takeWhile: (current) => current is! AuthLoggedOut,
+  listener: (context, state) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Auth update: $state')),
+    );
+  },
+  child: const DashboardView(),
+)
+```
+
+Quota runtime semantics:
+- `listenWhen` and rate-limiting (`debounce` / `throttle`) filter emissions before quota evaluation.
+- `takeWhile(current)` is evaluated before incrementing the invocation count; returning `false` permanently detaches the listener without calling `listener`.
+- `take` increments and detaches synchronously before invoking `listener` (preventing reentrant over-fires); `take: 0` skips effect registration entirely.
+- Swapping `bloc` resets counters; `takeWhile` detachment persists across widget rebuilds unless `takeWhile` becomes `null` or `bloc` swaps.
+
 ### 3. Combined Consumer (`BlocSignalConsumer`)
 
 ```dart
@@ -167,6 +202,29 @@ BlocSignalConsumer<CartBloc, CartState>(
   },
   builder: (context, state) {
     return Text('Cart items: ${state.items.length}');
+  },
+)
+```
+
+`BlocSignalConsumer` (default, `.transition`, and `.child`) also supports `take` and `takeWhile` with the same filtering, synchronous detachment, and `bloc`-swap / rebuild semantics. Quotas cap only `listener` while `builder` continues rebuilding on every state emission (subject to `buildWhen`):
+
+```dart
+BlocSignalConsumer<CartBloc, CartState>.child(
+  take: 1,
+  listenWhen: (_, current) => current.isCheckoutReady,
+  listener: (context, state) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Ready to check out!')),
+    );
+  },
+  child: const CartHeaderBanner(),
+  builder: (context, state, child) {
+    return Column(
+      children: [
+        if (child != null) child,
+        Text('Cart items: ${state.items.length}'),
+      ],
+    );
   },
 )
 ```

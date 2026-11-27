@@ -1,4 +1,4 @@
-## Unreleased
+## 1.2.0
 
 - **Feat (hydrate)**: Add synchronous `HydratedCipher` encryption/integrity verification hook (`cipher`), UTF-8 `maxPayloadBytes` write cap enforcement, and `storageVersion` + `migrate(json, fromVersion)` schema evolution support on `HydratedMixin` (#479).
 

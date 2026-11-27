@@ -1,4 +1,4 @@
-## Unreleased
+## 1.6.0
 
 - **Feat (flutter)**: Add `debounce` and `throttle` rate-limiting parameters and `BlocSignalListener.debounce` / `BlocSignalListener.throttle` constructors to `BlocSignalListener` and `BlocSignalConsumer` (#391).
 - **Feat (flutter)**: Add `retentionPeriod` and `clearRetained()` to `BlocSignalProvider` for graceful deferred disposal (#392).

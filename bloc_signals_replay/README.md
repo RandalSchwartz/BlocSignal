@@ -98,9 +98,9 @@ void main() {
 }
 ```
 
-### Stack Bounds & State Filtering
+### Stack Bounds, State Filtering & Transition Coalescing
 
-Pass a `limit` parameter or override `shouldReplay` to control undo/redo behavior:
+Pass a `limit` parameter, override `shouldReplay` to filter states, or override `shouldCoalesce(previousState, currentState, nextState)` to merge continuous edits (such as slider drags or rapid typing) into a single undo/redo step:
 
 ```dart
 class BoundedCubit extends ReplayCubit<int> {
@@ -110,6 +110,13 @@ class BoundedCubit extends ReplayCubit<int> {
   // Skip even states during replay
   @override
   bool shouldReplay(int state) => !state.isEven;
+
+  // Coalesce consecutive increments within the same editing burst
+  @override
+  bool shouldCoalesce(int previousState, int currentState, int nextState) {
+    return (nextState - currentState).abs() == 1 &&
+        (currentState - previousState).abs() == 1;
+  }
 }
 ```
 

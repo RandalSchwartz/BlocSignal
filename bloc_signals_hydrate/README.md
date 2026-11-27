@@ -55,8 +55,8 @@ Add `bloc_signals_hydrate` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^1.9.0
-  bloc_signals_hydrate: ^1.1.3
+  bloc_signals: ^1.10.0
+  bloc_signals_hydrate: ^1.2.0
 ```
 
 ---
@@ -172,6 +172,44 @@ void main() async {
 ```
 
 Both `SharedPreferencesHydratedStorage` and `SecureHydratedStorage` default `prefix` to `kDefaultHydratedStoragePrefix` (`'bloc_signals_hydrate_'`) so `SecureHydratedStorage.build()`, `read()`, `delete()`, and `clear()` only touch keys managed by `bloc_signals_hydrate`. Pass `prefix: ''` explicitly if you need to read or write legacy unprefixed keys directly (for example `SecureHydratedStorage.build(secureStorage, prefix: '')`).
+
+### 5. Encryption (`HydratedCipher`), Payload Caps (`maxPayloadBytes`) & Schema Migration (`storageVersion` / `migrate`)
+
+Override `cipher`, `maxPayloadBytes`, `storageVersion`, and `migrate` on any `HydratedCubitSignal`, `HydratedBlocSignal`, or `HydratedMixin` to encrypt persisted payloads, guard against oversized writes, and evolve schemas cleanly across app releases:
+
+```dart
+class SettingsCubit extends HydratedCubitSignal<SettingsState> {
+  SettingsCubit({HydratedCipher? cipher})
+      : _cipher = cipher,
+        super(initialState: const SettingsState());
+
+  final HydratedCipher? _cipher;
+
+  @override
+  HydratedCipher? get cipher => _cipher;
+
+  @override
+  int? get maxPayloadBytes => 64 * 1024; // Reject payloads larger than 64 KiB
+
+  @override
+  int get storageVersion => 2;
+
+  @override
+  dynamic migrate(dynamic json, int fromVersion) {
+    if (fromVersion < 2 && json is Map<String, dynamic>) {
+      return {...json, 'themeMode': json['darkMode'] == true ? 'dark' : 'light'};
+    }
+    return json;
+  }
+
+  @override
+  SettingsState? fromJson(dynamic json) =>
+      json is Map<String, dynamic> ? SettingsState.fromJson(json) : null;
+
+  @override
+  dynamic toJson(SettingsState state) => state.toJson();
+}
+```
 
 
 ---

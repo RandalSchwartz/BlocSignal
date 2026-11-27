@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.1.0
 
 - **Fix (test)**: Consolidate `_IsTelemetryMatcher` mismatch state into a single `_TelemetryMismatch` record, format `describe()` with `addDescriptionOf`, and omit trailing `: ` on scalar mismatches (#512).
 - **Fix (test)**: Capture uncaught async errors spawned during `build()` in both `fakeAsync` and standard `runBlocSignalTest` zones without swallowing synchronous `build()` throws (#512).

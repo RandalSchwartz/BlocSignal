@@ -553,7 +553,8 @@ post-close emissions are safely dropped without crashing.
 - `onTelemetry(BlocSignalBase<dynamic> bloc, String name, {Object? event, Map<String, dynamic>? metadata})` for operational telemetry and concurrency diagnostics;
 - `onClose(BlocSignalBase<dynamic> bloc)` after owned effects and managed resources are disposed.
 
-Use `CompositeBlocSignalObserver` or `BlocSignalObserver.addObserver()` when logging, DevTools,
+Use `CompositeBlocSignalObserver` (also exported as `typedef MultiBlocSignalObserver = CompositeBlocSignalObserver`) or `BlocSignalObserver.addObserver()` when logging, DevTools,
+and OpenTelemetry observers must coexist cleanly. Duplicate observer instances are automatically ignored by both `BlocSignalObserver.addObserver()` and `CompositeBlocSignalObserver.add()`.
 and telemetry must run together:
 
 ```dart

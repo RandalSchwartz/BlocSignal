@@ -45,7 +45,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
         const DocsCodeBlock(
           title: 'analysis_options.yaml',
           language: 'yaml',
-          code: 'plugins:\n  bloc_signals_lint: ^2.0.0',
+          code: 'plugins:\n  bloc_signals_lint: ^2.1.0',
         ),
       ]),
 
@@ -544,7 +544,7 @@ class const DocsPkgLintPage({super.key}) extends StatelessComponent {
           language: 'yaml',
           code: '''plugins:
   bloc_signals_lint:
-    version: ^2.0.0
+    version: ^2.1.0
     diagnostics:
       # Disable a specific rule if needed
       avoid_duplicate_event_handlers: false''',

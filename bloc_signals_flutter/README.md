@@ -60,7 +60,7 @@ Add `bloc_signals_flutter` to your `pubspec.yaml`:
 dependencies:
   flutter:
     sdk: flutter
-  bloc_signals_flutter: ^1.0.0
+  bloc_signals_flutter: ^1.6.0
 ```
 
 ---
@@ -139,6 +139,16 @@ counterCubit.build.child(
 )
 ```
 
+For routes or tabs that unmount briefly and remount, pass `retentionPeriod:` to `BlocSignalProvider` to keep the created container alive for a grace period (call `BlocSignalProvider.clearRetained()` in tests or at logout boundaries):
+
+```dart
+BlocSignalProvider<SearchBloc>(
+  create: (_) => SearchBloc(),
+  retentionPeriod: const Duration(seconds: 30),
+  child: const SearchPage(),
+)
+```
+
 ### 2. Side-Effect Listener (`BlocSignalListener`)
 
 ```dart
@@ -154,7 +164,28 @@ BlocSignalListener<AuthBloc, AuthState>(
 )
 ```
 
-Use `take` and `takeWhile` on `BlocSignalListener` (default, `.debounce`, `.throttle`, and `.transition`) to cap listener execution automatically.
+Use `take` and `takeWhile` on `BlocSignalListener` (default, `.debounce`, `.throttle`, and `.transition`) to cap listener execution automatically, or use `.debounce` / `.throttle` for rate-limited side effects and `.transition` when you need both `(context, previous, current)` states:
+
+```dart
+// Rate-limited listener (trailing-edge debounce or leading-edge throttle):
+BlocSignalListener<SearchCubit, String>.debounce(
+  duration: const Duration(milliseconds: 300),
+  listener: (context, query) => analytics.logSearch(query),
+  child: const SearchResults(),
+)
+
+// Transition-aware listener receiving both previous and current states:
+BlocSignalListener<AuthBloc, AuthState>.transition(
+  listener: (context, previous, current) {
+    if (previous is AuthLoading && current is AuthFailure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(current.error)),
+      );
+    }
+  },
+  child: const LoginForm(),
+)
+```
 
 One-shot `take` with `listenWhen`:
 
@@ -241,12 +272,16 @@ BlocSignalSelector<UserBloc, UserState, String>(
 )
 ```
 
-Or directly via `BuildContext`:
+Or directly via `BuildContext` (with optional custom `equals:` comparator):
 
 ```dart
 final canSubmit = context.select<FormCubit, bool>(
   (cubit) => cubit.stateValue.canSubmit,
 );
+
+// Optional lookups that return null instead of throwing BlocSignalProviderNotFoundError:
+final analytics = context.maybeRead<AnalyticsCubit>();
+final theme = context.maybeWatch<ThemeCubit>();
 ```
 
 ### 5. Reactive State & Signal Access (`context.value` & `context.state`)

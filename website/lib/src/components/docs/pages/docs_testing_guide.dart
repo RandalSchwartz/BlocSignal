@@ -66,12 +66,12 @@ class const DocsTestingGuidePage({super.key}) extends StatelessComponent {
           dart313Code: '''
 dev_dependencies:
   test: ^1.25.0
-  bloc_signals_test: ^1.0.0
+  bloc_signals_test: ^1.1.0
 ''',
           dart35Code: '''
 dev_dependencies:
   test: ^1.25.0
-  bloc_signals_test: ^1.0.0
+  bloc_signals_test: ^1.1.0
 ''',
         ),
       ]),

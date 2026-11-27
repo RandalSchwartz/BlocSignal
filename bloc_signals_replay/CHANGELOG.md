@@ -1,4 +1,4 @@
-## Unreleased
+## 1.5.0
 
 - **Feat (replay)**: Add `@protected bool shouldCoalesce(previousState, currentState, nextState)` on `ReplayMixin` to merge continuous transitions into a single undo/redo step and drop net no-op entries (#479).
 

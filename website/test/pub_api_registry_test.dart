@@ -47,6 +47,16 @@ void main() {
       expect(names, contains('BlocSignalMixin'));
       expect(names, contains('BlocSignalObserver'));
       expect(names, contains('CompositeBlocSignalObserver'));
+      expect(names, contains('MultiBlocSignalObserver'));
+      expect(names, contains('CancellationToken'));
+      expect(names, contains('manageResource'));
+      expect(names, contains('manageStreamSubscription'));
+      expect(names, contains('manageTimer'));
+      expect(names, contains('maybeRead'));
+      expect(names, contains('maybeWatch'));
+      expect(names, contains('BlocSignalProviderNotFoundError'));
+      expect(names, contains('HydratedCipher'));
+      expect(names, contains('shouldCoalesce'));
       expect(names, contains('SignalBlocSignal'));
       expect(names, contains('onReset'));
       expect(names, contains('isHistorySuppressed'));

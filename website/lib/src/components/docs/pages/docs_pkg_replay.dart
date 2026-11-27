@@ -259,6 +259,27 @@ class FormFieldCubit extends ReplayCubit<FormFieldState> {
   }
 }''',
         ),
+        p([
+          Component.text(
+            'To merge continuous bursts of transitions (such as slider drags or rapid typing) into a single undo/redo step and drop net no-op entries, override ',
+          ),
+          apiLink(DocSymbol.shouldCoalesce),
+          Component.text(':'),
+        ]),
+        const DocsCodeBlock(
+          title: 'lib/coalescing_replay_cubit.dart',
+          language: 'dart',
+          code: '''
+class SliderCubit extends ReplayCubit<double> {
+  SliderCubit() : super(initialState: 0.0);
+
+  @override
+  bool shouldCoalesce(double previousState, double currentState, double nextState) {
+    // Merge small continuous drag deltas into a single undo step
+    return (nextState - currentState).abs() < 0.1;
+  }
+}''',
+        ),
       ]),
 
       // 6. Mixins & Composition

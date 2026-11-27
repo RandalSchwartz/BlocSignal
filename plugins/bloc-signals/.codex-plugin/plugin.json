@@ -1,6 +1,6 @@
 {
   "name": "bloc-signals",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Package-specific guidance for implementing, testing, reviewing, and migrating Dart and Flutter applications that use BlocSignal.",
   "author": {
     "name": "Randal L. Schwartz",

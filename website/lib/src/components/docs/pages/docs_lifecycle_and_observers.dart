@@ -19,6 +19,7 @@ class const DocsLifecycleAndObserversPage({super.key})
       anchor: 'lifecycle-hook-reference',
     ),
     TocHeading(title: 'Change vs. Transition', anchor: 'change-vs-transition'),
+    TocHeading(title: 'Managed Resource Cleanup', anchor: 'managed-resources'),
     TocHeading(title: 'OpenTelemetry Spans', anchor: 'opentelemetry-tracing'),
     TocHeading(title: 'DevTools Integration', anchor: 'devtools-integration'),
   ];
@@ -239,7 +240,48 @@ class AppBlocObserver extends BlocSignalObserver {
         ]),
       ]),
 
-      // 4. OpenTelemetry & DevTools
+      // 4. Managed Resource Cleanup
+      section(id: 'managed-resources', classes: 'docs-section', [
+        h2([Component.text('Managed Resource Cleanup')]),
+        p([
+          Component.text(
+            'Register stream subscriptions, timers, and custom disposable handles directly inside any container using ',
+          ),
+          apiLink(DocSymbol.manageResource),
+          Component.text(', '),
+          apiLink(DocSymbol.manageStreamSubscription),
+          Component.text(', and '),
+          apiLink(DocSymbol.manageTimer),
+          Component.text(
+            '. When close() runs, managed resources are disposed automatically in reverse (LIFO) registration order without manual field boilerplate.',
+          ),
+        ]),
+        const DocsCodeBlock(
+          filename: 'ticker_cubit.dart',
+          dart313Code: '''
+class TickerCubit(Stream<int> ticks) extends CubitSignal<int> {
+  this : super(initialState: 0) {
+    manageStreamSubscription(ticks.listen(emit));
+    manageTimer(
+      Timer.periodic(const Duration(seconds: 1), (_) => emit(value + 1)),
+    );
+  }
+}
+''',
+          dart35Code: '''
+class TickerCubit extends CubitSignal<int> {
+  TickerCubit(Stream<int> ticks) : super(initialState: 0) {
+    manageStreamSubscription(ticks.listen(emit));
+    manageTimer(
+      Timer.periodic(const Duration(seconds: 1), (_) => emit(value + 1)),
+    );
+  }
+}
+''',
+        ),
+      ]),
+
+      // 5. OpenTelemetry & DevTools
       section(id: 'opentelemetry-devtools', classes: 'docs-section', [
         h2([Component.text('OpenTelemetry & DevTools Integration')]),
         p([
@@ -261,8 +303,10 @@ class AppBlocObserver extends BlocSignalObserver {
             ' for safe, customizable toString() formatting with an automatic <uninitialized> guard on CubitSignalMixin before initCubitSignal runs. When combining multiple observers, ',
           ),
           apiLink(DocSymbol.compositeBlocSignalObserver),
+          Component.text(' (also exported as '),
+          apiLink(DocSymbol.multiBlocSignalObserver),
           Component.text(
-            ' snapshots its observer list across all 8 hooks so reentrant addObserver/removeObserver calls inside callbacks never cause concurrent modification errors.',
+            ') deduplicates identical observer instances and snapshots its observer list across all 8 hooks so reentrant addObserver/removeObserver calls inside callbacks never cause concurrent modification errors.',
           ),
         ]),
       ]),

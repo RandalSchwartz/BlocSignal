@@ -36,10 +36,10 @@ The `BlocSignal` monorepo consists of 14 modular packages:
 
 - **`BlocSignalProvider<T>`**: Injects a `BlocSignal` or `CubitSignal` into the Jaspr component tree via `InheritedComponent`, supporting lazy initialization (`lazy: true`), existing values (`.value`), and automatic container disposal.
 - **`MultiBlocSignalProvider`**: Combines multiple providers into a single linear component tree.
-- **`BuildContext` Extensions**: Read (`context.read<T>()`), watch (`context.watch<T>()`), selectively subscribe (`context.select<T, R>()`), subscribe to fine-grained state in build (`context.value<T, S>()`), and look up signals for composition (`context.state<T, S>()`) directly from `BuildContext`.
+- **`BuildContext` Extensions**: Read (`context.read<T>()` / `context.maybeRead<T>()`), watch (`context.watch<T>()` / `context.maybeWatch<T>()`), selectively subscribe (`context.select<T, R>(..., equals:)`), subscribe to fine-grained state in build (`context.value<T, S>()`), and look up signals for composition (`context.state<T, S>()`) directly from `BuildContext` (missing required providers throw a structured `BlocSignalProviderNotFoundError`).
 - **`BlocSignalBuilder<T, S>`**: Rebuilds Jaspr components dynamically when state changes.
-- **`BlocSignalListener<T, S>`**: Executes side-effect callbacks on state changes with optional `listenWhen` filtering, `take` execution quotas, and `takeWhile` predicates.
-- **`BlocSignalConsumer<T, S>`**: Combines `BlocSignalBuilder` and `BlocSignalListener`, forwarding `take` and `takeWhile` quotas.
+- **`BlocSignalListener<T, S>`**: Executes side-effect callbacks on state changes with optional `listenWhen` filtering, `take` execution quotas, `takeWhile` predicates, and `BlocSignalListener.transition` for `(context, previous, current)` callbacks.
+- **`BlocSignalConsumer<T, S>`**: Combines `BlocSignalBuilder` and `BlocSignalListener`, forwarding `take`, `takeWhile`, and `.transition` callbacks.
 - **`BlocSignalSelector<T, S, V>`**: Fine-grained component rebuild filtering using computed state slices.
 - **`MultiBlocSignalListener`**: Merges multiple listeners cleanly.
 
@@ -51,7 +51,7 @@ Add `bloc_signals_jaspr` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals_jaspr: ^1.0.0
+  bloc_signals_jaspr: ^1.4.0
 ```
 
 ### Providing & Consuming State in Jaspr

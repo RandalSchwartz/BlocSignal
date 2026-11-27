@@ -82,7 +82,7 @@ class const App({super.key}) extends StatelessComponent {
         h2([Component.text('Reactive Builders & Consumers')]),
         p([
           Component.text(
-            'Rebuild HTML elements when state changes using BlocSignalBuilder, or coordinate side effects with BlocSignalConsumer. Like their Flutter counterparts, Jaspr builders track consecutive previous/current state pairs across suppressed buildWhen transitions, suppress initial-pass callbacks for non-reflexive equals, check mounted, detect container swaps via !identical(), and handle create:/.value and lazy transitions in BlocSignalProvider.didUpdateComponent:',
+            'Rebuild HTML elements when state changes using BlocSignalBuilder, or coordinate side effects with BlocSignalListener and BlocSignalConsumer (supporting take and takeWhile execution quotas as well as BlocSignalListener.transition / BlocSignalConsumer.transition for (context, previous, current) callbacks). Like their Flutter counterparts, Jaspr builders track consecutive previous/current state pairs across suppressed buildWhen transitions, suppress initial-pass callbacks for non-reflexive equals, check mounted, detect container swaps via !identical(), and handle create:/.value and lazy transitions in BlocSignalProvider.didUpdateComponent:',
           ),
         ]),
         const DocsCodeBlock(
@@ -125,26 +125,32 @@ class const CounterView({super.key}) extends StatelessComponent {
         ul([
           li([
             strong([
-              code([Component.text('context.read<B>()')]),
+              code([
+                Component.text('context.read<B>() / context.maybeRead<B>()'),
+              ]),
             ]),
             Component.text(
-              ': Retrieves the container without creating a reactive subscription. Used inside button click callbacks.',
+              ': Retrieves the container without creating a reactive subscription (throwing BlocSignalProviderNotFoundError if absent, or returning null for maybeRead). Used inside button click callbacks.',
             ),
           ]),
           li([
             strong([
-              code([Component.text('context.select<B, R>((b) => ...)')]),
+              code([
+                Component.text('context.select<B, R>((b) => ..., equals: ...)'),
+              ]),
             ]),
             Component.text(
-              ': Subscribes to a fine-grained sub-property. Automatically updates the component and safely rebinds when ancestor providers swap container instances.',
+              ': Subscribes to a Computed-memoized sub-property with optional custom equals. Automatically updates the component and safely rebinds when ancestor providers swap container instances.',
             ),
           ]),
           li([
             strong([
-              code([Component.text('context.watch<B>()')]),
+              code([
+                Component.text('context.watch<B>() / context.maybeWatch<B>()'),
+              ]),
             ]),
             Component.text(
-              ': Tracks provider container instance swapping only, without listening to individual state emissions.',
+              ': Tracks provider container instance swapping only, without listening to individual state emissions (maybeWatch returns null when absent).',
             ),
           ]),
           li([

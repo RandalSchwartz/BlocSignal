@@ -53,8 +53,8 @@ class const DocsPkgHydratePage({super.key}) extends StatelessComponent {
           language: 'yaml',
           code: '''
 dependencies:
-  bloc_signals: ^1.9.0
-  bloc_signals_hydrate: ^1.1.3
+  bloc_signals: ^1.10.0
+  bloc_signals_hydrate: ^1.2.0
   shared_preferences: ^2.3.0
 ''',
         ),
@@ -305,8 +305,17 @@ class UserProfileCubit extends HydratedCubitSignal<UserProfile?> {
             'When an id is set, HydratedMixin.storageToken percent-encodes storagePrefix and id via Uri.encodeComponent joined by ":" to prevent separator collisions. '
             'Override storagePrefix with a stable string literal in release web/obfuscated builds where runtimeType.toString() is minified, '
             'and deserialization FormatExceptions omit raw stored JSON payloads (source == null) while rejecting corrupt SecureHydratedStorage entries instead of caching raw strings. '
-            'initHydratedState and storage I/O boundaries isolate recoverable deserialization errors and non-Error platform objects via onError() while keeping fatal VM Errors fail-fast.',
+            'initHydratedState and storage I/O boundaries isolate recoverable deserialization errors and non-Error platform objects via onError() while keeping fatal VM Errors fail-fast. '
+            'For application-level payload encryption, size bounding, and schema evolution, override ',
           ),
+          apiLink(DocSymbol.hydratedCipher, label: 'cipher (HydratedCipher)'),
+          Component.text(', '),
+          code([Component.text('maxPayloadBytes')]),
+          Component.text(', and '),
+          code([Component.text('storageVersion')]),
+          Component.text(' + '),
+          code([Component.text('migrate(json, fromVersion)')]),
+          Component.text(' directly on your hydrated container.'),
         ]),
         const DocsCallout(
           type: CalloutType.tip,

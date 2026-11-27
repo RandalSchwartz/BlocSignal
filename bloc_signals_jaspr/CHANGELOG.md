@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4.0
 
 - **Feat (jaspr)**: Add `take` and `takeWhile` execution quotas to `BlocSignalListener` and `BlocSignalConsumer` (#522).
 - **Feat (jaspr)**: Add `BlocSignalProvider.maybeOf`, `context.maybeRead`, `context.maybeWatch`, structured `BlocSignalProviderNotFoundError` (extending `StateError`), `BlocSignalListener.transition` / `BlocSignalConsumer.transition`, `context.select(..., equals:)` with `Computed` memoization and `SCAR-JASPR-01` pre-evaluation liveness gate, and replace `_NullComponent` with `const Component.empty()` (#481).

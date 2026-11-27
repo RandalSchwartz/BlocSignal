@@ -126,6 +126,36 @@ class CounterApp extends StatelessWidget {
 }
 ''',
         ),
+        p([
+          Component.text(
+            'For routes or tabs that unmount briefly and remount, pass ',
+          ),
+          code([Component.text('retentionPeriod')]),
+          Component.text(
+            ' to defer disposal for a grace window and reclaim the live container on remount. Call ',
+          ),
+          code([Component.text('BlocSignalProvider.clearRetained()')]),
+          Component.text(
+            ' in widget tests or at logout boundaries to flush retained instances immediately:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          title: 'Graceful Deferred Disposal with retentionPeriod',
+          dart313Code: '''
+BlocSignalProvider<SearchBloc>(
+  create: (_) => SearchBloc(),
+  retentionPeriod: const Duration(seconds: 30),
+  child: const SearchPage(),
+)
+''',
+          dart35Code: '''
+BlocSignalProvider<SearchBloc>(
+  create: (BuildContext context) => SearchBloc(),
+  retentionPeriod: const Duration(seconds: 30),
+  child: const SearchPage(),
+)
+''',
+        ),
       ]),
 
       section(id: 'lazy-evaluation', classes: 'docs-section', [

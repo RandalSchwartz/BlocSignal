@@ -1,4 +1,4 @@
-## Unreleased
+## 1.10.0
 
 - **Feat (core)**: Add `manageResource`, `manageStreamSubscription`, and `manageTimer` lifecycle helpers to `BlocSignalBase` (#394).
 - **Feat (concurrency)**: Expose cooperative cancellation token (`CancellationToken`, `isCanceled`, `onCancel`) to `restartable()` event handlers and `close()` lifecycle (#498).

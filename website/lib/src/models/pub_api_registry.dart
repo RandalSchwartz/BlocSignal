@@ -31,6 +31,27 @@ enum DocSymbol(
     'bloc_signals',
     'CompositeBlocSignalObserver-class.html',
   ),
+  multiBlocSignalObserver(
+    'MultiBlocSignalObserver',
+    'bloc_signals',
+    'MultiBlocSignalObserver.html',
+  ),
+  cancellationToken(
+    'CancellationToken',
+    'bloc_signals',
+    'CancellationToken-class.html',
+  ),
+  manageResource(
+    'manageResource',
+    'bloc_signals',
+    'BlocSignalBase/manageResource.html',
+  ),
+  manageStreamSubscription(
+    'manageStreamSubscription',
+    'bloc_signals',
+    'BlocSignalBase/manageStreamSubscription.html',
+  ),
+  manageTimer('manageTimer', 'bloc_signals', 'BlocSignalBase/manageTimer.html'),
   signalBlocSignal(
     'SignalBlocSignal',
     'bloc_signals',
@@ -172,6 +193,21 @@ enum DocSymbol(
     'bloc_signals_flutter',
     'BlocSignalProviderExtension/state.html',
   ),
+  contextMaybeRead(
+    'maybeRead',
+    'bloc_signals_flutter',
+    'BlocSignalProviderExtension/maybeRead.html',
+  ),
+  contextMaybeWatch(
+    'maybeWatch',
+    'bloc_signals_flutter',
+    'BlocSignalProviderExtension/maybeWatch.html',
+  ),
+  blocSignalProviderNotFoundError(
+    'BlocSignalProviderNotFoundError',
+    'bloc_signals_flutter',
+    'BlocSignalProviderNotFoundError-class.html',
+  ),
 
   // Testing (bloc_signals_test)
   blocSignalTest('blocSignalTest', 'bloc_signals_test', 'blocSignalTest.html'),
@@ -223,6 +259,11 @@ enum DocSymbol(
     'bloc_signals_hydrate',
     'MemoryHydratedStorage-class.html',
   ),
+  hydratedCipher(
+    'HydratedCipher',
+    'bloc_signals_hydrate',
+    'HydratedCipher-class.html',
+  ),
 
   // Replay (bloc_signals_replay)
   replayMixin('ReplayMixin', 'bloc_signals_replay', 'ReplayMixin-mixin.html'),
@@ -248,6 +289,11 @@ enum DocSymbol(
     'canRedoSignal',
     'bloc_signals_replay',
     'ReplayMixin/canRedoSignal.html',
+  ),
+  shouldCoalesce(
+    'shouldCoalesce',
+    'bloc_signals_replay',
+    'ReplayMixin/shouldCoalesce.html',
   ),
 
   // Riverpod (bloc_signals_riverpod)
@@ -380,6 +426,16 @@ enum DocSymbol(
     'state',
     'bloc_signals_jaspr',
     'BlocSignalProviderExtension/state.html',
+  ),
+  contextJasprMaybeRead(
+    'maybeRead',
+    'bloc_signals_jaspr',
+    'BlocSignalProviderExtension/maybeRead.html',
+  ),
+  contextJasprMaybeWatch(
+    'maybeWatch',
+    'bloc_signals_jaspr',
+    'BlocSignalProviderExtension/maybeWatch.html',
   ),
 
   // Lint (bloc_signals_lint)

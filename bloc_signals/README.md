@@ -70,7 +70,7 @@ Add `bloc_signals` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  bloc_signals: ^1.0.0
+  bloc_signals: ^1.10.0
 ```
 
 ---
@@ -157,7 +157,8 @@ class AsyncDataBloc extends BlocSignal<DataEvent, DataState> {
       transformer: droppable(),
     );
 
-    // Supersede in-flight queries and clean up cooperatively via onCancel/isCanceled
+    // Supersede in-flight queries and clean up cooperatively via the ambient
+    // CancellationToken (onCancel / isCanceled)
     on<SearchQueryChanged>(
       (event, emit) async {
         final client = HttpClient();
@@ -282,6 +283,12 @@ Enable global DevTools telemetry in `main.dart`:
 void main() {
   // Enables VM Service RPC extensions & developer.postEvent telemetry
   BlocSignalObserver.observer = DevToolsBlocSignalObserver();
+
+  // Or compose multiple observers (duplicate instances are ignored automatically):
+  // BlocSignalObserver.observer = MultiBlocSignalObserver([
+  //   DevToolsBlocSignalObserver(),
+  //   MyCustomObserver(),
+  // ]);
 
   runApp(const MyApp());
 }

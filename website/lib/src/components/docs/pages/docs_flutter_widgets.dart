@@ -147,6 +147,48 @@ BlocSignalBuilder<CounterCubit, int>.child(
 )
 ''',
         ),
+        p([
+          Component.text(
+            'For concise inline reactive widgets on any ReadonlySignal or BlocSignalBase, use the zero-allocation ',
+          ),
+          code([Component.text('.build')]),
+          Component.text(' and '),
+          code([Component.text('.build.child')]),
+          Component.text(' extensions:'),
+        ]),
+        const DocsCodeBlock(
+          title: 'Fluent .build and .build.child Extensions',
+          dart313Code: '''
+// Direct inline signal or container builder:
+counterCubit.build((context, count) => Text('Count: \$count'));
+
+// With static child subtree preservation:
+counterCubit.build.child(
+  const Icon(Icons.add),
+  (context, count, child) => Row(
+    children: [
+      if (child != null) child,
+      Text('Count: \$count'),
+    ],
+  ),
+);
+''',
+          dart35Code: '''
+// Direct inline signal or container builder:
+counterCubit.build((BuildContext context, int count) => Text('Count: \$count'));
+
+// With static child subtree preservation:
+counterCubit.build.child(
+  const Icon(Icons.add),
+  (BuildContext context, int count, Widget? child) => Row(
+    children: <Widget>[
+      if (child != null) child,
+      Text('Count: \$count'),
+    ],
+  ),
+);
+''',
+        ),
       ]),
 
       section(id: 'listener', classes: 'docs-section', [
@@ -216,6 +258,67 @@ class LoginScreen extends StatelessWidget {
     );
   }
 }
+''',
+        ),
+        h3([
+          Component.text(
+            'Rate-Limiting (.debounce / .throttle) & Transitions (.transition)',
+          ),
+        ]),
+        p([
+          Component.text('Use '),
+          code([Component.text('BlocSignalListener.debounce')]),
+          Component.text(' or '),
+          code([Component.text('BlocSignalListener.throttle')]),
+          Component.text(
+            ' (or pass debounce: / throttle: parameters) to rate-limit side effects, and use ',
+          ),
+          code([Component.text('BlocSignalListener.transition')]),
+          Component.text(
+            ' when your callback needs both previous and current states:',
+          ),
+        ]),
+        const DocsCodeBlock(
+          title: 'Rate-Limited & Transition Listeners',
+          dart313Code: '''
+// Debounced side-effect listener:
+BlocSignalListener<SearchCubit, String>.debounce(
+  duration: const Duration(milliseconds: 300),
+  listener: (context, query) => analytics.logSearch(query),
+  child: const SearchResults(),
+);
+
+// Transition-aware listener receiving (context, previous, current):
+BlocSignalListener<AuthBloc, AuthState>.transition(
+  listener: (context, previous, current) {
+    if (previous is AuthLoading && current is AuthFailure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(current.message)),
+      );
+    }
+  },
+  child: const LoginForm(),
+);
+''',
+          dart35Code: '''
+// Debounced side-effect listener:
+BlocSignalListener<SearchCubit, String>.debounce(
+  duration: const Duration(milliseconds: 300),
+  listener: (BuildContext context, String query) => analytics.logSearch(query),
+  child: const SearchResults(),
+);
+
+// Transition-aware listener receiving (context, previous, current):
+BlocSignalListener<AuthBloc, AuthState>.transition(
+  listener: (BuildContext context, AuthState previous, AuthState current) {
+    if (previous is AuthLoading && current is AuthFailure) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(current.message)),
+      );
+    }
+  },
+  child: const LoginForm(),
+);
 ''',
         ),
         h3([Component.text('Execution Quotas (take and takeWhile)')]),

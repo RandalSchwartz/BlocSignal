@@ -47,8 +47,14 @@ class const DocsFlutterContextPage({super.key}) extends StatelessComponent {
           Component.text(
             ' inside event handlers, callback closures, button presses, and gestures '
             'where you want to dispatch an action or read a one-off value without causing the enclosing '
-            'build method to rebuild.',
+            'build method to rebuild. If no matching provider exists, a structured ',
           ),
+          apiLink(DocSymbol.blocSignalProviderNotFoundError),
+          Component.text(' (extending FlutterError) is thrown. Use '),
+          apiLink(DocSymbol.contextMaybeRead, label: 'context.maybeRead<B>()'),
+          Component.text(' or '),
+          code([Component.text('BlocSignalProvider.maybeOf<B>(context)')]),
+          Component.text(' for optional lookups that return null when absent.'),
         ]),
         const DocsCallout(
           type: CalloutType.caution,
@@ -105,8 +111,13 @@ class IncrementButton extends StatelessWidget {
           Component.text(
             ' resolves the container and registers the current widget’s Element '
             'as a listener on the InheritedWidget provider. It triggers a rebuild '
-            'if the provided container instance itself is replaced in the widget tree.',
+            'if the provided container instance itself is replaced in the widget tree. Use ',
           ),
+          apiLink(
+            DocSymbol.contextMaybeWatch,
+            label: 'context.maybeWatch<B>()',
+          ),
+          Component.text(' when the provider is optional.'),
         ]),
         DocsCallout(
           type: CalloutType.warning,
@@ -191,7 +202,11 @@ class ActiveRoomHeader extends StatelessWidget {
             Component.text('only when the selected return value R changes'),
           ]),
           Component.text(
-            '. This provides fine-grained selector ergonomics directly from BuildContext.',
+            '. This provides fine-grained selector ergonomics directly from BuildContext, and accepts an optional ',
+          ),
+          code([Component.text('equals')]),
+          Component.text(
+            ' comparator for custom value equality on derived collections or models.',
           ),
         ]),
         const DocsCodeBlock(

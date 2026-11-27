@@ -43,6 +43,7 @@ const List<String> allWebsiteStaticRoutes = [
   'docs/recipe-caching',
   'docs/recipe-batching',
   'docs/recipe-domain-mixins',
+  'docs/recipe-fine-grained-signals',
   'docs/migration-bloc',
   'docs/migration-riverpod',
 ];

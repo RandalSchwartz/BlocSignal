@@ -510,4 +510,36 @@ void main() {
       );
     });
   });
+
+  group('(Issue #263) Fine-Grained Signals Recipe Section', () {
+    test('recipe-fine-grained-signals is registered under Architecture & Recipes with TOC headings and sourcePath', () {
+      final section = DocsRegistry.resolveSection(
+        'recipe-fine-grained-signals',
+      );
+      expect(section.id, equals('recipe-fine-grained-signals'));
+      expect(section.path, equals('/docs/recipe-fine-grained-signals'));
+      expect(section.category, equals('Architecture & Recipes'));
+      expect(
+        section.sourcePath,
+        equals(
+          'website/lib/src/components/docs/pages/docs_recipe_fine_grained_signals.dart',
+        ),
+      );
+      expect(section.headings, isNotEmpty);
+      expect(
+        DocsContent.getHeadingsForSection('recipe-fine-grained-signals'),
+        equals(section.headings),
+      );
+      expect(
+        DocsContent.getSourcePathForSection('recipe-fine-grained-signals'),
+        equals(
+          'website/lib/src/components/docs/pages/docs_recipe_fine_grained_signals.dart',
+        ),
+      );
+      expect(
+        DocsRegistry.allStaticRoutes,
+        contains('docs/recipe-fine-grained-signals'),
+      );
+    });
+  });
 }

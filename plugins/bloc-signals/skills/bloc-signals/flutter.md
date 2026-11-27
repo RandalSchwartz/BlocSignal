@@ -24,6 +24,10 @@ BlocSignalProvider<CounterBloc>(
 `lazy` defaults to `true`. Use `lazy: false` only when creation must happen before the first lookup.
 The provider intentionally does not await the owned bloc's `close()` future during widget disposal.
 
+> [!WARNING]
+> **Avoid Dispatching Initialization Events in Constructors with `lazy: true` (`SCAR-FLUTTER-02`)**:
+> Do not call `add(InitEvent())` or start async fetches inside a `BlocSignal` or `CubitSignal` constructor. Because `BlocSignalProvider` defaults to `lazy: true`, constructor-dispatched events will not fire until the first descendant reads the provider (and will never fire if no widget reads it). Instead, keep constructors pure and either pass `lazy: false` when eager mount initialization is required (for example `create: (_) => MyBloc()..add(const LoadInitial())`) or dispatch initialization from the route or `StatefulWidget.initState` lifecycle.
+
 ### Zero-Closure Provider Tearoffs (`Cubit.create`)
 
 In Dart, constructor tearoffs like `CounterCubit.new` have signature `CounterCubit Function()` (0 parameters) and cannot be directly passed to `create:` which requires `BlocSignalBase<dynamic> Function(BuildContext)` (1 parameter).
@@ -137,6 +141,8 @@ final isSubmitEnabled = context.select<FormCubit, bool>(
   (cubit) => cubit.stateValue.canSubmit,
 );
 ```
+
+When migrating from coarse loading state unions (for example `LoadingState` vs `LoadedState` that replace the entire screen and reset form inputs or dropdowns), prefer a unified state record paired with `late final` `computed(...)` properties on the container and scoped `context.select` or `BlocSignalBuilder` widgets so unrelated controls remain mounted and interactive while a list reloads (see `SCAR-STATE-33` in `scars.md` and `/docs/recipe-fine-grained-signals`).
 
 > [!TIP]
 > **Generic Type Signature & Selector Parameter (`context.select<B, R>`)**:

@@ -4,6 +4,28 @@ import 'package:jaspr/jaspr.dart';
 import '../models/app_route.dart';
 
 class const ExamplesSection({super.key}) extends StatelessComponent {
+  /// Community-built showcase applications using BlocSignal.
+  static const List<
+    ({
+      String title,
+      String tag,
+      String desc,
+      String icon,
+      String author,
+      String url,
+    })
+  >
+  communityShowcase = [
+    (
+      title: 'dog_ceo_signals_app',
+      tag: 'Fine-Grained Signals & Breed Browser',
+      desc: 'Real-world Flutter adoption showcasing fine-grained computed signals, preserved dropdown state during image fetches, and clean BlocSignal architecture.',
+      icon: '🐶',
+      author: 'Daniel Casey (@tataDan)',
+      url: 'https://github.com/tataDan/dog_ceo_signals_app',
+    ),
+  ];
+
   @override
   Component build(BuildContext context) {
     final nativeShowcase = [
@@ -130,6 +152,36 @@ class const ExamplesSection({super.key}) extends StatelessComponent {
                   attributes: const {'rel': 'noopener noreferrer'},
                   classes: 'card-link',
                   [Component.text('View Source & Tests ↗')],
+                ),
+              ]),
+            ]),
+        ]),
+        div(classes: 'spacer-vertical', []),
+        h2(classes: 'section-title', [Component.text('Community Showcase')]),
+        p(classes: 'section-subtitle', [
+          Component.text(
+            'Open-source applications built by the Flutter and Dart community with BlocSignal.',
+          ),
+        ]),
+        div(classes: 'package-grid', [
+          for (final item in communityShowcase)
+            div(classes: 'package-card', [
+              div(classes: 'card-header', [
+                span(classes: 'card-icon', [Component.text(item.icon)]),
+                span(classes: 'card-version', [Component.text(item.tag)]),
+              ]),
+              h3(classes: 'card-title', [Component.text(item.title)]),
+              p(classes: 'card-desc', [Component.text(item.desc)]),
+              p(classes: 'card-desc', [
+                Component.text('Built by ${item.author}'),
+              ]),
+              div(classes: 'card-links-row', [
+                a(
+                  href: item.url,
+                  target: Target.blank,
+                  attributes: const {'rel': 'noopener noreferrer'},
+                  classes: 'card-link',
+                  [Component.text('View on GitHub ↗')],
                 ),
               ]),
             ]),

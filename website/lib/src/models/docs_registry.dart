@@ -26,6 +26,7 @@ import '../components/docs/pages/docs_recipe_batching.dart';
 import '../components/docs/pages/docs_recipe_caching.dart';
 import '../components/docs/pages/docs_recipe_controllers.dart';
 import '../components/docs/pages/docs_recipe_domain_mixins.dart';
+import '../components/docs/pages/docs_recipe_fine_grained_signals.dart';
 import '../components/docs/pages/docs_recipe_form_validation.dart';
 import '../components/docs/pages/docs_recipe_one_shot.dart';
 import '../components/docs/pages/docs_signals_reactivity.dart';
@@ -407,6 +408,16 @@ class const DocsRegistry() {
           builder: DocsRecipeDomainMixinsPage.new,
           headings: DocsRecipeDomainMixinsPage.headings,
           sourcePath: 'website/lib/src/components/docs/pages/docs_recipe_domain_mixins.dart',
+        ),
+        DocSectionItem(
+          id: 'recipe-fine-grained-signals',
+          title: 'Escaping Coarse BLoC Rebuilds with Fine-Grained Signals',
+          path: '/docs/recipe-fine-grained-signals',
+          category: 'Architecture & Recipes',
+          description: 'Preserve interactive controls during async loads using computed projections, context.select, and scoped BlocSignalBuilder.',
+          builder: DocsRecipeFineGrainedSignalsPage.new,
+          headings: DocsRecipeFineGrainedSignalsPage.headings,
+          sourcePath: 'website/lib/src/components/docs/pages/docs_recipe_fine_grained_signals.dart',
         ),
       ],
     ),
